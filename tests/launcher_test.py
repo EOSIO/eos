@@ -8,6 +8,7 @@ from TestHelper import TestHelper
 
 import decimal
 import re
+import os
 
 ###############################################################
 # launcher-test
@@ -53,7 +54,9 @@ try:
         cluster.cleanup()
         Print("Stand up cluster")
         pnodes=4
-        if cluster.launch(pnodes=pnodes, totalNodes=pnodes) is False:
+        abs_path = os.path.abspath(os.getcwd() + '/../unittests/contracts/eosio.token/eosio.token.abi')
+        traceNodeosArgs=" --trace-rpc-abi eosio.token=" + abs_path
+        if cluster.launch(pnodes=pnodes, totalNodes=pnodes, extraNodeosArgs=traceNodeosArgs) is False:
             cmdError("launcher")
             errorExit("Failed to stand up eos cluster.")
     else:
@@ -197,19 +200,16 @@ try:
     amountVal=None
     key=""
     try:
-        #key="[traces][0][act][name]"
         key = "[transaction][actions][0][action]"
         typeVal = transaction["transaction"]["actions"][0]["action"]
-        ## data in trace log is packed, individual fields can't be accessed directly
-        #key="[traces][0][act][data][quantity]"
-        #amountVal=transaction["traces"][0]["act"]["data"]["quantity"]
-        #amountVal=int(decimal.Decimal(amountVal.split()[0])*10000)
+        key = "[transaction][actions][0][params][quantity]"
+        amountVal = transaction["transaction"]["actions"][0]["params"]["quantity"]
+        amountVal = int(decimal.Decimal(amountVal.split()[0]) * 10000)
     except (TypeError, KeyError) as e:
         Print("transaction%s not found. Transaction: %s" % (key, transaction))
         raise
 
-    #if typeVal != "transfer" or amountVal != 975311:
-    if typeVal != "transfer":
+    if typeVal != "transfer" or amountVal != 975311:
         errorExit("FAILURE - get transaction trans_id failed: %s %s %s" % (transId, typeVal, amountVal), raw=True)
 
     Print("Bouncing nodes #00 and #01")

@@ -332,9 +332,7 @@ class Node(object):
         refBlockNum=None
         key=""
         try:
-            #key="[trx][trx][ref_block_num]"
             key="[transaction][transaction_header][ref_block_num]"
-            #refBlockNum=trans["trx"]["trx"]["ref_block_num"]
             refBlockNum=trans["transaction"]["transaction_header"]["ref_block_num"]
             refBlockNum=int(refBlockNum)+1
         except (TypeError, ValueError, KeyError) as _:

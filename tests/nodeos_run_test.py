@@ -67,7 +67,9 @@ try:
         Print("Stand up cluster")
         specificExtraNodeosArgs={ 0 : " --backing-store=chainbase",
                                   1 : " --backing-store=rocksdb" }
-        if cluster.launch(totalNodes=3, prodCount=prodCount, onlyBios=onlyBios, dontBootstrap=dontBootstrap, specificExtraNodeosArgs=specificExtraNodeosArgs, printInfo=True) is False:
+        abs_path = os.path.abspath(os.getcwd() + '/../unittests/contracts/eosio.token/eosio.token.abi')
+        traceNodeosArgs=" --trace-rpc-abi eosio.token=" + abs_path
+        if cluster.launch(totalNodes=3, prodCount=prodCount, onlyBios=onlyBios, dontBootstrap=dontBootstrap, specificExtraNodeosArgs=specificExtraNodeosArgs, printInfo=True, extraNodeosArgs=traceNodeosArgs) is False:
             cmdError("launcher")
             errorExit("Failed to stand up eos cluster.")
     else:
@@ -295,21 +297,16 @@ try:
     amountVal=None
     key=""
     try:
-        #key = "[traces][0][act][name]"
-        #typeVal = transaction["traces"][0]["act"]["name"]
         key = "[transaction][actions][0][action]"
         typeVal = transaction["transaction"]["actions"][0]["action"]
-
-        ## data in trace log is packed, individual fields can't be accessed directly
-        #key = "[traces][0][act][data][quantity]"
-        #amountVal = transaction["traces"][0]["act"]["data"]["quantity"]
-        #amountVal = int(decimal.Decimal(amountVal.split()[0]) * 10000)
+        key = "[transaction][actions][0][params][quantity]"
+        amountVal = transaction["transaction"]["actions"][0]["params"]["quantity"]
+        amountVal = int(decimal.Decimal(amountVal.split()[0]) * 10000)
     except (TypeError, KeyError) as e:
         Print("transaction%s not found. Transaction: %s" % (key, transaction))
         raise
 
-    #if typeVal != "transfer" or amountVal != 975311:
-    if typeVal != "transfer":
+    if typeVal != "transfer" or amountVal != 975311:
         errorExit("FAILURE - get transaction trans_id failed: %s %s %s" % (transId, typeVal, amountVal), raw=True)
 
     Print("Currency Contract Tests")
