@@ -333,9 +333,9 @@ class Node(object):
         key=""
         try:
             #key="[trx][trx][ref_block_num]"
-            key="[trx_header][ref_block_num]"
+            key="[transaction][transaction_header][ref_block_num]"
             #refBlockNum=trans["trx"]["trx"]["ref_block_num"]
-            refBlockNum=trans["trx_header"]["ref_block_num"]
+            refBlockNum=trans["transaction"]["transaction_header"]["ref_block_num"]
             refBlockNum=int(refBlockNum)+1
         except (TypeError, ValueError, KeyError) as _:
             Utils.Print("transaction%s not found. Transaction: %s" % (key, trans))

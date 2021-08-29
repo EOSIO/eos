@@ -363,7 +363,6 @@ namespace trace_apis {
                   if (t_mvo.contains("id")) {
                      string t_id = t_mvo["id"].as_string();
                      if (input_id == transaction_id_type(t_id)) {
-                        auto& chain = app().find_plugin<chain_plugin>()->chain();
                         result.transaction = transactions[i];
                         break;
                      }

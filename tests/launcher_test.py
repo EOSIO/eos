@@ -198,8 +198,8 @@ try:
     key=""
     try:
         #key="[traces][0][act][name]"
-        key = "[actions][1][0][action]"
-        typeVal = transaction["actions"][1][0]["action"]
+        key = "[transaction][actions][0][action]"
+        typeVal = transaction["transaction"]["actions"][0]["action"]
         ## data in trace log is packed, individual fields can't be accessed directly
         #key="[traces][0][act][data][quantity]"
         #amountVal=transaction["traces"][0]["act"]["data"]["quantity"]
