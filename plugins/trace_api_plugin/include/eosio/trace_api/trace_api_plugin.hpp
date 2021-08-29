@@ -17,8 +17,11 @@ namespace eosio {
                string                                id;
                std::optional<uint32_t>               block_num_hint;
             };
-            trace_api::transaction_trace_v3 get_transaction( const get_transaction_params& ) const;
-      };
+            struct get_transaction_result {
+               fc::variant  transaction;
+            };
+            get_transaction_result get_transaction( const get_transaction_params& ) const;
+       };
    } // namespace trace_apis
 
    /**
@@ -70,3 +73,4 @@ namespace eosio {
 }
 
 FC_REFLECT( eosio::trace_apis::read_only::get_transaction_params, (id)(block_num_hint) )
+FC_REFLECT( eosio::trace_apis::read_only::get_transaction_result, (transaction) )

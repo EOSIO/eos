@@ -331,8 +331,8 @@ namespace trace_apis {
       return chain_apis::resolver_factory::make(control, std::move( yield ));
    }
 
-   trace_api::transaction_trace_v3 read_only::get_transaction(const read_only::get_transaction_params &p) const {
-      trace_api::transaction_trace_v3 result;
+   read_only::get_transaction_result read_only::get_transaction(const read_only::get_transaction_params &p) const {
+      read_only::get_transaction_result result{};
       transaction_id_type input_id;
       auto input_id_length = p.id.size();
       try {
@@ -364,29 +364,7 @@ namespace trace_apis {
                      string t_id = t_mvo["id"].as_string();
                      if (input_id == transaction_id_type(t_id)) {
                         auto& chain = app().find_plugin<chain_plugin>()->chain();
-                        result.id = transaction_id_type(t_mvo["id"].as_string());
-                        result.cpu_usage_us = t_mvo["cpu_usage_us"].as_uint64();
-                        result.net_usage_words = t_mvo["net_usage_words"].as_uint64();
-                        std::vector<action_trace_v1> actions;
-                        abi_serializer::from_variant(t_mvo["actions"], actions, make_resolver(chain, abi_serializer::create_yield_function(chain.get_abi_serializer_max_time())),
-                                                      abi_serializer::create_yield_function(chain.get_abi_serializer_max_time()));
-                        result.actions = actions;
-                        fc::enum_type<uint8_t, chain::transaction_receipt_header::status_enum> status;
-                        abi_serializer::from_variant(t_mvo["status"], status, make_resolver(chain, abi_serializer::create_yield_function(chain.get_abi_serializer_max_time())),
-                                                      abi_serializer::create_yield_function(chain.get_abi_serializer_max_time()));
-                        result.status = status;
-                        std::vector<chain::signature_type> signatures;
-                        abi_serializer::from_variant(t_mvo["signatures"], signatures, make_resolver(chain, abi_serializer::create_yield_function(chain.get_abi_serializer_max_time())),
-                                                      abi_serializer::create_yield_function(chain.get_abi_serializer_max_time()));
-                        result.signatures = signatures;
-                        chain::transaction_header trx_header;
-                        abi_serializer::from_variant(t_mvo["transaction_header"], trx_header, make_resolver(chain, abi_serializer::create_yield_function(chain.get_abi_serializer_max_time())),
-                                                      abi_serializer::create_yield_function(chain.get_abi_serializer_max_time()));
-                        result.trx_header = trx_header;
-                        std::vector<chain::name> bill_to_accounts;
-                        abi_serializer::from_variant(t_mvo["bill_to_accounts"], bill_to_accounts, make_resolver(chain, abi_serializer::create_yield_function(chain.get_abi_serializer_max_time())),
-                                                      abi_serializer::create_yield_function(chain.get_abi_serializer_max_time()));
-                        result.bill_to_accounts = bill_to_accounts;
+                        result.transaction = transactions[i];
                         break;
                      }
                   }
