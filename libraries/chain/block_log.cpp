@@ -1024,7 +1024,8 @@ namespace eosio { namespace chain {
       detail::index_writer index(new_index_filename, num_blocks);
 
       uint64_t read_size = 0;
-      for(uint64_t to_write_remaining = to_write; to_write_remaining > 0; to_write_remaining -= read_size) {
+      uint64_t write_size = 0;
+      for(uint64_t to_write_remaining = to_write; to_write_remaining > 0; to_write_remaining -= write_size) {
          read_size = to_write_remaining;
          if (read_size > detail::reverse_iterator::_buf_len) {
             read_size = detail::reverse_iterator::_buf_len;
@@ -1036,41 +1037,27 @@ namespace eosio { namespace chain {
          const auto num_read = fread(buf, read_size, 1, original_block_log.blk_in);
          EOS_ASSERT( num_read == 1, block_log_exception, "blocks.log read failed" );
 
-         // handle the case that the distance between `buf+buffer_index` and `the end of the buffer` is less than 8 bytes
-         uint64_t complete_pos_content;
-         bool re_write = false;
-         uint64_t re_write_offset;
-
          // walk this memory section to adjust block position to match the adjusted location
          // of the block start and store in the new index file
+         write_size = read_size;
          while(original_pos >= start_of_blk_buffer_pos) {
             const auto buffer_index = original_pos - start_of_blk_buffer_pos;
-            if (buffer_index + pos_size <= detail::reverse_iterator::_buf_len){
-                uint64_t& pos_content = *(uint64_t*)(buf + buffer_index);
-                const auto start_of_this_block = pos_content;
-                pos_content = start_of_this_block - pos_delta;
-                index.write(pos_content);
-                original_pos = start_of_this_block - pos_size;
-            }else{
-                re_write = true;
-                re_write_offset = detail::reverse_iterator::_buf_len - buffer_index;
-                // read pos_content from original log file instead of the buffer
-                status = fseek(original_block_log.blk_in, original_pos, SEEK_SET);
-                const auto num_read = fread(&complete_pos_content, sizeof(uint64_t), 1, original_block_log.blk_in);
-                EOS_ASSERT( num_read == 1, block_log_exception, "blocks.log read failed" );
-                index.write(complete_pos_content - pos_delta);
-                original_pos = complete_pos_content - pos_size;
+            uint64_t& pos_content = *(uint64_t*)(buf + buffer_index);
+            if ( (pos_content - start_of_blk_buffer_pos) > 0 && (pos_content - start_of_blk_buffer_pos) < pos_size ) {
+               // avoid the whole 8 bytes that contains a blk pos being split by the buffer
+               write_size = read_size - buffer_index - pos_size;
+               break;
             }
+            const auto start_of_this_block = pos_content;
+            pos_content = start_of_this_block - pos_delta;
+            index.write(pos_content);
+            original_pos = start_of_this_block - pos_size;
          }
-         new_block_file.seek(new_block_file_first_block_pos + to_write_remaining - read_size);
-         new_block_file.write(buf, read_size);
-         if (re_write){
-             re_write = false;
-             new_block_file.seek((new_block_file_first_block_pos + to_write_remaining - read_size) + read_size - re_write_offset);
-             uint64_t pos = complete_pos_content - pos_delta;
-             new_block_file.write((char*)&pos, sizeof(uint64_t));
-         }
+         new_block_file.seek(new_block_file_first_block_pos + to_write_remaining - write_size);
+         uint64_t offset = read_size - write_size;
+         new_block_file.write(buf+offset, write_size);
       }
+
       index.complete();
       fclose(original_block_log.blk_in);
       original_block_log.blk_in = nullptr;
