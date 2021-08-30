@@ -956,6 +956,20 @@ namespace eosio { namespace chain {
       return std::clamp(version, min_supported_version, max_supported_version) == version;
    }
 
+   namespace {
+      template <typename T>
+      T read_buffer(const char* buf) {
+         T result;
+         memcpy(&result, buf, sizeof(T));
+         return result;
+      }
+
+      template <typename T>
+      void write_buffer(char* des, const T* src) {
+          memcpy(des, src, sizeof(T));
+      }
+   }
+
    bool block_log::trim_blocklog_front(const fc::path& block_dir, const fc::path& temp_dir, uint32_t truncate_at_block) {
       using namespace std;
       EOS_ASSERT( block_dir != temp_dir, block_log_exception, "block_dir and temp_dir need to be different directories" );
@@ -1042,7 +1056,7 @@ namespace eosio { namespace chain {
          write_size = read_size;
          while(original_pos >= start_of_blk_buffer_pos) {
             const auto buffer_index = original_pos - start_of_blk_buffer_pos;
-            uint64_t& pos_content = *(uint64_t*)(buf + buffer_index);
+            uint64_t pos_content = read_buffer<uint64_t>(buf + buffer_index);
             if ( (pos_content - start_of_blk_buffer_pos) > 0 && (pos_content - start_of_blk_buffer_pos) < pos_size ) {
                // avoid the whole 8 bytes that contains a blk pos being split by the buffer
                write_size = read_size - buffer_index - pos_size;
@@ -1050,6 +1064,7 @@ namespace eosio { namespace chain {
             }
             const auto start_of_this_block = pos_content;
             pos_content = start_of_this_block - pos_delta;
+            write_buffer<uint64_t>(buf + buffer_index, &pos_content);
             index.write(pos_content);
             original_pos = start_of_this_block - pos_size;
          }
