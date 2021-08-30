@@ -1,0 +1,182 @@
+{
+    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT ",
+    "version": "eosio::abi/1.2",
+    "types": [
+        {
+            "new_type_name": "op_struc",
+            "type": "mystruct?"
+        },
+        {
+            "new_type_name": "op_uint16",
+            "type": "uint16?"
+        },
+        {
+            "new_type_name": "vec_op_unit16",
+            "type": "op_uint16[]"
+        }
+    ],
+    "structs": [
+        {
+            "name": "get",
+            "base": "",
+            "fields": [
+                {
+                    "name": "id",
+                    "type": "int32"
+                }
+            ]
+        },
+        {
+            "name": "mystruct",
+            "base": "",
+            "fields": [
+                {
+                    "name": "_count",
+                    "type": "uint64"
+                },
+                {
+                    "name": "_strID",
+                    "type": "string"
+                }
+            ]
+        },
+        {
+            "name": "pair_uint16_vec_op_unit16",
+            "base": "",
+            "fields": [
+                {
+                    "name": "first",
+                    "type": "uint16"
+                },
+                {
+                    "name": "second",
+                    "type": "vec_op_unit16"
+                }
+            ]
+        },
+        {
+            "name": "person2kv",
+            "base": "",
+            "fields": [
+                {
+                    "name": "vo",
+                    "type": "op_uint16[]"
+                },
+                {
+                    "name": "sto",
+                    "type": "op_uint16[]"
+                },
+                {
+                    "name": "vos",
+                    "type": "op_struc[]"
+                },
+                {
+                    "name": "pvo",
+                    "type": "pair_uint16_vec_op_unit16"
+                }
+            ]
+        },
+        {
+            "name": "setpvo",
+            "base": "",
+            "fields": [
+                {
+                    "name": "id",
+                    "type": "int32"
+                },
+                {
+                    "name": "pvo",
+                    "type": "pair_uint16_vec_op_unit16"
+                }
+            ]
+        },
+        {
+            "name": "setsto",
+            "base": "",
+            "fields": [
+                {
+                    "name": "id",
+                    "type": "int32"
+                },
+                {
+                    "name": "sto",
+                    "type": "op_uint16[]"
+                }
+            ]
+        },
+        {
+            "name": "setvo",
+            "base": "",
+            "fields": [
+                {
+                    "name": "id",
+                    "type": "int32"
+                },
+                {
+                    "name": "vo",
+                    "type": "op_uint16[]"
+                }
+            ]
+        },
+        {
+            "name": "setvos",
+            "base": "",
+            "fields": [
+                {
+                    "name": "id",
+                    "type": "int32"
+                },
+                {
+                    "name": "vos",
+                    "type": "op_struc[]"
+                }
+            ]
+        }
+    ],
+    "actions": [
+        {
+            "name": "get",
+            "type": "get",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "setpvo",
+            "type": "setpvo",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "setsto",
+            "type": "setsto",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "setvo",
+            "type": "setvo",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "setvos",
+            "type": "setvos",
+            "ricardian_contract": ""
+        }
+    ],
+    "tables": [],
+    "kv_tables": {
+        "people2kv": {
+            "type": "person2kv",
+            "primary_index": {
+                "name": "map.index",
+                "type": "int32"
+            },
+            "secondary_indices": {}
+        }
+    },
+    "ricardian_clauses": [],
+    "variants": [],
+    "action_results": [
+        {
+            "name": "get",
+            "result_type": "person2kv"
+        }
+    ]
+}
