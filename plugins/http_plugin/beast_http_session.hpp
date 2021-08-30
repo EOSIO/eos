@@ -252,7 +252,6 @@ using local_stream = beast::basic_stream<
             }
 
             virtual ~beast_http_session() {
-                // avoid exceptions being thrown in destructor
                 is_send_exception_response_ = false;
                 plugin_state_->requests_in_flight -= 1;
                 auto session_time = steady_clock::now() - session_begin_;
@@ -385,7 +384,6 @@ using local_stream = beast::basic_stream<
             }
 
             void run_session() {
-                // wrap entiere session around try/catch to prevent non-zero exit code test failure
                 if(!verify_max_requests_in_flight())
                     return derived().do_eof();
                 
@@ -564,7 +562,6 @@ using local_stream = beast::basic_stream<
             bool is_secure() { return false; };
 
             void run() {
-                // catch any loose exceptions so that nodeos will return zero exit code
                 do_read();
             }
 

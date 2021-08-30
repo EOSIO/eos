@@ -209,13 +209,15 @@ namespace eosio {
      * Construct a lambda appropriate for url_response_callback that will
      * JSON-stringify the provided response
      *
-     * @param thread_pool - pointer to the thread pool 
-     * @param plugin_state = reference to plugin state object
-     * @param session_ptr - pointer to the session object on which to invoke send_response
+     * @param thread_pool - the thread pool object, executor to pass to asio::post() method
+     * @param plugin_state - plugin state object, shared state of http_plugin
+     * @param session_ptr - beast_http_session object on which to invoke send_response
      * @return lambda suitable for url_response_callback
      */
     auto make_http_response_handler(std::shared_ptr<eosio::chain::named_thread_pool> thread_pool, std::shared_ptr<http_plugin_state> plugin_state, detail::abstract_conn_ptr session_ptr) {
-    return [thread_pool, plugin_state, session_ptr]( int code, std::optional<fc::variant> response )
+    return [thread_pool{std::move(thread_pool)}, 
+           plugin_state{std::move(plugin_state)}, 
+           session_ptr{std::move(session_ptr)}] ( int code, std::optional<fc::variant> response )
          {
             auto tracked_response = make_in_flight(std::move(response), *plugin_state);
             if (!session_ptr->verify_max_bytes_in_flight()) {
