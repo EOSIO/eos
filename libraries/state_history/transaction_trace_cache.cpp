@@ -7,22 +7,9 @@ using eosio::chain::packed_transaction;
 using eosio::chain::state_history_exception;
 
 
-bool is_onblock(const transaction_trace_ptr& p) {
-   if (p->action_traces.size() != 1)
-      return false;
-   auto& act = p->action_traces[0].act;
-   using namespace eosio::chain::literals;
-   if (act.account != eosio::chain::config::system_account_name || act.name != "onblock"_n ||
-       act.authorization.size() != 1)
-      return false;
-   auto& auth = act.authorization[0];
-   return auth.actor == eosio::chain::config::system_account_name &&
-          auth.permission == eosio::chain::config::active_name;
-}
-
 void transaction_trace_cache::add_transaction(const transaction_trace_ptr& trace, const packed_transaction_ptr& transaction) {
    if (trace->receipt) {
-      if (is_onblock(trace))
+      if (chain::is_onblock(*trace))
          onblock_trace.emplace(trace, transaction);
       else if (trace->failed_dtrx_trace)
          cached_traces[trace->failed_dtrx_trace->id] = augmented_transaction_trace{trace, transaction};

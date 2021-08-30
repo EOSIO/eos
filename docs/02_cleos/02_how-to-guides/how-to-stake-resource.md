@@ -9,16 +9,16 @@ This how-to guide provides instructions on how to stake resources, NET and/or CP
 * Ensure the [reference system contracts](https://developers.eos.io/manuals/eosio.contracts/v1.9/build-and-deploy) are deployed and used to manage system resources.
 
 * Understand the following:
-  * What an [account](https://developers.eos.io/welcome/latest/glossary/index/#account) is.
+  * What an [account](https://developers.eos.io/welcome/v2.2/glossary/index/#account) is.
   * What [NET bandwidth](https://developers.eos.io/manuals/eosio.contracts/latest/key-concepts/net) is.
   * What [CPU bandwidth](https://developers.eos.io/manuals/eosio.contracts/latest/key-concepts/cpu) is.
-  * The [`delegatebw` cleos sub-command](https://developers.eos.io/manuals/eos/latest/cleos/command-reference/system/system-delegatebw).
+  * The [`delegatebw` cleos sub-command](https://developers.eos.io/manuals/eos/v2.2/cleos/command-reference/system/system-delegatebw).
 
 ## Command Reference
 
 See the following reference guides for command line usage and related options for the `cleos` command:
 
-* The [`delegatebw` cleos sub-command](https://developers.eos.io/manuals/eos/latest/cleos/command-reference/system/system-delegatebw).
+* The [`delegatebw` cleos sub-command](https://developers.eos.io/manuals/eos/v2.2/cleos/command-reference/system/system-delegatebw).
 
 ## Procedure
 

@@ -8,7 +8,8 @@ RUN apt-get update && \
     autotools-dev python2.7 python2.7-dev python3 python3-pip python3-requests \
     python3-dev python-configparser python-requests python-pip \
     autoconf libtool g++ gcc curl zlib1g-dev sudo ruby libusb-1.0-0-dev\
-    libcurl4-gnutls-dev pkg-config patch vim-common jq libpq-dev postgresql postgresql-server-dev-all && \
+    libcurl4-gnutls-dev pkg-config patch vim-common jq libpq-dev postgresql postgresql-server-dev-all rabbitmq-server \
+    libtasn1-dev libnss3-dev iproute2 expect gawk socat python3-pip libseccomp-dev uuid-dev && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 # build cmake

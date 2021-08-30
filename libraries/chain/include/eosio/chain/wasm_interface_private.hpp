@@ -1,11 +1,11 @@
 #pragma once
 
-#include <eosio/chain/wasm_interface.hpp>
 #ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
 #include <eosio/chain/webassembly/eos-vm-oc.hpp>
 #else
 #define _REGISTER_EOSVMOC_INTRINSIC(CLS, MOD, METHOD, WASM_SIG, NAME, SIG)
 #endif
+#include <eosio/chain/wasm_interface.hpp>
 #include <eosio/chain/webassembly/runtime_interface.hpp>
 #include <eosio/chain/wasm_eosio_injection.hpp>
 #include <eosio/chain/transaction_context.hpp>
@@ -50,8 +50,8 @@ namespace eosio { namespace chain {
 #ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
       struct eosvmoc_tier {
          eosvmoc_tier(const boost::filesystem::path& d, const eosvmoc::config& c, const chainbase::database& db)
-          : cc(d, c, db), exec(cc),
-            mem(wasm_constraints::maximum_linear_memory/wasm_constraints::wasm_page_size) {}
+           : cc(d, c, webassembly::eosvmoc::make_code_finder(db)), exec(cc),
+            mem(wasm_constraints::maximum_linear_memory/wasm_constraints::wasm_page_size, webassembly::eosvmoc::get_intrinsic_map()) {}
          eosvmoc::code_cache_async cc;
          eosvmoc::executor exec;
          eosvmoc::memory mem;
@@ -86,7 +86,7 @@ namespace eosio { namespace chain {
          if(is_shutting_down)
             for(wasm_cache_index::iterator it = wasm_instantiation_cache.begin(); it != wasm_instantiation_cache.end(); ++it)
                wasm_instantiation_cache.modify(it, [](wasm_cache_entry& e) {
-                  e.module.release();
+                  e.module.release()->fast_shutdown();
                });
       }
 

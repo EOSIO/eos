@@ -8,7 +8,7 @@ add_library( rodeos_lib
            )
 
 target_link_libraries( rodeos_lib 
-                       PUBLIC abieos chain_kv eosio_chain fc softfloat
+                       PUBLIC abieos chain_kv eosio_chain_wrap fc softfloat
                      )
 
 target_include_directories( rodeos_lib
