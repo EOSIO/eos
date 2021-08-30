@@ -4,6 +4,7 @@ add_library( trace_api_plugin
              store_provider.cpp
              abi_data_handler.cpp
              compressed_file.cpp
+             configuration_utils.cpp
              trace_api_plugin.cpp
              ${HEADERS} )
 
