@@ -84,38 +84,3 @@ foreach(RUNTIME ${EOSIO_WASM_RUNTIMES})
    set_tests_properties(wasm_unit_test_${RUNTIME} PROPERTIES COST 4000)
    set_tests_properties(delay_unit_test_${RUNTIME} PROPERTIES COST 3000)
 endforeach()
-
-### COVERAGE TESTING ###
-if(ENABLE_COVERAGE_TESTING)
-  set(Coverage_NAME ${PROJECT_NAME}_ut_coverage)
-  # check for dependencies
-  if(NOT LCOV_PATH)
-    message(FATAL_ERROR "lcov not found! Aborting...")
-  endif()
-  if(NOT LLVMCOV_PATH)
-    message(FATAL_ERROR "llvm-cov not found! Aborting...")
-  endif()
-  if(NOT GENHTML_PATH)
-    message(FATAL_ERROR "genhtml not found! Aborting...")
-  endif()
-  # tests to skip during coverage testing
-  set(ctest_exclude_tests '') # no spaces allowed within tests list
-  # setup target
-  add_custom_target(${Coverage_NAME}
-    # cleanup lcov
-    COMMAND ${LCOV_PATH} --directory . --zerocounters
-    # run tests
-    COMMAND ./tools/ctestwrapper.sh -R ${ctest_tests} -E ${ctest_exclude_tests}
-    COMMAND ${LCOV_PATH} --directory . --capture --gcov-tool ${CMAKE_SOURCE_DIR}/tools/llvm-gcov.sh --output-file ${Coverage_NAME}.info
-    COMMAND ${LCOV_PATH} -remove ${Coverage_NAME}.info '*/boost/*' '/usr/lib/*' '/usr/include/*' '*/externals/*' '*/fc/*' '*/wasm-jit/*' --output-file ${Coverage_NAME}_filtered.info
-    COMMAND ${GENHTML_PATH} -o ${Coverage_NAME} ${PROJECT_BINARY_DIR}/${Coverage_NAME}_filtered.info
-    COMMAND if [ "$CI" != "true" ]\; then ${CMAKE_COMMAND} -E remove ${Coverage_NAME}.base ${Coverage_NAME}.info ${Coverage_NAME}_filtered.info ${Coverage_NAME}.total ${PROJECT_BINARY_DIR}/${Coverage_NAME}.info.cleaned ${PROJECT_BINARY_DIR}/${Coverage_NAME}_filtered.info.cleaned\; fi
-    WORKING_DIRECTORY ${PROJECT_BINARY_DIR}
-    COMMENT "Resetting code coverage counters to zero. Processing code coverage counters and generating report. Report published in ./${Coverage_NAME}"
-  )
-  # show info where to find the report
-  add_custom_command(TARGET ${Coverage_NAME} POST_BUILD
-    COMMAND ;
-    COMMENT "Open ./${Coverage_NAME}/index.html in your browser to view the coverage report."
-  )
-endif()

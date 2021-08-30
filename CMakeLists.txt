@@ -136,10 +136,7 @@ set(ENABLE_COVERAGE_TESTING FALSE CACHE BOOL "Build EOSIO for code coverage anal
 
 if(ENABLE_COVERAGE_TESTING)
   SET(CMAKE_C_FLAGS   "--coverage ${CMAKE_C_FLAGS}")
-  SET(CMAKE_CXX_FLAGS "--coverage ${CMAKE_CXX_FLAGS}")
-  find_program( LCOV_PATH lcov )
-  find_program( LLVMCOV_PATH  llvm-cov )
-  find_program( GENHTML_PATH NAMES genhtml)
+  SET(CMAKE_CXX_FLAGS "--coverage ${CMAKE_CXX_FLAGS}")  
 endif()
 
 include(utils)
