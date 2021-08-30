@@ -1,0 +1,165 @@
+{
+    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT ",
+    "version": "eosio::abi/1.2",
+    "types": [
+        {
+            "new_type_name": "op_struc",
+            "type": "mystruct?"
+        },
+        {
+            "new_type_name": "op_uint16",
+            "type": "uint16?"
+        },
+        {
+            "new_type_name": "vec_op_unit16",
+            "type": "op_uint16[]"
+        }
+    ],
+    "structs": [
+        {
+            "name": "mystruct",
+            "base": "",
+            "fields": [
+                {
+                    "name": "_count",
+                    "type": "uint64"
+                },
+                {
+                    "name": "_strID",
+                    "type": "string"
+                }
+            ]
+        },
+        {
+            "name": "pair_uint16_vec_op_unit16",
+            "base": "",
+            "fields": [
+                {
+                    "name": "first",
+                    "type": "uint16"
+                },
+                {
+                    "name": "second",
+                    "type": "vec_op_unit16"
+                }
+            ]
+        },
+        {
+            "name": "person2",
+            "base": "",
+            "fields": [
+                {
+                    "name": "key",
+                    "type": "name"
+                },
+                {
+                    "name": "vo",
+                    "type": "op_uint16[]"
+                },
+                {
+                    "name": "sto",
+                    "type": "op_uint16[]"
+                },
+                {
+                    "name": "vos",
+                    "type": "op_struc[]"
+                },
+                {
+                    "name": "pvo",
+                    "type": "pair_uint16_vec_op_unit16"
+                }
+            ]
+        },
+        {
+            "name": "setpvo",
+            "base": "",
+            "fields": [
+                {
+                    "name": "user",
+                    "type": "name"
+                },
+                {
+                    "name": "pvo",
+                    "type": "pair_uint16_vec_op_unit16"
+                }
+            ]
+        },
+        {
+            "name": "setsto",
+            "base": "",
+            "fields": [
+                {
+                    "name": "user",
+                    "type": "name"
+                },
+                {
+                    "name": "sto",
+                    "type": "op_uint16[]"
+                }
+            ]
+        },
+        {
+            "name": "setvo",
+            "base": "",
+            "fields": [
+                {
+                    "name": "user",
+                    "type": "name"
+                },
+                {
+                    "name": "vo",
+                    "type": "op_uint16[]"
+                }
+            ]
+        },
+        {
+            "name": "setvos",
+            "base": "",
+            "fields": [
+                {
+                    "name": "user",
+                    "type": "name"
+                },
+                {
+                    "name": "vos",
+                    "type": "op_struc[]"
+                }
+            ]
+        }
+    ],
+    "actions": [
+        {
+            "name": "setpvo",
+            "type": "setpvo",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "setsto",
+            "type": "setsto",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "setvo",
+            "type": "setvo",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "setvos",
+            "type": "setvos",
+            "ricardian_contract": ""
+        }
+    ],
+    "tables": [
+        {
+            "name": "people2",
+            "type": "person2",
+            "index_type": "i64",
+            "key_names": [],
+            "key_types": []
+        }
+    ],
+    "kv_tables": {},
+    "ricardian_clauses": [],
+    "variants": [],
+    "action_results": []
+}
