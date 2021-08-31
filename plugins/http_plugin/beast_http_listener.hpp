@@ -10,9 +10,9 @@ namespace eosio {
     // to get the path if makes sense, so that we can call ::unlink() before opening socket 
     // in beast_http_listener::listen() by tdefault return blank string
     template<typename T>
-    std::string get_endpoint_path(T endpt) { return {}; }
+    std::string get_endpoint_path(const T& endpt) { return {}; }
 
-    std::string get_endpoint_path(stream_protocol::endpoint endpt) { return endpt.path(); }
+    std::string get_endpoint_path(const stream_protocol::endpoint &endpt) { return endpt.path(); }
 
     // Accepts incoming connections and launches the sessions
     // session_type should be a subclass of beast_http_session

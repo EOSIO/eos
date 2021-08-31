@@ -126,7 +126,7 @@ using local_stream = beast::basic_stream<
 
                 // Returns a bad request response
                 auto const bad_request =
-                [](beast::string_view why, detail::abstract_conn& conn)
+                [](const beast::string_view& why, detail::abstract_conn& conn)
                 {
                     conn.send_response(std::string(why), 
                                     static_cast<int>(http::status::bad_request));
@@ -134,7 +134,7 @@ using local_stream = beast::basic_stream<
 
                 // Returns a not found response
                 auto const not_found =
-                [](beast::string_view target, detail::abstract_conn& conn)
+                [](const beast::string_view& target, detail::abstract_conn& conn)
                 {
                     conn.send_response("The resource '" + std::string(target) + "' was not found.",
                                 static_cast<int>(http::status::not_found)); 

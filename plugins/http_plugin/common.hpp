@@ -167,14 +167,9 @@ namespace eosio {
             from._count = 0;
         }
 
-        // No copy assignment, but allow move
+        // Delete copy/move assignment
         in_flight& operator=(const in_flight&) = delete;
-        in_flight& operator=(in_flight&& from) {
-            _object = std::move(from._object);
-            _count = from._count;
-            _plugin_state = from._plugin_state;
-            from._count = 0;
-        }
+        in_flight& operator=(in_flight&& from) = delete;
 
         /**
          * const accessor
