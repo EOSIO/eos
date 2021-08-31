@@ -10,6 +10,7 @@ steps:
     command:
       - "./scripts/eosio_build.sh -P -y"
     timeout: 180
+    skip: ${SKIP_AMAZON_LINUX_2}${SKIP_LINUX}
     
   - label: ":centos: CentOS 7.7 - Build Pinned"
     plugins:
@@ -21,13 +22,14 @@ steps:
     command:
       - "./scripts/eosio_build.sh -P -y"
     timeout: 180
+    skip: ${SKIP_CENTOS_7_7}${SKIP_LINUX}
     
   - label: ":darwin: macOS 10.14 - Build Pinned"
     env:
       REPO: "git@github.com:EOSIO/eos.git"
       TEMPLATE: "10.14.6_6C_14G_80G"
       TEMPLATE_TAG: "clean::cicd::git-ssh::nas::brew::buildkite-agent"
-    agents: "queue=mac-anka-large-node-fleet"
+    agents: "queue=mac-anka-node-fleet"
     command:
       - "git clone git@github.com:EOSIO/eos.git eos && cd eos && git checkout -f $BUILDKITE_BRANCH && git submodule update --init --recursive"
       - "cd eos && ./scripts/eosio_build.sh -P -y"
@@ -50,6 +52,7 @@ steps:
       - EOSIO/skip-checkout#v0.1.1:
           cd: ~
     timeout: 180
+    skip: ${SKIP_MACOS_10_14}${SKIP_MAC}
     
   - label: ":ubuntu: Ubuntu 16.04 - Build Pinned"
     plugins:
@@ -62,6 +65,7 @@ steps:
       - "apt update && apt upgrade -y && apt install -y git"
       - "./scripts/eosio_build.sh -P -y"
     timeout: 180
+    skip: ${SKIP_UBUNTU_16_04}${SKIP_LINUX}
     
   - label: ":ubuntu: Ubuntu 18.04 - Build Pinned"
     plugins:
@@ -74,6 +78,7 @@ steps:
       - "apt update && apt upgrade -y && apt install -y git"
       - "./scripts/eosio_build.sh -P -y"
     timeout: 180
+    skip: ${SKIP_UBUNTU_18_04}${SKIP_LINUX}
 
   - label: ":aws: Amazon_Linux 2 - Build UnPinned"
     plugins:
@@ -85,6 +90,7 @@ steps:
     command:
       - "./scripts/eosio_build.sh -y"
     timeout: 180
+    skip: ${SKIP_AMAZON_LINUX_2}${SKIP_LINUX}
     
   - label: ":centos: CentOS 7.7 - Build UnPinned"
     plugins:
@@ -96,13 +102,14 @@ steps:
     command:
       - "./scripts/eosio_build.sh -y"
     timeout: 180
+    skip: ${SKIP_CENTOS_7_7}${SKIP_LINUX}
     
   - label: ":darwin: macOS 10.14 - Build UnPinned"
     env:
       REPO: "git@github.com:EOSIO/eos.git"
       TEMPLATE: "10.14.6_6C_14G_80G"
       TEMPLATE_TAG: "clean::cicd::git-ssh::nas::brew::buildkite-agent"
-    agents: "queue=mac-anka-large-node-fleet"
+    agents: "queue=mac-anka-node-fleet"
     command:
       - "git clone git@github.com:EOSIO/eos.git eos && cd eos &&  git checkout -f $BUILDKITE_BRANCH && git submodule update --init --recursive"
       - "cd eos && ./scripts/eosio_build.sh -y"
@@ -125,6 +132,7 @@ steps:
       - EOSIO/skip-checkout#v0.1.1:
           cd: ~
     timeout: 180
+    skip: ${SKIP_MACOS_10_14}${SKIP_MAC}
     
   - label: ":ubuntu: Ubuntu 18.04 - Build UnPinned"
     plugins:
@@ -137,3 +145,4 @@ steps:
       - "apt update && apt upgrade -y && apt install -y git"
       - "./scripts/eosio_build.sh -y"
     timeout: 180
+    skip: ${SKIP_UBUNTU_18_04}${SKIP_LINUX}
