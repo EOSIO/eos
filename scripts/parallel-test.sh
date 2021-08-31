@@ -1,7 +1,7 @@
 #!/bin/bash
 set -eo pipefail
 
-. ./scripts/helpers/general.sh
+. "${0%/*}/helpers/general.sh"
 
 # variables
 echo "--- $([[ "$BUILDKITE" == 'true' ]] && echo ':evergreen_tree: ')Configuring Environment"
