@@ -126,7 +126,7 @@ using local_stream = beast::basic_stream<
 
                 // Returns a bad request response
                 auto const bad_request =
-                [](const beast::string_view& why, detail::abstract_conn& conn)
+                [](beast::string_view why, detail::abstract_conn& conn)
                 {
                     conn.send_response(std::string(why), 
                                     static_cast<int>(http::status::bad_request));
@@ -134,9 +134,9 @@ using local_stream = beast::basic_stream<
 
                 // Returns a not found response
                 auto const not_found =
-                [](const beast::string_view& target, detail::abstract_conn& conn)
+                [](const std::string& target, detail::abstract_conn& conn)
                 {
-                    conn.send_response("The resource '" + std::string(target) + "' was not found.",
+                    conn.send_response("The resource '" + target + "' was not found.",
                                 static_cast<int>(http::status::not_found)); 
                 };
                 
@@ -177,6 +177,7 @@ using local_stream = beast::basic_stream<
                     // look for the URL handler to handle this reosouce
                     auto handler_itr = plugin_state_->url_handlers.find( resource );
                     if( handler_itr != plugin_state_->url_handlers.end()) {
+                        fc_dlog( logger, "resource found: ${ep}", ("ep", resource) );
                         std::string body = req.body();
                         handler_itr->second( derived().shared_from_this(), 
                                             std::move( resource ), 
@@ -291,7 +292,7 @@ using local_stream = beast::basic_stream<
                     return fail(ec, "read");
                 }
 
-                auto req = req_parser_->get();
+                auto req = req_parser_->release();
 
                 handle_begin_ = steady_clock::now();
                 auto dt = handle_begin_ - read_begin_;
