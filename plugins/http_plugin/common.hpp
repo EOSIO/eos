@@ -50,6 +50,7 @@ namespace eosio {
     namespace ssl = boost::asio::ssl;
     using boost::asio::ip::tcp;               // from <boost/asio/ip/tcp.hpp>
 
+    typedef std::pair<asio::ip::address_v6, uint16_t> host_port_t;
 
     namespace detail {
         /**
@@ -126,14 +127,55 @@ namespace eosio {
         int32_t                                        max_requests_in_flight = -1;
         fc::microseconds                               max_response_time{30*1000};
 
-        bool                     validate_host = true;
-        set<string>              valid_hosts;
+        bool                      validate_host = true;
+        // valid hosts as pair of <host, port>
+        set<host_port_t> valid_hosts;
 
         bool verbose_http_errors = false;
 
         url_handlers_type  url_handlers;
         bool                     keep_alive = false;
     };
+
+    /**
+     * Get IPv4 or IPv6 address and port from string 
+     * @param addr_str input address string as IPv4 or IPv6 address, Example: '127.0.0.1:8000'
+     * @param default_port_num input the default port number if port not present in address string
+     * @param host_str output the host portion of the address, Example: '127.0.0.1:8000' would returns '127.0.0.1' 
+     * 
+     * @returns pair of <asio::asio::address_v6, uint16_t> representing IP address and port number
+     * 
+     */
+    host_port_t get_ipaddr_host_port(const string& addr_str, uint16_t default_port_num, string &host_str) {
+        // determine if IPv6 or IPv4 address   
+        // for now we will assume addresses which contain '[' are IPv6, otehrwise IPv4        
+        string port_str;
+        auto idx_open_br = addr_str.find('[');
+        if (idx_open_br == addr_str.size()) {  
+            host_str = addr_str.substr( 0, addr_str.find(':'));
+            port_str = addr_str.substr( host_str.size() + 1, addr_str.size());
+        }
+        else { // IPv6 
+            // IPv6 addresses which specfiy a port # must use '[address]:port' scheme
+            auto idx_close_br = addr_str.find(']');
+            if (idx_close_br != addr_str.size()) {
+                host_str = addr_str.substr(idx_open_br + 1, idx_close_br);
+                port_str = addr_str.substr(host_str.size() + 1, addr_str.size());
+            }
+            else {
+                host_str = addr_str;
+                port_str = ""; // port is empty string (use default port)
+            }
+        }   
+        uint16_t port_num = default_port_num;
+        if (port_str != "") {
+            port_num = std::stoi(port_str);
+        }
+
+        auto host_ipv6 = asio::ip::make_address(host_str).to_v6();
+
+        return std::make_pair(host_ipv6, port_num);
+    }
 
     /**
      * Helper type that wraps an object of type T and records its "in flight" size to
@@ -238,34 +280,27 @@ namespace eosio {
     }
 
     bool host_port_is_valid( const http_plugin_state& plugin_state, 
-                             const std::string& header_host_port, 
-                             const string& endpoint_local_host_port ) {
+                             const host_port_t& header_host_port, 
+                             const host_port_t& endpoint_local_host_port ) {
         return !plugin_state.validate_host 
                 || header_host_port == endpoint_local_host_port 
                 || plugin_state.valid_hosts.find(header_host_port) != plugin_state.valid_hosts.end();
     }
 
     bool host_is_valid( const http_plugin_state& plugin_state, 
-                        const std::string& host, 
-                        const string& endpoint_local_host_port, 
+                        const string& host, 
+                        const host_port_t& endpoint_local_host_port, 
                         bool secure) {
         if (!plugin_state.validate_host) {
             return true;
         }
 
         // normalise the incoming host so that it always has the explicit port
-        static auto has_port_expr = std::regex("[^:]:[0-9]+$"); /// ends in :<number> without a preceeding colon which implies ipv6
-        if (std::regex_search(host, has_port_expr)) {
-            return host_port_is_valid( plugin_state, host, endpoint_local_host_port );
-        } else {
-            // according to RFC 2732 ipv6 addresses should always be enclosed with brackets so we shouldn't need to special case here
-            return host_port_is_valid( plugin_state, 
-                                       host + ":" 
-                                            + std::to_string(secure?
-                                                    uri_default_secure_port 
-                                                   : uri_default_port ), 
-                                       endpoint_local_host_port);
-        }
+        string host_str;
+        auto default_port = secure? uri_default_secure_port : uri_default_port;
+        auto host_port = get_ipaddr_host_port(host, default_port, host_str);
+
+        return host_port_is_valid( plugin_state, host_port, endpoint_local_host_port );
     }
    
 } // end namespace eosio

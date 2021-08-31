@@ -131,10 +131,10 @@ class http_plugin_impl : public std::enable_shared_from_this<http_plugin_impl> {
              };
          }
 
-         void add_aliases_for_endpoint( const tcp::endpoint& ep, const string& host, const string& port ) {
-            auto resolved_port_str = std::to_string(ep.port());
-            plugin_state->valid_hosts.emplace(host + ":" + port);
-            plugin_state->valid_hosts.emplace(host + ":" + resolved_port_str);
+         void add_aliases_for_endpoint( const tcp::endpoint& ep, host_port_t host_port) {
+            auto alias = std::make_pair(ep.address().to_v6(), ep.port());
+            plugin_state->valid_hosts.emplace(host_port);
+            plugin_state->valid_hosts.emplace(alias);
          }
 
          void create_beast_server(bool useSSL, bool isUnix=false) {
@@ -274,30 +274,41 @@ class http_plugin_impl : public std::enable_shared_from_this<http_plugin_impl> {
             ;
    }
 
+
    void http_plugin::plugin_initialize(const variables_map& options) {
       try {
          my->plugin_state->validate_host = options.at("http-validate-host").as<bool>();
          if( options.count( "http-alias" )) {
             const auto& aliases = options["http-alias"].as<vector<string>>();
-            my->plugin_state->valid_hosts.insert(aliases.begin(), aliases.end());
+            for (auto &addr_str : aliases) {
+               string host_str;
+
+               // get the host/port as a pair 
+               auto host_port = get_ipaddr_host_port(addr_str, uri_default_port, host_str);
+               my->plugin_state->valid_hosts.emplace(host_port);
+            }
          }
 
          tcp::resolver resolver( app().get_io_service());
          if( options.count( "http-server-address" ) && options.at( "http-server-address" ).as<string>().length()) {
             string lipstr = options.at( "http-server-address" ).as<string>();
-            string host = lipstr.substr( 0, lipstr.find( ':' ));
-            string port = lipstr.substr( host.size() + 1, lipstr.size());
+            string host_str;
+
+            // get the host/port as a pair 
+            auto host_port = get_ipaddr_host_port(lipstr, uri_default_port, host_str);
+            string port_str = std::to_string(host_port.second);
+            
             try {
-               my->listen_endpoint = *resolver.resolve( tcp::v4(), host, port );
-               ilog( "configured http to listen on ${h}:${p}", ("h", host)( "p", port ));
+               my->listen_endpoint = *resolver.resolve( tcp::v6(), host_port.first.to_string(), port_str);
+               ilog( "configured http to listen on ${h}:${p}", ("h", host_str)( "p", host_port.second));
             } catch ( const boost::system::system_error& ec ) {
                elog( "failed to configure http to listen on ${h}:${p} (${m})",
-                     ("h", host)( "p", port )( "m", ec.what()));
+                     ("h", host_str)( "p", host_port.second )( "m", ec.what()));
             }
 
             // add in resolved hosts and ports as well
             if (my->listen_endpoint) {
-               my->add_aliases_for_endpoint(*my->listen_endpoint, host, port);
+               my->add_aliases_for_endpoint(*my->listen_endpoint, host_port);
             }
          }
 
@@ -321,22 +332,26 @@ class http_plugin_impl : public std::enable_shared_from_this<http_plugin_impl> {
             }
 
             string lipstr = options.at( "https-server-address" ).as<string>();
-            string host = lipstr.substr( 0, lipstr.find( ':' ));
-            string port = lipstr.substr( host.size() + 1, lipstr.size());
+            string host_str;
+
+            // get the host/port as a pair 
+            auto host_port = get_ipaddr_host_port(lipstr, uri_default_secure_port, host_str);
+            string port_str = std::to_string(host_port.second);
+
             try {
-               my->https_listen_endpoint = *resolver.resolve( tcp::v4(), host, port );
+               my->https_listen_endpoint = *resolver.resolve( tcp::v6(), host_port.first.to_string(), port_str );
                ilog( "configured https to listen on ${h}:${p} (TLS configuration will be validated momentarily)",
-                     ("h", host)( "p", port ));
+                     ("h", host_str)( "p", host_port.second ));
                my->https_cert_chain = options.at( "https-certificate-chain-file" ).as<string>();
                my->https_key = options.at( "https-private-key-file" ).as<string>();
             } catch ( const boost::system::system_error& ec ) {
                elog( "failed to configure https to listen on ${h}:${p} (${m})",
-                     ("h", host)( "p", port )( "m", ec.what()));
+                     ("h", host_str)( "p", host_port.second )( "m", ec.what()));
             }
 
             // add in resolved hosts and ports as well
             if (my->https_listen_endpoint) {
-               my->add_aliases_for_endpoint(*my->https_listen_endpoint, host, port);
+               my->add_aliases_for_endpoint(*my->https_listen_endpoint, host_port);
             }
          }
 
