@@ -81,6 +81,9 @@ namespace eosio { namespace chain {
 
          static bool trim_blocklog_front(const fc::path& block_dir, const fc::path& temp_dir, uint32_t truncate_at_block);
 
+         // used only for unit test to adjust the buffer length
+         static void set_buff_len(uint64_t len);
+
    private:
          void open(const fc::path& data_dir);
          void construct_index();

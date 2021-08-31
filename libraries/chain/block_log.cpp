@@ -102,7 +102,7 @@ namespace eosio { namespace chain {
          uint64_t previous();
          uint32_t version() const { return _version; }
          uint32_t first_block_num() const { return _first_block_num; }
-         constexpr static uint32_t      _buf_len                          = 1U << 24;
+         static uint32_t      _buf_len;
       private:
          void update_buffer();
 
@@ -759,6 +759,8 @@ namespace eosio { namespace chain {
    , _buffer_ptr(std::make_unique<char[]>(_buf_len)) {
    }
 
+   uint32_t detail::reverse_iterator::_buf_len = 1U << 24;
+
    uint32_t detail::reverse_iterator::open(const fc::path& block_file_name) {
       _block_file_name = block_file_name.generic_string();
       _file.reset( FC_FOPEN(_block_file_name.c_str(), "r"));
@@ -970,6 +972,10 @@ namespace eosio { namespace chain {
       }
    }
 
+   void block_log::set_buff_len(uint64_t len){
+       detail::reverse_iterator::_buf_len = len;
+   }
+
    bool block_log::trim_blocklog_front(const fc::path& block_dir, const fc::path& temp_dir, uint32_t truncate_at_block) {
       using namespace std;
       EOS_ASSERT( block_dir != temp_dir, block_log_exception, "block_dir and temp_dir need to be different directories" );
@@ -1057,10 +1063,10 @@ namespace eosio { namespace chain {
          while(original_pos >= start_of_blk_buffer_pos) {
             const auto buffer_index = original_pos - start_of_blk_buffer_pos;
             uint64_t pos_content = read_buffer<uint64_t>(buf + buffer_index);
+
             if ( (pos_content - start_of_blk_buffer_pos) > 0 && (pos_content - start_of_blk_buffer_pos) < pos_size ) {
                // avoid the whole 8 bytes that contains a blk pos being split by the buffer
-               write_size = read_size - buffer_index - pos_size;
-               break;
+               write_size = read_size - (pos_content - start_of_blk_buffer_pos);
             }
             const auto start_of_this_block = pos_content;
             pos_content = start_of_this_block - pos_delta;
