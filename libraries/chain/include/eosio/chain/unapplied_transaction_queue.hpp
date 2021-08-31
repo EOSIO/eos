@@ -34,8 +34,8 @@ struct unapplied_transaction {
    const transaction_metadata_ptr trx_meta;
    const fc::time_point           expiry;
    trx_enum_type                  trx_type = trx_enum_type::unknown;
+   bool                           return_failure_trace = false;
    next_func_t                    next;
-   bool                           return_failure_trace;
 
    const transaction_id_type& id()const { return trx_meta->id(); }
 
@@ -188,16 +188,16 @@ public:
       if( itr == queue.get<by_trx_id>().end() ) {
          fc::time_point expiry = trx->packed_trx()->expiration();
          auto insert_itr = queue.insert(
-               { trx, expiry, persist_until_expired ? trx_enum_type::incoming_persisted : trx_enum_type::incoming, std::move( next ), return_failure_trace } );
+               { trx, expiry, persist_until_expired ? trx_enum_type::incoming_persisted : trx_enum_type::incoming, return_failure_trace, std::move( next ) } );
          if( insert_itr.second ) added( insert_itr.first );
       } else {
          if (itr->trx_type != trx_enum_type::incoming && itr->trx_type != trx_enum_type::incoming_persisted)
             ++incoming_count;
 
-         queue.get<by_trx_id>().modify( itr, [persist_until_expired, next{std::move(next)}, return_failure_trace](auto& un) mutable {
+         queue.get<by_trx_id>().modify( itr, [persist_until_expired, return_failure_trace, next{std::move(next)}](auto& un) mutable {
             un.trx_type = persist_until_expired ? trx_enum_type::incoming_persisted : trx_enum_type::incoming;
-            un.next = std::move( next );
             un.return_failure_trace = return_failure_trace;
+            un.next = std::move( next );
          } );
       }
    }
