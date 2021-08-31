@@ -14,6 +14,15 @@ fi
 
 # Execution helpers; necessary for BATS testing and log output in buildkite
 
+function printdt() {
+    echo "[`date -u '+%FT%T.%3NZ'`]$ $1"
+}
+
+function perform() {
+    printdt "$1"
+    eval $1
+}
+
 function execute() {
   $VERBOSE && echo "--- Executing: $@"
   $DRYRUN || "$@"

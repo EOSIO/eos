@@ -1,5 +1,8 @@
 #!/bin/bash
 set -eo pipefail
+
+. ./scripts/helpers/general.sh
+
 # variables
 echo "--- $([[ "$BUILDKITE" == 'true' ]] && echo ':evergreen_tree: ')Configuring Environment"
 [[ -z "$JOBS" ]] && export JOBS=$(getconf _NPROCESSORS_ONLN)
@@ -15,16 +18,14 @@ cd "$GIT_ROOT/build"
 echo "+++ $([[ "$BUILDKITE" == 'true' ]] && echo ':microscope: ')Running WASM Spec Tests"
 TEST_COUNT=$(ctest -N -L 'wasm_spec_tests' | grep -i 'Total Tests: ' | cut -d ':' -f '2' | awk '{print $1}')
 if [[ "$TEST_COUNT" > '0' ]]; then
-    echo "$TEST_COUNT tests found."
+    printdt "$TEST_COUNT tests found."
 else
     echo "+++ $([[ "$BUILDKITE" == 'true' ]] && echo ':no_entry: ')ERROR: No tests registered with ctest! Exiting..."
     exit 1
 fi
 # run tests
 set +e # defer ctest error handling to end
-CTEST_COMMAND="ctest -j '$JOBS' -L 'wasm_spec_tests' --output-on-failure -T 'Test'"
-echo "$ $CTEST_COMMAND"
-eval $CTEST_COMMAND
+perform "ctest -j '$JOBS' -L 'wasm_spec_tests' --output-on-failure -T 'Test'"
 EXIT_STATUS=$?
-echo 'Done running WASM spec tests.'
+printdt 'Done running WASM spec tests.'
 exit $EXIT_STATUS
