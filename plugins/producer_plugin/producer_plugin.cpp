@@ -794,6 +794,15 @@ void producer_plugin::set_program_options(
    config_file_options.add(producer_options);
 }
 
+bool producer_plugin::has_producers() const
+{
+   return !my->_producers.empty();
+}
+
+bool producer_plugin::is_producing_block() const {
+   return my->_pending_block_mode == pending_block_mode::producing;
+}
+
 bool producer_plugin::is_producer_key(const chain::public_key_type& key) const
 {
   auto private_key_itr = my->_signature_providers.find(key);
@@ -864,6 +873,8 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
             my->_signature_providers[pubkey] = provider;
          } catch(secure_enclave_exception& e) {
             elog("Error with Secure Enclave signature provider: ${e}; ignoring ${val}", ("e", e.top_message())("val", key_spec_pair));
+         } catch (fc::exception& e) {
+            elog("Malformed signature provider: \"${val}\": ${e}, ignoring!", ("val", key_spec_pair)("e", e));
          } catch (...) {
             elog("Malformed signature provider: \"${val}\", ignoring!", ("val", key_spec_pair));
          }
@@ -2433,6 +2444,34 @@ void producer_plugin::log_failed_transaction(const transaction_id_type& trx_id, 
                    ("txid", trx_id)("why", reason));
        }
    }
+}
+
+void producer_plugin::log_failed_transaction(const transaction_id_type& trx_id, const char* reason) const {
+   fc_dlog(_trx_failed_trace_log, "[TRX_TRACE] Speculative execution is REJECTING tx: ${txid} : ${why}",
+           ("txid", trx_id)("why", reason));
+}
+
+
+bool producer_plugin::execute_incoming_transaction(const chain::transaction_metadata_ptr& trx,
+                                                   next_function<chain::transaction_trace_ptr> next )
+{
+   const bool persist_until_expired = false;
+   const bool return_failure_trace = true;
+   bool exhausted = !my->process_incoming_transaction_async( trx, persist_until_expired, std::move(next), return_failure_trace );
+   if( exhausted ) {
+      if( my->_pending_block_mode == pending_block_mode::producing ) {
+         my->schedule_maybe_produce_block( true );
+      } else {
+         my->restart_speculative_block();
+      }
+   }
+   return !exhausted;
+}
+
+fc::microseconds producer_plugin::get_max_transaction_time() const {
+   const auto max_trx_time_ms = my->_max_transaction_time_ms.load();
+   fc::microseconds max_trx_cpu_usage = max_trx_time_ms < 0 ? fc::microseconds::maximum() : fc::milliseconds( max_trx_time_ms );
+   return max_trx_cpu_usage;
 }
 
 } // namespace eosio

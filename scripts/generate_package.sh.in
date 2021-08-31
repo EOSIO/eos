@@ -26,6 +26,10 @@ export DESC
 export URL
 export EMAIL
 
+if [ "${PACKAGE_RODEOS_TESTER}" != true ]; then
+   rm -f ${BUILD_DIR}/bin/rodeos ${BUILD_DIR}/bin/eosio-tester
+fi
+
 mkdir -p tmp
 
 if [[ ${VARIANT} == "brew" ]]; then

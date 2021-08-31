@@ -2,7 +2,6 @@
 
 #include <boost/filesystem.hpp>
 #include <fc/exception/exception.hpp>
-
 namespace b1 {
 
 using namespace appbase;
@@ -10,8 +9,7 @@ using namespace std::literals;
 
 struct rocksdb_plugin_impl {
    boost::filesystem::path             db_path        = {};
-   std::optional<uint32_t>             threads        = {};
-   std::optional<uint32_t>             max_open_files = {};
+   std::optional<bfs::path>            options_file_name = {};
    std::shared_ptr<chain_kv::database> database       = {};
    std::mutex                          mutex          = {};
 };
@@ -26,25 +24,30 @@ void rocksdb_plugin::set_program_options(options_description& cli, options_descr
    auto op = cfg.add_options();
    op("rdb-database", bpo::value<bfs::path>()->default_value("rodeos.rocksdb"),
       "Database path (absolute path or relative to application data dir)");
+   op("rdb-options-file", bpo::value<bfs::path>(),
+      "File (including path) store RocksDB options. Must follow INI file format. Consult RocksDB documentation for details.");
    op("rdb-threads", bpo::value<uint32_t>(),
-      "Increase number of background RocksDB threads. Only used with cloner_plugin. Recommend 8 for full history "
-      "on large chains.");
+      "Deprecated. Please use max_background_jobs in options file to configure it. Default is 20. An example options file is <build-dir>/programs/rodeos/rocksdb_options.ini"); 
    op("rdb-max-files", bpo::value<uint32_t>(),
-      "RocksDB limit max number of open files (default unlimited). This should be smaller than 'ulimit -n #'. "
-      "# should be a very large number for full-history nodes.");
+      "Deprecated. Please use max_open_files in options file to configure it. Default is 765. An example options file is <build-dir>/programs/rodeos/rocksdb_options.ini"); 
 }
 
 void rocksdb_plugin::plugin_initialize(const variables_map& options) {
    try {
+      EOS_ASSERT(options["rdb-threads"].empty(), eosio::chain::plugin_config_exception, "rdb-threads is deprecated. Please use max_background_jobs in options file to configure it. Default is 20. An example options file is <build-dir>/programs/rodeos/rocksdb_options.ini");
+      EOS_ASSERT(options["rdb-max-files"].empty(), eosio::chain::plugin_config_exception, "rdb-max-files is deprecated. Please use max_open_files in options file to configure it. Default is 765. An example options file is <build-dir>/programs/rodeos/rocksdb_options.ini");
+
       auto db_path = options.at("rdb-database").as<bfs::path>();
       if (db_path.is_relative())
          my->db_path = app().data_dir() / db_path;
       else
          my->db_path = db_path;
-      if (!options["rdb-threads"].empty())
-         my->threads = options["rdb-threads"].as<uint32_t>();
-      if (!options["rdb-max-files"].empty())
-         my->max_open_files = options["rdb-max-files"].as<uint32_t>();
+      if (!options["rdb-options-file"].empty()) {
+         my->options_file_name = options["rdb-options-file"].as<bfs::path>();
+         EOS_ASSERT( bfs::exists(*my->options_file_name), eosio::chain::plugin_config_exception, "options file ${f} does not exist.", ("f", my->options_file_name->string()) );
+      } else {
+         wlog("--rdb-options-file is not configured! RocksDB system default options will be used. Check <build-dir>/programs/rodeos/rocksdb_options.ini on how to set options appropriate to your application.");
+      }
    }
    FC_LOG_AND_RETHROW()
 }
@@ -59,7 +62,8 @@ std::shared_ptr<chain_kv::database> rocksdb_plugin::get_db() {
       ilog("rodeos database is ${d}", ("d", my->db_path.string()));
       if (!bfs::exists(my->db_path.parent_path()))
          bfs::create_directories(my->db_path.parent_path());
-      my->database = std::make_shared<chain_kv::database>(my->db_path.c_str(), true, my->threads, my->max_open_files);
+
+      my->database = std::make_shared<chain_kv::database>(my->db_path.c_str(), true, my->options_file_name);
    }
    return my->database;
 }
