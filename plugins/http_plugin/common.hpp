@@ -162,7 +162,7 @@ namespace eosio {
         // IPv4 or domain name
         if (idx_open_br == string::npos) { 
             auto idx_colon = addr_str.find(':');
-            auto nchars = std::min(addr_str.size(), string::npos);
+            auto nchars = std::min(addr_str.size(), idx_colon);
             host_str = addr_str.substr(0, idx_colon);
             if (idx_colon < addr_str.size() - 1) {
                 nchars = addr_str.size() - (idx_colon + 1);
@@ -175,7 +175,7 @@ namespace eosio {
         else { 
             // IPv6 addresses which specfiy a port # must use '[address]:port' scheme
             auto idx_close_br = addr_str.find(']');
-            auto nchars = std::min(addr_str.size(), string::npos) - (idx_open_br + 1);
+            auto nchars = std::min(addr_str.size(), idx_close_br) - (idx_open_br + 1);
             host_str = addr_str.substr(idx_open_br + 1, nchars);
             if (idx_close_br != string::npos) {
                 if (idx_close_br < addr_str.size() - 2) {
