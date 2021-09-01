@@ -63,4 +63,4 @@ cleos -u http://127.0.0.1:8002 net status localhost:9001
 }
 ```
 
-**Note:** The `last_handshake` field contains the chain state of the specified peer as of the last handshake message with the node. For more information read the [Handshake Message](https://developers.eos.io/welcome/v2.2/protocol/network_peer_protocol#421-handshake-message) in the *Network Peer Protocol* document.
+**Note:** The `last_handshake` field contains the chain state of the specified peer as of the last handshake message with the node. For more information read the [Handshake Message](https://developers.eos.io/welcome/latest/protocol/network_peer_protocol#421-handshake-message) in the *Network Peer Protocol* document.

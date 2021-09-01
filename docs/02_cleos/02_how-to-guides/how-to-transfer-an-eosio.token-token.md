@@ -9,14 +9,14 @@ This how-to guide provides instructions on how to transfer tokens created by `eo
 * `eosio.token` contract is deployed on the network you are connected to.
 
 * Understand the following:
-  * What a [transaction](https://developers.eos.io/welcome/v2.2/glossary/index/#transaction) is.
+  * What a [transaction](https://developers.eos.io/welcome/latest/glossary/index/#transaction) is.
   * Token transfers are irreversible.
 
 ## Command Reference
 
 See the following reference guides for command line usage and related options for the `cleos` command:
 
-* The [cleos transfer](https://developers.eos.io/manuals/eos/v2.2/cleos/command-reference/transfer) reference.
+* The [cleos transfer](https://developers.eos.io/manuals/eos/latest/cleos/command-reference/transfer) reference.
 
 ## Procedure
 
