@@ -372,7 +372,7 @@ info  2021-07-09T19:55:01.424 thread-0  producer_plugin.cpp:428       on_incomin
 At this point, all nodes `node4` (bios node), `node1`, `node2`, and `node3` should be communicating securely using TLS. This is evident from the logs which show successful handshakes and nodes 1 to 3 receiving the first blocks from bios node 4. Note, however, that only the bios node is producing so far.
 
 [[info | Note]]
-| To create a fully operational private network with multiple producing nodes, you need to synchronize the generation of the certificate files among all producer participants according to a mutually established "chain of trust", then pass the certificate files at the time each node is launched using the `p2p-tls-***` parameters and perform a similar procedure to the [bios-boot-tutorial.py](https://github.com/EOSIO/eos/blob/develop/tutorials/bios-boot-tutorial/bios-boot-tutorial.py) script from the [Bios Boot Sequence](https://developers.eos.io/welcome/v2.2/tutorials/bios-boot-sequence) tutorial.
+| To create a fully operational private network with multiple producing nodes, you need to synchronize the generation of the certificate files among all producer participants according to a mutually established "chain of trust", then pass the certificate files at the time each node is launched using the `p2p-tls-***` parameters and perform a similar procedure to the [bios-boot-tutorial.py](https://github.com/EOSIO/eos/blob/develop/tutorials/bios-boot-tutorial/bios-boot-tutorial.py) script from the [Bios Boot Sequence](https://developers.eos.io/welcome/latest/tutorials/bios-boot-sequence) tutorial.
 
 2. Activate required EOSIO protocol features:
 
