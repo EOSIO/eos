@@ -52,8 +52,13 @@ struct mystruct
 };
 
 
-typedef optional< uint16_t > op_uint16;
-typedef vector< op_uint16 > vec_op_unit16;
+typedef set<uint16_t> set_uint16;
+typedef vector<uint16_t> vec_uint16;
+typedef optional<uint16_t> op_uint16;
+typedef map<uint16_t, uint16_t> mp_uint16;
+typedef pair<uint16_t, uint16_t> pr_uint16;
+
+typedef vector< op_uint16 > vec_op_uint16;
 typedef optional< mystruct > op_struc;
 
 class [[eosio::contract("nested_container_multi_index")]] nestcontnmi : public eosio::contract {
@@ -61,12 +66,38 @@ class [[eosio::contract("nested_container_multi_index")]] nestcontnmi : public e
         struct [[eosio::table]] person2 {
             name key;
 
-            //  Each container/object is represented by one letter: v-vector, m-map, s-mystruct,o-optional, p-pair,
-            //  with exceptions:     s2 - mystruct2,    st - set
-            vector< op_uint16 > vo;
+            set< set_uint16 > stst;
+            set< vec_uint16 > stv;
             set< op_uint16 > sto;
+            set< mp_uint16 > stm;
+            set< pr_uint16 > stp;
+
+            vector< set_uint16 > vst;
+            vector< vec_uint16 > vv;
+            vector< op_uint16 > vo;
+            vector< mp_uint16 > vm;
+            vector< pr_uint16 > vp;
+
+            optional< set_uint16 > ost;
+            optional< vec_uint16 > ov;
+            optional< op_uint16 > oo;
+            optional< mp_uint16 > om;
+            optional< pr_uint16 > op;
+
+            map< uint16_t, set_uint16 > mst;
+            map< uint16_t, vec_uint16 > mv;
+            map< uint16_t, op_uint16 > mo;
+            map< uint16_t, mp_uint16 > mm;
+            map< uint16_t, pr_uint16 > mp;
+
+            pair< uint16_t, set_uint16 > pst;
+            pair< uint16_t, vec_uint16 > pv;
+            pair< uint16_t, op_uint16 > po;
+            pair< uint16_t, mp_uint16 > pm;
+            pair< uint16_t, pr_uint16 > pp;
+
             vector< op_struc > vos;
-            pair<uint16_t, vec_op_unit16> pvo;
+            pair<uint16_t, vec_op_uint16> pvo;
 
             uint64_t primary_key() const { return key.value; }
         };
@@ -79,18 +110,160 @@ class [[eosio::contract("nested_container_multi_index")]] nestcontnmi : public e
         nestcontnmi(name receiver, name code,  datastream<const char*> ds): contract(receiver, code, ds) {}
 
         [[eosio::action]]
-        void setvo(name user, const vector<op_uint16>& vo)
-        {
-            SETCONTAINERVAL(vo);
-            eosio::print("vector<optional<uint16_t>> stored successfully");
+        void setstst(name user, const set< set_uint16 >& stst){
+            SETCONTAINERVAL(stst);
+            eosio::print("type defined set< set< uint16_t >> stored successfully!");
         }
 
         [[eosio::action]]
-        void setsto(name user, const set<op_uint16> & sto)
-        {
-            SETCONTAINERVAL(sto);
-            eosio::print("set<optional<uint16_t>> stored successfully");
+        void setstv(name user, const set< vec_uint16 >& stv){
+            SETCONTAINERVAL(stv);
+            eosio::print("type defined set< vector< uint16_t >> stored successfully!");
         }
+
+        [[eosio::action]]
+        void setsto(name user, const set< op_uint16 >& sto){
+            SETCONTAINERVAL(sto);
+            eosio::print("type defined set< optional< uint16_t >> stored successfully!");
+        }
+
+        [[eosio::action]]
+        void setstm(name user, const set< mp_uint16 >& stm){
+            SETCONTAINERVAL(stm);
+            eosio::print("type defined set< map< uint16_t, uint16_t>> stored successfully!");
+        }
+
+        [[eosio::action]]
+        void setstp(name user, const set< pr_uint16 >& stp){
+            SETCONTAINERVAL(stp);
+            eosio::print("type defined set< pair< uint16_t, uint16_t >> stored successfully");
+        }
+
+
+        [[eosio::action]]
+        void setvst(name user, const vector< set_uint16 >& vst){
+            SETCONTAINERVAL(vst);
+            eosio::print("type defined vector< set< uint16_t >> stored successfully!");
+        }
+
+        [[eosio::action]]
+        void setvv(name user, const vector< vec_uint16 >& vv){
+            SETCONTAINERVAL(vv);
+            eosio::print("type defined vector< vector< uint16_t >> stored successfully!");
+        }
+
+        [[eosio::action]]
+        void setvo(name user, const vector< op_uint16 >& vo){
+            SETCONTAINERVAL(vo);
+            eosio::print("type defined vector< optional< uint16_t >> stored successfully!");
+        }
+
+        [[eosio::action]]
+        void setvm(name user, const vector< mp_uint16 >& vm){
+            SETCONTAINERVAL(vm);
+            eosio::print("type defined vector< map< uint16_t, uint16_t>> stored successfully!");
+        }
+
+        [[eosio::action]]
+        void setvp(name user, const vector< pr_uint16 >& vp){
+            SETCONTAINERVAL(vp);
+            eosio::print("type defined vector< pair< uint16_t, uint16_t >> stored successfully");
+        }
+
+
+        [[eosio::action]]
+        void setost(name user, const optional< set_uint16 >& ost){
+            SETCONTAINERVAL(ost);
+            eosio::print("type defined optional< set< uint16_t >> stored successfully!");
+        }
+
+        [[eosio::action]]
+        void setov(name user, const optional< vec_uint16 >& ov){
+            SETCONTAINERVAL(ov);
+            eosio::print("type defined optional< vector< uint16_t >> stored successfully!");
+        }
+
+        [[eosio::action]] 
+        void setoo(name user, const optional< op_uint16 > & oo){
+            SETCONTAINERVAL(oo);
+            eosio::print("type defined optional< optional< uint16_t >> stored successfully!");
+        }
+
+        [[eosio::action]]
+        void setom(name user, const optional< mp_uint16 >& om){
+            SETCONTAINERVAL(om);
+            eosio::print("type defined optional< map< uint16_t, uint16_t>> stored successfully!");
+        }
+
+        [[eosio::action]]
+        void setop(name user, const optional< pr_uint16 >& op){
+            SETCONTAINERVAL(op);
+            eosio::print("type defined optional< pair< uint16_t, uint16_t >> stored successfully");
+        }
+
+
+        [[eosio::action]]
+        void setmst(name user, const map< uint16_t, set_uint16 >& mst){
+            SETCONTAINERVAL(mst);
+            eosio::print("type defined map< set< uint16_t >> stored successfully!");
+        }
+
+        [[eosio::action]]
+        void setmv(name user, const map< uint16_t, vec_uint16 >& mv){
+            SETCONTAINERVAL(mv);
+            eosio::print("type defined map< vector< uint16_t >> stored successfully!");
+        }
+
+        [[eosio::action]] 
+        void setmo(name user, const map< uint16_t, op_uint16 > & mo){
+            SETCONTAINERVAL(mo);
+            eosio::print("type defined map< optional< uint16_t >> stored successfully!");
+        }
+
+        [[eosio::action]]
+        void setmm(name user, const map< uint16_t, mp_uint16 >& mm){
+            SETCONTAINERVAL(mm);
+            eosio::print("type defined map< map< uint16_t, uint16_t>> stored successfully!");
+        }
+
+        [[eosio::action]]
+        void setmp(name user, const map< uint16_t, pr_uint16 >& mp){
+            SETCONTAINERVAL(mp);
+            eosio::print("type defined map< pair< uint16_t, uint16_t >> stored successfully");
+        }
+
+
+        [[eosio::action]]
+        void setpst(name user, const pair< uint16_t, set_uint16 >& pst){
+            SETCONTAINERVAL(pst);
+            eosio::print("type defined pair< set< uint16_t >> stored successfully!");
+        }
+
+        [[eosio::action]]
+        void setpv(name user, const pair< uint16_t, vec_uint16 >& pv){
+            SETCONTAINERVAL(pv);
+            eosio::print("type defined pair< vector< uint16_t >> stored successfully!");
+        }
+
+        [[eosio::action]] 
+        void setpo(name user, const pair< uint16_t, op_uint16 > & po){
+            SETCONTAINERVAL(po);
+            eosio::print("type defined pair< optional< uint16_t >> stored successfully!");
+        }
+
+        [[eosio::action]]
+        void setpm(name user, const pair< uint16_t, mp_uint16 >& pm){
+            SETCONTAINERVAL(pm);
+            eosio::print("type defined pair< map< uint16_t, uint16_t>> stored successfully!");
+        }
+
+        [[eosio::action]]
+        void setpp(name user, const pair< uint16_t, pr_uint16 >& pp){
+            SETCONTAINERVAL(pp);
+            eosio::print("type defined pair< pair< uint16_t, uint16_t >> stored successfully");
+        }
+
+
 
         [[eosio::action]]
         void setvos(name user, const vector<op_struc>& vos)
@@ -100,10 +273,9 @@ class [[eosio::contract("nested_container_multi_index")]] nestcontnmi : public e
         }
 
         [[eosio::action]]
-        void setpvo(name user, const pair<uint16_t, vec_op_unit16>& pvo)
+        void setpvo(name user, const pair<uint16_t, vec_op_uint16>& pvo)
         {
             SETCONTAINERVAL(pvo);
             eosio::print("pair<uint16_t, vector<optional<uint16_t>>> stored successfully");
         }
-
 };
