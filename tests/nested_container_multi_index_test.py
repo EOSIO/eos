@@ -11,11 +11,25 @@ import json
 ###############################################################
 # Nested_container_multi_index_test
 #
-# Load nested container contracts for multi_index table
-# Verifies nested container for vector<optional>, set<optional>, vector<optional<mystruct>>
-# and pair<int, vector<optional>>
+# Load nested container contracts for multi-index table
+# Verifies nested container for table below
 # 
 ###############################################################
+#         |  set  |  vector |  optional | map | pair | tuple |
+#---------------------------------------------------------------
+#set      |   X   |    X    |     X     |  X  |  X   |   X   |
+#---------------------------------------------------------------
+#vector   |   X   |    X    |     X     |  X  |  X   |   X   |
+#---------------------------------------------------------------
+#optional |   X   |    X    |     X     |  X  |  X   |   X   |
+#---------------------------------------------------------------
+#map      |   X   |    X    |     X     |  X  |  X   |   X   |
+#---------------------------------------------------------------
+#pair     |   X   |    X    |     X     |  X  |  X   |   X   |
+#---------------------------------------------------------------
+#tuple    |   X   |    X    |     X     |  X  |  X   |   X   |
+#---------------------------------------------------------------
+################################################################
 
 Print=Utils.Print
 errorExit=Utils.errorExit
@@ -82,15 +96,21 @@ try:
     MIacct = Account('nestcontnmi')
     MIacct.ownerPublicKey = EOSIO_ACCT_PUBLIC_DEFAULT_KEY
     MIacct.activePublicKey = EOSIO_ACCT_PUBLIC_DEFAULT_KEY
-    cluster.createAccountAndVerify(MIacct, cluster.eosioAccount, buyRAM=700000)
-    Print("Creating user account")
-    useracct = Account('alice')
-    useracct.ownerPublicKey = EOSIO_ACCT_PUBLIC_DEFAULT_KEY
-    useracct.activePublicKey = EOSIO_ACCT_PUBLIC_DEFAULT_KEY
-    cluster.createAccountAndVerify(useracct, cluster.eosioAccount, buyRAM=700000)
+    cluster.createAccountAndVerify(MIacct, cluster.eosioAccount, buyRAM=7000000)
+    Print("Creating user account alice")
+    useracct_I = Account('alice')
+    useracct_I.ownerPublicKey = EOSIO_ACCT_PUBLIC_DEFAULT_KEY
+    useracct_I.activePublicKey = EOSIO_ACCT_PUBLIC_DEFAULT_KEY
+    cluster.createAccountAndVerify(useracct_I, cluster.eosioAccount, buyRAM=7000000)
+
+    Print("Creating user account bob")
+    useracct_II = Account('bob')
+    useracct_II.ownerPublicKey = EOSIO_ACCT_PUBLIC_DEFAULT_KEY
+    useracct_II.activePublicKey = EOSIO_ACCT_PUBLIC_DEFAULT_KEY
+    cluster.createAccountAndVerify(useracct_II, cluster.eosioAccount, buyRAM=7000000)
 
     Print("Validating accounts")
-    cluster.validateAccounts([MIacct, useracct])
+    cluster.validateAccounts([MIacct, useracct_I, useracct_II])
 
     node = cluster.getNode()
 
@@ -100,11 +120,94 @@ try:
     Print("Loading nested container contract")
     node.publishContract(MIacct, contractDir, wasmFile, abiFile, waitForTransBlock=True)
 
-    Print("Test action for vector<optional<uint16_t>>")
-    create_action('setvo', '["alice",[100, null, 500]]', 'nestcontnmi', 'alice')
+    Print("Test action for set< set< uint16_t >>")
+    create_action('setstst', '["alice", [[10, 10], [3], [400, 500, 600]]]', 'nestcontnmi', 'alice')
 
-    Print("Test action for set<optional<uint16_t>>")
-    create_action('setsto', '["alice",[null, null, 500]]', 'nestcontnmi', 'alice')
+    Print("Test action for set< vector< uint16_t >>")
+    create_action('setstv', '["alice", [[16, 26], [36], [36], [46, 506, 606]]]', 'nestcontnmi', 'alice')
+
+    Print("Test action for set< optional< uint16_t >>")
+    create_action('setsto', '["alice", [null, null, 500]]', 'nestcontnmi', 'alice')
+
+    Print("Test action for set< map< uint16_t, uint16_t >>")
+    create_action('setstm', '["alice", [[{"key":30,"value":300},{"key":30,"value":300}],[{"key":60,"value":600},{"key":60,"value":600}]]]', 'nestcontnmi', 'alice')
+
+    Print("Test action for set< pair< uint16_t, uint16_t >>")
+    create_action('setstp', '["alice", [{"key": 69, "value": 129}, {"key": 69, "value": 129}]]', 'nestcontnmi', 'alice')
+
+    
+    Print("Test action for vector< set< uint16_t >>")
+    create_action('setvst', '["alice", [[10, 10], [3], [400, 500, 600]]]', 'nestcontnmi', 'alice')
+
+    Print("Test action for vector< vector< uint16_t >>")
+    create_action('setvv', '["alice", [[16, 26], [36], [36], [46, 506, 606]]]', 'nestcontnmi', 'alice')
+
+    Print("Test action for vector< optional< uint16_t >>")
+    create_action('setvo', '["alice",[null, null, 500]]', 'nestcontnmi', 'alice')
+
+    Print("Test action for vector< map< uint16_t, uint16_t >>")
+    create_action('setvm', '["alice", [[{"key": 30, "value": 300}, {"key": 30, "value": 300}], [{"key": 60, "value": 600}, {"key": 60, "value": 600}]]]'
+    , 'nestcontnmi', 'alice')
+
+    Print("Test action for vector< pair< uint16_t, uint16_t >>")
+    create_action('setvp', '["alice", [{"key": 69, "value": 129}, {"key": 69, "value": 129}]]', 'nestcontnmi', 'alice')
+
+
+    Print("Test action for optional< set< uint16_t >>")
+    create_action('setost', '["alice", [10, 10, 3]]', 'nestcontnmi', 'alice')
+    create_action('setost', '["bob", null]', 'nestcontnmi', 'bob')
+
+    Print("Test action for optional< vector< uint16_t >>")
+    create_action('setov', '["alice", [46, 506, 606]]', 'nestcontnmi', 'alice')
+    create_action('setov', '["bob", null]', 'nestcontnmi', 'bob')
+
+    Print("Test action for optional< optional< uint16_t >>")
+    create_action('setoo', '["alice", 500]', 'nestcontnmi', 'alice')
+    create_action('setoo', '["bob", null]', 'nestcontnmi', 'bob')
+
+    Print("Test action for optional< map< uint16_t, uint16_t >>")
+    create_action('setom', '["alice", [{"key": 10, "value": 1000}, {"key": 11,"value": 1001}] ]', 'nestcontnmi', 'alice')
+    create_action('setom', '["bob", null]', 'nestcontnmi', 'bob')
+
+    Print("Test action for optional< pair< uint16_t, uint16_t >>")
+    create_action('setop', '["alice", {"key": 60, "value": 61}]', 'nestcontnmi', 'alice')
+    create_action('setop', '["bob", null]', 'nestcontnmi', 'bob')
+
+
+    Print("Test action for map< set< uint16_t >>")
+    create_action('setmst', '["alice", [{"key": 1,"value": [10, 10, 12, 16]},  {"key": 2, "value": [200, 300]} ]]', 'nestcontnmi', 'alice')
+
+    Print("Test action for map< vector< uint16_t >>")
+    create_action('setmv', '["alice", [{"key": 1, "value": [10, 10, 12, 16]},  {"key": 2, "value": [200, 300]} ]]', 'nestcontnmi', 'alice')
+
+    Print("Test action for map< optional< uint16_t >>")
+    create_action('setmo', '["alice", [{"key": 10, "value": 1000}, {"key": 11, "value": null}]]', 'nestcontnmi', 'alice')
+
+    Print("Test action for map< map< uint16_t, uint16_t >>")
+    create_action('setmm', '["alice", [{"key": 10, "value": [{"key": 200, "value": 2000}, \
+         {"key": 201, "value": 2001}] }, {"key": 11, "value": [{"key": 300, "value": 3000}, {"key": 301, "value": 3001}] } ]]', 'nestcontnmi', 'alice')
+
+    Print("Test action for map< pair< uint16_t, uint16_t >>")
+    create_action('setmp', '["alice", [{"key": 36, "value": {"key": 300, "value": 301}}, {"key": 37, "value": {"key": 600, "value": 601}} ]]', 'nestcontnmi', 'alice')
+
+
+    Print("Test action for pair< set< uint16_t >>")
+    create_action('setpst', '["alice", {"key": 20, "value": [200, 200, 202]}]', 'nestcontnmi', 'alice')
+
+    Print("Test action for pair< vector< uint16_t >>")
+    create_action('setpv', '["alice", {"key": 10, "value": [100, 100, 102]}]', 'nestcontnmi', 'alice')
+
+    Print("Test action for pair< optional< uint16_t >>")
+    create_action('setpo', '["alice", {"key": 70, "value": 71}]', 'nestcontnmi', 'alice')
+    create_action('setpo', '["bob", {"key": 70, "value": null}]', 'nestcontnmi', 'bob')
+
+    Print("Test action for pair< map< uint16_t, uint16_t >>")
+    create_action('setpm', '["alice", {"key": 6, "value": [{"key": 20, "value": 300}, {"key": 21,"value": 301}] }]', 'nestcontnmi', 'alice')
+
+    Print("Test action for pair< pair< uint16_t, uint16_t >>")
+    create_action('setpp', '["alice", {"key": 30, "value": {"key": 301, "value": 302} }]', 'nestcontnmi', 'alice')
+
+
 
     Print("Test action for vector<optional<mystruct>>")
     create_action('setvos', '["alice", [{"_count": 18, "_strID": "dumstr"}, null, {"_count": 19, "_strID": "dumstr"}]]', 'nestcontnmi', 'alice')
@@ -117,14 +220,97 @@ try:
     transaction = node.processCleosCmd(cmd, cmd, False, returnType=ReturnType.raw)
     transaction_json = json.loads(transaction)
 
-    assert "[100, None, 500]" == str(transaction_json['rows'][0]['vo']), 'Multi-index table vector< optional<T> > must be [100, None, 500]'
-    assert "[None, 500]" == str(transaction_json['rows'][0]['sto']), 'Multi-index table set< optional<T> > must be [None, 500]'
+    assert "[[3], [10], [400, 500, 600]]" == str(transaction_json['rows'][0]['stst']), \
+        'Content of multi-index table set< set< uint16_t >> is not correct'
+
+    assert "[[16, 26], [36], [46, 506, 606]]" == str(transaction_json['rows'][0]['stv']), \
+        'Content of multi-index table set< vector< uint16_t >> is not correct'
+
+    assert "[None, 500]" == str(transaction_json['rows'][0]['sto']), 'Content of multi-index table set< optional< uint16_t >>  is not correct'
+
+    assert "[[{'key': 30, 'value': 300}], [{'key': 60, 'value': 600}]]" \
+        == str(transaction_json['rows'][0]['stm']), 'Content of multi-index table set< map< uint16_t >> is not correct'
+
+    assert "[{'key': 69, 'value': 129}]" == str(transaction_json['rows'][0]['stp']), \
+        'Content of multi-index table set< pair< uint16_t >> is not correct'
+
+
+
+    assert "[[10], [3], [400, 500, 600]]" == str(transaction_json['rows'][0]['vst']), \
+        'Content of multi-index table vector< set< uint16_t >> is not correct'
+
+    assert "[[16, 26], [36], [36], [46, 506, 606]]" == str(transaction_json['rows'][0]['vv']), \
+        'Content of multi-index table vector< vector< uint16_t >> is not correct'
+
+    assert "[None, None, 500]" == str(transaction_json['rows'][0]['vo']), \
+        'Content of multi-index table vector< optional< uint16_t >>  is not correct'
+
+    assert "[[{'key': 30, 'value': 300}], [{'key': 60, 'value': 600}]]" \
+        == str(transaction_json['rows'][0]['vm']), 'Content of multi-index table vector< map< uint16_t >> is not correct'
+
+    assert "[{'key': 69, 'value': 129}, {'key': 69, 'value': 129}]" == str(transaction_json['rows'][0]['vp']), \
+        'Content of multi-index table vector< pair< uint16_t >> is not correct'
+
+
+
+    assert "[3, 10]" == str(transaction_json['rows'][0]['ost']), 'Content of multi-index table optional< set< uint16_t >> is not correct'
+    assert "None" == str(transaction_json['rows'][1]['ost']), 'Content of multi-index table optional< set< uint16_t >> is not correct'
+
+    assert "[46, 506, 606]" == str(transaction_json['rows'][0]['ov']), 'Content of multi-index table optional< vector< uint16_t >> is not correct'
+    assert "None" == str(transaction_json['rows'][1]['ov']), 'Content of multi-index table optional< set< uint16_t >> is not correct'
+
+    assert "500" == str(transaction_json['rows'][0]['oo']), 'Content of multi-index table optional< optional< uint16_t >>  is not correct'
+    assert "None" == str(transaction_json['rows'][1]['oo']), 'Content of multi-index table optional< set< uint16_t >> is not correct'
+
+    assert "[{'key': 10, 'value': 1000}, {'key': 11, 'value': 1001}]" \
+        == str(transaction_json['rows'][0]['om']), 'Content of multi-index table optional< map< uint16_t >> is not correct'
+    assert "None" == str(transaction_json['rows'][1]['om']), 'Content of multi-index table optional< set< uint16_t >> is not correct'
+
+    assert "{'key': 60, 'value': 61}" == str(transaction_json['rows'][0]['op']), \
+        'Content of multi-index table optional< pair< uint16_t >> is not correct'
+    assert "None" == str(transaction_json['rows'][1]['op']), 'Content of multi-index table optional< set< uint16_t >> is not correct'
+
+
+    assert "[{'key': 1, 'value': [10, 12, 16]}, {'key': 2, 'value': [200, 300]}]" \
+        == str(transaction_json['rows'][0]['mst']), 'Content of multi-index table map< set< uint16_t >> is not correct'
+
+    assert "[{'key': 1, 'value': [10, 10, 12, 16]}, {'key': 2, 'value': [200, 300]}]" \
+        == str(transaction_json['rows'][0]['mv']), 'Content of multi-index table map< vector< uint16_t >> is not correct'
+
+    assert "[{'key': 10, 'value': 1000}, {'key': 11, 'value': None}]" == \
+        str(transaction_json['rows'][0]['mo']), 'Content of multi-index table map< optional< uint16_t >> is not correct'
+
+    assert "[{'key': 10, 'value': [{'key': 200, 'value': 2000}, {'key': 201, 'value': 2001}]}, {'key': 11, 'value': [{'key': 300, 'value': 3000}, {'key': 301, 'value': 3001}]}]" \
+        == str(transaction_json['rows'][0]['mm']), 'Content of multi-index table map< map< uint16_t >> is not correct'
+
+    assert "[{'key': 36, 'value': {'key': 300, 'value': 301}}, {'key': 37, 'value': {'key': 600, 'value': 601}}]"\
+         == str(transaction_json['rows'][0]['mp']), 'Content of multi-index table map< pair< uint16_t >> is not correct'
+
+
+    assert "{'key': 20, 'value': [200, 202]}" == str(transaction_json['rows'][0]['pst']), \
+        'Content of multi-index table pair< set< uint16_t >> is not correct'
+
+    assert "{'key': 10, 'value': [100, 100, 102]}" == str(transaction_json['rows'][0]['pv']), \
+        'Content of multi-index table pair< vector< uint16_t >> is not correct'
+
+    assert "{'key': 70, 'value': 71}" == str(transaction_json['rows'][0]['po']), \
+        'Content of multi-index table pair< optional< uint16_t >>  is not correct'
+
+    assert "{'key': 70, 'value': None}" == str(transaction_json['rows'][1]['po']), \
+        'Content of multi-index table pair< optional< uint16_t >>  is not correct'
+
+    assert "{'key': 6, 'value': [{'key': 20, 'value': 300}, {'key': 21, 'value': 301}]}" \
+        == str(transaction_json['rows'][0]['pm']), 'Content of multi-index table pair< map< uint16_t >> is not correct'
+        
+    assert "{'key': 30, 'value': {'key': 301, 'value': 302}}" == str(transaction_json['rows'][0]['pp']),\
+         'Content of multi-index table pair< pair< uint16_t >> is not correct'
+
 
     assert "[{'_count': 18, '_strID': 'dumstr'}, None, {'_count': 19, '_strID': 'dumstr'}]" == str(transaction_json['rows'][0]['vos']), \
-         "multi-index table vector<optional<mystruct>> must be [{'_count': 18, '_strID': 'dumstr'}, None, {'_count': 19, '_strID': 'dumstr'}]"
+         "Content of multi-index table vector<optional<mystruct>> is not correct"
     
     assert "{'first': 183, 'second': [100, None, 200]}" == str(transaction_json['rows'][0]['pvo']), \
-         "multi-index table pair<uint16_t, vector<optional<uint16_t>>> must be {'first': 183, 'second': [100, None, 200]}"
+         "Content of multi-index table pair<uint16_t, vector<optional<uint16_t>>> is not correct"
         
     testSuccessful=True            
     assert testSuccessful
