@@ -123,13 +123,18 @@ class RodeosCluster(object):
         return isRelaunchSuccess
 
     def restartProducer(self, clean):
-        relaunchNode(self.prodNode, clean=clean)
+        # need to reenable producing after restart
+        relaunchNode(self.prodNode, chainArg="-e -p defproducera ", clean=clean)
 
     def stopProducer(self, killSignal):
         self.prodNode.kill(killSignal)
 
     def restartShip(self, clean):
-        relaunchNode(self.shipNode, clean=clean)
+        arg="--plugin eosio::state_history_plugin --trace-history --chain-state-history --state-history-endpoint {} --disable-replay-opts --plugin eosio::net_api_plugin ".format(self.SHIP_HOST_PORT)
+
+        if self.unix_socket:
+            arg += "--state-history-unix-socket-path ship.sock"
+        relaunchNode(self.shipNode, chainArg=arg, clean=clean)
 
     def stopShip(self, killSignal):
         self.shipNode.kill(killSignal)
