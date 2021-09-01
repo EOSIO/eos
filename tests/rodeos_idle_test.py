@@ -8,7 +8,7 @@ from Cluster import Cluster
 from WalletMgr import WalletMgr
 from TestHelper import TestHelper
 from TestHelper import AppArgs
-from redoes_utils import RodeosCluster
+from redeos_utils import RodeosCluster
 
 import json
 import os
@@ -48,7 +48,8 @@ with RodeosCluster(args.dump_error_details,
 
     assert cluster.waitRodeosReady(), "Rodeos failed to stand up"
 
-    numBlocks=100
+    # Big enough to have new blocks produced
+    numBlocks=120
     assert cluster.produceBlocks(numBlocks), "Nodeos failed to produce {} blocks".format(numBlocks)
     assert cluster.allBlocksReceived(numBlocks), "Rodeos did not receive {} blocks".format(numBlocks)
 
