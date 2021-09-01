@@ -91,6 +91,10 @@ class RodeosCluster(object):
         self.cluster.waitOnClusterSync(blockAdvancing=5)
         Utils.Print("Cluster in Sync")
 
+        # Shut down bios node such that the cluster contains only one producer,
+        # which makes SHiP not fork
+        self.cluster.biosNode.kill(signal.SIGTERM)
+
         for i in range(self.numRodeos):
             self.restartRodeos(i, clean=True)
 
