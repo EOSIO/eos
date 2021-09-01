@@ -3,6 +3,10 @@
     "version": "eosio::abi/1.2",
     "types": [
         {
+            "new_type_name": "mp_uint16",
+            "type": "pair_uint32_uint32[]"
+        },
+        {
             "new_type_name": "op_struc",
             "type": "mystruct?"
         },
@@ -11,8 +15,20 @@
             "type": "uint16?"
         },
         {
-            "new_type_name": "vec_op_unit16",
+            "new_type_name": "pr_uint16",
+            "type": "pair_uint32_uint32"
+        },
+        {
+            "new_type_name": "set_uint16",
+            "type": "uint16[]"
+        },
+        {
+            "new_type_name": "vec_op_uint16",
             "type": "op_uint16[]"
+        },
+        {
+            "new_type_name": "vec_uint16",
+            "type": "uint16[]"
         }
     ],
     "structs": [
@@ -41,7 +57,63 @@
             ]
         },
         {
-            "name": "pair_uint16_vec_op_unit16",
+            "name": "pair_uint16_mp_uint16",
+            "base": "",
+            "fields": [
+                {
+                    "name": "key",
+                    "type": "uint16"
+                },
+                {
+                    "name": "value",
+                    "type": "mp_uint16"
+                }
+            ]
+        },
+        {
+            "name": "pair_uint16_op_uint16",
+            "base": "",
+            "fields": [
+                {
+                    "name": "key",
+                    "type": "uint16"
+                },
+                {
+                    "name": "value",
+                    "type": "op_uint16"
+                }
+            ]
+        },
+        {
+            "name": "pair_uint16_pr_uint16",
+            "base": "",
+            "fields": [
+                {
+                    "name": "key",
+                    "type": "uint16"
+                },
+                {
+                    "name": "value",
+                    "type": "pr_uint16"
+                }
+            ]
+        },
+        {
+            "name": "pair_uint16_set_uint16",
+            "base": "",
+            "fields": [
+                {
+                    "name": "key",
+                    "type": "uint16"
+                },
+                {
+                    "name": "value",
+                    "type": "set_uint16"
+                }
+            ]
+        },
+        {
+            "name": "pair_uint16_vec_op_uint16",
             "base": "",
             "fields": [
                 {
@@ -50,7 +122,35 @@
                 },
                 {
                     "name": "second",
-                    "type": "vec_op_unit16"
+                    "type": "vec_op_uint16"
+                }
+            ]
+        },
+        {
+            "name": "pair_uint16_vec_uint16",
+            "base": "",
+            "fields": [
+                {
+                    "name": "key",
+                    "type": "uint16"
+                },
+                {
+                    "name": "value",
+                    "type": "vec_uint16"
+                }
+            ]
+        },
+        {
+            "name": "pair_uint32_uint32",
+            "base": "",
+            "fields": [
+                {
+                    "name": "key",
+                    "type": "uint32"
+                },
+                {
+                    "name": "value",
+                    "type": "uint32"
                 }
             ]
         },
@@ -59,12 +159,104 @@
             "base": "",
             "fields": [
                 {
-                    "name": "vo",
-                    "type": "op_uint16[]"
+                    "name": "stst",
+                    "type": "set_uint16[]"
+                },
+                {
+                    "name": "stv",
+                    "type": "vec_uint16[]"
                 },
                 {
                     "name": "sto",
                     "type": "op_uint16[]"
+                },
+                {
+                    "name": "stm",
+                    "type": "mp_uint16[]"
+                },
+                {
+                    "name": "stp",
+                    "type": "pr_uint16[]"
+                },
+                {
+                    "name": "vst",
+                    "type": "set_uint16[]"
+                },
+                {
+                    "name": "vv",
+                    "type": "vec_uint16[]"
+                },
+                {
+                    "name": "vo",
+                    "type": "op_uint16[]"
+                },
+                {
+                    "name": "vm",
+                    "type": "mp_uint16[]"
+                },
+                {
+                    "name": "vp",
+                    "type": "pr_uint16[]"
+                },
+                {
+                    "name": "ost",
+                    "type": "set_uint16?"
+                },
+                {
+                    "name": "ov",
+                    "type": "vec_uint16?"
+                },
+                {
+                    "name": "oo",
+                    "type": "op_uint16?"
+                },
+                {
+                    "name": "om",
+                    "type": "mp_uint16?"
+                },
+                {
+                    "name": "op",
+                    "type": "pr_uint16?"
+                },
+                {
+                    "name": "mst",
+                    "type": "pair_uint16_set_uint16[]"
+                },
+                {
+                    "name": "mv",
+                    "type": "pair_uint16_vec_uint16[]"
+                },
+                {
+                    "name": "mo",
+                    "type": "pair_uint16_op_uint16[]"
+                },
+                {
+                    "name": "mm",
+                    "type": "pair_uint16_mp_uint16[]"
+                },
+                {
+                    "name": "mp",
+                    "type": "pair_uint16_pr_uint16[]"
+                },
+                {
+                    "name": "pst",
+                    "type": "pair_uint16_set_uint16"
+                },
+                {
+                    "name": "pv",
+                    "type": "pair_uint16_vec_uint16"
+                },
+                {
+                    "name": "po",
+                    "type": "pair_uint16_op_uint16"
+                },
+                {
+                    "name": "pm",
+                    "type": "pair_uint16_mp_uint16"
+                },
+                {
+                    "name": "pp",
+                    "type": "pair_uint16_pr_uint16"
                 },
                 {
                     "name": "vos",
@@ -72,7 +264,217 @@
                 },
                 {
                     "name": "pvo",
-                    "type": "pair_uint16_vec_op_unit16"
+                    "type": "pair_uint16_vec_op_uint16"
+                }
+            ]
+        },
+        {
+            "name": "setmm",
+            "base": "",
+            "fields": [
+                {
+                    "name": "id",
+                    "type": "int32"
+                },
+                {
+                    "name": "mm",
+                    "type": "pair_uint16_mp_uint16[]"
+                }
+            ]
+        },
+        {
+            "name": "setmo",
+            "base": "",
+            "fields": [
+                {
+                    "name": "id",
+                    "type": "int32"
+                },
+                {
+                    "name": "mo",
+                    "type": "pair_uint16_op_uint16[]"
+                }
+            ]
+        },
+        {
+            "name": "setmp",
+            "base": "",
+            "fields": [
+                {
+                    "name": "id",
+                    "type": "int32"
+                },
+                {
+                    "name": "mp",
+                    "type": "pair_uint16_pr_uint16[]"
+                }
+            ]
+        },
+        {
+            "name": "setmst",
+            "base": "",
+            "fields": [
+                {
+                    "name": "id",
+                    "type": "int32"
+                },
+                {
+                    "name": "mst",
+                    "type": "pair_uint16_set_uint16[]"
+                }
+            ]
+        },
+        {
+            "name": "setmv",
+            "base": "",
+            "fields": [
+                {
+                    "name": "id",
+                    "type": "int32"
+                },
+                {
+                    "name": "mv",
+                    "type": "pair_uint16_vec_uint16[]"
+                }
+            ]
+        },
+        {
+            "name": "setom",
+            "base": "",
+            "fields": [
+                {
+                    "name": "id",
+                    "type": "int32"
+                },
+                {
+                    "name": "om",
+                    "type": "mp_uint16?"
+                }
+            ]
+        },
+        {
+            "name": "setoo",
+            "base": "",
+            "fields": [
+                {
+                    "name": "id",
+                    "type": "int32"
+                },
+                {
+                    "name": "oo",
+                    "type": "op_uint16?"
+                }
+            ]
+        },
+        {
+            "name": "setop",
+            "base": "",
+            "fields": [
+                {
+                    "name": "id",
+                    "type": "int32"
+                },
+                {
+                    "name": "op",
+                    "type": "pr_uint16?"
+                }
+            ]
+        },
+        {
+            "name": "setost",
+            "base": "",
+            "fields": [
+                {
+                    "name": "id",
+                    "type": "int32"
+                },
+                {
+                    "name": "ost",
+                    "type": "set_uint16?"
+                }
+            ]
+        },
+        {
+            "name": "setov",
+            "base": "",
+            "fields": [
+                {
+                    "name": "id",
+                    "type": "int32"
+                },
+                {
+                    "name": "ov",
+                    "type": "vec_uint16?"
+                }
+            ]
+        },
+        {
+            "name": "setpm",
+            "base": "",
+            "fields": [
+                {
+                    "name": "id",
+                    "type": "int32"
+                },
+                {
+                    "name": "pm",
+                    "type": "pair_uint16_mp_uint16"
+                }
+            ]
+        },
+        {
+            "name": "setpo",
+            "base": "",
+            "fields": [
+                {
+                    "name": "id",
+                    "type": "int32"
+                },
+                {
+                    "name": "po",
+                    "type": "pair_uint16_op_uint16"
+                }
+            ]
+        },
+        {
+            "name": "setpp",
+            "base": "",
+            "fields": [
+                {
+                    "name": "id",
+                    "type": "int32"
+                },
+                {
+                    "name": "pp",
+                    "type": "pair_uint16_pr_uint16"
+                }
+            ]
+        },
+        {
+            "name": "setpst",
+            "base": "",
+            "fields": [
+                {
+                    "name": "id",
+                    "type": "int32"
+                },
+                {
+                    "name": "pst",
+                    "type": "pair_uint16_set_uint16"
+                }
+            ]
+        },
+        {
+            "name": "setpv",
+            "base": "",
+            "fields": [
+                {
+                    "name": "id",
+                    "type": "int32"
+                },
+                {
+                    "name": "pv",
+                    "type": "pair_uint16_vec_uint16"
                 }
             ]
         },
@@ -86,7 +488,21 @@
                 },
                 {
                     "name": "pvo",
-                    "type": "pair_uint16_vec_op_unit16"
+                    "type": "pair_uint16_vec_op_uint16"
+                }
+            ]
+        },
+        {
+            "name": "setstm",
+            "base": "",
+            "fields": [
+                {
+                    "name": "id",
+                    "type": "int32"
+                },
+                {
+                    "name": "stm",
+                    "type": "mp_uint16[]"
                 }
             ]
         },
@@ -101,6 +517,62 @@
                 {
                     "name": "sto",
                     "type": "op_uint16[]"
+                }
+            ]
+        },
+        {
+            "name": "setstp",
+            "base": "",
+            "fields": [
+                {
+                    "name": "id",
+                    "type": "int32"
+                },
+                {
+                    "name": "stp",
+                    "type": "pr_uint16[]"
+                }
+            ]
+        },
+        {
+            "name": "setstst",
+            "base": "",
+            "fields": [
+                {
+                    "name": "id",
+                    "type": "int32"
+                },
+                {
+                    "name": "stst",
+                    "type": "set_uint16[]"
+                }
+            ]
+        },
+        {
+            "name": "setstv",
+            "base": "",
+            "fields": [
+                {
+                    "name": "id",
+                    "type": "int32"
+                },
+                {
+                    "name": "stv",
+                    "type": "vec_uint16[]"
+                }
+            ]
+        },
+        {
+            "name": "setvm",
+            "base": "",
+            "fields": [
+                {
+                    "name": "id",
+                    "type": "int32"
+                },
+                {
+                    "name": "vm",
+                    "type": "mp_uint16[]"
                 }
             ]
         },
@@ -129,6 +601,48 @@
                 {
                     "name": "vos",
                     "type": "op_struc[]"
+                }
+            ]
+        },
+        {
+            "name": "setvp",
+            "base": "",
+            "fields": [
+                {
+                    "name": "id",
+                    "type": "int32"
+                },
+                {
+                    "name": "vp",
+                    "type": "pr_uint16[]"
+                }
+            ]
+        },
+        {
+            "name": "setvst",
+            "base": "",
+            "fields": [
+                {
+                    "name": "id",
+                    "type": "int32"
+                },
+                {
+                    "name": "vst",
+                    "type": "set_uint16[]"
+                }
+            ]
+        },
+        {
+            "name": "setvv",
+            "base": "",
+            "fields": [
+                {
+                    "name": "id",
+                    "type": "int32"
+                },
+                {
+                    "name": "vv",
+                    "type": "vec_uint16[]"
                 }
             ]
         }
@@ -140,13 +654,113 @@
             "ricardian_contract": ""
         },
         {
+            "name": "setmm",
+            "type": "setmm",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "setmo",
+            "type": "setmo",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "setmp",
+            "type": "setmp",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "setmst",
+            "type": "setmst",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "setmv",
+            "type": "setmv",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "setom",
+            "type": "setom",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "setoo",
+            "type": "setoo",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "setop",
+            "type": "setop",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "setost",
+            "type": "setost",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "setov",
+            "type": "setov",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "setpm",
+            "type": "setpm",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "setpo",
+            "type": "setpo",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "setpp",
+            "type": "setpp",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "setpst",
+            "type": "setpst",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "setpv",
+            "type": "setpv",
+            "ricardian_contract": ""
+        },
+        {
             "name": "setpvo",
             "type": "setpvo",
             "ricardian_contract": ""
         },
         {
+            "name": "setstm",
+            "type": "setstm",
+            "ricardian_contract": ""
+        },
+        {
             "name": "setsto",
             "type": "setsto",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "setstp",
+            "type": "setstp",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "setstst",
+            "type": "setstst",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "setstv",
+            "type": "setstv",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "setvm",
+            "type": "setvm",
             "ricardian_contract": ""
         },
         {
@@ -157,6 +771,21 @@
         {
             "name": "setvos",
             "type": "setvos",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "setvp",
+            "type": "setvp",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "setvst",
+            "type": "setvst",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "setvv",
+            "type": "setvv",
             "ricardian_contract": ""
         }
     ],
