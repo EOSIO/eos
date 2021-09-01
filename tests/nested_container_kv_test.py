@@ -6,17 +6,30 @@ from testUtils import ReturnType
 from Cluster import Cluster
 from WalletMgr import WalletMgr
 from TestHelper import TestHelper
-import subprocess  # for subprocess.CalledProcessError
 import json
 
 ###############################################################
 # Nested_container_kv_test
 #
 # Load nested container contracts for kv table
-# Verifies nested container for vector<optional>, set<optional>, vector<optional<mystruct>>
-# and pair<int, vector<optional>>
+# Verifies nested container for table below
 # 
 ###############################################################
+#         |  set  |  vector |  optional | map | pair | tuple |
+#---------------------------------------------------------------
+#set      |   X   |    X    |     X     |  X  |  X   |   X   |
+#---------------------------------------------------------------
+#vector   |   X   |    X    |     X     |  X  |  X   |   X   |
+#---------------------------------------------------------------
+#optional |   X   |    X    |     X     |  X  |  X   |   X   |
+#---------------------------------------------------------------
+#map      |   X   |    X    |     X     |  X  |  X   |   X   |
+#---------------------------------------------------------------
+#pair     |   X   |    X    |     X     |  X  |  X   |   X   |
+#---------------------------------------------------------------
+#tuple    |   X   |    X    |     X     |  X  |  X   |   X   |
+#---------------------------------------------------------------
+################################################################
 
 Print=Utils.Print
 errorExit=Utils.errorExit
@@ -86,12 +99,12 @@ try:
     kvacct = Account('nestcontn2kv')
     kvacct.ownerPublicKey = EOSIO_ACCT_PUBLIC_DEFAULT_KEY
     kvacct.activePublicKey = EOSIO_ACCT_PUBLIC_DEFAULT_KEY
-    cluster.createAccountAndVerify(kvacct, cluster.eosioAccount, buyRAM=700000)
+    cluster.createAccountAndVerify(kvacct, cluster.eosioAccount, buyRAM=7000000)
     Print("Creating user account")
     useracct = Account('alice')
     useracct.ownerPublicKey = EOSIO_ACCT_PUBLIC_DEFAULT_KEY
     useracct.activePublicKey = EOSIO_ACCT_PUBLIC_DEFAULT_KEY
-    cluster.createAccountAndVerify(useracct, cluster.eosioAccount, buyRAM=700000)
+    cluster.createAccountAndVerify(useracct, cluster.eosioAccount, buyRAM=7000000)
 
     Print("Validating accounts")
     cluster.validateAccounts([kvacct, useracct])
@@ -101,17 +114,99 @@ try:
     Print("Setting kv settings account privileged")
     node.pushMessage(cluster.eosioAccount.name, 'setpriv', '["nestcontn2kv", 1]', '-p eosio@active')
     node.publishContract(cluster.eosioAccount, kvcontractDir, kvWasmFile, kvAbiFile, waitForTransBlock=True)
-    node.pushMessage(cluster.eosioAccount.name, 'ramkvlimits', '[1024, 1024, 1024]', '-p eosio@active')
-
+    node.pushMessage(cluster.eosioAccount.name, 'ramkvlimits', '[2024, 2024, 2024]', '-p eosio@active')
 
     Print("Loading nested container kv contract")
     node.publishContract(kvacct, contractDir, wasmFile, abiFile, waitForTransBlock=True)
 
-    Print("Test action for vector<optional<uint16_t>>")
-    create_action('setvo', '[1,[100, null, 500]]', 'nestcontn2kv', 'alice')
+    Print("Test action for set< set< uint16_t >>")
+    create_action('setstst', '[1, [[10, 10], [3], [400, 500, 600]]]', 'nestcontn2kv', 'alice')
 
-    Print("Test action for set<optional<uint16_t>>")
-    create_action('setsto', '[1,[null, null, 500]]', 'nestcontn2kv', 'alice')
+    Print("Test action for set< vector< uint16_t >>")
+    create_action('setstv', '[1, [[16, 26], [36], [36], [46, 506, 606]]]', 'nestcontn2kv', 'alice')
+
+    Print("Test action for set< optional< uint16_t >>")
+    create_action('setsto', '[1, [null, null, 500]]', 'nestcontn2kv', 'alice')
+
+    Print("Test action for set< map< uint16_t, uint16_t >>")
+    create_action('setstm', '[1, [[{"key":30,"value":300},{"key":30,"value":300}],[{"key":60,"value":600},{"key":60,"value":600}]]]', 'nestcontn2kv', 'alice')
+
+    Print("Test action for set< pair< uint16_t, uint16_t >>")
+    create_action('setstp', '[1, [{"key": 69, "value": 129}, {"key": 69, "value": 129}]]', 'nestcontn2kv', 'alice')
+
+    
+    Print("Test action for vector< set< uint16_t >>")
+    create_action('setvst', '[1, [[10, 10], [3], [400, 500, 600]]]', 'nestcontn2kv', 'alice')
+
+    Print("Test action for vector< vector< uint16_t >>")
+    create_action('setvv', '[1, [[16, 26], [36], [36], [46, 506, 606]]]', 'nestcontn2kv', 'alice')
+
+    Print("Test action for vector< optional< uint16_t >>")
+    create_action('setvo', '[1,[null, null, 500]]', 'nestcontn2kv', 'alice')
+
+    Print("Test action for vector< map< uint16_t, uint16_t >>")
+    create_action('setvm', '[1, [[{"key": 30, "value": 300}, {"key": 30, "value": 300}], [{"key": 60, "value": 600}, {"key": 60, "value": 600}]]]'
+    , 'nestcontn2kv', 'alice')
+
+    Print("Test action for vector< pair< uint16_t, uint16_t >>")
+    create_action('setvp', '[1, [{"key": 69, "value": 129}, {"key": 69, "value": 129}]]', 'nestcontn2kv', 'alice')
+
+
+    Print("Test action for optional< set< uint16_t >>")
+    create_action('setost', '[1, [10, 10, 3]]', 'nestcontn2kv', 'alice')
+    create_action('setost', '[2, null]', 'nestcontn2kv', 'alice')
+
+    Print("Test action for optional< vector< uint16_t >>")
+    create_action('setov', '[1, [46, 506, 606]]', 'nestcontn2kv', 'alice')
+    create_action('setov', '[2, null]', 'nestcontn2kv', 'alice')
+
+    Print("Test action for optional< optional< uint16_t >>")
+    create_action('setoo', '[1, 500]', 'nestcontn2kv', 'alice')
+    create_action('setoo', '[2, null]', 'nestcontn2kv', 'alice')
+
+    Print("Test action for optional< map< uint16_t, uint16_t >>")
+    create_action('setom', '[1, [{"key": 10, "value": 1000}, {"key": 11,"value": 1001}] ]', 'nestcontn2kv', 'alice')
+    create_action('setom', '[2, null]', 'nestcontn2kv', 'alice')
+
+    Print("Test action for optional< pair< uint16_t, uint16_t >>")
+    create_action('setop', '[1, {"key": 60, "value": 61}]', 'nestcontn2kv', 'alice')
+    create_action('setop', '[2, null]', 'nestcontn2kv', 'alice')
+
+
+    Print("Test action for map< set< uint16_t >>")
+    create_action('setmst', '[1, [{"key": 1,"value": [10, 10, 12, 16]},  {"key": 2, "value": [200, 300]} ]]', 'nestcontn2kv', 'alice')
+
+    Print("Test action for map< vector< uint16_t >>")
+    create_action('setmv', '[1, [{"key": 1, "value": [10, 10, 12, 16]},  {"key": 2, "value": [200, 300]} ]]', 'nestcontn2kv', 'alice')
+
+    Print("Test action for map< optional< uint16_t >>")
+    create_action('setmo', '[1, [{"key": 10, "value": 1000}, {"key": 11, "value": null}]]', 'nestcontn2kv', 'alice')
+
+    Print("Test action for map< map< uint16_t, uint16_t >>")
+    create_action('setmm', '[1, [{"key": 10, "value": [{"key": 200, "value": 2000}, \
+         {"key": 201, "value": 2001}] }, {"key": 11, "value": [{"key": 300, "value": 3000}, {"key": 301, "value": 3001}] } ]]', 'nestcontn2kv', 'alice')
+
+    Print("Test action for map< pair< uint16_t, uint16_t >>")
+    create_action('setmp', '[1, [{"key": 36, "value": {"key": 300, "value": 301}}, {"key": 37, "value": {"key": 600, "value": 601}} ]]', 'nestcontn2kv', 'alice')
+
+
+    Print("Test action for pair< set< uint16_t >>")
+    create_action('setpst', '[1, {"key": 20, "value": [200, 200, 202]}]', 'nestcontn2kv', 'alice')
+
+    Print("Test action for pair< vector< uint16_t >>")
+    create_action('setpv', '[1, {"key": 10, "value": [100, 100, 102]}]', 'nestcontn2kv', 'alice')
+
+    Print("Test action for pair< optional< uint16_t >>")
+    create_action('setpo', '[1, {"key": 70, "value": 71}]', 'nestcontn2kv', 'alice')
+    create_action('setpo', '[2, {"key": 70, "value": null}]', 'nestcontn2kv', 'alice')
+
+    Print("Test action for pair< map< uint16_t, uint16_t >>")
+    create_action('setpm', '[1, {"key": 6, "value": [{"key": 20, "value": 300}, {"key": 21,"value": 301}] }]', 'nestcontn2kv', 'alice')
+
+    Print("Test action for pair< pair< uint16_t, uint16_t >>")
+    create_action('setpp', '[1, {"key": 30, "value": {"key": 301, "value": 302} }]', 'nestcontn2kv', 'alice')
+
+
 
     Print("Test action for vector<optional<mystruct>>")
     create_action('setvos', '[1, [{"_count": 18, "_strID": "dumstr"}, null, {"_count": 19, "_strID": "dumstr"}]]', 'nestcontn2kv', 'alice')
@@ -122,14 +217,98 @@ try:
     cmd="get kv_table %s people2kv map.index" % kvacct.name
     transaction = node.processCleosCmd(cmd, cmd, False, returnType=ReturnType.raw)
     transaction_json = json.loads(transaction)
-    assert "[100, None, 500]" == str(transaction_json['rows'][0]['vo']), 'kv table vector< optional<T> > must be [100, None, 500]'
-    assert "[None, 500]" == str(transaction_json['rows'][0]['sto']), 'kv table set< optional<T> > must be [None, 500]'
+
+    assert "[[3], [10], [400, 500, 600]]" == str(transaction_json['rows'][0]['stst']), \
+        'Content of kv table set< set< uint16_t >> is not correct'
+
+    assert "[[16, 26], [36], [46, 506, 606]]" == str(transaction_json['rows'][0]['stv']), \
+        'Content of kv table set< vector< uint16_t >> is not correct'
+
+    assert "[None, 500]" == str(transaction_json['rows'][0]['sto']), 'Content of kv table set< optional< uint16_t >>  is not correct'
+
+    assert "[[{'key': 30, 'value': 300}], [{'key': 60, 'value': 600}]]" \
+        == str(transaction_json['rows'][0]['stm']), 'Content of kv table set< map< uint16_t >> is not correct'
+
+    assert "[{'key': 69, 'value': 129}]" == str(transaction_json['rows'][0]['stp']), \
+        'Content of kv table set< pair< uint16_t >> is not correct'
+
+
+
+    assert "[[10], [3], [400, 500, 600]]" == str(transaction_json['rows'][0]['vst']), \
+        'Content of kv table vector< set< uint16_t >> is not correct'
+
+    assert "[[16, 26], [36], [36], [46, 506, 606]]" == str(transaction_json['rows'][0]['vv']), \
+        'Content of kv table vector< vector< uint16_t >> is not correct'
+
+    assert "[None, None, 500]" == str(transaction_json['rows'][0]['vo']), \
+        'Content of kv table vector< optional< uint16_t >>  is not correct'
+
+    assert "[[{'key': 30, 'value': 300}], [{'key': 60, 'value': 600}]]" \
+        == str(transaction_json['rows'][0]['vm']), 'Content of kv table vector< map< uint16_t >> is not correct'
+
+    assert "[{'key': 69, 'value': 129}, {'key': 69, 'value': 129}]" == str(transaction_json['rows'][0]['vp']), \
+        'Content of kv table vector< pair< uint16_t >> is not correct'
+
+
+
+    assert "[3, 10]" == str(transaction_json['rows'][0]['ost']), 'Content of kv table optional< set< uint16_t >> is not correct'
+    assert "None" == str(transaction_json['rows'][1]['ost']), 'Content of kv table optional< set< uint16_t >> is not correct'
+
+    assert "[46, 506, 606]" == str(transaction_json['rows'][0]['ov']), 'Content of kv table optional< vector< uint16_t >> is not correct'
+    assert "None" == str(transaction_json['rows'][1]['ov']), 'Content of kv table optional< set< uint16_t >> is not correct'
+
+    assert "500" == str(transaction_json['rows'][0]['oo']), 'Content of kv table optional< optional< uint16_t >>  is not correct'
+    assert "None" == str(transaction_json['rows'][1]['oo']), 'Content of kv table optional< set< uint16_t >> is not correct'
+
+    assert "[{'key': 10, 'value': 1000}, {'key': 11, 'value': 1001}]" \
+        == str(transaction_json['rows'][0]['om']), 'Content of kv table optional< map< uint16_t >> is not correct'
+    assert "None" == str(transaction_json['rows'][1]['om']), 'Content of kv table optional< set< uint16_t >> is not correct'
+
+    assert "{'key': 60, 'value': 61}" == str(transaction_json['rows'][0]['op']), \
+        'Content of kv table optional< pair< uint16_t >> is not correct'
+    assert "None" == str(transaction_json['rows'][1]['op']), 'Content of kv table optional< set< uint16_t >> is not correct'
+
+
+    assert "[{'key': 1, 'value': [10, 12, 16]}, {'key': 2, 'value': [200, 300]}]" \
+        == str(transaction_json['rows'][0]['mst']), 'Content of kv table map< set< uint16_t >> is not correct'
+
+    assert "[{'key': 1, 'value': [10, 10, 12, 16]}, {'key': 2, 'value': [200, 300]}]" \
+        == str(transaction_json['rows'][0]['mv']), 'Content of kv table map< vector< uint16_t >> is not correct'
+
+    assert "[{'key': 10, 'value': 1000}, {'key': 11, 'value': None}]" == \
+        str(transaction_json['rows'][0]['mo']), 'Content of kv table map< optional< uint16_t >> is not correct'
+
+    assert "[{'key': 10, 'value': [{'key': 200, 'value': 2000}, {'key': 201, 'value': 2001}]}, {'key': 11, 'value': [{'key': 300, 'value': 3000}, {'key': 301, 'value': 3001}]}]" \
+        == str(transaction_json['rows'][0]['mm']), 'Content of kv table map< map< uint16_t >> is not correct'
+
+    assert "[{'key': 36, 'value': {'key': 300, 'value': 301}}, {'key': 37, 'value': {'key': 600, 'value': 601}}]"\
+         == str(transaction_json['rows'][0]['mp']), 'Content of kv table map< pair< uint16_t >> is not correct'
+
+
+    assert "{'key': 20, 'value': [200, 202]}" == str(transaction_json['rows'][0]['pst']), \
+        'Content of kv table pair< set< uint16_t >> is not correct'
+
+    assert "{'key': 10, 'value': [100, 100, 102]}" == str(transaction_json['rows'][0]['pv']), \
+        'Content of kv table pair< vector< uint16_t >> is not correct'
+
+    assert "{'key': 70, 'value': 71}" == str(transaction_json['rows'][0]['po']), \
+        'Content of kv table pair< optional< uint16_t >>  is not correct'
+
+    assert "{'key': 70, 'value': None}" == str(transaction_json['rows'][1]['po']), \
+        'Content of kv table pair< optional< uint16_t >>  is not correct'
+
+    assert "{'key': 6, 'value': [{'key': 20, 'value': 300}, {'key': 21, 'value': 301}]}" \
+        == str(transaction_json['rows'][0]['pm']), 'Content of kv table pair< map< uint16_t >> is not correct'
+        
+    assert "{'key': 30, 'value': {'key': 301, 'value': 302}}" == str(transaction_json['rows'][0]['pp']),\
+         'Content of kv table pair< pair< uint16_t >> is not correct'
+
 
     assert "[{'_count': 18, '_strID': 'dumstr'}, None, {'_count': 19, '_strID': 'dumstr'}]" == str(transaction_json['rows'][0]['vos']), \
-         "kv table vector<optional<mystruct>> must be [{'_count': 18, '_strID': 'dumstr'}, None, {'_count': 19, '_strID': 'dumstr'}]"
+         "Content of kv table vector<optional<mystruct>> is not correct"
     
     assert "{'first': 183, 'second': [100, None, 200]}" == str(transaction_json['rows'][0]['pvo']), \
-         "kv table pair<uint16_t, vector<optional<uint16_t>>> must be {'first': 183, 'second': [100, None, 200]}"
+         "Content of kv table pair<uint16_t, vector<optional<uint16_t>>> is not correct"
         
     testSuccessful=True     
         
