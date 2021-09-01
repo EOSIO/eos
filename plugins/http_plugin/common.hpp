@@ -35,6 +35,8 @@
 #include <boost/asio/basic_socket_iostream.hpp>
 #include <boost/asio/basic_stream_socket.hpp>
 
+extern fc::logger logger;
+
 namespace eosio {
     static uint16_t const uri_default_port = 80;
     /// Default port for wss://
@@ -50,7 +52,8 @@ namespace eosio {
     namespace ssl = boost::asio::ssl;
     using boost::asio::ip::tcp;               // from <boost/asio/ip/tcp.hpp>
 
-    typedef std::pair<asio::ip::address_v6, uint16_t> host_port_t;
+    // host/port pair 
+    typedef std::pair<string, uint16_t> host_port_t;
 
     namespace detail {
         /**
@@ -135,46 +138,77 @@ namespace eosio {
 
         url_handlers_type  url_handlers;
         bool                     keep_alive = false;
+        bool                     ipv6 = false;
     };
 
     /**
-     * Get IPv4 or IPv6 address and port from string 
-     * @param addr_str input address string as IPv4 or IPv6 address, Example: '127.0.0.1:8000'
+     * Breakds down addresses (either domain or IPv4/IPv6) into host/port combo
+     * @param addr_str input address string as domain, IPv4 or IPv6 address, Example: '127.0.0.1:8000', 'localhost:8888'
      * @param default_port_num input the default port number if port not present in address string
-     * @param host_str output the host portion of the address, Example: '127.0.0.1:8000' would returns '127.0.0.1' 
      * 
-     * @returns pair of <asio::asio::address_v6, uint16_t> representing IP address and port number
-     * 
+     * @returns Pair of <string, uint16_t> representing host and port number
+     *          In the case of a raw IPv4 adress, it will be converted to IPv6.  Domian name will remain unchanged
      */
-    host_port_t get_ipaddr_host_port(const string& addr_str, uint16_t default_port_num, string &host_str) {
+    host_port_t get_host_port(const string& addr_str, uint16_t default_port_num) {
+        string host_str;
+        string port_str = "";
+        uint16_t port_num = default_port_num;
+
         // determine if IPv6 or IPv4 address   
-        // for now we will assume addresses which contain '[' are IPv6, otehrwise IPv4        
-        string port_str;
+        // for now we will assume addresses which contain '[' are IPv6, otehrwise IPv4
         auto idx_open_br = addr_str.find('[');
-        if (idx_open_br == addr_str.size()) {  
-            host_str = addr_str.substr( 0, addr_str.find(':'));
-            port_str = addr_str.substr( host_str.size() + 1, addr_str.size());
+
+        fc_dlog(logger, "addr_str: ${a} idx_open_br ${i}", ("a", addr_str)("i", idx_open_br));
+        // IPv4 or domain name
+        if (idx_open_br == string::npos) { 
+            auto idx_colon = addr_str.find(':');
+            auto nchars = std::min(addr_str.size(), string::npos);
+            host_str = addr_str.substr(0, idx_colon);
+            if (idx_colon < addr_str.size() - 1) {
+                nchars = addr_str.size() - (idx_colon + 1);
+                port_str = addr_str.substr( idx_colon + 1, nchars);
+            } else {
+                host_str = addr_str;
+            }
         }
-        else { // IPv6 
+        // IPv6 
+        else { 
             // IPv6 addresses which specfiy a port # must use '[address]:port' scheme
             auto idx_close_br = addr_str.find(']');
-            if (idx_close_br != addr_str.size()) {
-                host_str = addr_str.substr(idx_open_br + 1, idx_close_br);
-                port_str = addr_str.substr(host_str.size() + 1, addr_str.size());
-            }
-            else {
-                host_str = addr_str;
-                port_str = ""; // port is empty string (use default port)
+            auto nchars = std::min(addr_str.size(), string::npos) - (idx_open_br + 1);
+            host_str = addr_str.substr(idx_open_br + 1, nchars);
+            if (idx_close_br != string::npos) {
+                if (idx_close_br < addr_str.size() - 2) {
+                    nchars = addr_str.size() - (idx_close_br + 2);
+                    port_str = addr_str.substr(idx_close_br + 2, nchars);
+                }
             }
         }   
-        uint16_t port_num = default_port_num;
+        fc_dlog(logger, "host_str: ${h} port_str ${p}", ("h", host_str)("p", port_str));
+        
         if (port_str != "") {
-            port_num = std::stoi(port_str);
+            // attempt to convert port number to string
+            try { 
+                auto port_num_ul = std::stoul(port_str);
+                if (port_num_ul > 65535)
+                    throw std::out_of_range("port number out of range 0 to 65535");
+                port_num = static_cast<uint16_t>(port_num_ul);
+            } catch ( const std::exception& e ) {
+                fc_elog(logger,  "port number conversion to  failed: addr_str= '${a}' host_str: '${h}' port_str: '${p}' exception: ${e}", 
+                         ("a", addr_str)("h", host_str)("p", port_str)("e", e.what()) );
+                throw;
+            }
         }
 
-        auto host_ipv6 = asio::ip::make_address(host_str).to_v6();
+        // attempt to make IP address, and convert to IPv6
+        try {
+            auto host_ip = asio::ip::make_address(host_str);
+            host_str = host_ip.to_v6().to_string();
+        } catch ( const std::exception& e ) {
+            // if conversion fails, jsut leave as is (assume domain name)
+        }        
 
-        return std::make_pair(host_ipv6, port_num);
+        return std::make_pair(host_str, port_num);
     }
 
     /**
@@ -298,7 +332,7 @@ namespace eosio {
         // normalise the incoming host so that it always has the explicit port
         string host_str;
         auto default_port = secure? uri_default_secure_port : uri_default_port;
-        auto host_port = get_ipaddr_host_port(host, default_port, host_str);
+        auto host_port = get_host_port(host, default_port);
 
         return host_port_is_valid( plugin_state, host_port, endpoint_local_host_port );
     }
