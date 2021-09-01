@@ -22,6 +22,8 @@ void remove_existing_blocks(controller::config& config) {
    remove(block_index_path);
 }
 
+void set_buff_len(uint64_t len);
+
 BOOST_AUTO_TEST_SUITE(restart_chain_tests)
 
 BOOST_AUTO_TEST_CASE(test_existing_state_without_block_log)
@@ -116,13 +118,13 @@ void trim_blocklog_front(uint32_t truncate_at_block, buf_len_type len_type) {
 
    switch (len_type){
       case buf_len_type::small:
-         block_log::set_buff_len( blk_size + (sizeof(uint64_t) - 1));
+         set_buff_len( blk_size + (sizeof(uint64_t) - 1));
          break;
       case buf_len_type::medium:
-         block_log::set_buff_len( log_size / 3);
+         set_buff_len( log_size / 3);
          break;
       case buf_len_type::large:
-         block_log::set_buff_len(log_size);
+         set_buff_len(log_size);
          break;
       default:
          return;

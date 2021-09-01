@@ -972,10 +972,6 @@ namespace eosio { namespace chain {
       }
    }
 
-   void block_log::set_buff_len(uint64_t len){
-       detail::reverse_iterator::_buf_len = len;
-   }
-
    bool block_log::trim_blocklog_front(const fc::path& block_dir, const fc::path& temp_dir, uint32_t truncate_at_block) {
       using namespace std;
       EOS_ASSERT( block_dir != temp_dir, block_log_exception, "block_dir and temp_dir need to be different directories" );
@@ -1215,3 +1211,8 @@ namespace eosio { namespace chain {
    }
 
    } } /// eosio::chain
+
+// used only for unit test to adjust the buffer length
+void set_buff_len(uint64_t len){
+    eosio::chain::detail::reverse_iterator::_buf_len = len;
+}
