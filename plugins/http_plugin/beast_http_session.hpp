@@ -71,7 +71,8 @@ using local_stream = beast::basic_stream<
         auto& lowest_layer = beast::get_lowest_layer(socket);
 #endif                
         auto local_endpoint = lowest_layer.local_endpoint();
-        auto local_socket_host_port = std::make_pair(local_endpoint.address().to_v6().to_string(), local_endpoint.port());
+        
+        auto local_socket_host_port = std::make_pair(local_endpoint.address().to_string(), local_endpoint.port());
 
         const auto& host_str = req["Host"].to_string();
         if (host_str.empty() 

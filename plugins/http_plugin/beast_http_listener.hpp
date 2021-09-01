@@ -10,9 +10,15 @@ namespace eosio {
     // to get the path if makes sense, so that we can call ::unlink() before opening socket 
     // in beast_http_listener::listen() by tdefault return blank string
     template<typename T>
-    std::string get_endpoint_path(const T& endpt) { return {}; }
+    std::string get_endpoint_addr_path(const T& endpt) { return endpt.address().to_string(); }
 
-    std::string get_endpoint_path(const stream_protocol::endpoint &endpt) { return endpt.path(); }
+    std::string get_endpoint_addr_path(const stream_protocol::endpoint &endpt) { return endpt.path(); }
+
+    // return port as a string if it makes sense (for TCP endpoints)
+    template<typename T>
+    std::string get_endpoint_port_str(const T& endpt) { return std::to_string(endpt.port()); }
+
+    std::string get_endpoint_port_str(const stream_protocol::endpoint &endpt) { return {}; }
 
     // Accepts incoming connections and launches the sessions
     // session_type should be a subclass of beast_http_session
@@ -61,7 +67,7 @@ namespace eosio {
 
                 // for unix sockets we should delete the old socket
                 if(std::is_same<socket_type, stream_protocol::socket>::value) { 
-                    ::unlink(get_endpoint_path(endpoint).c_str());
+                    ::unlink(get_endpoint_addr_path(endpoint).c_str());
                 }
 
                 beast::error_code ec;
@@ -80,6 +86,9 @@ namespace eosio {
                 }
 
                 // Bind to the server address
+                fc_ilog( logger, "acceptor_.bind() endpoint addr/path= ${e} port= ${p}", 
+                        ("e", get_endpoint_addr_path(endpoint))
+                        ("p", get_endpoint_port_str(endpoint)));
                 acceptor_.bind(endpoint, ec);
                 if(ec)  {
                     fail(ec, "bind");
