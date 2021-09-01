@@ -8,7 +8,7 @@ from Cluster import Cluster
 from WalletMgr import WalletMgr
 from TestHelper import TestHelper
 from TestHelper import AppArgs
-from redeos_utils import RodeosCluster
+from rodeos_utils import RodeosCluster
 
 import json
 import os
