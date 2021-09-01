@@ -46,8 +46,8 @@ class RodeosCluster(object):
         self.numRodeos=numRodeos
         self.rodeosDir=[]
         self.rodeos=[]
-        self.rodeosStdout=[]
-        self.rodeosStderr=[]
+        self.rodeosStdout=[None] * numRodeos
+        self.rodeosStderr=[None] * numRodeos
         self.wqlHostPort=[]
         self.wqlEndPoints=[]
 
@@ -56,8 +56,6 @@ class RodeosCluster(object):
             self.rodeosDir.append(os.path.join(os.getcwd(), 'var/lib/rodeos' + str(i)))
             shutil.rmtree(self.rodeosDir[i], ignore_errors=True)
             os.makedirs(self.rodeosDir[i], exist_ok=True)
-            self.rodeosStdout.append(open(os.path.join(self.rodeosDir[i], "stdout.out"), "w"))
-            self.rodeosStderr.append(open(os.path.join(self.rodeosDir[i], "stderr.out"), "w"))
             self.wqlHostPort.append("127.0.0.1:" + str(port))
             self.wqlEndPoints.append("http://" + self.wqlHostPort[i] + "/")
             port+=i
@@ -140,9 +138,16 @@ class RodeosCluster(object):
         assert(rodeosId >= 0 and rodeosId < self.numRodeos)
 
         if clean:
+            if self.rodeosStdout[rodeosId] is not None:
+                self.rodeosStdout[rodeosId].close()
+            if self.rodeosStderr[rodeosId] is not None:
+                self.rodeosStderr[rodeosId].close()
             shutil.rmtree(self.rodeosDir[rodeosId], ignore_errors=True)
+            os.makedirs(self.rodeosDir[rodeosId], exist_ok=True)
+            self.rodeosStdout[rodeosId]=open(os.path.join(self.rodeosDir[rodeosId], "stdout.out"), "w")
+            self.rodeosStderr[rodeosId]=open(os.path.join(self.rodeosDir[rodeosId], "stderr.out"), "w")
 
-        self.rodeos.append(subprocess.Popen(['./programs/rodeos/rodeos', '--rdb-database', os.path.join(self.rodeosDir[rodeosId],'rocksdb'), '--data-dir', os.path.join(self.rodeosDir[rodeosId],'data'),
+        self.rodeos.append(subprocess.Popen(['./programs/rodeos/rodeos', '--rdb-database', os.path.join(self.rodeosDir[rodeosId],'rocksdb'),
                                         '--clone-connect-to', self.SHIP_HOST_PORT, '--wql-listen', self.wqlHostPort[rodeosId], '--wql-threads', '8', '--filter-name', self.filterName , '--filter-wasm', self.filterWasm ] + self.OCArg,
                                        stdout=self.rodeosStdout[rodeosId],
                                        stderr=self.rodeosStderr[rodeosId]))
@@ -191,12 +196,22 @@ class RodeosCluster(object):
                 numSecsSleep+=1
         Utils.Print("{} blocks has received".format(lastBlockNum))
         
-        Utils.Print("Verifying blocks were not skipped")
+        # find the first block number
+        firstBlockNum=0
         for i in range(1, lastBlockNum+1):
             response = self.getBlock(i, rodeosId)
-            Utils.Print("response body = {}".format(json.dumps(response)))
             if "block_num" in response:
-                assert response["block_num"] == i, "Rodeos responds with wrong block {0}, response body = {1}".format(i, json.dumps(response))
+                firstBlockNum=response["block_num"]
+                Utils.Print("firstBlockNum is {}".format(firstBlockNum))
+                break
+        assert firstBlockNum >= 1, "firstBlockNum not found"
+
+        Utils.Print("Verifying blocks were not skipped")
+        for blockNum in range(firstBlockNum, lastBlockNum+1):
+            response = self.getBlock(blockNum, rodeosId)
+            #Utils.Print("response body = {}".format(json.dumps(response)))
+            if "block_num" in response:
+                assert response["block_num"] == blockNum, "Rodeos responds with wrong block {0}, response body = {1}".format(i, json.dumps(response))
         Utils.Print("No blocks were skipped")
 
         return True
