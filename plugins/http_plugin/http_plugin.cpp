@@ -138,14 +138,6 @@ class http_plugin_impl : public std::enable_shared_from_this<http_plugin_impl> {
             
             plugin_state->valid_hosts.emplace(host_port);
             plugin_state->valid_hosts.emplace(alias);
-            try {
-               auto addr_ipv6 = ep.address().to_v6().to_string(); 
-               plugin_state->valid_hosts.emplace(std::make_pair(addr_ipv6, ep.port()));
-               ilog("adding host:'${h}' port:${p} alias: ${ah} port: ${ap}",
-                  ("h", host_port.first)("p", host_port.second)("ah", addr_ipv6)("ap", ep.port()));
-            } catch (  const std::exception& e ) {
-               // do nithing if conversion fails
-            }
          }
 
          void create_beast_server(bool useSSL, bool isUnix=false) {

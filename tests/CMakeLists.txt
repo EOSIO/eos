@@ -77,6 +77,7 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/privacy_network_from_snapshot.py ${CM
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/read_only_query_tests.py ${CMAKE_CURRENT_BINARY_DIR}/read_only_query_tests.py COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/cleos_action_no_params.py ${CMAKE_CURRENT_BINARY_DIR}/cleos_action_no_params.py COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/large-lib-test.py ${CMAKE_CURRENT_BINARY_DIR}/large-lib-test.py COPYONLY)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/http_plugin_ipv6_test.py ${CMAKE_CURRENT_BINARY_DIR}/http_plugin_ipv6_test.py COPYONLY)
 
 #To run plugin_test with all log from blockchain displayed, put --verbose after --, i.e. plugin_test -- --verbose
 add_test(NAME plugin_test COMMAND plugin_test --report_level=detailed --color_output)
@@ -240,6 +241,9 @@ add_test(NAME cli_test COMMAND tests/cli_test.py WORKING_DIRECTORY ${CMAKE_BINAR
 add_test(NAME plugin_http_api_test COMMAND tests/plugin_http_api_test.py WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 set_tests_properties(plugin_http_api_test PROPERTIES TIMEOUT 40)
 set_property(TEST plugin_http_api_test PROPERTY LABELS nonparallelizable_tests)
+
+add_test(NAME http_plugin_ipv6_test COMMAND tests/http_plugin_ipv6_test.py WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_tests_properties(http_plugin_ipv6_test PROPERTIES TIMEOUT 40)
 
 add_test(NAME trace_plugin_test COMMAND tests/trace_plugin_test.py WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 set_tests_properties(trace_plugin_test PROPERTIES TIMEOUT 150)

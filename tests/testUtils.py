@@ -556,9 +556,13 @@ class Utils:
         return "{0} {1}".format(round(float(asset[0]) - float(delta[0]), 4), asset[1])
 
     @staticmethod
-    def makeHTTPReqStr(host : str, port : str, api_call : str, body : str, keepAlive=False) -> str:
+    def makeHTTPReqStr(host : str, port : str, api_call : str, body : str, keepAlive=False, isIPv6=False) -> str:
         hdr = "POST " + api_call + " HTTP/1.1\r\n" 
-        hdr += f"Host: {host}:{port}\r\n"
+        if isIPv6:
+            hdr += f"Host: [{host}]:{port}\r\n"
+        else:
+            hdr += f"Host: {host}:{port}\r\n"
+        
         body += "\r\n"
         body_len = len(body)
         hdr +=  f"content-length: {body_len}\r\n" 

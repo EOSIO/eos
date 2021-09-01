@@ -147,7 +147,6 @@ namespace eosio {
      * @param default_port_num input the default port number if port not present in address string
      * 
      * @returns Pair of <string, uint16_t> representing host and port number
-     *          In the case of a raw IPv4 adress, it will be converted to IPv6.  Domian name will remain unchanged
      */
     host_port_t get_host_port(const string& addr_str, uint16_t default_port_num) {
         string host_str;
@@ -199,14 +198,6 @@ namespace eosio {
                 throw;
             }
         }
-
-        // attempt to make IP address, and convert to IPv6
-        try {
-            auto host_ip = asio::ip::make_address(host_str);
-            host_str = host_ip.to_v6().to_string();
-        } catch ( const std::exception& e ) {
-            // if conversion fails, jsut leave as is (assume domain name)
-        }        
 
         return std::make_pair(host_str, port_num);
     }
