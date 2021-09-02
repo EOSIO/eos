@@ -57,9 +57,6 @@ struct permission {
    authority         required_auth;
 };
 
-template<typename>
-struct resolver_factory;
-
 // see specializations for uint64_t and double in source file
 template<typename Type>
 Type convert_to_type(const string& str, const string& desc) {
@@ -138,6 +135,7 @@ public:
       std::optional<chain::block_id_type>  fork_db_head_block_id;
       std::optional<string>                server_full_version_string;
       std::optional<fc::time_point>        last_irreversible_block_time;
+      std::optional<uint32_t>              first_block_num;
    };
    get_info_results get_info(const get_info_params&) const;
 
@@ -567,6 +565,23 @@ public:
       };
    }
 
+   struct send_ro_transaction_params_v1 {
+      bool return_failure_traces = false;
+      fc::variant transaction;
+   };
+
+   struct send_ro_transaction_results {
+      uint32_t                     head_block_num = 0;
+      chain::block_id_type         head_block_id;
+      uint32_t                     last_irreversible_block_num = 0;
+      chain::block_id_type         last_irreversible_block_id;
+      digest_type                  code_hash;
+      vector<transaction_id_type>  pending_transactions;
+      fc::variant                  result;
+   };
+
+   void send_ro_transaction(const send_ro_transaction_params_v1& params, chain::plugin_interface::next_function<send_ro_transaction_results> next ) const;
+
    template<typename KeyValueObj>
    static void copy_inline_row(const KeyValueObj& obj, vector<char>& data) {
       data.resize( obj.value.size() );
@@ -910,7 +925,6 @@ public:
 
    chain::symbol extract_core_symbol()const;
 
-   friend struct resolver_factory<read_only>;
 };
 
 class read_write {
@@ -921,27 +935,33 @@ public:
    read_write(controller& db, const fc::microseconds& abi_serializer_max_time, bool api_accept_transactions);
    void validate() const;
 
-   using push_block_params = chain::signed_block_v0;
+   using push_block_params_v1 = chain::signed_block_v0;
    using push_block_results = empty;
-   void push_block(push_block_params&& params, chain::plugin_interface::next_function<push_block_results> next);
+   void push_block(push_block_params_v1&& params, chain::plugin_interface::next_function<push_block_results> next);
 
-   using push_transaction_params = fc::variant_object;
+   using push_transaction_params_v1 = fc::variant_object;
    struct push_transaction_results {
       chain::transaction_id_type  transaction_id;
       fc::variant                 processed;
    };
-   void push_transaction(const push_transaction_params& params, chain::plugin_interface::next_function<push_transaction_results> next);
+   void push_transaction(const push_transaction_params_v1& params, chain::plugin_interface::next_function<push_transaction_results> next);
 
-
-   using push_transactions_params  = vector<push_transaction_params>;
+   using push_transactions_params_v1  = vector<push_transaction_params_v1>;
    using push_transactions_results = vector<push_transaction_results>;
-   void push_transactions(const push_transactions_params& params, chain::plugin_interface::next_function<push_transactions_results> next);
+   void push_transactions(const push_transactions_params_v1& params, chain::plugin_interface::next_function<push_transactions_results> next);
 
-   using send_transaction_params = push_transaction_params;
+   using send_transaction_params_v1 = push_transaction_params_v1;
    using send_transaction_results = push_transaction_results;
-   void send_transaction(const send_transaction_params& params, chain::plugin_interface::next_function<send_transaction_results> next);
+   void send_transaction(const send_transaction_params_v1& params, chain::plugin_interface::next_function<send_transaction_results> next);
 
-   friend resolver_factory<read_write>;
+   struct send_transaction_params_v2 {
+      bool return_failure_traces = false;
+      fc::variant transaction;
+   };
+   void send_transaction(const send_transaction_params_v2& params, chain::plugin_interface::next_function<send_transaction_results> next);
+
+   void send_transaction(packed_transaction_ptr input_trx, const std::string method, bool return_failure_traces, chain::plugin_interface::next_function<send_transaction_results> next);
+
 };
 
  //support for --key_types [sha256,ripemd160] and --encoding [dec/hex]
@@ -1018,7 +1038,7 @@ public:
 class chain_plugin : public plugin<chain_plugin> {
 public:
    APPBASE_PLUGIN_REQUIRES((blockvault_client_plugin))
-
+   
    chain_plugin();
    virtual ~chain_plugin();
 
@@ -1034,21 +1054,6 @@ public:
    
    bool accept_block( const chain::signed_block_ptr& block, const chain::block_id_type& id );
    void accept_transaction(const chain::packed_transaction_ptr& trx, chain::plugin_interface::next_function<chain::transaction_trace_ptr> next);
-
-   static bool recover_reversible_blocks( const fc::path& db_dir,
-                                          uint32_t cache_size,
-                                          std::optional<fc::path> new_db_dir = std::optional<fc::path>(),
-                                          uint32_t truncate_at_block = 0
-                                        );
-
-   static bool import_reversible_blocks( const fc::path& reversible_dir,
-                                         uint32_t cache_size,
-                                         const fc::path& reversible_blocks_file
-                                       );
-
-   static bool export_reversible_blocks( const fc::path& reversible_dir,
-                                        const fc::path& reversible_blocks_file
-                                       );
 
    // Only call this after plugin_initialize()!
    controller& chain();
@@ -1069,6 +1074,10 @@ public:
    static void handle_bad_alloc();
    
    bool account_queries_enabled() const;
+
+   fc::variant get_entire_trx_trace(const transaction_trace_ptr& trx_trace) const;
+   fc::variant get_entire_trx(const transaction& trx) const;
+
 private:
    static void log_guard_exception(const chain::guard_exception& e);
 
@@ -1084,13 +1093,14 @@ FC_REFLECT(eosio::chain_apis::read_only::get_info_results,
            (head_block_id)(head_block_time)(head_block_producer)
            (virtual_block_cpu_limit)(virtual_block_net_limit)(block_cpu_limit)(block_net_limit)
            (server_version_string)(fork_db_head_block_num)(fork_db_head_block_id)(server_full_version_string)
-           (last_irreversible_block_time) )
+           (last_irreversible_block_time) (first_block_num) )
 FC_REFLECT(eosio::chain_apis::read_only::get_activated_protocol_features_params, (lower_bound)(upper_bound)(limit)(search_by_block_num)(reverse) )
 FC_REFLECT(eosio::chain_apis::read_only::get_activated_protocol_features_results, (activated_protocol_features)(more) )
 FC_REFLECT(eosio::chain_apis::read_only::get_block_params, (block_num_or_id))
 FC_REFLECT(eosio::chain_apis::read_only::get_block_info_params, (block_num))
 FC_REFLECT(eosio::chain_apis::read_only::get_block_header_state_params, (block_num_or_id))
 
+FC_REFLECT( eosio::chain_apis::read_write::send_transaction_params_v2, (return_failure_traces)(transaction) )
 FC_REFLECT( eosio::chain_apis::read_write::push_transaction_results, (transaction_id)(processed) )
 
 FC_REFLECT( eosio::chain_apis::read_only::get_table_rows_params, (json)(code)(scope)(table)(table_key)(lower_bound)(upper_bound)(limit)(key_type)(index_position)(encode_type)(reverse)(show_payer) )
@@ -1138,3 +1148,6 @@ FC_REFLECT( eosio::chain_apis::read_only::abi_bin_to_json_params, (code)(action)
 FC_REFLECT( eosio::chain_apis::read_only::abi_bin_to_json_result, (args) )
 FC_REFLECT( eosio::chain_apis::read_only::get_required_keys_params, (transaction)(available_keys) )
 FC_REFLECT( eosio::chain_apis::read_only::get_required_keys_result, (required_keys) )
+FC_REFLECT( eosio::chain_apis::read_only::send_ro_transaction_params_v1, (return_failure_traces)(transaction) )
+FC_REFLECT( eosio::chain_apis::read_only::send_ro_transaction_results, (head_block_num)(head_block_id)(last_irreversible_block_num)(last_irreversible_block_id)(code_hash)(pending_transactions)(result) )
+

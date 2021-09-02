@@ -52,7 +52,6 @@ The following information shows the different positionals and options you can us
 ```shell
 cleos set action permission bob scontract1 hi customp1 -p bob@active
 ```
-
 **Where**
 * `bob` = The name of the account to link the custom permission authority.
 * `scontract1`= The name of the account which owns the smart contract.
@@ -90,6 +89,7 @@ executed transaction: 4eb4cf3aea232d46e0e949bc273c3f0575be5bdba7b61851ab51d927cf
 ```shell
 cleos set action permission bob scontract1 hi NULL -p bob@active
 ```
+
 **Where**
 * `bob` = The name of the account to link the custom permission authority.
 * `scontract1`= The name of the account which owns the smart contract.
@@ -102,7 +102,6 @@ cleos set action permission bob scontract1 hi NULL -p bob@active
 executed transaction: 50fe754760a1b8bd0e56f57570290a3f5daa509c090deb54c81a721ee7048201  120 bytes  242 us
 #         eosio <= eosio::unlinkauth            {"account":"bob","code":"scontract1","type":"hi"}
 ```
-
 ## See Also
 - [Accounts and Permissions](https://developers.eos.io/welcome/v2.1/protocol/accounts_and_permissions) protocol document.
 - [Creating and Linking Custom Permissions](https://developers.eos.io/welcome/v2.1/smart-contract-guides/linking-custom-permission) tutorial.

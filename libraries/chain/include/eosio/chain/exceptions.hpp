@@ -382,6 +382,12 @@ namespace eosio { namespace chain {
                                     3080008, "Transaction exceeded the current greylisted account CPU usage limit" )
       FC_DECLARE_DERIVED_EXCEPTION( disk_usage_exceeded, resource_exhausted_exception,
                                     3080009, "Account using more than allotted DISK usage" )
+      FC_DECLARE_DERIVED_EXCEPTION( resource_payer_net_exceeded, resource_exhausted_exception,
+                                    3080010, "Transaction exceeded the resource payer network usage limit" )
+      FC_DECLARE_DERIVED_EXCEPTION( resource_payer_cpu_exceeded, resource_exhausted_exception,
+                                    3080011, "Transaction exceeded the resource payer CPU usage limit" )
+      FC_DECLARE_DERIVED_EXCEPTION( resource_payer_memory_exceeded, resource_exhausted_exception,
+                                    3080012, "FOR FUTURE USE - Transaction exceeded the resource payer RAM usage limit" )
 
       FC_DECLARE_DERIVED_EXCEPTION( leeway_deadline_exception, deadline_exception,
                                     3081001, "Transaction reached the deadline set due to leeway on account CPU limits" )
@@ -430,8 +436,6 @@ namespace eosio { namespace chain {
                                     3100010, "JSON parse exception" )
       FC_DECLARE_DERIVED_EXCEPTION( sig_variable_size_limit_exception,      misc_exception,
                                     3100011, "Variable length component of signature too large" )
-      FC_DECLARE_DERIVED_EXCEPTION( disallowed_chain_id_exception,          misc_exception,
-                                    3100012, "Compile time required chain id doesn't match runtime chain id" )
 
 
    FC_DECLARE_DERIVED_EXCEPTION( plugin_exception, chain_exception,
@@ -684,4 +688,11 @@ namespace eosio { namespace chain {
    FC_DECLARE_DERIVED_EXCEPTION( state_history_exception,    chain_exception,
                                  3280000, "State history exception" )
 
+   FC_DECLARE_DERIVED_EXCEPTION( ssl_exception, chain_exception,
+                                 3290000, "SSL exception")
+
+      FC_DECLARE_DERIVED_EXCEPTION( ssl_incomplete_configuration, ssl_exception,
+                                    3290001, "Incomplete SSL configuration")
+      FC_DECLARE_DERIVED_EXCEPTION( ssl_configuration_error, ssl_exception,
+                                    3290002, "SSL configuration error")
 } } // eosio::chain

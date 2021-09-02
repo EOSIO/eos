@@ -483,6 +483,7 @@ namespace eosio { namespace chain {
    void
    authorization_manager::check_authorization( const vector<action>&                actions,
                                                const flat_set<public_key_type>&     provided_keys,
+                                               std::optional<resource_payer_t>      payer,
                                                const flat_set<permission_level>&    provided_permissions,
                                                fc::microseconds                     provided_delay,
                                                const std::function<void()>&         _checktime,
@@ -551,6 +552,9 @@ namespace eosio { namespace chain {
                }
             }
          }
+      }
+      if (payer) {
+         permissions_to_satisfy.emplace(permission_level{payer->payer, config::active_name},effective_provided_delay);
       }
 
       // Now verify that all the declared authorizations are satisfied:

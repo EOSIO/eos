@@ -83,7 +83,7 @@ eosio::ship_protocol::action_trace_v1 convert(const eosio::chain::action_trace& 
 }
 
 eosio::ship_protocol::transaction_trace_v0 convert(const eosio::chain::transaction_trace& obj) {
-   static_assert( fc::reflector<eosio::chain::transaction_trace>::total_member_count == 13, "convert may need updated" );
+   static_assert( fc::reflector<eosio::chain::transaction_trace>::total_member_count == 14, "convert may need updated" );
    eosio::ship_protocol::transaction_trace_v0 result{};
    result.id = convert(obj.id);
    if (obj.receipt) {

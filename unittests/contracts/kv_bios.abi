@@ -1,0 +1,96 @@
+{
+    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT ",
+    "version": "eosio::abi/1.1",
+    "types": [],
+    "structs": [
+        {
+            "name": "diskkvlimits",
+            "base": "",
+            "fields": [
+                {
+                    "name": "k",
+                    "type": "uint32"
+                },
+                {
+                    "name": "v",
+                    "type": "uint32"
+                },
+                {
+                    "name": "i",
+                    "type": "uint32"
+                }
+            ]
+        },
+        {
+            "name": "ramkvlimits",
+            "base": "",
+            "fields": [
+                {
+                    "name": "k",
+                    "type": "uint32"
+                },
+                {
+                    "name": "v",
+                    "type": "uint32"
+                },
+                {
+                    "name": "i",
+                    "type": "uint32"
+                }
+            ]
+        },
+        {
+            "name": "setdisklimit",
+            "base": "",
+            "fields": [
+                {
+                    "name": "account",
+                    "type": "name"
+                },
+                {
+                    "name": "limit",
+                    "type": "int64"
+                }
+            ]
+        },
+        {
+            "name": "setramlimit",
+            "base": "",
+            "fields": [
+                {
+                    "name": "account",
+                    "type": "name"
+                },
+                {
+                    "name": "limit",
+                    "type": "int64"
+                }
+            ]
+        }
+    ],
+    "actions": [
+        {
+            "name": "diskkvlimits",
+            "type": "diskkvlimits",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "ramkvlimits",
+            "type": "ramkvlimits",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "setdisklimit",
+            "type": "setdisklimit",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "setramlimit",
+            "type": "setramlimit",
+            "ricardian_contract": ""
+        }
+    ],
+    "tables": [],
+    "ricardian_clauses": [],
+    "variants": []
+}

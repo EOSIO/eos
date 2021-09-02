@@ -1,4 +1,7 @@
 #include <eosio/chain/webassembly/eos-vm.hpp>
+#ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
+#include <eosio/chain/webassembly/eos-vm-oc.hpp>
+#endif
 #include <eosio/chain/webassembly/interface.hpp>
 #include <eosio/chain/apply_context.hpp>
 #include <eosio/chain/transaction_context.hpp>
@@ -7,9 +10,6 @@
 //eos-vm includes
 #include <eosio/vm/backend.hpp>
 #include <eosio/chain/webassembly/preconditions.hpp>
-#ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
-#include <eosio/chain/webassembly/eos-vm-oc.hpp>
-#endif
 #include <boost/hana/string.hpp>
 #include <boost/hana/equal.hpp>
 
@@ -162,71 +162,6 @@ private:
    std::unique_ptr<backend_t> _instantiated_module;
 };
 
-class eos_vm_profiling_module : public wasm_instantiated_module_interface {
-      using backend_t = eosio::vm::backend<eos_vm_host_functions_t, eosio::vm::jit_profile, webassembly::eos_vm_runtime::apply_options, vm::profile_instr_map>;
-   public:
-      eos_vm_profiling_module(std::unique_ptr<backend_t> mod, const char * code, std::size_t code_size) :
-         _instantiated_module(std::move(mod)),
-         _original_code(code, code + code_size) {}
-
-
-      void apply(apply_context& context) override {
-         _instantiated_module->set_wasm_allocator(&context.control.get_wasm_allocator());
-         apply_options opts;
-         if(context.control.is_builtin_activated(builtin_protocol_feature_t::configurable_wasm_limits)) {
-            const wasm_config& config = context.control.get_global_properties().wasm_configuration;
-            opts = {config.max_pages, config.max_call_depth};
-         }
-         auto fn = [&]() {
-            eosio::chain::webassembly::interface iface(context);
-            _instantiated_module->initialize(&iface, opts);
-            _instantiated_module->call(
-                iface, "env", "apply",
-                context.get_receiver().to_uint64_t(),
-                context.get_action().account.to_uint64_t(),
-                context.get_action().name.to_uint64_t());
-         };
-         profile_data* prof = start(context);
-         try {
-            scoped_profile profile_runner(prof);
-            checktime_watchdog wd(context.trx_context.transaction_timer);
-            _instantiated_module->timed_run(wd, fn);
-         } catch(eosio::vm::timeout_exception&) {
-            context.trx_context.checktime();
-         } catch(eosio::vm::wasm_memory_exception& e) {
-            FC_THROW_EXCEPTION(wasm_execution_error, "access violation");
-         } catch(eosio::vm::exception& e) {
-            FC_THROW_EXCEPTION(wasm_execution_error, "eos-vm system failure");
-         }
-      }
-
-      void fast_shutdown() override {
-         _prof.clear();
-      }
-
-      profile_data* start(apply_context& context) {
-         name account = context.get_receiver();
-         if(!context.control.is_profiling(account)) return nullptr;
-         if(auto it = _prof.find(account); it != _prof.end()) {
-            return it->second.get();
-         } else {
-            auto code_sequence = context.control.db().get<account_metadata_object, by_name>(account).code_sequence;
-            std::string basename = account.to_string() + "." + std::to_string(code_sequence);
-            auto prof = std::make_unique<profile_data>(basename + ".profile", *_instantiated_module);
-            auto [pos,_] = _prof.insert(std::pair{ account, std::move(prof)});
-            std::ofstream outfile(basename + ".wasm");
-            outfile.write(_original_code.data(), _original_code.size());
-            return pos->second.get();
-         }
-         return nullptr;
-      }
-
-   private:
-
-      std::unique_ptr<backend_t> _instantiated_module;
-      boost::container::flat_map<name, std::unique_ptr<profile_data>> _prof;
-      std::vector<char> _original_code;
-};
 
 template<typename Impl>
 eos_vm_runtime<Impl>::eos_vm_runtime() {}
@@ -260,32 +195,6 @@ std::unique_ptr<wasm_instantiated_module_interface> eos_vm_runtime<Impl>::instan
 
 template class eos_vm_runtime<eosio::vm::interpreter>;
 template class eos_vm_runtime<eosio::vm::jit>;
-
-eos_vm_profile_runtime::eos_vm_profile_runtime() {}
-
-void eos_vm_profile_runtime::immediately_exit_currently_running_module() {
-   throw wasm_exit{};
-}
-
-bool eos_vm_profile_runtime::inject_module(IR::Module& module) {
-   return false;
-}
-
-std::unique_ptr<wasm_instantiated_module_interface> eos_vm_profile_runtime::instantiate_module(const char* code_bytes, size_t code_size, std::vector<uint8_t>,
-                                                                                               const digest_type&, const uint8_t&, const uint8_t&) {
-
-   using backend_t = eosio::vm::backend<eos_vm_host_functions_t, eosio::vm::jit_profile, webassembly::eos_vm_runtime::apply_options, vm::profile_instr_map>;
-   try {
-      wasm_code_ptr code((uint8_t*)code_bytes, code_size);
-      apply_options options = { .max_pages = 65536,
-                                .max_call_depth = 0 };
-      std::unique_ptr<backend_t> bkend = std::make_unique<backend_t>(code, code_size, nullptr, options);
-      eos_vm_host_functions_t::resolve(bkend->get_module());
-      return std::make_unique<eos_vm_profiling_module>(std::move(bkend), code_bytes, code_size);
-   } catch(eosio::vm::exception& e) {
-      FC_THROW_EXCEPTION(wasm_execution_error, "Error building eos-vm interp: ${e}", ("e", e.what()));
-   }
-}
 
 }
 
@@ -358,6 +267,12 @@ REGISTER_HOST_FUNCTION(get_kv_parameters_packed, privileged_check);
 REGISTER_HOST_FUNCTION(set_kv_parameters_packed, privileged_check);
 REGISTER_HOST_FUNCTION(is_privileged, privileged_check);
 REGISTER_HOST_FUNCTION(set_privileged, privileged_check);
+
+// security group api
+REGISTER_HOST_FUNCTION(add_security_group_participants, privileged_check);
+REGISTER_HOST_FUNCTION(remove_security_group_participants, privileged_check);
+REGISTER_HOST_FUNCTION(in_active_security_group);
+REGISTER_HOST_FUNCTION(get_active_security_group);
 
 // producer api
 REGISTER_LEGACY_HOST_FUNCTION(get_active_producers);

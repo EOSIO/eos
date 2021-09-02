@@ -21,9 +21,9 @@ The following information shows the different positionals and options you can us
 `--to-console` - Print private/public keys to console.
 
 ## Requirements
-* Install the currently supported version of `cleos`.
+* Install the currently supported version of `cleos.`
 [[info | Note]]
-| The `cleos` tool is bundled with the EOSIO software. [Installing EOSIO](../../00_install/index.md) will install the `cleos` and `keosd` command line tools.   
+| The cleos tool is bundled with the EOSIO software. [Installing EOSIO](../../00_install/index.md) will also install the cleos comand line tool and the keosd key store or wallet. 
 
 ## Examples
 1. Create a new key pair and output to the screen

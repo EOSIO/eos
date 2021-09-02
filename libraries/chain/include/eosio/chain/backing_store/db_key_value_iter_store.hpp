@@ -17,6 +17,7 @@ struct secondary_key {
    T         secondary;
    uint64_t  primary;
    account_name payer;
+   std::optional<bytes> value;
 };
 
 inline bool operator<(const unique_table& lhs, const unique_table& rhs) {
@@ -136,6 +137,19 @@ class db_key_value_iter_store {
          _iterator_to_object.emplace_back( obj );
 
          return _iterator_to_object.size() - 1;
+      }
+
+      void set_value(int iterator, const char* data, std::size_t size) {
+         validate_object_iterator(iterator, "dereference of end iterator");
+         // grab a const ref, to ensure that we are returning a reference to the actual object in the vector
+         auto& result = _iterator_to_object[iterator];
+         EOS_ASSERT( result, table_operation_not_permitted, "dereference of deleted object" );
+         if (!result->value) {
+            result->value = bytes(size);
+         } else {
+            result->value->resize(size);
+         }
+         std::memcpy(result->value->data(), data, size);
       }
 
    private:

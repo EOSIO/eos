@@ -64,6 +64,7 @@ namespace eosio { namespace chain {
       std::optional<fc::exception>               except;
       std::optional<uint64_t>                    error_code;
       std::exception_ptr                         except_ptr;
+      flat_set<account_name>                     bill_to_accounts;
    };
 
    /**
@@ -86,19 +87,19 @@ namespace eosio { namespace chain {
 
    struct storage_usage_trace {
    public:
-      storage_usage_trace(uint32_t action_id, std::string event_id, const char* family, const char* operation)
+      storage_usage_trace(uint32_t action_id, std::string event_id, std::string_view family, std::string_view operation)
       :storage_usage_trace(action_id, std::move(event_id), family, operation, ".")
       {}
 
-      storage_usage_trace(uint32_t action_id, std::string&& event_id, const char* family, const char* operation, const char* legacy_tag)
+      storage_usage_trace(uint32_t action_id, std::string&& event_id, std::string_view family, std::string_view operation, std::string_view legacy_tag)
       :action_id(action_id),event_id(std::move(event_id)),family(family),operation(operation),legacy_tag(legacy_tag)
       {}
 
       uint32_t          action_id  = 0;
       const std::string event_id   = "generic";
-      const char*       family     = "generic";
-      const char*       operation  = "generic";
-      const char*       legacy_tag = "generic";
+      const std::string family     = "generic";
+      const std::string operation  = "generic";
+      const std::string legacy_tag = "generic";
 
    private:
       storage_usage_trace(uint32_t action_id)
@@ -124,4 +125,5 @@ FC_REFLECT( eosio::chain::action_trace,
 // @ignore except_ptr
 FC_REFLECT( eosio::chain::transaction_trace, (id)(block_num)(block_time)(producer_block_id)
                                              (receipt)(elapsed)(net_usage)(scheduled)
-                                             (action_traces)(account_ram_delta)(failed_dtrx_trace)(except)(error_code) )
+                                             (action_traces)(account_ram_delta)(failed_dtrx_trace)(except)(error_code)
+                                             (bill_to_accounts) )

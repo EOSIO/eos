@@ -9,12 +9,12 @@ Make sure you meet the following requirements:
 
 * Install the currently supported version of `cleos.`
 [[info | Note]]
-| `Cleos` is bundled with the EOSIO software. [Installing EOSIO](../../00_install/index.md) will install the `cleos` and `keosd` command line tools. 
-* You have access to an EOSIO blockchain and the `eosio.system` reference contract from [`eosio.contracts`](https://github.com/EOSIO/eosio.contracts) repository is deployed and used to manage system resources.
+| `Cleos` is bundled with the EOSIO software. [Installing EOSIO](../../00_install/index.md) will also install the `cleos` and `keosd` comand line tools. 
+* You have access to a blockchain and the `eosio.system` reference contract from [`eosio.contracts`](https://github.com/EOSIO/eosio.contracts) repository is deployed and used to manage system resources.
 * You have an EOSIO account and access to the account's private key.
 * You have sufficient [tokens allocated](how-to-transfer-an-eosio.token-token.md) to your account.
 
-## Reference
+## Command Reference
 See the following reference guides for command line usage and related options:
 
 * [cleos system buyram](../03_command-reference/system/system-buyram.md) command

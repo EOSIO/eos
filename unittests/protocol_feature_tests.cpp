@@ -1908,4 +1908,19 @@ BOOST_AUTO_TEST_CASE( set_parameters_packed_test ) { try {
                        c.error("alice does not have permission to call this API"));
 } FC_LOG_AND_RETHROW() }
 
+BOOST_AUTO_TEST_CASE( resource_payer_test ) { try {
+   tester c( setup_policy::preactivate_feature_and_new_bios );
+
+   const auto& pfm = c.control->get_protocol_feature_manager();
+   const auto& d = pfm.get_builtin_digest(builtin_protocol_feature_t::resource_payer);
+   BOOST_REQUIRE(d);
+
+   const auto& alice_account = account_name("alice");
+   c.create_accounts( {alice_account} );
+   c.produce_block();
+
+   c.preactivate_protocol_features( {*d} );
+   c.produce_block();
+} FC_LOG_AND_RETHROW() }
+
 BOOST_AUTO_TEST_SUITE_END()

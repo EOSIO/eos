@@ -13,9 +13,9 @@ Make sure you meet the following requirements:
 [[info | Note]]
 | `cleos` is bundled with the EOSIO software. [Installing EOSIO](../../00_install/index.md) will also install `cleos`.
 
-* Understand what an [account](https://developers.eos.io/welcome/v2.1/glossary/index/#account) is and its role in the blockchain.
-* Understand [Accounts and Permissions](https://developers.eos.io/welcome/v2.1/protocol-guides/accounts_and_permissions) in the protocol documents.
-* Understand what a [public](https://developers.eos.io/welcome/v2.1/glossary/index/#public-key) and [private](https://developers.eos.io/welcome/v2.1/glossary/index/#private-key) key pair is.
+* Understand what an [account](https://developers.eos.io/welcome/latest/glossary/index/#account) is and its role in the blockchain.
+* Understand [Accounts and Permissions](https://developers.eos.io/welcome/latest/protocol-guides/accounts_and_permissions) in the protocol documents.
+* Understand what a [public](https://developers.eos.io/welcome/latest/glossary/index/#public-key) and [private](https://developers.eos.io/welcome/latest/glossary/index/#private-key) key pair is.
 
 ## Steps
 

@@ -7,12 +7,10 @@
 #include <softfloat.hpp>
 #include "IR/Types.h"
 
-#include <eosio/chain/webassembly/eos-vm-oc/eos-vm-oc.hpp>
-#include <eosio/chain/webassembly/eos-vm-oc/memory.hpp>
+#include <eosio/chain/webassembly/eos-vm-oc/intrinsic.hpp>
 #include <eosio/chain/webassembly/eos-vm-oc/executor.hpp>
 #include <eosio/chain/webassembly/eos-vm-oc/code_cache.hpp>
 #include <eosio/chain/webassembly/eos-vm-oc/config.hpp>
-#include <eosio/chain/webassembly/eos-vm-oc/intrinsic.hpp>
 #include <eosio/chain/webassembly/eos-vm-oc/intrinsic_interface.hpp>
 
 #include <boost/hana/equal.hpp>

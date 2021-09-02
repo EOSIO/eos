@@ -27,12 +27,14 @@ namespace eosio::trace_api {
                };
                return std::visit([&](auto &&action) -> std::tuple<fc::variant, std::optional<fc::variant>> {
                   using T = std::decay_t<decltype(action)>;
-                  if constexpr (std::is_same_v<T, action_trace_v0>) {
-                     return {serializer_p->binary_to_variant(type_name, action.data, abi_yield), {}};
-                  } else {
-                     return {serializer_p->binary_to_variant(type_name, action.data, abi_yield),
-                             {serializer_p->binary_to_variant(type_name, action.return_value, abi_yield)}};
+                  std::optional<fc::variant> ret_data;
+                  auto params = serializer_p->binary_to_variant(type_name, action.data, abi_yield);
+                  if constexpr (std::is_same_v<T, action_trace_v1>) {
+                     if(action.return_value.size() > 0) {
+                        ret_data = serializer_p->binary_to_variant(type_name, action.return_value, abi_yield);
+                     }
                   }
+                  return {params, ret_data};
                }, action);
             } catch (...) {
                except_handler(MAKE_EXCEPTION_WITH_CONTEXT(std::current_exception()));

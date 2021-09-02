@@ -34,8 +34,6 @@ Command Line Options for eosio::chain_plugin:
   --extract-build-info arg              extract build environment information 
                                         as JSON, write into specified file, and
                                         exit
-  --fix-reversible-blocks               recovers reversible block database if 
-                                        that database is in a bad state
   --force-all-checks                    do not skip any validation checks while
                                         replaying blocks (useful for replaying 
                                         blocks from untrusted source)
@@ -53,12 +51,6 @@ Command Line Options for eosio::chain_plugin:
                                         non-zero number)
   --terminate-at-block arg (=0)         terminate after reaching this block 
                                         number (if set to a non-zero number)
-  --import-reversible-blocks arg        replace reversible block database with 
-                                        blocks imported from specified file and
-                                        then exit
-  --export-reversible-blocks arg        export reversible block database in 
-                                        portable format into specified file and
-                                        then exit
   --snapshot arg                        File to read Snapshot State from
 ```
 
@@ -72,7 +64,7 @@ Config Options for eosio::chain_plugin:
   --blocks-dir arg (="blocks")          the location of the blocks directory 
                                         (absolute path or relative to 
                                         application data dir)
-  --blocks-log-stride arg (=4294967295) split the block log file when the head 
+  --blocks-log-stride arg               split the block log file when the head 
                                         block number is the multiple of the 
                                         stride
                                         When the stride is reached, the current
@@ -84,7 +76,7 @@ Config Options for eosio::chain_plugin:
                                         block. All files following
                                         this format will be used to construct 
                                         an extended block log.
-  --max-retained-block-files arg (=10)  the maximum number of blocks files to 
+  --max-retained-block-files arg        the maximum number of blocks files to 
                                         retain so that the blocks in those 
                                         files can be queried.
                                         When the number is reached, the oldest 
@@ -108,7 +100,7 @@ Config Options for eosio::chain_plugin:
                                         completely under user's control, i.e. 
                                         they won't be accessed by nodeos 
                                         anymore.
-  --fix-irreversible-blocks arg (=1)    When the existing block log is 
+  --fix-irreversible-blocks arg (=0)    When the existing block log is 
                                         inconsistent with the index, allows 
                                         fixing the block log and index files 
                                         automatically - that is, it will take 
@@ -155,11 +147,12 @@ Config Options for eosio::chain_plugin:
                                         Rocksdb batch size threshold before 
                                         writing read in snapshot data to 
                                         database.
-  --reversible-blocks-db-size-mb arg (=340)
-                                        Maximum size (in MiB) of the reversible
-                                        blocks database
-  --reversible-blocks-db-guard-size-mb arg (=2)
-                                        Safely shut down node when free space 
+  --reversible-blocks-db-size-mb arg    (DEPRECATED: no longer used) Maximum 
+                                        size (in MiB) of the reversible blocks 
+                                        database
+  --reversible-blocks-db-guard-size-mb arg
+                                        (DEPRECATED: no longer used) Safely 
+                                        shut down node when free space 
                                         remaining in the reverseible blocks 
                                         database drops below this size (in 
                                         MiB).
@@ -178,6 +171,9 @@ Config Options for eosio::chain_plugin:
                                         Zipkin localEndpoint.serviceName sent 
                                         with each span
   --telemetry-timeout-us arg (=200000)  Timeout for sending Zipkin span.
+  --telemetry-retry-interval-us arg (=30000000)
+                                        Retry interval for connecting to 
+                                        Zipkin.
   --actor-whitelist arg                 Account added to actor whitelist (may 
                                         specify multiple times)
   --actor-blacklist arg                 Account added to actor blacklist (may 

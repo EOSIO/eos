@@ -66,7 +66,7 @@ Config Options for eosio::state_history_plugin:
                                         blocks. All files following
                                         this format will be used to construct 
                                         an extended history log.
-  --max-retained-history-files arg (=10)
+  --max-retained-history-files arg (=4294967295)
                                         the maximum number of history file 
                                         groups to retain so that the blocks in 
                                         those files can be queried.

@@ -312,6 +312,110 @@ BOOST_AUTO_TEST_CASE(test_split_log) {
    BOOST_CHECK( ! chain.control->fetch_block_by_number(160));
 }
 
+BOOST_AUTO_TEST_CASE(test_split_log_zero_retained_file) {
+   fc::temp_directory temp_dir;
+   namespace bfs = boost::filesystem;
+   tester chain(
+      temp_dir,
+      [](controller::config& config) {
+         config.blog.retained_dir       = "retained";
+         config.blog.archive_dir        = "archive";
+         config.blog.stride             = 50;
+         config.blog.max_retained_files = 0;
+      },
+      true);
+   chain.produce_blocks(150);
+   auto blocks_dir = chain.get_config().blog.log_dir;
+   auto retained_dir =  blocks_dir / chain.get_config().blog.retained_dir;
+   auto archive_dir =  blocks_dir / chain.get_config().blog.archive_dir;
+
+   BOOST_CHECK(bfs::is_empty(retained_dir));
+
+   BOOST_CHECK(bfs::exists( archive_dir / "blocks-1-50.log" ));
+   BOOST_CHECK(bfs::exists( archive_dir / "blocks-1-50.index" ));
+   BOOST_CHECK(bfs::exists( archive_dir / "blocks-51-100.log" ));
+   BOOST_CHECK(bfs::exists( archive_dir / "blocks-51-100.index" ));
+   BOOST_CHECK(bfs::exists( archive_dir / "blocks-101-150.log" ));
+   BOOST_CHECK(bfs::exists( archive_dir / "blocks-101-150.index" ));
+}
+
+BOOST_AUTO_TEST_CASE(test_split_log_all_in_retained_new_default) {
+   fc::temp_directory temp_dir;
+   namespace bfs = boost::filesystem;
+   tester chain(
+      temp_dir,
+      [](controller::config& config) {
+         config.blog.retained_dir       = "retained";
+         config.blog.archive_dir        = "archive";
+         config.blog.stride             = 50;
+      },
+      true);
+   chain.produce_blocks(150);
+   auto blocks_dir = chain.get_config().blog.log_dir;
+   auto retained_dir =  blocks_dir / chain.get_config().blog.retained_dir;
+   auto archive_dir =  blocks_dir / chain.get_config().blog.archive_dir;
+
+   BOOST_CHECK(bfs::is_empty(archive_dir));
+
+   BOOST_CHECK(bfs::exists( retained_dir / "blocks-1-50.log" ));
+   BOOST_CHECK(bfs::exists( retained_dir / "blocks-1-50.index" ));
+   BOOST_CHECK(bfs::exists( retained_dir / "blocks-51-100.log" ));
+   BOOST_CHECK(bfs::exists( retained_dir / "blocks-51-100.index" ));
+   BOOST_CHECK(bfs::exists( retained_dir / "blocks-101-150.log" ));
+   BOOST_CHECK(bfs::exists( retained_dir / "blocks-101-150.index" ));
+}
+
+BOOST_AUTO_TEST_CASE(test_split_log_util1) {
+   namespace bfs = boost::filesystem;
+   fc::temp_directory temp_dir;
+
+   tester chain;
+   chain.produce_blocks(160);
+
+   uint32_t head_block_num = chain.control->head_block_num();
+
+   controller::config copied_config = chain.get_config();
+   auto               genesis       = chain::block_log::extract_genesis_state(chain.get_config().blog.log_dir);
+   BOOST_REQUIRE(genesis);
+
+   chain.close();
+
+   auto blocks_dir = chain.get_config().blog.log_dir;
+   auto retained_dir = blocks_dir / "retained";
+   block_log::split_blocklog(blocks_dir, retained_dir, 50);
+
+   BOOST_CHECK(bfs::exists( retained_dir / "blocks-1-50.log" ));
+   BOOST_CHECK(bfs::exists( retained_dir / "blocks-1-50.index" ));
+   BOOST_CHECK(bfs::exists( retained_dir / "blocks-51-100.log" ));
+   BOOST_CHECK(bfs::exists( retained_dir / "blocks-51-100.index" ));
+   BOOST_CHECK(bfs::exists( retained_dir / "blocks-101-150.log" ));
+   BOOST_CHECK(bfs::exists( retained_dir / "blocks-101-150.index" ));
+   char buf[64];
+   snprintf(buf, 64, "blocks-151-%u.log", head_block_num-1);
+   bfs::path last_block_file = retained_dir / buf;
+   snprintf(buf, 64, "blocks-151-%u.index", head_block_num-1);
+   bfs::path last_index_file = retained_dir / buf;
+   BOOST_CHECK(bfs::exists(last_block_file));
+   BOOST_CHECK(bfs::exists( last_index_file ));
+
+   bfs::rename(last_block_file, blocks_dir / "blocks.log");
+   bfs::rename(last_index_file, blocks_dir / "blocks.index");
+
+
+   // remove the state files to make sure we are starting from block log
+   remove_existing_states(copied_config);
+   // we need to remove the reversible blocks so that new blocks can be produced from the new chain
+   bfs::remove_all(copied_config.blog.log_dir/"reversible");
+   copied_config.blog.retained_dir       = retained_dir;
+   copied_config.blog.stride             = 50;
+   copied_config.blog.max_retained_files = 5;
+   tester from_block_log_chain(copied_config, *genesis);
+   BOOST_CHECK( from_block_log_chain.control->fetch_block_by_number(1)->block_num() == 1);
+   BOOST_CHECK( from_block_log_chain.control->fetch_block_by_number(75)->block_num() == 75);
+   BOOST_CHECK( from_block_log_chain.control->fetch_block_by_number(100)->block_num() == 100);
+   BOOST_CHECK( from_block_log_chain.control->fetch_block_by_number(150)->block_num() == 150);
+}
+
 BOOST_AUTO_TEST_CASE(test_split_log_no_archive) {
 
    namespace bfs = boost::filesystem;
@@ -568,6 +672,63 @@ BOOST_AUTO_TEST_CASE(test_trim_blocklog_front_v2) {
 
 BOOST_AUTO_TEST_CASE(test_trim_blocklog_front_v3) {
    trim_blocklog_front(3);
+}
+
+BOOST_AUTO_TEST_CASE(test_blocklog_split_then_merge) {
+   namespace bfs = boost::filesystem;
+   
+   tester chain;
+   chain.produce_blocks(160);
+   chain.close();
+
+   auto blocks_dir = chain.get_config().blog.log_dir;
+   auto retained_dir = blocks_dir / "retained";
+   fc::temp_directory temp_dir;
+
+   BOOST_REQUIRE_NO_THROW(block_log::trim_blocklog_front(blocks_dir, temp_dir.path(), 50));
+   BOOST_REQUIRE_NO_THROW(block_log::trim_blocklog_end(blocks_dir, 150));
+
+   BOOST_CHECK_NO_THROW(block_log::split_blocklog(blocks_dir, retained_dir, 50));
+
+   BOOST_CHECK(bfs::exists( retained_dir / "blocks-50-50.log" ));
+   BOOST_CHECK(bfs::exists( retained_dir / "blocks-50-50.index" ));
+   BOOST_CHECK(bfs::exists( retained_dir / "blocks-51-100.log" ));
+   BOOST_CHECK(bfs::exists( retained_dir / "blocks-51-100.index" ));
+   BOOST_CHECK(bfs::exists( retained_dir / "blocks-101-150.log" ));
+   BOOST_CHECK(bfs::exists( retained_dir / "blocks-101-150.index" ));
+
+   bfs::remove(blocks_dir/"blocks.log");
+   bfs::remove(blocks_dir/"blocks.index");
+
+   block_log blog({.log_dir = blocks_dir, .retained_dir = retained_dir });
+   
+   BOOST_CHECK(blog.version() != 0);
+   BOOST_CHECK_EQUAL(blog.head()->block_num(), 150);
+
+   // test blocklog merge
+   fc::temp_directory dest_dir;
+   BOOST_CHECK_NO_THROW(block_log::merge_blocklogs(retained_dir, dest_dir.path()));
+   BOOST_CHECK(bfs::exists( dest_dir.path() / "blocks-50-150.log" ));
+
+   if (bfs::exists( dest_dir.path() / "blocks-50-150.log" )) {
+      bfs::rename(dest_dir.path() / "blocks-50-150.log", dest_dir.path() / "blocks.log");
+      bfs::rename(dest_dir.path() / "blocks-50-150.index", dest_dir.path() / "blocks.index");
+      BOOST_CHECK_NO_THROW(block_log::smoke_test(dest_dir.path(), 1));
+   }
+
+   bfs::remove(dest_dir.path() / "blocks.log");
+
+   // test blocklog merge with gap
+   bfs::remove(retained_dir / "blocks-51-100.log");
+   bfs::remove(retained_dir / "blocks-51-100.index");
+
+   BOOST_CHECK_NO_THROW(block_log::merge_blocklogs(retained_dir, dest_dir.path()));
+   BOOST_CHECK(bfs::exists( dest_dir.path() / "blocks-50-50.log" ));
+   BOOST_CHECK(bfs::exists( dest_dir.path() / "blocks-50-50.index" ));
+
+   BOOST_CHECK(bfs::exists( dest_dir.path() / "blocks-101-150.log" ));
+   BOOST_CHECK(bfs::exists( dest_dir.path() / "blocks-101-150.index" ));
+
 }
 
 BOOST_AUTO_TEST_SUITE_END()

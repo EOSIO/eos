@@ -578,10 +578,10 @@ BOOST_AUTO_TEST_CASE(test_state_result_abi) {
          auto& blocks_result_v1 = std::get<eosio::ship_protocol::get_blocks_result_v1>(result);
 
          std::vector<eosio::ship_protocol::transaction_trace> traces;
-         BOOST_CHECK_NO_THROW(blocks_result_v1.traces.unpack(traces));
+         BOOST_CHECK_NO_THROW(unpack(blocks_result_v1.traces, traces));
 
          std::vector<eosio::ship_protocol::table_delta> deltas;
-         BOOST_CHECK_NO_THROW(blocks_result_v1.deltas.unpack(deltas));
+         BOOST_CHECK_NO_THROW(unpack(blocks_result_v1.deltas, deltas));
       }
    }
 }
@@ -877,7 +877,7 @@ BOOST_AUTO_TEST_CASE(test_deltas_global_property_history) {
       BOOST_REQUIRE(result.first);
       auto &it_global_property = result.second;
       BOOST_REQUIRE_EQUAL(it_global_property->rows.obj.size(), 1);
-      auto global_properties = chain.deserialize_data<eosio::ship_protocol::global_property_v1, eosio::ship_protocol::global_property>(it_global_property);
+      auto global_properties = chain.deserialize_data<eosio::ship_protocol::global_property_v2, eosio::ship_protocol::global_property>(it_global_property);
       auto configuration = std::get<eosio::ship_protocol::chain_config_v1>(global_properties[0].configuration);
       BOOST_REQUIRE_EQUAL(configuration.max_transaction_delay, 60);
    }
@@ -950,6 +950,11 @@ BOOST_AUTO_TEST_CASE(test_deltas_kv) {
       BOOST_REQUIRE_EQUAL(key_values[0].contract.to_string(), "kvtable");
       BOOST_REQUIRE_EQUAL(key_values[0].payer.to_string(), "kvtable");
 
+      std::string key = string(key_values[0].key.pos, key_values[0].key.remaining());
+      std::string val = string(key_values[0].value.pos, key_values[0].value.remaining());
+      BOOST_REQUIRE_EQUAL(fc::to_hex(key.data(), key.size()), "00");
+      BOOST_REQUIRE_EQUAL(fc::to_hex(val.data(), val.size()), "7897");
+
       chain.produce_block();
 
       result = chain.find_table_delta("key_value");
@@ -957,10 +962,18 @@ BOOST_AUTO_TEST_CASE(test_deltas_kv) {
 
       result = chain.find_table_delta("key_value", true);
       BOOST_REQUIRE(result.first);
+
+      key_values = chain.deserialize_data<eosio::ship_protocol::key_value_v0, eosio::ship_protocol::key_value>(result.second);
+      BOOST_REQUIRE_EQUAL(key_values.size(), 1);
       BOOST_REQUIRE_EQUAL(result.second->rows.obj[0].first, 2);
 
       BOOST_REQUIRE_EQUAL(key_values[0].contract.to_string(), "kvtable");
       BOOST_REQUIRE_EQUAL(key_values[0].payer.to_string(), "kvtable");
+
+      key = string(key_values[0].key.pos, key_values[0].key.remaining());
+      val = string(key_values[0].value.pos, key_values[0].value.remaining());
+      BOOST_REQUIRE_EQUAL(fc::to_hex(key.data(), key.size()), "00");
+      BOOST_REQUIRE_EQUAL(fc::to_hex(val.data(), val.size()), "7897");
 
       chain.produce_block();
 
@@ -1121,6 +1134,61 @@ BOOST_AUTO_TEST_CASE(test_deltas_contract) {
       BOOST_REQUIRE_EQUAL(it_contract_index128->rows.obj.size(), 1);
       auto contract_indices128 = chain.deserialize_data<eosio::ship_protocol::contract_index128_v0, eosio::ship_protocol::contract_index128>(it_contract_index128);
       BOOST_REQUIRE_EQUAL(contract_indices128[0].table.to_string(), "numobjs.....1");
+   }
+}
+
+BOOST_AUTO_TEST_CASE(test_deltas_contract_eosio_token) {
+   for (backing_store_type backing_store : { backing_store_type::CHAINBASE, backing_store_type::ROCKSDB }) {
+      table_deltas_tester chain { backing_store, setup_policy::preactivate_feature_and_new_bios };
+
+      chain.create_account("eosio.token"_n);
+      chain.produce_block();
+
+      chain.set_code("eosio.token"_n, contracts::eosio_token_wasm());
+      chain.set_abi("eosio.token"_n, contracts::eosio_token_abi().data());
+
+      chain.produce_block();
+
+      chain.push_action("eosio.token"_n, "create"_n, "eosio.token"_n, mutable_variant_object()
+            ("issuer", "eosio"_n)
+            ("maximum_supply", "9000000.0000 CUR")
+      );
+
+      chain.push_action("eosio.token"_n, "issue"_n, "eosio"_n, mutable_variant_object()
+            ("to",       "eosio"_n)
+            ("quantity", "1000000.0000 CUR")
+            ("memo", "for stuff")
+      );
+
+      auto result = chain.find_table_delta("contract_table", true);
+      BOOST_REQUIRE(result.first);
+      auto &it_contract_table_full = result.second;
+      BOOST_REQUIRE_EQUAL(it_contract_table_full->rows.obj.size(), 3);
+
+      auto contract_tables = chain.deserialize_data<eosio::ship_protocol::contract_table_v0, eosio::ship_protocol::contract_table>(it_contract_table_full);
+      BOOST_REQUIRE_EQUAL(contract_tables.size(), 3);
+      BOOST_REQUIRE_EQUAL(contract_tables[0].code.to_string(), "eosio");
+      BOOST_REQUIRE_EQUAL(contract_tables[0].table.to_string(), "abihash");
+      BOOST_REQUIRE_EQUAL(contract_tables[1].code.to_string(), "eosio.token");
+      BOOST_REQUIRE_EQUAL(contract_tables[1].table.to_string(), "stat");
+      BOOST_REQUIRE_EQUAL(contract_tables[2].code.to_string(), "eosio.token");
+      BOOST_REQUIRE_EQUAL(contract_tables[2].table.to_string(), "accounts");
+
+      result = chain.find_table_delta("contract_row", true);
+      BOOST_REQUIRE(result.first);
+      auto &it_contract_row_full = result.second;
+      BOOST_REQUIRE_EQUAL(it_contract_row_full->rows.obj.size(), 4);
+
+      auto contract_rows_full = chain.deserialize_data<eosio::ship_protocol::contract_row_v0, eosio::ship_protocol::contract_row>(it_contract_row_full);
+      BOOST_REQUIRE_EQUAL(contract_rows_full.size(), 4);
+      BOOST_REQUIRE_EQUAL(contract_rows_full[0].code.to_string(), "eosio");
+      BOOST_REQUIRE_EQUAL(contract_rows_full[0].table.to_string(), "abihash");
+      BOOST_REQUIRE_EQUAL(contract_rows_full[1].code.to_string(), "eosio");
+      BOOST_REQUIRE_EQUAL(contract_rows_full[1].table.to_string(), "abihash");
+      BOOST_REQUIRE_EQUAL(contract_rows_full[2].code.to_string(), "eosio.token");
+      BOOST_REQUIRE_EQUAL(contract_rows_full[2].table.to_string(), "stat");
+      BOOST_REQUIRE_EQUAL(contract_rows_full[3].code.to_string(), "eosio.token");
+      BOOST_REQUIRE_EQUAL(contract_rows_full[3].table.to_string(), "accounts");
    }
 }
 

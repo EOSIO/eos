@@ -41,7 +41,6 @@ struct cloner_config : ship_client::connection_config {
    bool        exit_on_filter_wasm_error = false;
    eosio::name filter_name = {}; // todo: remove
    std::string filter_wasm = {}; // todo: remove
-   bool        profile = false;
    bool        undo_stack_enabled = false;
    uint32_t    force_write_stride = 0;
 
@@ -94,7 +93,7 @@ struct cloner_session : ship_client::connection_callbacks, std::enable_shared_fr
    cloner_session(cloner_plugin_impl* my) : my(my), config(my->config) {
       // todo: remove
       if (!config->filter_wasm.empty())
-         filter = std::make_unique<rodeos_filter>(config->filter_name, config->filter_wasm, config->profile
+         filter = std::make_unique<rodeos_filter>(config->filter_name, config->filter_wasm
 #ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
                                                   ,
                                                   app().data_dir(), config->eosvmoc_config, config->eosvmoc_tierup
@@ -321,8 +320,13 @@ void cloner_plugin::set_program_options(options_description& cli, options_descri
          elog("eos-vm-oc-compile-threads must be set to a non-zero value");
          EOS_ASSERT(false, eosio::chain::plugin_exception, "");
       }
-   }),
-      "Number of threads to use for EOS VM OC tier-up");
+   }), "Number of threads to use for EOS VM OC tier-up");
+   op("eos-vm-oc-code-cache-map-mode", bpo::value<chainbase::pinnable_mapped_file::map_mode>()->default_value(eosio::chain::eosvmoc::config().map_mode),
+    "Map mode for EOS VM OC code cache (\"mapped\", \"heap\", or \"locked\").\n"
+    "In \"mapped\" mode code cache is memory mapped as a file.\n"
+    "In \"heap\" mode code cache is preloaded in to swappable memory and will use huge pages if available.\n"
+    "In \"locked\" mode code cache is preloaded, locked in to memory, and will use huge pages if available.\n"
+   );
    op("eos-vm-oc-enable", bpo::bool_switch(), "Enable EOS VM OC tier-up runtime");
 #endif
 }
@@ -350,7 +354,6 @@ void cloner_plugin::plugin_initialize(const variables_map& options) {
       if (options.count("filter-name") && options.count("filter-wasm")) {
          my->config->filter_name = eosio::name{ options["filter-name"].as<std::string>() };
          my->config->filter_wasm = options["filter-wasm"].as<std::string>();
-         my->config->profile     = options["profile-filter"].as<bool>();
       } else if (options.count("filter-name") || options.count("filter-wasm")) {
          throw std::runtime_error("filter-name and filter-wasm must be used together");
       }

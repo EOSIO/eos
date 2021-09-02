@@ -7,7 +7,7 @@
 
 namespace eosio { namespace chain {
 
-   struct block_state : public block_header_state {
+   struct block_state final : block_header_state {
       block_state( const block_header_state& prev,
                    signed_block_ptr b,
                    const protocol_feature_set& pfs,
@@ -65,9 +65,25 @@ namespace eosio { namespace chain {
    };
 
    using block_state_ptr = std::shared_ptr<block_state>;
-   using branch_type = std::vector<block_state_ptr>;
+   using branch_type = deque<block_state_ptr>;
 
 } } /// namespace eosio::chain
 
 // @ignore _pub_keys_recovered _cached_trxs
 FC_REFLECT_DERIVED( eosio::chain::block_state, (eosio::chain::block_header_state), (block)(validated) )
+
+namespace fc {
+namespace raw {
+namespace detail {
+
+template <typename Stream>
+struct unpack_object_visitor<Stream, eosio::chain::block_state> 
+   : unpack_block_header_state_derived_visitor<Stream, eosio::chain::block_state> {
+   using Base = unpack_block_header_state_derived_visitor<Stream, eosio::chain::block_state>;
+   using Base::Base;
+};
+
+} // namespace detail
+} // namespace raw
+} // namespace fc
+

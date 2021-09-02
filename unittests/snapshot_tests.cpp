@@ -44,7 +44,6 @@ controller::config copy_config_and_files(const controller::config& config, int o
    controller::config copied_config = copy_config(config, ordinal);
    fc::create_directories(copied_config.blog.log_dir);
    fc::copy(config.blog.log_dir / "blocks.log", copied_config.blog.log_dir / "blocks.log");
-   fc::copy(config.blog.log_dir / config::reversible_blocks_dir_name, copied_config.blog.log_dir / config::reversible_blocks_dir_name );
    return copied_config;
 }
 
@@ -172,6 +171,9 @@ namespace {
          auto rhs_latest = SNAPSHOT_SUITE::finalize(rhs_latest_writer);
 
          print_variant_diff(lhs_latest, rhs_latest);
+         // more than print the different, also save snapshots json gz files under path build/unittests/snapshots
+         SNAPSHOT_SUITE::write_to_file("snapshot_debug_verify_integrity_hash_lhs", lhs_latest);
+         SNAPSHOT_SUITE::write_to_file("snapshot_debug_verify_integrity_hash_rhs", rhs_latest);
       }
       BOOST_REQUIRE_EQUAL(lhs_integrity_hash.str(), rhs_integrity_hash.str());
    }
@@ -183,19 +185,20 @@ void exhaustive_snapshot(const eosio::chain::backing_store_type main_store,
    fc::temp_directory temp_dir;
    tester chain(temp_dir, [main_store] (auto& config) { config.backing_store = main_store; }, true);
 
-   // Create 2 accounts
+   // create 2 accounts to exercise more paths
    chain.create_accounts({"snapshot"_n, "snapshot1"_n});
 
-   // Set code and increment the first account
+   // set code for the first account
    chain.produce_blocks(1);
    chain.set_code("snapshot"_n, contracts::snapshot_test_wasm());
    chain.set_abi("snapshot"_n, contracts::snapshot_test_abi().data());
    chain.produce_blocks(1);
+   // increment the test contract
    chain.push_action("snapshot"_n, "increment"_n, "snapshot"_n, mutable_variant_object()
          ( "value", 1 )
    );
 
-   // Set code and increment the second account
+   // set code for the second account
    chain.produce_blocks(1);
    chain.set_code("snapshot1"_n, contracts::snapshot_test_wasm());
    chain.set_abi("snapshot1"_n, contracts::snapshot_test_abi().data());
@@ -223,7 +226,7 @@ void exhaustive_snapshot(const eosio::chain::backing_store_type main_store,
       new_config.backing_store = sub_store;
       sub_testers.emplace_back(new_config, SnapshotSuite::get_reader(snapshot), generation);
 
-      // increment the test contract
+      // increment the test contracts
       chain.push_action("snapshot"_n, "increment"_n, "snapshot"_n, mutable_variant_object()
          ( "value", 1 )
       );
@@ -690,8 +693,6 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_kv_snapshot, SNAPSHOT_SUITE, snapshot_suites)
 
             // produce block
             auto new_block = chain.produce_block();
-
-#warning TODO: adding verification of the kv_object content and storing more than one key so that snapshot looping is tested
 
             // undo the auto-pending from tester
             chain.control->abort_block();

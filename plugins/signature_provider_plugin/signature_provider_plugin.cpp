@@ -9,9 +9,6 @@
 #ifdef __APPLE__
 #include <eosio/se-helpers/se-helpers.hpp>
 #endif
-#ifdef ENABLE_TPM
-#include <eosio/tpm-helpers/tpm-helpers.hpp>
-#endif
 
 namespace eosio {
    static appbase::abstract_plugin& _signature_provider_plugin = app().register_plugin<signature_provider_plugin>();
@@ -41,29 +38,6 @@ class signature_provider_plugin_impl {
                };
 
          EOS_THROW(chain::secure_enclave_exception, "${k} not found in Secure Enclave", ("k", pubkey));
-      }
-#endif
-
-#ifdef ENABLE_TPM
-      signature_provider_plugin::signature_provider_type
-      make_tpm_signature_provider(const std::string& spec_data, const chain::public_key_type pubkey) const {
-         std::vector<string> params;
-         std::vector<unsigned> pcrs;
-
-         boost::split(params,spec_data,boost::is_any_of("|"));
-         EOS_ASSERT(params.size() <= 2, chain::plugin_config_exception, "Too many extra fields given to TPM provider via '|' parameter");
-         if(params.size() == 2) {
-            vector<string> pcr_strs;
-            boost::split(pcr_strs,params[1],boost::is_any_of(","));
-            for(const auto& ps : pcr_strs)
-               if(ps.size())
-                  pcrs.emplace_back(std::stoi(ps));
-         }
-
-         std::shared_ptr<eosio::tpm::tpm_key> tpmkey = std::make_shared<eosio::tpm::tpm_key>(params[0], pubkey, pcrs);
-         return [tpmkey](const chain::digest_type& digest) {
-            return tpmkey->sign(digest);
-         };
       }
 #endif
 
@@ -101,21 +75,14 @@ const char* const signature_provider_plugin::signature_provider_help_text() cons
           "Where:\n"
           "   <public-key>    \tis a string form of a vaild EOSIO public key\n\n"
           "   <provider-spec> \tis a string in the form <provider-type>:<data>\n\n"
-          "   <provider-type> \tis one of the types below\n\n"
+          "   <provider-type> \tis KEY, KEOSD, or SE\n\n"
           "   KEY:<data>      \tis a string form of a valid EOSIO private key which maps to the provided public key\n\n"
-          "   KEOSD:<data>    \tis the URL where keosd is available and the approptiate wallet(s) are unlocked"
+          "   KEOSD:<data>    \tis the URL where keosd is available and the approptiate wallet(s) are unlocked\n\n"
 #ifdef __APPLE__
-          "\n\n"
-          "   SE:             \tindicates the key resides in Secure Enclave\n\n"
-#endif
-#ifdef ENABLE_TPM
-          "\n\n"
-          "   TPM:<data>     \tindicates the key resides in persistent TPM storage, 'data' is in the form <tcti>|<pcr_list> where "
-                               "optional 'tcti' is the tcti and tcti options, and optional 'pcr_list' is a comma separated list of PCRs "
-                               "to authenticate with\n\n"
-
+          "   SE:             \tindicates the key resides in Secure Enclave"
 #endif
           ;
+
 }
 
 void signature_provider_plugin::plugin_initialize(const variables_map& options) {
@@ -143,10 +110,6 @@ signature_provider_plugin::signature_provider_for_specification(const std::strin
    }
    else if(spec_type_str == "KEOSD")
       return std::make_pair(pubkey, my->make_keosd_signature_provider(spec_data, pubkey));
-#ifdef ENABLE_TPM
-   else if(spec_type_str == "TPM")
-      return std::make_pair(pubkey, my->make_tpm_signature_provider(spec_data, pubkey));
-#endif
 #ifdef __APPLE__
    else if(spec_type_str == "SE")
       return std::make_pair(pubkey, my->make_se_signature_provider(pubkey));

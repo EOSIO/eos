@@ -170,7 +170,7 @@ try:
     producers=[]
     for i in range(0, totalNodes):
         node=cluster.getNode(i)
-        node.producers=Cluster.parseProducers(i)
+        node.producers=node.getProducers()
         numProducers=len(node.producers)
         Print("node has producers=%s" % (node.producers))
         if numProducers==0:
@@ -250,6 +250,8 @@ try:
     Print("Tracking block producers from %d till divergence or %d. Head block is %d and lowest LIB is %d" % (preKillBlockNum, lastBlockNum, headBlockNum, libNumAroundDivergence))
     transitionCount=0
     missedTransitionBlock=None
+    #range is half closed, but forking can happen at lastBlockNum;
+    #that's why lastBlockNum + 1
     for blockNum in range(preKillBlockNum,lastBlockNum + 1):
         #avoiding getting LIB until my current block passes the head from the last time I checked
         if blockNum>headBlockNum:

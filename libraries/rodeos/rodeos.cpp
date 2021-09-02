@@ -175,13 +175,6 @@ void rodeos_db_snapshot::write_block_info(uint32_t block_num, const eosio::check
    table.put(info);
 }
 
-namespace {
-   std::string to_string( const eosio::checksum256& cs ) {
-      auto bytes = cs.extract_as_byte_array();
-      return fc::to_hex((const char*)bytes.data(), bytes.size());
-   }
-}
-
 void rodeos_db_snapshot::write_block_info(const ship_protocol::get_blocks_result_v0& result) {
    check_write(result);
    if (!result.block)
@@ -229,13 +222,9 @@ void rodeos_db_snapshot::write_deltas(uint32_t block_num, eosio::opaque<std::vec
    db_view_state view_state{ state_account, *db, *write_session, partition->contract_kv_prefix };
    view_state.kv_state.bypass_receiver_check = true; // TODO: can we enable recevier check in the future
    view_state.kv_state.enable_write          = true;
-   uint32_t num                              = deltas.unpack_size();
-   for (uint32_t i = 0; i < num; ++i) {
-      ship_protocol::table_delta delta;
-      deltas.unpack_next(delta);
-      size_t num_processed = 0;
-      std::visit(
-         [&](auto& delta_any_v) {
+   size_t num_processed = 0;
+
+   auto write_delta = [&](auto&& delta_any_v) {
          store_delta({ view_state }, delta_any_v, head == 0, [&]() {
             if (delta_any_v.rows.size() > 10000 && !(num_processed % 10000)) {
                if (shutdown())
@@ -249,8 +238,12 @@ void rodeos_db_snapshot::write_deltas(uint32_t block_num, eosio::opaque<std::vec
             }
             ++num_processed;
          });
-      }, delta);
-   }
+      };
+
+   eosio::for_each(deltas, [&num_processed, &write_delta](auto&& delta) {
+      num_processed = 0;
+      std::visit(write_delta , delta);
+   });
 }
 
 void rodeos_db_snapshot::write_deltas(const ship_protocol::get_blocks_result_v0& result,
@@ -290,7 +283,7 @@ filter::filter_state::~filter_state() {
 
 std::once_flag registered_filter_callbacks;
 
-rodeos_filter::rodeos_filter(eosio::name name, const std::string& wasm_filename, bool profile
+rodeos_filter::rodeos_filter(eosio::name name, const std::string& wasm_filename
 #ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
                              ,
                              const boost::filesystem::path&       eosvmoc_path,
@@ -315,9 +308,6 @@ rodeos_filter::rodeos_filter(eosio::name name, const std::string& wasm_filename,
    backend      = std::make_unique<filter::backend_t>(code, nullptr);
    filter_state = std::make_unique<filter::filter_state>();
    filter::rhf_t::resolve(backend->get_module());
-   if (profile) {
-      prof = std::make_unique<eosio::vm::profile_data>(wasm_filename + ".profile", *backend);
-   }
 #ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
    if (eosvmoc_enable) {
       try {
@@ -370,9 +360,6 @@ void rodeos_filter::process(rodeos_db_snapshot& snapshot, const ship_protocol::g
    backend->set_wasm_allocator(&filter_state->wa);
    backend->initialize(&cb);
    try {
-      eosio::vm::scoped_profile profile_runner(prof.get());
-      (*backend)(cb, "env", "apply", uint64_t(0), uint64_t(0), uint64_t(0));
-
       if (!filter_state->console.empty())
          ilog("filter ${n} console output: <<<\n${c}>>>", ("n", name.to_string())("c", filter_state->console));
    } catch (...) {

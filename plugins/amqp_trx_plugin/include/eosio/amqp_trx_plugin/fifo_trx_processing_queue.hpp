@@ -223,6 +223,7 @@ public:
    void push(const chain::packed_transaction_ptr& trx, producer_plugin::next_function<chain::transaction_trace_ptr> next) {
       fc::microseconds max_trx_cpu_usage = prod_plugin_->get_max_transaction_time();
       auto future = chain::transaction_metadata::start_recover_keys( trx, sig_thread_pool_, chain_id_, max_trx_cpu_usage,
+                                                                     transaction_metadata::trx_type::input,
                                                                      configured_subjective_signature_length_limit_ );
       q_item i{ std::move(future), std::move(next) };
       if( !queue_.push( std::move( i ) ) ) {

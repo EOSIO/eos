@@ -696,7 +696,8 @@ BOOST_AUTO_TEST_CASE(alphabetic_sort)
 
 } FC_LOG_AND_RETHROW() }
 
-void verify_packed_transaction_conversion(const packed_transaction_v0& original, const packed_transaction_v0_ptr final) {
+
+static void verify_packed_transaction_conversion(const packed_transaction_v0& original, const packed_transaction_v0_ptr final) {
    // prunable_size and unprunable_size must be maintained
    BOOST_CHECK_EQUAL(original.get_prunable_size(), final->get_prunable_size());
    BOOST_CHECK_EQUAL(original.get_unprunable_size(), final->get_unprunable_size());
@@ -704,7 +705,6 @@ void verify_packed_transaction_conversion(const packed_transaction_v0& original,
    BOOST_REQUIRE_EQUAL(original.get_context_free_data().size(), final->get_context_free_data().size());
    BOOST_CHECK(std::equal(original.get_context_free_data().begin(), original.get_context_free_data().end(), final->get_context_free_data().begin()));
 }
-
 BOOST_AUTO_TEST_CASE(transaction_test) { try {
 
    testing::TESTER test;
@@ -963,12 +963,12 @@ BOOST_AUTO_TEST_CASE(transaction_metadata_test) { try {
 
       named_thread_pool thread_pool( "misc", 5 );
 
-      auto fut = transaction_metadata::start_recover_keys( ptrx, thread_pool.get_executor(), test.control->get_chain_id(), fc::microseconds::maximum() );
-      auto fut2 = transaction_metadata::start_recover_keys( ptrx2, thread_pool.get_executor(), test.control->get_chain_id(), fc::microseconds::maximum() );
+      auto fut = transaction_metadata::start_recover_keys( ptrx, thread_pool.get_executor(), test.control->get_chain_id(), fc::microseconds::maximum(), transaction_metadata::trx_type::input );
+      auto fut2 = transaction_metadata::start_recover_keys( ptrx2, thread_pool.get_executor(), test.control->get_chain_id(), fc::microseconds::maximum(), transaction_metadata::trx_type::input );
 
       // start another key reovery on same packed_transaction, creates a new future with transaction_metadata, should not interfere with above
-      transaction_metadata::start_recover_keys( ptrx, thread_pool.get_executor(), test.control->get_chain_id(), fc::microseconds::maximum() );
-      transaction_metadata::start_recover_keys( ptrx2, thread_pool.get_executor(), test.control->get_chain_id(), fc::microseconds::maximum() );
+      transaction_metadata::start_recover_keys( ptrx, thread_pool.get_executor(), test.control->get_chain_id(), fc::microseconds::maximum(), transaction_metadata::trx_type::input );
+      transaction_metadata::start_recover_keys( ptrx2, thread_pool.get_executor(), test.control->get_chain_id(), fc::microseconds::maximum(), transaction_metadata::trx_type::input );
 
       auto mtrx = fut.get();
       const auto& keys = mtrx->recovered_keys();

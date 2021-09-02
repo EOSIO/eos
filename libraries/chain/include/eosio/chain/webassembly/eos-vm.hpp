@@ -10,7 +10,6 @@
 
 //eos-vm includes
 #include <eosio/vm/backend.hpp>
-#include <eosio/vm/profile.hpp>
 
 namespace eosio { namespace chain { namespace webassembly { namespace eos_vm_runtime {
 
@@ -19,7 +18,7 @@ struct apply_options;
 }}
 
 template <typename Impl>
-using eos_vm_backend_t = eosio::vm::backend<eos_vm_host_functions_t, Impl, webassembly::eos_vm_runtime::apply_options, vm::profile_instr_map>;
+using eos_vm_backend_t = eosio::vm::backend<eos_vm_host_functions_t, Impl, webassembly::eos_vm_runtime::apply_options>;
 
 template <typename Options>
 using eos_vm_null_backend_t = eosio::vm::backend<eos_vm_host_functions_t, eosio::vm::null_backend, Options>;
@@ -34,10 +33,6 @@ void validate(const bytes& code, const whitelisted_intrinsics_type& intrinsics )
 void validate(const bytes& code, const wasm_config& cfg, const whitelisted_intrinsics_type& intrinsics );
 
 struct apply_options;
-
-struct profile_config {
-   boost::container::flat_set<name> accounts_to_profile;
-};
 
 template<typename Backend>
 class eos_vm_runtime : public eosio::chain::wasm_runtime_interface {
@@ -57,16 +52,6 @@ class eos_vm_runtime : public eosio::chain::wasm_runtime_interface {
 
    template<typename Impl>
    friend class eos_vm_instantiated_module;
-};
-
-class eos_vm_profile_runtime : public eosio::chain::wasm_runtime_interface {
-   public:
-      eos_vm_profile_runtime();
-      bool inject_module(IR::Module&) override;
-      std::unique_ptr<wasm_instantiated_module_interface> instantiate_module(const char* code_bytes, size_t code_size, std::vector<uint8_t>,
-                                                                             const digest_type& code_hash, const uint8_t& vm_type, const uint8_t& vm_version) override;
-
-      void immediately_exit_currently_running_module() override;
 };
 
 }}}}// eosio::chain::webassembly::eos_vm_runtime

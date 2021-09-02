@@ -15,19 +15,29 @@ endif()
 
 add_subdirectory( fc )
 add_subdirectory( builtins )
+
+# Suppress warnings on 3rdParty Library
+add_definitions( -w )
 add_subdirectory( softfloat )
+remove_definitions( -w )
+
 add_subdirectory( chainbase )
 add_subdirectory( wasm-jit )
+set(APPBASE_ENABLE_AUTO_VERSION OFF CACHE BOOL "enable automatic discovery of version via 'git describe'")
 add_subdirectory( appbase )
 add_subdirectory( chain )
 add_subdirectory( testing )
 add_subdirectory( version )
 add_subdirectory( state_history )
 add_subdirectory( abieos )
+
+# Suppress warnings on 3rdParty Library
+add_definitions( -w )
 add_subdirectory( rocksdb )
+remove_definitions( -w )
+
 add_subdirectory( chain_kv )
 add_subdirectory( se-helpers )
-add_subdirectory( tpm-helpers )
 add_subdirectory( amqp )
 
 set(USE_EXISTING_SOFTFLOAT ON CACHE BOOL "use pre-exisiting softfloat lib")
@@ -54,9 +64,17 @@ set_property(GLOBAL PROPERTY CTEST_CUSTOM_TESTS_IGNORE
   yubico_otp wrap_data wrap info import_rsa import_authkey generate_hmac generate_ec\
   attest pbkdf2 parsing ${_CTEST_CUSTOM_TESTS_IGNORE}")
 
-add_subdirectory( rodeos )
+if (ENABLE_RODEOS)
+  add_subdirectory( rodeos )
+endif()
 
 find_package(OpenSSL REQUIRED)
 option(AMQP-CPP_LINUX_TCP CACHE ON)
 add_subdirectory( amqp-cpp EXCLUDE_FROM_ALL )
 target_include_directories(amqpcpp PRIVATE "${OPENSSL_INCLUDE_DIR}")
+
+find_package(PostgreSQL)
+if(PostgreSQL_FOUND)
+   option(SKIP_BUILD_TEST CACHE ON)
+   add_subdirectory(libpqxx EXCLUDE_FROM_ALL)
+ endif()

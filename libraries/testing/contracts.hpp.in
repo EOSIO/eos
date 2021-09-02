@@ -70,6 +70,7 @@ namespace eosio {
          MAKE_READ_WASM_ABI(params_test,           params_test,           test-contracts)
          MAKE_READ_WASM_ABI(kv_table_test,         kv_table_test,         test-contracts)
          MAKE_READ_WASM_ABI(kv_addr_book,          kv_addr_book,          test-contracts)
+         MAKE_READ_WASM_ABI(security_group_test,   security_group_test,   test-contracts)
       };
    } /// eosio::testing
 }  /// eosio

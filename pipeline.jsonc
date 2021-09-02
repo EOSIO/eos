@@ -30,7 +30,8 @@
         },
         "configuration":
         [
-            "170=v1.7.0"
+            "170=v1.7.0",
+            "alt_ver=672d94417a8e4309a2366028f48fdbec88687ce9"
         ]
     },
     // eosio-resume-from-state documentation: https://github.com/EOSIO/auto-eks-sync-nodes/blob/master/pipelines/eosio-resume-from-state/README.md
@@ -39,7 +40,7 @@
         "test":
         [
             {
-                "commit": "16074742f8cfd481b029073e6f01bb920a1bad38"
+                "commit": "8fe13fffe4363dbc9028f3bdd549afc18802d511" // test backwards-compatibility forkdb v2 change.
             }
         ]
     }

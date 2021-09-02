@@ -214,17 +214,6 @@ BOOST_FIXTURE_TEST_CASE( get_kv_table_nodeos_test, TESTER ) try {
    result = plugin.read_only::get_kv_table_rows(p);
    BOOST_REQUIRE_EQUAL(10u, result.rows.size());
 
-   p.lower_bound = "bobc";
-   p.upper_bound = {};
-   result = plugin.read_only::get_kv_table_rows(p);
-   BOOST_REQUIRE_EQUAL(8u, result.rows.size());
-
-   p.reverse = false;
-   p.lower_bound = {};
-   p.upper_bound = "bobz";
-   result = plugin.read_only::get_kv_table_rows(p);
-   BOOST_REQUIRE_EQUAL(10u, result.rows.size());
-
    p.reverse = true;
    p.lower_bound = "bobj";
    p.upper_bound = "bobz";

@@ -71,6 +71,7 @@ set(CHAIN_WEBASSEMBLY_SOURCES
    webassembly/producer.cpp
    webassembly/system.cpp
    webassembly/transaction.cpp
+   webassembly/security_group.cpp
 )
 
 ## SORT .cpp by most likely to change / break compile
@@ -192,6 +193,3 @@ install( DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/eosio/chain/
       FILES_MATCHING PATTERN "*.hpp" PATTERN "*.h" EXCLUDE
 )
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/include/eosio/chain/core_symbol.hpp DESTINATION ${CMAKE_INSTALL_FULL_INCLUDEDIR}/eosio/chain)
-#if(MSVC)
-#  set_source_files_properties( db_init.cpp db_block.cpp database.cpp block_log.cpp PROPERTIES COMPILE_FLAGS "/bigobj" )
-#endif(MSVC)

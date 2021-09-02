@@ -26,7 +26,9 @@ enum class builtin_protocol_feature_t : uint32_t {
    action_return_value,
    kv_database,
    configurable_wasm_limits,
-   blockchain_parameters
+   blockchain_parameters,
+   security_group,
+   resource_payer
 };
 
 struct protocol_feature_subjective_restrictions {
@@ -347,6 +349,9 @@ public:
    void activate_feature( const digest_type& feature_digest, uint32_t current_block_num );
    void popped_blocks_to( uint32_t block_num );
 
+   void enable_security_groups(bool enabled) { _security_groups_enabled = enabled; }
+   bool security_groups_enabled() const { return _security_groups_enabled; }
+   void validate_feature( const protocol_feature& feature) const;
 protected:
 
    struct protocol_feature_entry {
@@ -368,6 +373,9 @@ protected:
    vector<builtin_protocol_feature_entry> _builtin_protocol_features;
    size_t                                 _head_of_builtin_activation_list = builtin_protocol_feature_entry::no_previous;
    bool                                   _initialized = false;
+   //default is true and if TLS is not set net_plugin will set it to false
+   //this is done to not be dependent on net_plugin if by any reason node will b started without it
+   bool                                   _security_groups_enabled = true;
 
 private:
    std::function<fc::logger*()>           _get_deep_mind_logger;

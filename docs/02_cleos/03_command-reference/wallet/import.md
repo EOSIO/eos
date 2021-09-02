@@ -22,15 +22,15 @@ The following information shows the different positionals and options you can us
 ## Requirements
 * Install the currently supported version of `cleos` and `keosd`.
 [[info | Note]]
-| `Cleos` and `keosd` are bundled with the EOSIO software. [Installing EOSIO](../../00_install/index.md) will also install the `cleos` and `keosd`  command line tools. 
+| `Cleos` and `keosd` are bundled with the EOSIO software. [Installing EOSIO](../../00_install/index.md) will also install the `cleos` and `keosd` comand line tools. 
 
 ## Examples
-1. Import a private key to the default wallet. The wallet must be **open** and **unlocked**.
+1. Import a private key to the default wallet. The wallet must be `open` and `unlocked.`
 ```shell
 cleos wallet import
 ```
 
-The command asks for the private key. Enter it.
+The command asks for the private key. Enter it:
 
 ```shell
 5KDNWQvY2seBPVUz7MiiaEDGTwACfuXu78bwZu7w2UDM9A3u3Fs
@@ -41,7 +41,7 @@ The command asks for the private key. Enter it.
 private key: imported private key for: EOS5zG7PsdtzQ9achTdRtXwHieL7yyigBFiJDRAQonqBsfKyL3XhC
 ```
 
-2. Import a private key to a named wallet. The wallet must be `open` and `unlocked.`
+2. Import a private key to a named wallet. The wallet must be **open** and **unlocked**.
 ```shell
 cleos wallet import --name my_wallet --private-key 5KDNWQvY2seBPVUz7MiiaEDGTwACfuXu78bwZu7w2UDM9A3u3Fs
 ```

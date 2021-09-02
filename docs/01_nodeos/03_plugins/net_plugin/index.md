@@ -74,7 +74,7 @@ Config Options for eosio::net_plugin:
                                         synchronization
   --use-socket-read-watermark arg (=0)  Enable experimental socket read 
                                         watermark optimization
-  --peer-log-format arg (=["${_name}" ${_ip}:${_port}])
+  --peer-log-format arg (=["${_name}" ${_ip}:${_port}] )
                                         The string used to format peers when 
                                         logging messages about them.  Variables
                                         are escaped with ${<variable name>}.
@@ -95,10 +95,27 @@ Config Options for eosio::net_plugin:
                                                   peer
                                         
                                            _lport local port number connected 
-                                                  to peer                                        
+                                                  to peer
+                                        
+                                        
   --p2p-keepalive-interval-ms arg (=32000)
                                         peer heartbeat keepalive message 
                                         interval in milliseconds
+  --p2p-tls-security-group-ca-file arg  Certificate Authority's certificate 
+                                        file used for verifying peers TLS 
+                                        connection when security groups feature
+                                        enabled
+  --p2p-tls-own-certificate-file arg    Certificate file that will be used to 
+                                        authenticate running node if TLS is 
+                                        enabled
+  --p2p-tls-private-key-file arg        Private key file that is used in 
+                                        conjunction with p2p-tls-own-certificat
+                                        e-file for server authorization in TLS 
+                                        connection. Together 
+                                        p2p-tls-private-key-file + 
+                                        p2p-tsl-own-certificate-file 
+                                        automatically enables TLS-only 
+                                        connection for peers.
 ```
 
 ## Dependencies

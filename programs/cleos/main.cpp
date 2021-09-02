@@ -69,6 +69,8 @@ Options:
 #include <vector>
 #include <regex>
 #include <iostream>
+#include <locale>
+#include <unordered_map>
 #include <fc/crypto/hex.hpp>
 #include <fc/variant.hpp>
 #include <fc/io/datastream.hpp>
@@ -175,7 +177,11 @@ bool   tx_dont_broadcast = false;
 bool   tx_return_packed = false;
 bool   tx_skip_sign = false;
 bool   tx_print_json = false;
+bool   tx_ro_print_json = false;
+bool   tx_rtn_failure_trace = false;
+bool   tx_read_only = false;
 bool   tx_use_old_rpc = false;
+bool   tx_use_old_send_rpc = false;
 string tx_json_save_file;
 bool   print_request = false;
 bool   print_response = false;
@@ -229,6 +235,7 @@ void add_standard_transaction_options(CLI::App* cmd, string default_permission =
    cmd->add_flag("--return-packed", tx_return_packed, localized("Used in conjunction with --dont-broadcast to get the packed transaction"));
    cmd->add_option("-r,--ref-block", tx_ref_block_num_or_id, (localized("Set the reference block num or block id used for TAPOS (Transaction as Proof-of-Stake)")));
    cmd->add_flag("--use-old-rpc", tx_use_old_rpc, localized("Use old RPC push_transaction, rather than new RPC send_transaction"));
+   cmd->add_flag("--use-old-send-rpc", tx_use_old_send_rpc, localized("Use old RPC send_transaction, rather than new RPC /v2/chain/send_transaction"));
    cmd->add_option("--compression", tx_compression, localized("Compression for transaction 'none' or 'zlib'"))->transform(
          CLI::CheckedTransformer(compression_type_map, CLI::ignore_case));
 
@@ -435,9 +442,18 @@ fc::variant push_transaction( signed_transaction& trx, const std::vector<public_
 
    packed_transaction::compression_type compression = to_compression_type( tx_compression );
    if (!tx_dont_broadcast) {
+      EOSC_ASSERT( !(tx_use_old_rpc && tx_use_old_send_rpc), "ERROR: --use-old-rpc and --use-old-send-rpc are mutually exclusive" );
+      packed_transaction_v0 pt_v0(trx, compression);
       if (tx_use_old_rpc) {
-         return call(push_txn_func, packed_transaction_v0(trx, compression));
+         EOSC_ASSERT( !tx_read_only, "ERROR: --read-only can not be used with --use-old-rpc" );
+         EOSC_ASSERT( !tx_rtn_failure_trace, "ERROR: --return-failure-trace can not be used with --use-old-rpc" );
+         return call(push_txn_func, pt_v0);
+      } else if (tx_use_old_send_rpc) {
+         EOSC_ASSERT( !tx_read_only, "ERROR: --read-only can not be used with --use-old-send-rpc" );
+         EOSC_ASSERT( !tx_rtn_failure_trace, "ERROR: --return-failure-trace can not be used with --use-old-send-rpc" );
+         return call(send_txn_func, pt_v0);
       } else {
+
          if( !amqp_address.empty() ) {
             fc::variant result;
             eosio::transaction_msg msg{packed_transaction( std::move( trx ), true, compression )};
@@ -455,11 +471,24 @@ fc::variant push_transaction( signed_transaction& trx, const std::vector<public_
             return result;
          } else {
             try {
-               return call( send_txn_func, packed_transaction_v0( trx, compression ) );
-            } catch( chain::missing_chain_api_plugin_exception& ) {
-               std::cerr << "New RPC send_transaction may not be supported. "
-                            "Add flag --use-old-rpc to use old RPC push_transaction instead." << std::endl;
-               throw;
+               auto args = fc::mutable_variant_object()
+                          ("return_failure_traces", tx_rtn_failure_trace)
+                          ("transaction", pt_v0);
+               if (tx_read_only) {
+                  tx_ro_print_json = true;
+                  return call(send_ro_txns_func, args);
+               } else {
+                  return call(send_txn_func_v2, args);
+               }
+            }
+            catch (chain::missing_chain_api_plugin_exception &) {
+               if (tx_read_only || tx_rtn_failure_trace) {
+                  std::cerr << "New RPC /v2/chain/send_transaction or send_ro_transaction may not be supported." << std::endl
+                            << "Add flag --use-old-send-rpc or --use-old-rpc to use old RPC send_transaction or " << std::endl
+                            << "push_transaction instead or submit your transaction to a different node." << std::endl;
+                  throw;
+               }
+               return call(send_txn_func, pt_v0);  // With compatible options, silently fall back to v1 API
             }
          }
       }
@@ -511,7 +540,9 @@ void print_action( const fc::variant& at ) {
    const auto& act = at["act"].get_object();
    auto code = act["account"].as_string();
    auto func = act["name"].as_string();
-   auto args = fc::json::to_string( act["data"], fc::time_point::maximum() );
+   string args;
+   if(act.contains("data"))
+      args = fc::json::to_string( act["data"], fc::time_point::maximum() );
    auto console = at["console"].as_string();
 
    /*
@@ -648,7 +679,10 @@ void send_actions(std::vector<chain::action>&& actions, const std::vector<public
       out << jsonstr;
       out.close();
    }
-   if( tx_print_json ) {
+   if( tx_print_json || tx_ro_print_json) {
+      if (tx_ro_print_json){
+          tx_ro_print_json = false;
+      }
       if (jsonstr.length() == 0) {
          jsonstr = fc::json::to_pretty_string( result );
       }
@@ -2213,6 +2247,57 @@ struct closerex_subcommand {
    }
 };
 
+struct activate_subcommand {
+   string feature_name_str;
+
+   activate_subcommand(CLI::App* actionRoot) {
+      auto activate = actionRoot->add_subcommand("activate", localized("Activate system feature by feature name eg: KV_DATABASE"));
+      activate->add_option("feature",  feature_name_str,  localized("The system feature name to be activated, must be one of below(lowercase also works):\nPREACTIVATE_FEATURE\nONLY_LINK_TO_EXISTING_PERMISSION\nFORWARD_SETCODE\nKV_DATABASE\nWTMSIG_BLOCK_SIGNATURES\nREPLACE_DEFERRED\nNO_DUPLICATE_DEFERRED_ID\nRAM_RESTRICTIONS\nWEBAUTHN_KEY\nBLOCKCHAIN_PARAMETERS\nDISALLOW_EMPTY_PRODUCER_SCHEDULE\nONLY_BILL_FIRST_AUTHORIZER\nRESTRICT_ACTION_TO_SELF\nCONFIGURABLE_WASM_LIMITS\nACTION_RETURN_VALUE\nFIX_LINKAUTH_RESTRICTION\nGET_SENDER"))->required();
+      activate->fallthrough(false);
+      activate->callback([this] {
+         /// map feature name to feature digest
+         std::unordered_map<std::string, std::string> map_name_digest{
+            {"PREACTIVATE_FEATURE",              "0ec7e080177b2c02b278d5088611686b49d739925a92d9bfcacd7fc6b74053bd"},
+            {"ONLY_LINK_TO_EXISTING_PERMISSION", "1a99a59d87e06e09ec5b028a9cbb7749b4a5ad8819004365d02dc4379a8b7241"},
+            {"FORWARD_SETCODE",                  "2652f5f96006294109b3dd0bbde63693f55324af452b799ee137a81a905eed25"},
+            {"KV_DATABASE",                      "825ee6288fb1373eab1b5187ec2f04f6eacb39cb3a97f356a07c91622dd61d16"},
+            {"WTMSIG_BLOCK_SIGNATURES",          "299dcb6af692324b899b39f16d5a530a33062804e41f09dc97e9f156b4476707"},
+            {"REPLACE_DEFERRED",                 "ef43112c6543b88db2283a2e077278c315ae2c84719a8b25f25cc88565fbea99"},
+            {"NO_DUPLICATE_DEFERRED_ID",         "4a90c00d55454dc5b059055ca213579c6ea856967712a56017487886a4d4cc0f"},
+            {"RAM_RESTRICTIONS",                 "4e7bf348da00a945489b2a681749eb56f5de00b900014e137ddae39f48f69d67"},
+            {"WEBAUTHN_KEY",                     "4fca8bd82bbd181e714e283f83e1b45d95ca5af40fb89ad3977b653c448f78c2"},
+            {"BLOCKCHAIN_PARAMETERS",            "5443fcf88330c586bc0e5f3dee10e7f63c76c00249c87fe4fbf7f38c082006b4"},
+            {"DISALLOW_EMPTY_PRODUCER_SCHEDULE", "68dcaa34c0517d19666e6b33add67351d8c5f69e999ca1e37931bc410a297428"},
+            {"ONLY_BILL_FIRST_AUTHORIZER",       "8ba52fe7a3956c5cd3a656a3174b931d3bb2abb45578befc59f283ecd816a405"},
+            {"RESTRICT_ACTION_TO_SELF",          "ad9e3d8f650687709fd68f4b90b41f7d825a365b02c23a636cef88ac2ac00c43"},
+            {"CONFIGURABLE_WASM_LIMITS",         "bf61537fd21c61a60e542a5d66c3f6a78da0589336868307f94a82bccea84e88"},
+            {"ACTION_RETURN_VALUE",              "c3a6138c5061cf291310887c0b5c71fcaffeab90d5deb50d3b9e687cead45071"},
+            {"FIX_LINKAUTH_RESTRICTION",         "e0fb64b1085cc5538970158d05a009c24e276fb94e1a0bf6a528b48fbc4ff526"},
+            {"GET_SENDER",                       "f0af56d2c5a48d60a4a5b5c903edfb7db3a736a94ed589d0b797df33ff9d3e1d"}
+         };
+         // push system feature
+         string contract_account = "eosio";
+         string action="activate";
+         string data;
+         std::locale loc;
+         vector<std::string> permissions = {"eosio"};
+         for(auto & c : feature_name_str) c = std::toupper(c, loc);
+         if(map_name_digest.find(feature_name_str) != map_name_digest.end()){
+            std::string feature_digest = map_name_digest[feature_name_str];
+            data =  "[\"" + feature_digest + "\"]";
+         } else {
+            std::cout << "Can't find system feature : " << feature_name_str << std::endl;
+            return;
+         }
+         fc::variant action_args_var;
+         action_args_var = json_from_file_or_string(data, fc::json::parse_type::relaxed_parser);
+         auto accountPermissions = get_account_permissions(permissions);
+         send_actions({chain::action{accountPermissions, name(contract_account), name(action),
+                                     variant_to_bin( name(contract_account), name(action), action_args_var ) }}, signing_keys_opt.get_keys());
+      });
+   }
+};
+
 void get_account( const string& accountName, const string& coresym, bool json_format ) {
    fc::variant json;
    if (coresym.empty()) {
@@ -3002,7 +3087,6 @@ int main( int argc, char** argv ) {
       std::cout << fc::json::to_pretty_string(call(get_key_accounts_func, arg)) << std::endl;
    });
 
-
    // get servants
    string controllingAccount;
    auto getServants = get->add_subcommand("servants", localized("Retrieve accounts which are servants of a given account "));
@@ -3082,14 +3166,16 @@ int main( int argc, char** argv ) {
               auto code = act["account"].as_string();
               auto func = act["name"].as_string();
               string args;
-              if( prettyact ) {
-                  args = fc::json::to_pretty_string( act["data"] );
-              }
-              else {
-                 args = fc::json::to_string( act["data"], fc::time_point::maximum() );
-                 if( !fullact ) {
-                    args = args.substr(0,60) + "...";
-                 }
+              if(act.contains("data")) {
+                  if( prettyact ) {
+                        args = fc::json::to_pretty_string( act["data"] );
+                  }
+                  else {
+                     args = fc::json::to_string( act["data"], fc::time_point::maximum() );
+                     if( !fullact ) {
+                        args = args.substr(0,60) + "...";
+                     }
+                  }
               }
               out << std::setw(24) << std::right<< (code +"::" + func) << " => " << left << std::setw(13) << receiver;
 
@@ -3392,7 +3478,7 @@ int main( int argc, char** argv ) {
 
         const string binary_wasm_header("\x00\x61\x73\x6d\x01\x00\x00\x00", 8);
         if(wasm.compare(0, 8, binary_wasm_header))
-           std::cerr << localized("WARNING: ") << wasmPath << localized(" doesn't look like a binary WASM file. Is it something else, like WAST? Trying anyways...") << std::endl;
+           std::cerr << localized("WARNING: ") << wasmPath << localized(" doesn't look like a binary WASM file. Is it something else, like WAST? Trying anyway...") << std::endl;
         code_bytes = bytes(wasm.begin(), wasm.end());
       } else {
         code_bytes = bytes();
@@ -3827,7 +3913,7 @@ int main( int argc, char** argv ) {
    actionsSubcommand->add_option("action", action,
                                  localized("A JSON string or filename defining the action to execute on the contract"), true)->required();
    actionsSubcommand->add_option("data", data, localized("The arguments to the contract"))->required();
-
+   actionsSubcommand->add_flag("-o,--read-only", tx_read_only, localized("Specify the action is read-only"));
    add_standard_transaction_options_plus_signing(actionsSubcommand);
    actionsSubcommand->callback([&] {
       fc::variant action_args_var;
@@ -3845,6 +3931,8 @@ int main( int argc, char** argv ) {
    auto trxSubcommand = push->add_subcommand("transaction", localized("Push an arbitrary JSON transaction"));
    trxSubcommand->add_option("transaction", trx_to_push, localized("The JSON string or filename defining the transaction to push"))->required();
    add_standard_transaction_options_plus_signing(trxSubcommand);
+   trxSubcommand->add_flag("-o,--read-only", tx_read_only, localized("Specify a transaction is read-only"));
+   trxSubcommand->add_flag("-t,--return-failure-trace", tx_rtn_failure_trace, localized("Return partial traces on failed transaction"));
 
    trxSubcommand->callback([&] {
       fc::variant trx_var = json_from_file_or_string(trx_to_push);
@@ -3868,7 +3956,6 @@ int main( int argc, char** argv ) {
       auto trxs_result = call(push_txns_func, trx_var);
       std::cout << fc::json::to_pretty_string(trxs_result) << std::endl;
    });
-
 
    // multisig subcommand
    auto msig = app.add_subcommand("multisig", localized("Multisig contract commands"));
@@ -4356,6 +4443,7 @@ int main( int argc, char** argv ) {
    auto unregProxy = unregproxy_subcommand(system);
 
    auto cancelDelay = canceldelay_subcommand(system);
+   auto activate = activate_subcommand(system);
 
    auto rex = system->add_subcommand("rex", localized("Actions related to REX (the resource exchange)"));
    rex->require_subcommand();

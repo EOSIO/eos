@@ -230,6 +230,28 @@ Builtin protocol feature: BLOCKCHAIN_PARAMETERS
 
 Allows privileged contracts to get and set subsets of blockchain parameters.
 */
+         (  builtin_protocol_feature_t::security_group, builtin_protocol_feature_spec{
+            "SECURITY_GROUP",
+            fc::variant("72ec6337e369cbb33ef7716d3267db9d5678fe54555c25ca4c9f5b9dfb7739f3").as<digest_type>(),
+            // SHA256 hash of the raw message below within the comment delimiters (do not modify message below).
+/*
+Builtin protocol feature: SECURITY_GROUP
+
+Allows privileged contracts to add/remove participants for mutual TLS enforcement.
+*/
+            {}
+         } )
+         (builtin_protocol_feature_t::resource_payer, builtin_protocol_feature_spec{
+            "RESOURCE_PAYER",
+            fc::variant("3d6f070c7cfcbbdbf2c07365f54d2cc9108b98b502e07495e8cc6f6e6dbf13bc").as<digest_type>(),
+            // SHA256 hash of the raw message below within the comment delimiters (do not modify message below).
+/*
+Builtin protocol feature: RESOURCE_PAYER
+
+Allows a 3rd party account to pay (sponsor) for the resources on the transactions of another account.
+*/
+            {}
+         } )
    ;
 
 
@@ -719,6 +741,8 @@ Allows privileged contracts to get and set subsets of blockchain parameters.
                   ("digest", feature_digest)
       );
 
+      validate_feature(*itr);
+
       if (auto dm_logger = _get_deep_mind_logger()) {
          fc_dlog(*dm_logger, "FEATURE_OP ACTIVATE ${feature_digest} ${feature}",
             ("feature_digest", feature_digest)
@@ -748,6 +772,18 @@ Allows privileged contracts to get and set subsets of blockchain parameters.
               && block_num < _activated_protocol_features.back().activation_block_num )
       {
          _activated_protocol_features.pop_back();
+      }
+   }
+
+   void protocol_feature_manager::validate_feature( const protocol_feature& feature) const {
+      if (*feature.builtin_feature == builtin_protocol_feature_t::security_group){
+         //enforce ssl requirement for activation of security groups
+         EOS_ASSERT( security_groups_enabled(),
+                     protocol_feature_exception,
+                     "security_group protocol feature activation requires ssl to be enabled. Following command line arguments are required:\n"
+                     "--p2p-tls-own-certificate-file\n"
+                     "--p2p-tls-private-key-file\n"
+                     "--p2p-tls-security-group-ca-file" );
       }
    }
 

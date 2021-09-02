@@ -9,10 +9,10 @@ Make sure you meet the following requirements:
 
 * Install the currently supported version of `cleos.`
 [[info | Note]]
-| The `cleos` tool is bundled with the EOSIO software. [Installing EOSIO](../../00_install/index.md) will install the `cleos` and `keosd` command line tools.  
+| `Cleos` is bundled with the EOSIO software. [Installing EOSIO](../../00_install/index.md) will also install the `cleos` and `keosd` comand line tools. 
 * You have an EOSIO account and access to the account's private key.
 
-## Reference
+## Command Reference
 See the following reference guides for command line usage and related options:
 
 * [cleos create key](../03_command-reference/create/key.md) command
@@ -22,7 +22,7 @@ See the following reference guides for command line usage and related options:
 ## Procedure
 The following step shows how to change the keys for the `active` permissions:
 
-1. Create a new key pair for the `active` permission
+1. Create a new key pair for the `active` permissions
 ```shell
 cleos create key --to-console
 ```
@@ -47,7 +47,7 @@ cleos wallet import --private-key 5KDNWQvY2seBPVUz7MiiaEDGTwACfuXu78bwZu7w2UDM9A
 imported private key for: EOS5zG7PsdtzQ9achTdRtXwHieL7yyigBFiJDRAQonqBsfKyL3XhC
 ```
 
-3. Update the `active` permission key
+3. Update the active permission key
 ```shell
 cleos set account permission alice active EOS5zG7PsdtzQ9achTdRtXwHieL7yyigBFiJDRAQonqBsfKyL3XhC -p alice@owner
 ```

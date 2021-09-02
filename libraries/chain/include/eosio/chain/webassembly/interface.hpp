@@ -2,10 +2,12 @@
 
 #include <eosio/chain/types.hpp>
 #include <eosio/chain/webassembly/common.hpp>
-#include <eosio/chain/webassembly/eos-vm.hpp>
 #include <fc/crypto/sha1.hpp>
+#include <boost/hana/string.hpp>
 
-namespace eosio { namespace chain { namespace webassembly {
+namespace eosio { namespace chain {
+class apply_context;
+namespace webassembly {
 
    class interface {
       public:
@@ -1606,7 +1608,7 @@ namespace eosio { namespace chain { namespace webassembly {
           * @param offset - position from where to start reading the value from the temporary buffer.
           * @param[out] data - span where the result value will be stored.
           *
-          * @return number of bytes written in data.
+          * @return amount of data in the temporary buffer.
           */
          uint32_t kv_get_data(uint32_t offset, span<char> data);
 
@@ -1896,6 +1898,48 @@ namespace eosio { namespace chain { namespace webassembly {
          int32_t __letf2(uint64_t, uint64_t, uint64_t, uint64_t) const;
          int32_t __lttf2(uint64_t, uint64_t, uint64_t, uint64_t) const;
          int32_t __unordtf2(uint64_t, uint64_t, uint64_t, uint64_t) const;
+
+         // security group api
+         /**
+          * Propose new participants to the security group.
+          *
+          * @ingroup security-group
+          * @param packed_participants - the buffer containing the packed participants.
+          * 
+          * @return -1 if proposing a new security group was unsuccessful, otherwise returns 0.
+         */
+         int64_t add_security_group_participants(span<const char> packed_participants);
+
+         /**
+          * Propose to remove participants from the security group.
+          *
+          * @ingroup security-group
+          * @param packed_participants - the buffer containing the packed participants.
+          * 
+          * @return -1 if proposing a new security group was unsuccessful, otherwise returns 0.
+         */
+         int64_t remove_security_group_participants(span<const char> packed_participants);
+
+         /**
+          * Check if the specified accounts are all in the active security group.
+          *
+          * @ingroup security-group
+          * @param packed_participants - the buffer containing the packed participants.
+          * 
+          * @return Returns true if the specified accounts are all in the active security group. 
+         */
+         bool in_active_security_group(span<const char> packed_participants) const;
+
+         /**
+          * Gets the active security group
+          *
+          * @ingroup security-group
+          * @param[out] packed_security_group - the buffer containing the packed security_group.
+          *
+          * @return Returns the size required in the buffer (if the buffer is too small, nothing is written).
+          *
+         */
+         uint32_t get_active_security_group(span<char> packed_security_group) const;
 
       private:
          apply_context& context;

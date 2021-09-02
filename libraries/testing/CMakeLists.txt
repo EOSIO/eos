@@ -18,10 +18,6 @@ target_include_directories( eosio_testing
                                    "${CMAKE_BINARY_DIR}/unittests/include"
                             )
 
-if(MSVC)
-  set_source_files_properties( db_init.cpp db_block.cpp database.cpp block_log.cpp PROPERTIES COMPILE_FLAGS "/bigobj" )
-endif(MSVC)
-
 set_target_properties( eosio_testing PROPERTIES PUBLIC_HEADER "${HEADERS}" )
 install( TARGETS eosio_testing
    RUNTIME DESTINATION ${CMAKE_INSTALL_FULL_BINDIR}
