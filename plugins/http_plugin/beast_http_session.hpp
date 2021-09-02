@@ -126,7 +126,7 @@ using local_stream = beast::basic_stream<
 
                 // Returns a bad request response
                 auto const bad_request =
-                [](beast::string_view why, detail::abstract_conn& conn)
+                [](const beast::string_view& why, detail::abstract_conn& conn)
                 {
                     conn.send_response(std::string(why), 
                                     static_cast<int>(http::status::bad_request));
