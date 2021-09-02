@@ -178,7 +178,7 @@ BOOST_AUTO_TEST_CASE(producer) {
             // need to sleep or a fast machine might put all trxs in one block
             usleep( config::block_interval_us / 2 );
          }
-         if( i % 500 == 0 && num_aborts <= 3 ) {
+         if( i % 200 == 0 && num_aborts <= 3 ) {
             // get_integrity_hash aborts block and places aborted trxs into unapplied_transaction_queue
             // verifying that aborting block does not lose transactions
             app().post(priority::high, [](){
