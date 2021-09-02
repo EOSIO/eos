@@ -1898,7 +1898,7 @@ bool producer_plugin_impl::process_unapplied_trxs( const fc::time_point& deadlin
                if( itr->next ) {
                   itr->next( std::make_shared<tx_cpu_usage_exceeded>(
                         FC_LOG_MESSAGE( error, "transaction ${id} exceeded failure limit for account ${a}",
-                                        ("id", trx->id())("a", resource_payer) ) ) );
+                                        ("id", trx->id())("a", first_auth) ) ) );
                }
                itr = _unapplied_transactions.erase( itr );
                continue;

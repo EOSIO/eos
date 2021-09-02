@@ -151,11 +151,11 @@ BOOST_AUTO_TEST_CASE(producer) {
          dlog( "posting ${id}", ("id", ptrx->id()) );
          app().post( priority::low, [ptrx, &next_calls, &num_posts, &trace_with_except, &trx_match, &trxs]() {
             ++num_posts;
-            bool return_failure_traces = num_posts % 2 == 0;
+            bool return_failure_traces = false; // not supported in version 2.1.x, in 2.2.x+ = num_posts % 2 == 0;
             app().get_method<plugin_interface::incoming::methods::transaction_async>()(ptrx,
                false, // persist_until_expiried
-               false, // read_only
-               return_failure_traces == true, // return_failure_traces
+               // 2.2.x+ false, // read_only
+               // 2.2.x+ return_failure_traces == true, // return_failure_traces
                [ptrx, &next_calls, &trace_with_except, &trx_match, &trxs, return_failure_traces]
                (const std::variant<fc::exception_ptr, transaction_trace_ptr>& result) {
                   if( !std::holds_alternative<fc::exception_ptr>( result ) && !std::get<chain::transaction_trace_ptr>( result )->except ) {
