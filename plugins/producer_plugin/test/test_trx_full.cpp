@@ -123,7 +123,6 @@ BOOST_AUTO_TEST_CASE(producer) {
       std::deque<block_state_ptr> all_blocks;
       std::promise<void> empty_blocks_promise;
       std::future<void> empty_blocks_fut = empty_blocks_promise.get_future();
-      std::atomic<size_t> num_aborts = 0;
       auto ab = chain_plug->chain().accepted_block.connect( [&](const block_state_ptr& bsp) {
          static int num_empty = std::numeric_limits<int>::max();
          all_blocks.push_back( bsp );
@@ -133,9 +132,6 @@ BOOST_AUTO_TEST_CASE(producer) {
          } else { // we want a few empty blocks after we have some non-empty blocks
             num_empty = 10;
          }
-      } );
-      auto ba = chain_plug->chain().block_abort.connect( [&]( uint32_t bn ) {
-         ++num_aborts;
       } );
       auto bs = chain_plug->chain().block_start.connect( [&]( uint32_t bn ) {
       } );
@@ -151,11 +147,11 @@ BOOST_AUTO_TEST_CASE(producer) {
          dlog( "posting ${id}", ("id", ptrx->id()) );
          app().post( priority::low, [ptrx, &next_calls, &num_posts, &trace_with_except, &trx_match, &trxs]() {
             ++num_posts;
-            bool return_failure_traces = num_posts % 2 == 0;
+            bool return_failure_traces = false; // 2.2.x+ = num_posts % 2 == 0;
             app().get_method<plugin_interface::incoming::methods::transaction_async>()(ptrx,
                false, // persist_until_expiried
-               false, // read_only
-               return_failure_traces == true, // return_failure_traces
+               // 2.2.x+ false, // read_only
+               // 2.2.x+ return_failure_traces == true, // return_failure_traces
                [ptrx, &next_calls, &trace_with_except, &trx_match, &trxs, return_failure_traces]
                (const std::variant<fc::exception_ptr, transaction_trace_ptr>& result) {
                   if( !std::holds_alternative<fc::exception_ptr>( result ) && !std::get<chain::transaction_trace_ptr>( result )->except ) {
@@ -178,7 +174,7 @@ BOOST_AUTO_TEST_CASE(producer) {
             // need to sleep or a fast machine might put all trxs in one block
             usleep( config::block_interval_us / 2 );
          }
-         if( i % 500 == 0 && num_aborts <= 3 ) {
+         if( i % 200 == 0 ) {
             // get_integrity_hash aborts block and places aborted trxs into unapplied_transaction_queue
             // verifying that aborting block does not lose transactions
             app().post(priority::high, [](){
@@ -191,7 +187,6 @@ BOOST_AUTO_TEST_CASE(producer) {
 
       BOOST_CHECK_EQUAL( trace_with_except, 0 ); // should not have any traces with except in it
       BOOST_CHECK( all_blocks.size() > 3 ); // should have a few blocks otherwise test is running too fast
-      BOOST_CHECK( num_aborts > 3 ); // should have a few abort_blocks or maybe get_integrity_hash has changed
       BOOST_CHECK_EQUAL( num_pushes, num_posts );
       BOOST_CHECK_EQUAL( num_pushes, next_calls );
       BOOST_CHECK( trx_match.load() );
