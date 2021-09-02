@@ -215,6 +215,7 @@ add_test(NAME trace_plugin_test COMMAND tests/trace_plugin_test.py WORKING_DIREC
 set_tests_properties(trace_plugin_test PROPERTIES TIMEOUT 100)
 set_property(TEST trace_plugin_test PROPERTY LABELS nonparallelizable_tests)
 
+add_subdirectory(eosvmoc_tests)
 add_subdirectory(se_tests)
 add_subdirectory(tpm_tests)
 
