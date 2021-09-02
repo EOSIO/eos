@@ -8,10 +8,16 @@ RUN yum update -y && \
     yum --enablerepo=extras install -y which git autoconf automake libtool make bzip2 doxygen \
     graphviz bzip2-devel openssl openssl-devel gmp-devel ocaml \
     python python-devel python-requests rh-python36 file libusbx-devel \
-    libcurl-devel patch vim-common jq glibc-locale-source glibc-langpack-en postgresql-server postgresql-devel && \
+    libcurl-devel patch vim-common jq glibc-locale-source glibc-langpack-en postgresql-server postgresql-devel \
+    libuuid-devel libtasn1-devel expect socat libseccomp-devel iproute && \
     yum clean all && rm -rf /var/cache/yum
 # requests module. used by tests
 RUN source /opt/rh/rh-python36/enable && python -m pip install requests
+# install erlang and rabbitmq
+RUN curl -s https://packagecloud.io/install/repositories/rabbitmq/erlang/script.rpm.sh | bash && \
+    yum install -y erlang
+RUN curl -s https://packagecloud.io/install/repositories/rabbitmq/rabbitmq-server/script.rpm.sh | bash && \
+    yum install -y rabbitmq-server
 # build cmake
 RUN curl -LO https://github.com/Kitware/CMake/releases/download/v3.16.2/cmake-3.16.2.tar.gz && \
     tar -xzf cmake-3.16.2.tar.gz && \

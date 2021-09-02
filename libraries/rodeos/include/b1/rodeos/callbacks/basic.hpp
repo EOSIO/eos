@@ -32,9 +32,9 @@ struct context_free_system_callbacks {
    template <typename Rft>
    static void register_callbacks() {
       // todo: preconditions
-      Rft::template add<&Derived::abort>("env", "abort");
-      Rft::template add<&Derived::eosio_assert>("env", "eosio_assert");
-      Rft::template add<&Derived::eosio_assert_message>("env", "eosio_assert_message");
+      RODEOS_REGISTER_CALLBACK(Rft, Derived, abort);
+      RODEOS_REGISTER_CALLBACK(Rft, Derived, eosio_assert);
+      RODEOS_REGISTER_CALLBACK(Rft, Derived, eosio_assert_message);
    }
 };
 
@@ -63,8 +63,8 @@ struct data_callbacks {
    template <typename Rft>
    static void register_callbacks() {
       // todo: preconditions
-      Rft::template add<&Derived::get_input_data>("env", "get_input_data");
-      Rft::template add<&Derived::set_output_data>("env", "set_output_data");
+      RODEOS_REGISTER_CALLBACK(Rft, Derived, get_input_data);
+      RODEOS_REGISTER_CALLBACK(Rft, Derived, set_output_data);
    }
 };
 
