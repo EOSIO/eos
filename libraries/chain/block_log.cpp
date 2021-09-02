@@ -1213,6 +1213,6 @@ namespace eosio { namespace chain {
    } } /// eosio::chain
 
 // used only for unit test to adjust the buffer length
-void set_buff_len(uint64_t len){
+void block_log_set_buff_len(uint64_t len){
     eosio::chain::detail::reverse_iterator::_buf_len = len;
 }
