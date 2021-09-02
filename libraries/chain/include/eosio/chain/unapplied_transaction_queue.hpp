@@ -190,6 +190,13 @@ public:
                { trx, expiry, persist_until_expired ? trx_enum_type::incoming_persisted : trx_enum_type::incoming, std::move( next ) } );
          if( insert_itr.second ) added( insert_itr.first );
       } else {
+         if( !(itr->trx_meta == trx) && next ) {
+            // next will be updated in modify() below, notify previous next of duplicate
+            next( std::static_pointer_cast<fc::exception>( std::make_shared<tx_duplicate>(
+                  FC_LOG_MESSAGE( info, "duplicate transaction ${id}", ("id", trx->id()) ) ) ) );
+            return;
+         }
+
          if (itr->trx_type != trx_enum_type::incoming && itr->trx_type != trx_enum_type::incoming_persisted)
             ++incoming_count;
 
