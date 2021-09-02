@@ -10,6 +10,8 @@ from TestHelper import TestHelper
 from TestHelper import AppArgs
 from rodeos_utils import RodeosCluster
 
+from enum import IntEnum
+
 import json
 import os
 import re
@@ -47,6 +49,67 @@ with RodeosCluster(args.dump_error_details,
         args.num_rodeos) as cluster:
 
     assert cluster.waitRodeosReady(), "Rodeos failed to stand up"
+
+    timeBetweeCommandsSeconds = 3
+
+    class NodeT(IntEnum):
+        PROD = 1
+        SHIP = 2
+        RODEOS = 3
+
+    class CmdT(IntEnum):
+        STOP = 1
+        RESTART = 2
+
+
+    # the command schedule, which consist of a list of lists tuples of 2-tuples
+    # each 2-tuple is (NodeT, CmdT)
+    cmdSched = []
+
+    # for now, just mnauuly produce the schedule
+    # ideally this would be  computed, such as with itertools, 
+    # to get all possible permutations (ensuring a node is not attempted to be restarted)
+    # until it has been stopped
+    cmdSched.append([(NodeT.PROD, CmdT.STOP), (NodeT.PROD, CmdT.RESTART)])
+    cmdSched.append([(NodeT.SHIP, CmdT.STOP), (NodeT.SHIP, CmdT.RESTART)])
+    cmdSched.append([(NodeT.RODEOS, CmdT.STOP), (NodeT.RODEOS, CmdT.RESTART)])
+
+    # 2 combinations 
+    cmdSched.append([(NodeT.PROD, CmdT.STOP), (NodeT.SHIP, CmdT.STOP), 
+                     (NodeT.PROD, CmdT.RESTART), (NodeT.SHIP, CmdT.RESTART )])
+
+    cmdSched.append([(NodeT.PROD, CmdT.STOP), (NodeT.RODEOS, CmdT.STOP), 
+                     (NodeT.PROD, CmdT.RESTART), (NodeT.RODEOS, CmdT.RESTART )])                     
+    
+    cmdSched.append([(NodeT.SHIP, CmdT.STOP), (NodeT.RODEOS, CmdT.STOP), 
+                     (NodeT.SHIP, CmdT.RESTART), (NodeT.RODEOS, CmdT.RESTART )])                                          
+    
+    for cmdList in cmdSched:
+        for cmd in cmdList:
+            print(f"Waiting {timeBetweeCommandsSeconds} seconds ..")
+            time.sleep(timeBetweeCommandsSeconds)
+
+            if cmd[0] == NodeT.PROD:
+                if cmd[1] == CmdT.STOP:
+                    print("Stopping producer")
+                    cluster.stopProducer(9)
+                else:
+                    print("Restarting producer")
+                    cluster.restartProducer(clean=False)
+            elif cmd[0] == NodeT.SHIP:
+                if cmd[1] == CmdT.STOP:
+                    print("Stopping SHIP")
+                    cluster.stopShip(9)
+                else:
+                    print("Restarting SHIP")
+                    cluster.restartShip(clean=False)
+            elif cmd[0] == NodeT.RODEOS:
+                if cmd[1] == CmdT.RODEOS:
+                    print("Stopping rodeos")
+                    cluster.stopRodeos(9)
+                else:
+                    print("Restarting rodeos")
+                    cluster.restartRodeos(clean=False)
 
     # Big enough to have new blocks produced
     numBlocks=120

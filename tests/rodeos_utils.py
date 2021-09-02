@@ -117,14 +117,15 @@ class RodeosCluster(object):
             shutil.rmtree(Utils.getNodeDataDir(node.nodeId))
 
         # skipGenesis=False starts the same chain
-        isRelaunchSuccess=node.relaunch(chainArg=chainArg,                      timeout=relaunchTimeout, skipGenesis=False, cachePopen=True)
+        relaunchTimeout = 3 # hardcode for now
+        isRelaunchSuccess=node.relaunch(chainArg=chainArg, timeout=relaunchTimeout, skipGenesis=False, cachePopen=True)
         time.sleep(1) # Give a second to replay or resync if needed
         assert isRelaunchSuccess, relaunchAssertMessage
         return isRelaunchSuccess
 
     def restartProducer(self, clean):
         # need to reenable producing after restart
-        relaunchNode(self.prodNode, chainArg="-e -p defproducera ", clean=clean)
+        RodeosCluster.relaunchNode(self.prodNode, chainArg="-e -p defproducera ", clean=clean)
 
     def stopProducer(self, killSignal):
         self.prodNode.kill(killSignal)
@@ -134,12 +135,12 @@ class RodeosCluster(object):
 
         if self.unix_socket:
             arg += "--state-history-unix-socket-path ship.sock"
-        relaunchNode(self.shipNode, chainArg=arg, clean=clean)
+        self.relaunchNode(self.shipNode, chainArg=arg, clean=clean)
 
     def stopShip(self, killSignal):
         self.shipNode.kill(killSignal)
 
-    def restartRodeos(self, rodeosId=0, clean=True):
+    def restartRodeos(self, rodeosId=0, clean):
         assert(rodeosId >= 0 and rodeosId < self.numRodeos)
 
         if clean:
