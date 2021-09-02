@@ -92,6 +92,10 @@ namespace {
          store->append_trx_ids(tt);
       }
 
+      void increase_total_blocks(){
+          store->increase_total_blocks();
+      }
+
       std::shared_ptr<Store> store;
    };
 }

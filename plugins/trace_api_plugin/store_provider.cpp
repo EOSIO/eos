@@ -7,8 +7,8 @@ namespace {
       static constexpr uint32_t _current_version = 1;
       static constexpr const char* _trace_prefix = "trace_";
       static constexpr const char* _trace_index_prefix = "trace_index_";
+      static constexpr const char* _trace_blk_id_prefix = "trace_blk_id_";
       static constexpr const char* _trace_ext = ".log";
-      static constexpr const char* _trx_id_file_name = "trx_id.log";
       static constexpr const char* _compressed_trace_ext = ".clog";
       static constexpr uint _max_filename_size = std::char_traits<char>::length(_trace_index_prefix) + 10 + 1 + 10 + std::char_traits<char>::length(_compressed_trace_ext) + 1; // "trace_index_" + 10-digits + '-' + 10-digits + ".clog" + null-char
 
@@ -63,12 +63,10 @@ namespace eosio::trace_api {
 
    void store_provider::append_trx_ids(const block_trxs_entry& tt){
       fc::cfile trx_id_file;
-      _slice_directory.find_or_create_trx_id_slice(open_state::write, trx_id_file);
-
-      //for (const auto& id : tt.ids) {
-         auto entry = metadata_log_entry { tt };
-         append_store(entry, trx_id_file);
-      //}
+      const uint32_t slice_number = _slice_directory.slice_number(tt.block_num);
+      _slice_directory.find_or_create_trx_id_slice(slice_number, open_state::write, trx_id_file);
+      auto entry = metadata_log_entry { tt };
+      append_store(entry, trx_id_file);
    }
 
    get_block_t store_provider::get_block(uint32_t block_height, const yield_function& yield) {
@@ -101,25 +99,29 @@ namespace eosio::trace_api {
 
     get_block_n store_provider::get_trx_block_number(const chain::transaction_id_type& trx_id, const yield_function& yield) {
       fc::cfile trx_id_file;
-      const bool found = _slice_directory.find_trx_id_slice(open_state::read, trx_id_file);
-      if( !found ) {
-         return {};
-      }
-
-      metadata_log_entry entry;
-      auto ds = trx_id_file.create_datastream();
-      const uint64_t end = file_size(trx_id_file.get_file_path());
-      uint64_t offset = trx_id_file.tellp();
-      while (offset < end) {
-         //yield();
-         fc::raw::unpack(ds, entry);
-         FC_ASSERT( std::holds_alternative<block_trxs_entry>(entry) == true, "unpacked data should be a block trxs entry" );
-         const auto& trxs_entry = std::get<block_trxs_entry>(entry);
-         for (uint32_t i = 0; i < trxs_entry.ids.size(); ++i){
-            if (trxs_entry.ids[i] == trx_id)
-                return trxs_entry.block_num;
+      uint32_t num_slices = _slice_directory.slice_number(_total_blocks);
+      // some slices may have been deleted during maintenance
+      for (auto slice_number = 0U; slice_number < num_slices; ++slice_number) {
+         const bool found = _slice_directory.find_trx_id_slice(slice_number, open_state::read, trx_id_file);
+         if( !found ) {
+            return {};
          }
-         offset = trx_id_file.tellp();
+
+         metadata_log_entry entry;
+         auto ds = trx_id_file.create_datastream();
+         const uint64_t end = file_size(trx_id_file.get_file_path());
+         uint64_t offset = trx_id_file.tellp();
+         while (offset < end) {
+            //yield();
+            fc::raw::unpack(ds, entry);
+            FC_ASSERT( std::holds_alternative<block_trxs_entry>(entry) == true, "unpacked data should be a block trxs entry" );
+            const auto& trxs_entry = std::get<block_trxs_entry>(entry);
+            for (auto i = 0U; i < trxs_entry.ids.size(); ++i){
+               if (trxs_entry.ids[i] == trx_id)
+                  return trxs_entry.block_num;
+            }
+            offset = trx_id_file.tellp();
+         }
       }
       return get_block_n{};
    }
@@ -243,16 +245,16 @@ namespace eosio::trace_api {
       }
    }
 
-   bool slice_directory::find_or_create_trx_id_slice(open_state state, fc::cfile& trx_id_file) const {
-       const bool found = find_trx_id_slice(state, trx_id_file);
+   bool slice_directory::find_or_create_trx_id_slice(uint32_t slice_number, open_state state, fc::cfile& trx_id_file) const {
+       const bool found = find_trx_id_slice(slice_number, state, trx_id_file);
        if( !found ) {
            trx_id_file.open(fc::cfile::create_or_update_rw_mode);
        }
        return found;
    }
 
-   bool slice_directory::find_trx_id_slice(open_state state, fc::cfile& trx_id_file, bool open_file) const {
-      const bool found = find_file(trx_id_file, open_file);
+   bool slice_directory::find_trx_id_slice(uint32_t slice_number, open_state state, fc::cfile& trx_id_file, bool open_file) const {
+      const bool found = find_slice(_trace_blk_id_prefix, slice_number, trx_id_file, open_file);
       if( !found || !open_file ) {
          return found;
       }
@@ -260,23 +262,6 @@ namespace eosio::trace_api {
           trx_id_file.seek_end(0);
       }
       return true;
-   }
-
-   bool slice_directory::find_file(fc::cfile& trx_id_file, bool open_file) const {
-       auto filename = _trx_id_file_name;
-       const path slice_path = _slice_dir / filename;
-       trx_id_file.set_file_path(slice_path);
-
-       const bool file_exists = exists(slice_path);
-       if( !file_exists || !open_file ) {
-           return file_exists;
-       }
-
-       trx_id_file.open(fc::cfile::create_or_update_rw_mode);
-       // TODO: this is a temporary fix until fc::cfile handles it internally.  OSX and Linux differ on the read offset
-       // when opening in "ab+" mode
-       trx_id_file.seek(0);
-       return true;
    }
 
    void slice_directory::set_lib(uint32_t lib) {

@@ -106,14 +106,16 @@ private:
          }
          clear_caches();
 
-         //save to trx id log file
-         if (tt.ids.size() > 0){
-            tt.block_num = bt.number;
-            store.append_trx_ids( std::move(tt) );
-            //store.update_total_trxs(tt.ids.size());
+         //store transaction ids
+         if (tt.ids.size() == 0){
+            transaction_id_type  place_holder_id{"0"};
+            tt.ids.emplace_back(place_holder_id);
          }
+         tt.block_num = bt.number;
+         store.append_trx_ids( std::move(tt) );
 
          store.append( std::move( bt ) );
+         store.increase_total_blocks();
 
       } catch( ... ) {
          except_handler( MAKE_EXCEPTION_WITH_CONTEXT( std::current_exception() ) );

@@ -187,22 +187,24 @@ namespace eosio::trace_api {
       /**
        * Find or create a trx id file that contains all the transaction ids and associate block numbers
        *
+       * @param slice_number : slice number of the requested slice file
        * @param state : indicate if the file is going to be written to (appended) or read
        * @param trx_id_file : the cfile
        * @return the true if file was found (i.e. already existed)
        */
-      bool find_or_create_trx_id_slice(open_state state, fc::cfile& trx_id_file) const;
+      bool find_or_create_trx_id_slice(uint32_t slice_number, open_state state, fc::cfile& trx_id_file) const;
 
       /**
        * Find the trx id file
        *
+       * @param slice_number : slice number of the requested slice file
        * @param state : indicate if the file is going to be written to (appended) or read
        * @param trx_id_file : the cfile
        * @param open_file : indicate if the file should be opened (if found) or not
        * @return the true if file was found (i.e. already existed), if not found trx_id_file
        *         is set to the appropriate file, but not open
        */
-      bool find_trx_id_slice(open_state state, fc::cfile& trx_id_file, bool open_file = true) const;
+      bool find_trx_id_slice(uint32_t slice_number, open_state state, fc::cfile& trx_id_file, bool open_file = true) const;
 
       /**
        * set the LIB for maintenance
@@ -232,9 +234,6 @@ namespace eosio::trace_api {
       // returns true if slice is found, slice_file will always be set to the appropriate path for
       // the slice_prefix and slice_number, but will only be opened if found
       bool find_slice(const char* slice_prefix, uint32_t slice_number, fc::cfile& slice_file, bool open_file) const;
-
-      // return true if the trx id file is found, the file will always be set to the appropriate path, but will only be opened if found
-      bool find_file(fc::cfile& trx_id_file, bool open_file) const;
 
       // take an index file that is initialized to a file and open it and write its header
       void create_new_index_slice_file(fc::cfile& index_file) const;
@@ -274,7 +273,6 @@ namespace eosio::trace_api {
       template<typename BlockTrace>
       void append(const BlockTrace& bt);
       void append_lib(uint32_t lib);
-
       void append_trx_ids(const block_trxs_entry& tt);
 
       /**
@@ -287,12 +285,8 @@ namespace eosio::trace_api {
 
       get_block_n get_trx_block_number(const chain::transaction_id_type& trx_id, const yield_function& yield= {});
 
-      uint64_t get_total_trxs() const {
-         return _total_trxs;
-      }
-
-      void update_total_trxs(const uint32_t num) {
-          _total_trxs += num;
+      void increase_total_blocks() {
+          _total_blocks++;
       }
 
       void start_maintenance_thread( log_handler log ) {
@@ -301,7 +295,6 @@ namespace eosio::trace_api {
       void stop_maintenance_thread() {
          _slice_directory.stop_maintenance_thread();
       }
-
 
       protected:
       /**
@@ -390,7 +383,7 @@ namespace eosio::trace_api {
 
 
       slice_directory _slice_directory;
-      uint64_t _total_trxs = 0;
+      uint64_t _total_blocks = 0;
    };
 
 }
