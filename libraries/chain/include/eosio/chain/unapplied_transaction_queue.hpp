@@ -194,6 +194,12 @@ public:
          if (itr->trx_type != trx_enum_type::incoming && itr->trx_type != trx_enum_type::incoming_persisted)
             ++incoming_count;
 
+         if( !(itr->trx_meta == trx) && itr->next ) {
+            // next will be updated in modify() below, notify previous next of duplicate
+            itr->next( std::static_pointer_cast<fc::exception>( std::make_shared<tx_duplicate>(
+                  FC_LOG_MESSAGE( info, "duplicate transaction ${id}", ("id", itr->trx_meta->id())))));
+         }
+
          queue.get<by_trx_id>().modify( itr, [persist_until_expired, return_failure_trace, next{std::move(next)}](auto& un) mutable {
             un.trx_type = persist_until_expired ? trx_enum_type::incoming_persisted : trx_enum_type::incoming;
             un.return_failure_trace = return_failure_trace;
