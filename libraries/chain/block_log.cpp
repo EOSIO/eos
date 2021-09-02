@@ -102,7 +102,7 @@ namespace eosio { namespace chain {
          uint64_t previous();
          uint32_t version() const { return _version; }
          uint32_t first_block_num() const { return _first_block_num; }
-         constexpr static uint32_t      _buf_len                          = 1U << 24;
+         static uint32_t      _buf_len;
       private:
          void update_buffer();
 
@@ -759,6 +759,8 @@ namespace eosio { namespace chain {
    , _buffer_ptr(std::make_unique<char[]>(_buf_len)) {
    }
 
+   uint32_t detail::reverse_iterator::_buf_len = 1U << 24;
+
    uint32_t detail::reverse_iterator::open(const fc::path& block_file_name) {
       _block_file_name = block_file_name.generic_string();
       _file.reset( FC_FOPEN(_block_file_name.c_str(), "r"));
@@ -956,6 +958,20 @@ namespace eosio { namespace chain {
       return std::clamp(version, min_supported_version, max_supported_version) == version;
    }
 
+   namespace {
+      template <typename T>
+      T read_buffer(const char* buf) {
+         T result;
+         memcpy(&result, buf, sizeof(T));
+         return result;
+      }
+
+      template <typename T>
+      void write_buffer(char* des, const T* src) {
+          memcpy(des, src, sizeof(T));
+      }
+   }
+
    bool block_log::trim_blocklog_front(const fc::path& block_dir, const fc::path& temp_dir, uint32_t truncate_at_block) {
       using namespace std;
       EOS_ASSERT( block_dir != temp_dir, block_log_exception, "block_dir and temp_dir need to be different directories" );
@@ -1024,7 +1040,8 @@ namespace eosio { namespace chain {
       detail::index_writer index(new_index_filename, num_blocks);
 
       uint64_t read_size = 0;
-      for(uint64_t to_write_remaining = to_write; to_write_remaining > 0; to_write_remaining -= read_size) {
+      uint64_t write_size = 0;
+      for(uint64_t to_write_remaining = to_write; to_write_remaining > 0; to_write_remaining -= write_size) {
          read_size = to_write_remaining;
          if (read_size > detail::reverse_iterator::_buf_len) {
             read_size = detail::reverse_iterator::_buf_len;
@@ -1038,17 +1055,26 @@ namespace eosio { namespace chain {
 
          // walk this memory section to adjust block position to match the adjusted location
          // of the block start and store in the new index file
+         write_size = read_size;
          while(original_pos >= start_of_blk_buffer_pos) {
             const auto buffer_index = original_pos - start_of_blk_buffer_pos;
-            uint64_t& pos_content = *(uint64_t*)(buf + buffer_index);
+            uint64_t pos_content = read_buffer<uint64_t>(buf + buffer_index);
+
+            if ( (pos_content - start_of_blk_buffer_pos) > 0 && (pos_content - start_of_blk_buffer_pos) < pos_size ) {
+               // avoid the whole 8 bytes that contains a blk pos being split by the buffer
+               write_size = read_size - (pos_content - start_of_blk_buffer_pos);
+            }
             const auto start_of_this_block = pos_content;
             pos_content = start_of_this_block - pos_delta;
+            write_buffer<uint64_t>(buf + buffer_index, &pos_content);
             index.write(pos_content);
             original_pos = start_of_this_block - pos_size;
          }
-         new_block_file.seek(new_block_file_first_block_pos + to_write_remaining - read_size);
-         new_block_file.write(buf, read_size);
+         new_block_file.seek(new_block_file_first_block_pos + to_write_remaining - write_size);
+         uint64_t offset = read_size - write_size;
+         new_block_file.write(buf+offset, write_size);
       }
+
       index.complete();
       fclose(original_block_log.blk_in);
       original_block_log.blk_in = nullptr;
@@ -1185,3 +1211,8 @@ namespace eosio { namespace chain {
    }
 
    } } /// eosio::chain
+
+// used only for unit test to adjust the buffer length
+void block_log_set_buff_len(uint64_t len){
+    eosio::chain::detail::reverse_iterator::_buf_len = len;
+}
