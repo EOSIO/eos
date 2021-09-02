@@ -458,6 +458,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
                   };
                   try {
                      auto result = future.get();
+                     bool return_failure_trace = false;
                      if( !self->process_incoming_transaction_async( result, persist_until_expired, return_failure_trace, next) ) {
                         if( self->_pending_block_mode == pending_block_mode::producing ) {
                            self->schedule_maybe_produce_block( true );
@@ -517,8 +518,8 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
 
       bool process_incoming_transaction_async(const transaction_metadata_ptr& trx,
                                               bool persist_until_expired,
-                                              next_function<transaction_trace_ptr> next,
-                                              bool return_failure_trace = false)
+                                              bool return_failure_trace,
+                                              next_function<transaction_trace_ptr> next)
       {
          bool exhausted = false;
          chain::controller& chain = chain_plug->chain();
