@@ -70,9 +70,9 @@ with RodeosCluster(args.dump_error_details,
     # ideally this would be  computed, such as with itertools, 
     # to get all possible permutations (ensuring a node is not attempted to be restarted)
     # until it has been stopped
-    cmdSched.append([(NodeT.PROD, CmdT.STOP), (NodeT.PROD, CmdT.RESTART)])
-    cmdSched.append([(NodeT.SHIP, CmdT.STOP), (NodeT.SHIP, CmdT.RESTART)])
     cmdSched.append([(NodeT.RODEOS, CmdT.STOP), (NodeT.RODEOS, CmdT.RESTART)])
+    cmdSched.append([(NodeT.SHIP, CmdT.STOP), (NodeT.SHIP, CmdT.RESTART)])
+    cmdSched.append([(NodeT.PROD, CmdT.STOP), (NodeT.PROD, CmdT.RESTART)])
 
     # 2 combinations 
     cmdSched.append([(NodeT.PROD, CmdT.STOP), (NodeT.SHIP, CmdT.STOP), 
@@ -104,7 +104,7 @@ with RodeosCluster(args.dump_error_details,
                     print("Restarting SHIP")
                     cluster.restartShip(clean=False)
             elif cmd[0] == NodeT.RODEOS:
-                if cmd[1] == CmdT.RODEOS:
+                if cmd[1] == CmdT.STOP:
                     print("Stopping rodeos")
                     cluster.stopRodeos(9)
                 else:

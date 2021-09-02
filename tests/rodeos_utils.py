@@ -135,12 +135,12 @@ class RodeosCluster(object):
 
         if self.unix_socket:
             arg += "--state-history-unix-socket-path ship.sock"
-        self.relaunchNode(self.shipNode, chainArg=arg, clean=clean)
+        RodeosCluster.relaunchNode(self.shipNode, chainArg=arg, clean=clean)
 
     def stopShip(self, killSignal):
         self.shipNode.kill(killSignal)
 
-    def restartRodeos(self, rodeosId=0, clean):
+    def restartRodeos(self, rodeosId=0, clean=False):
         assert(rodeosId >= 0 and rodeosId < self.numRodeos)
 
         if clean:
