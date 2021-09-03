@@ -1233,7 +1233,7 @@ class Node(object):
 
     # pylint: disable=too-many-locals
     # If nodeosPath is equal to None, it will use the existing nodeos path
-    def relaunch(self, chainArg=None, newChain=False, skipGenesis=True, timeout=Utils.systemWaitTimeout, addSwapFlags=None, cachePopen=False, nodeosPath=None):
+    def relaunch(self, chainArg=None, newChain=False, skipGenesis=True, timeout=Utils.systemWaitTimeout, addSwapFlags=None, cachePopen=False, nodeosPath=None, waitForTerm=True):
 
         assert(self.pid is None)
         assert(self.killed)
@@ -1298,7 +1298,7 @@ class Node(object):
                     else:
                         return False
 
-        if "terminate-at-block" not in cmd:
+        if "terminate-at-block" not in cmd or not waitForTerm:
             isAlive=Utils.waitForTruth(isNodeAlive, timeout, sleepTime=1)
         else:
             lam=DidProcessExitGracefully(self.popenProc, timeout)
