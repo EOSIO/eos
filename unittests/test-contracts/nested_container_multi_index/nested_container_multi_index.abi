@@ -23,6 +23,10 @@
             "type": "uint16[]"
         },
         {
+            "new_type_name": "tup_uint16",
+            "type": "tuple_uint16_uint16"
+        },
+        {
             "new_type_name": "vec_op_uint16",
             "type": "op_uint16[]"
         },
@@ -103,6 +107,20 @@
             ]
         },
         {
+            "name": "pair_uint16_tup_uint16",
+            "base": "",
+            "fields": [
+                {
+                    "name": "key",
+                    "type": "uint16"
+                },
+                {
+                    "name": "value",
+                    "type": "tup_uint16"
+                }
+            ]
+        },
+        {
             "name": "pair_uint16_uint16",
             "base": "",
             "fields": [
@@ -173,6 +191,10 @@
                     "type": "pr_uint16[]"
                 },
                 {
+                    "name": "stt",
+                    "type": "tup_uint16[]"
+                },
+                {
                     "name": "vst",
                     "type": "set_uint16[]"
                 },
@@ -191,6 +213,10 @@
                 {
                     "name": "vp",
                     "type": "pr_uint16[]"
+                },
+                {
+                    "name": "vt",
+                    "type": "tup_uint16[]"
                 },
                 {
                     "name": "ost",
@@ -213,6 +239,10 @@
                     "type": "pr_uint16?"
                 },
                 {
+                    "name": "ot",
+                    "type": "tup_uint16?"
+                },
+                {
                     "name": "mst",
                     "type": "pair_uint16_set_uint16[]"
                 },
@@ -233,6 +263,10 @@
                     "type": "pair_uint16_pr_uint16[]"
                 },
                 {
+                    "name": "mt",
+                    "type": "pair_uint16_tup_uint16[]"
+                },
+                {
                     "name": "pst",
                     "type": "pair_uint16_set_uint16"
                 },
@@ -251,6 +285,34 @@
                 {
                     "name": "pp",
                     "type": "pair_uint16_pr_uint16"
+                },
+                {
+                    "name": "pt",
+                    "type": "pair_uint16_tup_uint16"
+                },
+                {
+                    "name": "tv",
+                    "type": "tuple_uint16_vec_uint16_vec_uint16"
+                },
+                {
+                    "name": "tst",
+                    "type": "tuple_uint16_set_uint16_set_uint16"
+                },
+                {
+                    "name": "to",
+                    "type": "tuple_op_uint16_op_uint16_op_uint16_op_uint16_op_uint16"
+                },
+                {
+                    "name": "tm",
+                    "type": "tuple_uint16_mp_uint16_mp_uint16"
+                },
+                {
+                    "name": "tp",
+                    "type": "tuple_uint16_pr_uint16_pr_uint16"
+                },
+                {
+                    "name": "tt",
+                    "type": "tuple_tup_uint16_tup_uint16_tup_uint16"
                 },
                 {
                     "name": "vos",
@@ -315,6 +377,20 @@
                 {
                     "name": "mst",
                     "type": "pair_uint16_set_uint16[]"
+                }
+            ]
+        },
+        {
+            "name": "setmt",
+            "base": "",
+            "fields": [
+                {
+                    "name": "user",
+                    "type": "name"
+                },
+                {
+                    "name": "mt",
+                    "type": "pair_uint16_tup_uint16[]"
                 }
             ]
         },
@@ -389,6 +465,20 @@
             ]
         },
         {
+            "name": "setot",
+            "base": "",
+            "fields": [
+                {
+                    "name": "user",
+                    "type": "name"
+                },
+                {
+                    "name": "ot",
+                    "type": "tup_uint16?"
+                }
+            ]
+        },
+        {
             "name": "setov",
             "base": "",
             "fields": [
@@ -455,6 +545,20 @@
                 {
                     "name": "pst",
                     "type": "pair_uint16_set_uint16"
+                }
+            ]
+        },
+        {
+            "name": "setpt",
+            "base": "",
+            "fields": [
+                {
+                    "name": "user",
+                    "type": "name"
+                },
+                {
+                    "name": "pt",
+                    "type": "pair_uint16_tup_uint16"
                 }
             ]
         },
@@ -543,6 +647,20 @@
             ]
         },
         {
+            "name": "setstt",
+            "base": "",
+            "fields": [
+                {
+                    "name": "user",
+                    "type": "name"
+                },
+                {
+                    "name": "stt",
+                    "type": "tup_uint16[]"
+                }
+            ]
+        },
+        {
             "name": "setstv",
             "base": "",
             "fields": [
@@ -553,6 +671,90 @@
                 {
                     "name": "stv",
                     "type": "vec_uint16[]"
+                }
+            ]
+        },
+        {
+            "name": "settm",
+            "base": "",
+            "fields": [
+                {
+                    "name": "user",
+                    "type": "name"
+                },
+                {
+                    "name": "tm",
+                    "type": "tuple_uint16_mp_uint16_mp_uint16"
+                }
+            ]
+        },
+        {
+            "name": "setto",
+            "base": "",
+            "fields": [
+                {
+                    "name": "user",
+                    "type": "name"
+                },
+                {
+                    "name": "to",
+                    "type": "tuple_op_uint16_op_uint16_op_uint16_op_uint16_op_uint16"
+                }
+            ]
+        },
+        {
+            "name": "settp",
+            "base": "",
+            "fields": [
+                {
+                    "name": "user",
+                    "type": "name"
+                },
+                {
+                    "name": "tp",
+                    "type": "tuple_uint16_pr_uint16_pr_uint16"
+                }
+            ]
+        },
+        {
+            "name": "settst",
+            "base": "",
+            "fields": [
+                {
+                    "name": "user",
+                    "type": "name"
+                },
+                {
+                    "name": "tst",
+                    "type": "tuple_uint16_set_uint16_set_uint16"
+                }
+            ]
+        },
+        {
+            "name": "settt",
+            "base": "",
+            "fields": [
+                {
+                    "name": "user",
+                    "type": "name"
+                },
+                {
+                    "name": "tt",
+                    "type": "tuple_tup_uint16_tup_uint16_tup_uint16"
+                }
+            ]
+        },
+        {
+            "name": "settv",
+            "base": "",
+            "fields": [
+                {
+                    "name": "user",
+                    "type": "name"
+                },
+                {
+                    "name": "tv",
+                    "type": "tuple_uint16_vec_uint16_vec_uint16"
                 }
             ]
         },
@@ -627,6 +829,20 @@
             ]
         },
         {
+            "name": "setvt",
+            "base": "",
+            "fields": [
+                {
+                    "name": "user",
+                    "type": "name"
+                },
+                {
+                    "name": "vt",
+                    "type": "tup_uint16[]"
+                }
+            ]
+        },
+        {
             "name": "setvv",
             "base": "",
             "fields": [
@@ -637,6 +853,136 @@
                 {
                     "name": "vv",
                     "type": "vec_uint16[]"
+                }
+            ]
+        },
+        {
+            "name": "tuple_op_uint16_op_uint16_op_uint16_op_uint16_op_uint16",
+            "base": "",
+            "fields": [
+                {
+                    "name": "field_0",
+                    "type": "op_uint16"
+                },
+                {
+                    "name": "field_1",
+                    "type": "op_uint16"
+                },
+                {
+                    "name": "field_2",
+                    "type": "op_uint16"
+                },
+                {
+                    "name": "field_3",
+                    "type": "op_uint16"
+                },
+                {
+                    "name": "field_4",
+                    "type": "op_uint16"
+                }
+            ]
+        },
+        {
+            "name": "tuple_tup_uint16_tup_uint16_tup_uint16",
+            "base": "",
+            "fields": [
+                {
+                    "name": "field_0",
+                    "type": "tup_uint16"
+                },
+                {
+                    "name": "field_1",
+                    "type": "tup_uint16"
+                },
+                {
+                    "name": "field_2",
+                    "type": "tup_uint16"
+                }
+            ]
+        },
+        {
+            "name": "tuple_uint16_mp_uint16_mp_uint16",
+            "base": "",
+            "fields": [
+                {
+                    "name": "field_0",
+                    "type": "uint16"
+                },
+                {
+                    "name": "field_1",
+                    "type": "mp_uint16"
+                },
+                {
+                    "name": "field_2",
+                    "type": "mp_uint16"
+                }
+            ]
+        },
+        {
+            "name": "tuple_uint16_pr_uint16_pr_uint16",
+            "base": "",
+            "fields": [
+                {
+                    "name": "field_0",
+                    "type": "uint16"
+                },
+                {
+                    "name": "field_1",
+                    "type": "pr_uint16"
+                },
+                {
+                    "name": "field_2",
+                    "type": "pr_uint16"
+                }
+            ]
+        },
+        {
+            "name": "tuple_uint16_set_uint16_set_uint16",
+            "base": "",
+            "fields": [
+                {
+                    "name": "field_0",
+                    "type": "uint16"
+                },
+                {
+                    "name": "field_1",
+                    "type": "set_uint16"
+                },
+                {
+                    "name": "field_2",
+                    "type": "set_uint16"
+                }
+            ]
+        },
+        {
+            "name": "tuple_uint16_uint16",
+            "base": "",
+            "fields": [
+                {
+                    "name": "field_0",
+                    "type": "uint16"
+                },
+                {
+                    "name": "field_1",
+                    "type": "uint16"
+                }
+            ]
+        },
+        {
+            "name": "tuple_uint16_vec_uint16_vec_uint16",
+            "base": "",
+            "fields": [
+                {
+                    "name": "field_0",
+                    "type": "uint16"
+                },
+                {
+                    "name": "field_1",
+                    "type": "vec_uint16"
+                },
+                {
+                    "name": "field_2",
+                    "type": "vec_uint16"
                 }
             ]
         }
@@ -660,6 +1006,11 @@
         {
             "name": "setmst",
             "type": "setmst",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "setmt",
+            "type": "setmt",
             "ricardian_contract": ""
         },
         {
@@ -688,6 +1039,11 @@
             "ricardian_contract": ""
         },
         {
+            "name": "setot",
+            "type": "setot",
+            "ricardian_contract": ""
+        },
+        {
             "name": "setov",
             "type": "setov",
             "ricardian_contract": ""
@@ -710,6 +1066,11 @@
         {
             "name": "setpst",
             "type": "setpst",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "setpt",
+            "type": "setpt",
             "ricardian_contract": ""
         },
         {
@@ -743,8 +1104,43 @@
             "ricardian_contract": ""
         },
         {
+            "name": "setstt",
+            "type": "setstt",
+            "ricardian_contract": ""
+        },
+        {
             "name": "setstv",
             "type": "setstv",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "settm",
+            "type": "settm",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "setto",
+            "type": "setto",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "settp",
+            "type": "settp",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "settst",
+            "type": "settst",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "settt",
+            "type": "settt",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "settv",
+            "type": "settv",
             "ricardian_contract": ""
         },
         {
@@ -770,6 +1166,11 @@
         {
             "name": "setvst",
             "type": "setvst",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "setvt",
+            "type": "setvt",
             "ricardian_contract": ""
         },
         {
