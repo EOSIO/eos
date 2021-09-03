@@ -3252,6 +3252,8 @@ BOOST_AUTO_TEST_CASE(abi_deserialize_detailed_error_messages)
       ],
    })";
 
+   // Some details here: c::variant("030101000103") represents an array of std::optional {1,null,3}, and 
+   // fc::variant("0400000000") represents an array of 4 nulls. Also fc::variant("030001af013a") represents {null, 0xAF, 0x3A}.
    // Test to verify that array of optinal doesn't throw exception
    abi_serializer abis( fc::json::from_string(abi).as<abi_def>(), abi_serializer::create_yield_function( max_serialization_time ) );
    BOOST_CHECK_NO_THROW( abis.binary_to_variant("s4", fc::variant("030101000103").as<bytes>(), abi_serializer::create_yield_function( max_serialization_time )) );
