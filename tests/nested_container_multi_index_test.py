@@ -135,6 +135,9 @@ try:
     Print("Test action for set< pair< uint16_t, uint16_t >>")
     create_action('setstp', '["alice", [{"key": 69, "value": 129}, {"key": 69, "value": 129}]]', 'nestcontnmi', 'alice')
 
+    Print("Test action for set< tuple< uint16_t, uint16_t >>")
+    create_action('setstt', '["alice", [[1,2],[36,46], [56,66]]]', 'nestcontnmi', 'alice')
+
     
     Print("Test action for vector< set< uint16_t >>")
     create_action('setvst', '["alice", [[10, 10], [3], [400, 500, 600]]]', 'nestcontnmi', 'alice')
@@ -151,6 +154,9 @@ try:
 
     Print("Test action for vector< pair< uint16_t, uint16_t >>")
     create_action('setvp', '["alice", [{"key": 69, "value": 129}, {"key": 69, "value": 129}]]', 'nestcontnmi', 'alice')
+
+    Print("Test action for vector< tuple< uint16_t, uint16_t >>")
+    create_action('setvt', '["alice", [[10,20],[30,40], [50,60]]]', 'nestcontnmi', 'alice')
 
 
     Print("Test action for optional< set< uint16_t >>")
@@ -173,6 +179,10 @@ try:
     create_action('setop', '["alice", {"key": 60, "value": 61}]', 'nestcontnmi', 'alice')
     create_action('setop', '["bob", null]', 'nestcontnmi', 'bob')
 
+    Print("Test action for optional< tuple< uint16_t, uint16_t >>")
+    create_action('setot', '["alice", [1001,2001]]', 'nestcontnmi', 'alice')
+    create_action('setot', '["bob", null]', 'nestcontnmi', 'bob')
+
 
     Print("Test action for map< set< uint16_t >>")
     create_action('setmst', '["alice", [{"key": 1,"value": [10, 10, 12, 16]},  {"key": 2, "value": [200, 300]} ]]', 'nestcontnmi', 'alice')
@@ -189,6 +199,9 @@ try:
 
     Print("Test action for map< pair< uint16_t, uint16_t >>")
     create_action('setmp', '["alice", [{"key": 36, "value": {"key": 300, "value": 301}}, {"key": 37, "value": {"key": 600, "value": 601}} ]]', 'nestcontnmi', 'alice')
+
+    Print("Test action for map< tuple< uint16_t, uint16_t >>")
+    create_action('setmt', '["alice", [{"key":1,"value":[10,11]},  {"key":2,"value":[200,300]} ]]', 'nestcontnmi', 'alice')
 
 
     Print("Test action for pair< set< uint16_t >>")
@@ -207,6 +220,29 @@ try:
     Print("Test action for pair< pair< uint16_t, uint16_t >>")
     create_action('setpp', '["alice", {"key": 30, "value": {"key": 301, "value": 302} }]', 'nestcontnmi', 'alice')
 
+    Print("Test action for pair< tuple< uint16_t, uint16_t >>")
+    create_action('setpt', '["alice", {"key":10, "value":[100,101]}]', 'nestcontnmi', 'alice')
+
+
+    Print("Test action for tuple< uint16_t, set< uint16_t >, set< uint16_t >>")
+    create_action('settst', '["alice", [10,[21,31], [41,51,61]]]', 'nestcontnmi', 'alice')
+
+    Print("Test action for tuple< uint16_t, vector< uint16_t >, vector< uint16_t >")
+    create_action('settv', '["alice", [16,[26,36], [46,506,606]]]', 'nestcontnmi', 'alice')
+
+    Print("Test action for tuple< optional< uint16_t >, optional< uint16_t >, optional< uint16_t > \
+    , optional< uint16_t >, optional< uint16_t >>")
+    create_action('setto', '["alice", [100, null, 200, null, 300]]', 'nestcontnmi', 'alice')
+    create_action('setto', '["bob", [null, null, 10, null, 20]]', 'nestcontnmi', 'bob')
+
+    Print("Test action for tuple< map< uint16_t, uint16_t >, map< uint16_t, uint16_t >>")
+    create_action('settm', '["alice", [126, [{"key":10,"value":100},{"key":11,"value":101}], [{"key":80,"value":800},{"key":81,"value":9009}] ]]', 'nestcontnmi', 'alice')
+
+    Print("Test action for tuple< uint16_t, pair< uint16_t, uint16_t >, pair< uint16_t, uint16_t >>")
+    create_action('settp', '["alice", [127, {"key":18, "value":28}, {"key":19, "value":29}]]', 'nestcontnmi', 'alice')
+
+    Print("Test action for tuple< tuple< uint16_t, uint16_t >, tuple< uint16_t, uint16_t >, tuple< uint16_t, uint16_t >>")
+    create_action('settt', '["alice", [[1,2],[30,40], [50,60]]]', 'nestcontnmi', 'alice')
 
 
     Print("Test action for vector<optional<mystruct>>")
@@ -234,6 +270,9 @@ try:
     assert "[{'key': 69, 'value': 129}]" == str(transaction_json['rows'][0]['stp']), \
         'Content of multi-index table set< pair< uint16_t >> is not correct'
 
+    assert "[{'field_0': 1, 'field_1': 2}, {'field_0': 36, 'field_1': 46}, {'field_0': 56, 'field_1': 66}]" == str(transaction_json['rows'][0]['stt']), \
+        'Content of multi-index table set< tuple< uint16_t, uint16_t >> is not correct'
+
 
 
     assert "[[10], [3], [400, 500, 600]]" == str(transaction_json['rows'][0]['vst']), \
@@ -251,6 +290,8 @@ try:
     assert "[{'key': 69, 'value': 129}, {'key': 69, 'value': 129}]" == str(transaction_json['rows'][0]['vp']), \
         'Content of multi-index table vector< pair< uint16_t >> is not correct'
 
+    assert "[{'field_0': 10, 'field_1': 20}, {'field_0': 30, 'field_1': 40}, {'field_0': 50, 'field_1': 60}]" == str(transaction_json['rows'][0]['vt']), \
+        'Content of multi-index table vector< tuple< uint16_t, uint16_t >> is not correct'
 
 
     assert "[3, 10]" == str(transaction_json['rows'][0]['ost']), 'Content of multi-index table optional< set< uint16_t >> is not correct'
@@ -270,6 +311,9 @@ try:
         'Content of multi-index table optional< pair< uint16_t >> is not correct'
     assert "None" == str(transaction_json['rows'][1]['op']), 'Content of multi-index table optional< set< uint16_t >> is not correct'
 
+    assert "{'field_0': 1001, 'field_1': 2001}" == str(transaction_json['rows'][0]['ot']), 'Content of multi-index table optional< tuple< uint16_t, uint16_t >>  is not correct'
+    assert "None" == str(transaction_json['rows'][1]['ot']), 'Content of multi-index table optional< tuple< uint16_t, uint16_t >> is not correct'
+
 
     assert "[{'key': 1, 'value': [10, 12, 16]}, {'key': 2, 'value': [200, 300]}]" \
         == str(transaction_json['rows'][0]['mst']), 'Content of multi-index table map< set< uint16_t >> is not correct'
@@ -285,6 +329,9 @@ try:
 
     assert "[{'key': 36, 'value': {'key': 300, 'value': 301}}, {'key': 37, 'value': {'key': 600, 'value': 601}}]"\
          == str(transaction_json['rows'][0]['mp']), 'Content of multi-index table map< pair< uint16_t >> is not correct'
+
+    assert "[{'key': 1, 'value': {'field_0': 10, 'field_1': 11}}, {'key': 2, 'value': {'field_0': 200, 'field_1': 300}}]"\
+         == str(transaction_json['rows'][0]['mt']), 'Content of multi-index table map< uint16_t, tuple< uint16_t, uint16_t >> is not correct'
 
 
     assert "{'key': 20, 'value': [200, 202]}" == str(transaction_json['rows'][0]['pst']), \
@@ -304,6 +351,31 @@ try:
         
     assert "{'key': 30, 'value': {'key': 301, 'value': 302}}" == str(transaction_json['rows'][0]['pp']),\
          'Content of multi-index table pair< pair< uint16_t >> is not correct'
+
+    assert "{'key': 10, 'value': {'field_0': 100, 'field_1': 101}}"\
+         == str(transaction_json['rows'][0]['pt']), 'Content of multi-index table pair< uint16_t, tuple< uint16_t, uint16_t >> is not correct'
+
+
+    assert "{'field_0': 10, 'field_1': [21, 31], 'field_2': [41, 51, 61]}" == str(transaction_json['rows'][0]['tst']), \
+        'Content of multi-index table tuple< set< uint16_t >> is not correct'
+
+    assert "{'field_0': 16, 'field_1': [26, 36], 'field_2': [46, 506, 606]}" == str(transaction_json['rows'][0]['tv']), \
+        'Content of multi-index table tuple< vector< uint16_t >> is not correct'
+
+    assert "{'field_0': 100, 'field_1': None, 'field_2': 200, 'field_3': None, 'field_4': 300}" == str(transaction_json['rows'][0]['to']), \
+        'Content of multi-index table tuple< optional< uint16_t >>  is not correct'
+
+    assert "{'field_0': None, 'field_1': None, 'field_2': 10, 'field_3': None, 'field_4': 20}" == str(transaction_json['rows'][1]['to']), \
+        'Content of multi-index table tuple< optional< uint16_t >>  is not correct'
+
+    assert "{'field_0': 126, 'field_1': [{'key': 10, 'value': 100}, {'key': 11, 'value': 101}], 'field_2': [{'key': 80, 'value': 800}, {'key': 81, 'value': 9009}]}" \
+        == str(transaction_json['rows'][0]['tm']), 'Content of multi-index table pair< map< uint16_t, uint16_t >> is not correct'
+        
+    assert "{'field_0': 127, 'field_1': {'key': 18, 'value': 28}, 'field_2': {'key': 19, 'value': 29}}" == str(transaction_json['rows'][0]['tp']),\
+         'Content of multi-index table tuple< pair< uint16_t, uint16_t >> is not correct'
+
+    assert "{'field_0': {'field_0': 1, 'field_1': 2}, 'field_1': {'field_0': 30, 'field_1': 40}, 'field_2': {'field_0': 50, 'field_1': 60}}"\
+         == str(transaction_json['rows'][0]['tt']), 'Content of multi-index table tuple< tuple< uint16_t, uint16_t >, ...> is not correct'
 
 
     assert "[{'_count': 18, '_strID': 'dumstr'}, None, {'_count': 19, '_strID': 'dumstr'}]" == str(transaction_json['rows'][0]['vos']), \
