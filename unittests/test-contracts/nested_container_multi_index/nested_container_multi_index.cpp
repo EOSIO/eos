@@ -10,9 +10,6 @@
  *      [] represents an empty vector<T>/set<T> or empty map<T1,T2> where T, T1, T2 can be any composite types
  *      null represents an uninitialized std::optional<T> where T can be any composite type
  *      BUT [] or null can NOT be used to represent an empty struct or empty std::pair
- *
- * Expected printout:
- *      For each setx action, the printed result on the cleos console is given in its corresponding prntx action.
  */
 
 #include <eosio/eosio.hpp>
@@ -60,6 +57,7 @@ typedef pair<uint16_t, uint16_t> pr_uint16;
 
 typedef vector< op_uint16 > vec_op_uint16;
 typedef optional< mystruct > op_struc;
+typedef tuple<uint16_t, uint16_t> tup_uint16;
 
 class [[eosio::contract("nested_container_multi_index")]] nestcontnmi : public eosio::contract {
     private:
@@ -71,33 +69,45 @@ class [[eosio::contract("nested_container_multi_index")]] nestcontnmi : public e
             set< op_uint16 > sto;
             set< mp_uint16 > stm;
             set< pr_uint16 > stp;
+            set< tup_uint16 > stt;
 
             vector< set_uint16 > vst;
             vector< vec_uint16 > vv;
             vector< op_uint16 > vo;
             vector< mp_uint16 > vm;
             vector< pr_uint16 > vp;
+            vector< tup_uint16 > vt; 
 
             optional< set_uint16 > ost;
             optional< vec_uint16 > ov;
             optional< op_uint16 > oo;
             optional< mp_uint16 > om;
             optional< pr_uint16 > op;
+            optional< tup_uint16 > ot;
 
             map< uint16_t, set_uint16 > mst;
             map< uint16_t, vec_uint16 > mv;
             map< uint16_t, op_uint16 > mo;
             map< uint16_t, mp_uint16 > mm;
             map< uint16_t, pr_uint16 > mp;
+            map< uint16_t, tup_uint16 > mt;
 
             pair< uint16_t, set_uint16 > pst;
             pair< uint16_t, vec_uint16 > pv;
             pair< uint16_t, op_uint16 > po;
             pair< uint16_t, mp_uint16 > pm;
             pair< uint16_t, pr_uint16 > pp;
+            pair< uint16_t, tup_uint16 > pt;
+
+            tuple< uint16_t, vec_uint16, vec_uint16 > tv;     
+            tuple< uint16_t, set_uint16, set_uint16 > tst;
+            tuple< op_uint16, op_uint16, op_uint16,op_uint16,op_uint16 > to;
+            tuple< uint16_t, mp_uint16, mp_uint16 > tm;
+            tuple< uint16_t, pr_uint16, pr_uint16 > tp;      
+            tuple< tup_uint16, tup_uint16,  tup_uint16 > tt;
 
             vector< op_struc > vos;
-            pair<uint16_t, vec_op_uint16> pvo;
+            pair< uint16_t, vec_op_uint16 > pvo;
 
             uint64_t primary_key() const { return key.value; }
         };
@@ -139,6 +149,12 @@ class [[eosio::contract("nested_container_multi_index")]] nestcontnmi : public e
             eosio::print("type defined set< pair< uint16_t, uint16_t >> stored successfully");
         }
 
+        [[eosio::action]]
+        void setstt(name user, const set< tup_uint16 >& stt){
+            SETCONTAINERVAL(stt);
+            eosio::print("type defined set< tuple< uint16_t, uint16_t >> stored successfully!");
+        }
+
 
         [[eosio::action]]
         void setvst(name user, const vector< set_uint16 >& vst){
@@ -168,6 +184,12 @@ class [[eosio::contract("nested_container_multi_index")]] nestcontnmi : public e
         void setvp(name user, const vector< pr_uint16 >& vp){
             SETCONTAINERVAL(vp);
             eosio::print("type defined vector< pair< uint16_t, uint16_t >> stored successfully");
+        }
+
+        [[eosio::action]]
+        void setvt(name user, const vector< tup_uint16 >& vt){
+            SETCONTAINERVAL(vt);
+            eosio::print("type defined vector< tuple< uint16_t, uint16_t >> stored successfully!");
         }
 
 
@@ -201,6 +223,12 @@ class [[eosio::contract("nested_container_multi_index")]] nestcontnmi : public e
             eosio::print("type defined optional< pair< uint16_t, uint16_t >> stored successfully");
         }
 
+        [[eosio::action]]
+        void setot(name user, const optional< tup_uint16 >& ot){
+            SETCONTAINERVAL(ot);
+            eosio::print("type defined optional< tuple< uint16_t, uint16_t >> stored successfully!");
+        }
+
 
         [[eosio::action]]
         void setmst(name user, const map< uint16_t, set_uint16 >& mst){
@@ -230,6 +258,12 @@ class [[eosio::contract("nested_container_multi_index")]] nestcontnmi : public e
         void setmp(name user, const map< uint16_t, pr_uint16 >& mp){
             SETCONTAINERVAL(mp);
             eosio::print("type defined map< pair< uint16_t, uint16_t >> stored successfully");
+        }
+
+        [[eosio::action]]
+        void setmt(name user, const map< uint16_t, tup_uint16 >& mt){
+            SETCONTAINERVAL(mt);
+            eosio::print("type defined map< uint16_t, tuple< uint16_t, uint16_t >> stored successfully!");
         }
 
 
@@ -263,6 +297,47 @@ class [[eosio::contract("nested_container_multi_index")]] nestcontnmi : public e
             eosio::print("type defined pair< pair< uint16_t, uint16_t >> stored successfully");
         }
 
+        [[eosio::action]]
+        void setpt(name user, const pair< uint16_t, tup_uint16 >& pt){
+            SETCONTAINERVAL(pt);
+            eosio::print("type defined pair< uint16_t, tuple< uint16_t, uint16_t >> stored successfully!");
+        }
+
+        [[eosio::action]]
+        void settst(name user, const tuple<uint16_t, set_uint16, set_uint16>& tst){
+            SETCONTAINERVAL(tst);
+            eosio::print("type defined tuple< uint16_t, set< uint16_t >, set< uint16_t >> stored successfully!");
+        }
+
+        [[eosio::action]]
+        void settv(name user, const tuple<uint16_t, vec_uint16, vec_uint16>& tv){
+            SETCONTAINERVAL(tv);
+            eosio::print("type defined tuple< uint16_t, vector< uint16_t >, vector< uint16_t > stored successfully!");
+        }
+
+        [[eosio::action]] 
+        void setto(name user, const tuple<op_uint16, op_uint16, op_uint16,op_uint16,op_uint16> & to){
+            SETCONTAINERVAL(to);
+            eosio::print("type defined tuple< optional < uint16_t >, optional < uint16_t >, ... > stored successfully!");
+        }
+
+        [[eosio::action]]
+        void settm(name user, const tuple<uint16_t, mp_uint16, mp_uint16>& tm){
+            SETCONTAINERVAL(tm);
+            eosio::print("type defined tuple< map< uint16_t, map< uint16_t, uint16_t>, map< uint16_t, uint16_t> >> stored successfully!");
+        }
+
+        [[eosio::action]]
+        void settp(name user, const tuple<uint16_t, pr_uint16, pr_uint16>& tp){
+            SETCONTAINERVAL(tp);
+            eosio::print("type defined tuple< uint16_t, pair< uint16_t, uint16_t >, pair< uint16_t, uint16_t >> stored successfully");
+        }
+
+        [[eosio::action]]
+        void settt(name user, const tuple< tup_uint16, tup_uint16, tup_uint16 >& tt){
+            SETCONTAINERVAL(tt);
+            eosio::print("type defined tuple< tuple< uint16_t, uint16_t >, ... > stored successfully!");
+        }
 
 
         [[eosio::action]]
