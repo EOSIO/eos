@@ -70,6 +70,8 @@ struct amqp_trx_plugin_impl : std::enable_shared_from_this<amqp_trx_plugin_impl>
    std::string block_uuid;
    std::set<std::string> tracked_block_uuid_rks;
    uint32_t trx_processing_queue_size = 1000;
+   uint32_t trx_retry_interval_us = 500 * 1000; // 500 milliseconds
+   uint32_t trx_retry_timeout_us = 60 * 1000 * 1000; // 60 seconds
    bool allow_speculative_execution = false;
    bool started_consuming = false;
    std::shared_ptr<fifo_trx_processing_queue<producer_plugin>> trx_queue_ptr;
@@ -230,6 +232,10 @@ void amqp_trx_plugin::set_program_options(options_description& cli, options_desc
       "AMQP queue to consume transactions from, must already exist.");
    op("amqp-trx-queue-size", bpo::value<uint32_t>()->default_value(my->trx_processing_queue_size),
       "The maximum number of transactions to pull from the AMQP queue at any given time.");
+   op("amqp-trx-retry-timeout-us", bpo::value<uint32_t>()->default_value(my->trx_retry_timeout_us),
+      "Time in microseconds to continue to retry a connection to AMQP when connection is loss or startup.");
+   op("amqp-trx-retry-interval-us", bpo::value<uint32_t>()->default_value(my->trx_retry_interval_us),
+      "When connection is lost to amqp-trx-queue-name, interval time in microseconds before retrying connection.");
    op("amqp-trx-speculative-execution", bpo::bool_switch()->default_value(false),
       "Allow non-ordered speculative execution of transactions");
    op("amqp-trx-ack-mode", bpo::value<ack_mode>()->default_value(ack_mode::in_block),
@@ -258,6 +264,8 @@ void amqp_trx_plugin::plugin_initialize(const variables_map& options) {
       my->acked = options.at("amqp-trx-ack-mode").as<ack_mode>();
 
       my->trx_processing_queue_size = options.at("amqp-trx-queue-size").as<uint32_t>();
+      my->trx_retry_timeout_us = options.at("amqp-trx-retry-timeout-us").as<uint32_t>();
+      my->trx_retry_interval_us = options.at("amqp-trx-retry-interval-us").as<uint32_t>();
       my->allow_speculative_execution = options.at("amqp-trx-speculative-execution").as<bool>();
 
       EOS_ASSERT( my->acked != ack_mode::in_block || !my->allow_speculative_execution, chain::plugin_config_exception,
@@ -318,6 +326,8 @@ void amqp_trx_plugin::plugin_startup() {
    my->trx_queue_ptr->run();
 
    my->amqp_trx.emplace( my->amqp_trx_address,
+                         fc::microseconds(my->trx_retry_timeout_us),
+                         fc::microseconds(my->trx_retry_interval_us),
                          []( const std::string& err ) {
                             elog( "amqp error: ${e}", ("e", err) );
                             app().quit();
