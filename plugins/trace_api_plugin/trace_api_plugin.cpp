@@ -348,7 +348,7 @@ namespace trace_apis {
       fc::microseconds max_response_time = app().get_plugin<http_plugin>().get_max_response_time();
       const auto deadline = trace_api_rpc->calc_deadline( max_response_time );
 
-      // search for the trx id in the log to find out associate block number
+      // search for the number of the block that contains the transaction
       get_block_n blk_num;
       blk_num = trace_api_rpc->common->store->get_trx_block_number(input_id, [deadline]() { FC_CHECK_DEADLINE(deadline); });
 
@@ -375,7 +375,7 @@ namespace trace_apis {
             }
          }
       } else {
-         EOS_THROW(tx_not_found, "Transaction ${id} not found in trace log", ("id",p.id));
+         EOS_THROW(unknown_block_exception, "Block number associate with transaction ${id} not found in transaction id log", ("id",p.id));
       }
 
       return result;

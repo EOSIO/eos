@@ -99,7 +99,7 @@ namespace eosio::trace_api {
 
     get_block_n store_provider::get_trx_block_number(const chain::transaction_id_type& trx_id, const yield_function& yield) {
       fc::cfile trx_id_file;
-      uint32_t num_slices = _slice_directory.slice_number(_total_blocks);
+      uint32_t num_slices = _slice_directory.slice_number(_total_blocks) + 1; // slice number starts at 0
       for (auto slice_number = 0U; slice_number < num_slices; ++slice_number) {
          const bool found = _slice_directory.find_trx_id_slice(slice_number, open_state::read, trx_id_file);
          // some slices may have been deleted during maintenance
