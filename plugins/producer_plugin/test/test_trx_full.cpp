@@ -155,7 +155,7 @@ BOOST_AUTO_TEST_CASE(producer) {
             app().get_method<plugin_interface::incoming::methods::transaction_async>()(ptrx,
                false, // persist_until_expiried
                false, // read_only
-               return_failure_traces == true, // return_failure_traces
+               return_failure_traces, // return_failure_traces
                [ptrx, &next_calls, &trace_with_except, &trx_match, &trxs, return_failure_traces]
                (const std::variant<fc::exception_ptr, transaction_trace_ptr>& result) {
                   if( !std::holds_alternative<fc::exception_ptr>( result ) && !std::get<chain::transaction_trace_ptr>( result )->except ) {
