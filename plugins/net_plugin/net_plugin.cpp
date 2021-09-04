@@ -888,6 +888,7 @@ namespace eosio {
          
          return true;
       }
+      // called from connection strand
       inline void setup_participant() {
          if(my_impl->ssl_enabled) {
             account_name participant = participant_name_ ? *participant_name_ : account_name{};
@@ -899,8 +900,8 @@ namespace eosio {
 
             const bool participating = is_participating(participant);
 
-            fc_dlog( logger, "[${peer}] participant: [${name}] participating: [${enabled}]", 
-                     ("peer", peer_name())("name", participant_name())("enabled", participating));
+            peer_dlog( this, "[participant: [${name}] participating: [${enabled}]",
+                       ("name", participant_name())("enabled", participating));
             set_participating(participating);
          }
       }
@@ -1082,7 +1083,6 @@ namespace eosio {
       boost::system::error_code ec2;
       auto rep = socket.raw_socket().remote_endpoint(ec);
       auto lep = socket.raw_socket().local_endpoint(ec2);
-      std::lock_guard<std::mutex> g_conn( conn_mtx );
       log_remote_endpoint_ip = ec ? unknown : rep.address().to_string();
       log_remote_endpoint_port = ec ? unknown : std::to_string(rep.port());
       local_endpoint_ip = ec2 ? unknown : lep.address().to_string();
