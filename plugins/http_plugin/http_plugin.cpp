@@ -281,6 +281,20 @@ class http_plugin_impl : public std::enable_shared_from_this<http_plugin_impl> {
             const auto& aliases = options["http-alias"].as<vector<string>>();
             my->plugin_state->valid_hosts.insert(aliases.begin(), aliases.end());
          }
+         
+         my->plugin_state->max_body_size = options.at( "max-body-size" ).as<uint32_t>();
+         verbose_http_errors = options.at( "verbose-http-errors" ).as<bool>();
+         my->plugin_state->verbose_http_errors = verbose_http_errors;
+
+         my->thread_pool_size = options.at( "http-threads" ).as<uint16_t>();
+         EOS_ASSERT( my->thread_pool_size > 0, chain::plugin_config_exception,
+                     "http-threads ${num} must be greater than 0", ("num", my->thread_pool_size));
+
+         my->plugin_state->max_bytes_in_flight = options.at( "http-max-bytes-in-flight-mb" ).as<uint32_t>() * 1024 * 1024;
+         my->plugin_state->max_requests_in_flight = options.at( "http-max-in-flight-requests" ).as<int32_t>();
+         my->plugin_state->max_response_time = fc::microseconds( options.at("http-max-response-time-ms").as<uint32_t>() * 1000 );
+
+         my->plugin_state->keep_alive = options.at("http-keep-alive").as<bool>();
 
          tcp::resolver resolver( app().get_io_service());
          if( options.count( "http-server-address" ) && options.at( "http-server-address" ).as<string>().length()) {
@@ -340,19 +354,7 @@ class http_plugin_impl : public std::enable_shared_from_this<http_plugin_impl> {
             }
          }
 
-         my->plugin_state->max_body_size = options.at( "max-body-size" ).as<uint32_t>();
-         verbose_http_errors = options.at( "verbose-http-errors" ).as<bool>();
-         my->plugin_state->verbose_http_errors = verbose_http_errors;
-
-         my->thread_pool_size = options.at( "http-threads" ).as<uint16_t>();
-         EOS_ASSERT( my->thread_pool_size > 0, chain::plugin_config_exception,
-                     "http-threads ${num} must be greater than 0", ("num", my->thread_pool_size));
-
-         my->plugin_state->max_bytes_in_flight = options.at( "http-max-bytes-in-flight-mb" ).as<uint32_t>() * 1024 * 1024;
-         my->plugin_state->max_requests_in_flight = options.at( "http-max-in-flight-requests" ).as<int32_t>();
-         my->plugin_state->max_response_time = fc::microseconds( options.at("http-max-response-time-ms").as<uint32_t>() * 1000 );
-
-         my->plugin_state->keep_alive = options.at("http-keep-alive").as<bool>();
+         
          //watch out for the returns above when adding new code here
       } FC_LOG_AND_RETHROW()
    }
