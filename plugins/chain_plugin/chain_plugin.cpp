@@ -2776,7 +2776,9 @@ void read_write::push_block(read_write::push_block_params_v1&& params, next_func
       chain_plugin::handle_db_exhaustion();
    } catch ( const std::bad_alloc& ) {
       chain_plugin::handle_bad_alloc();
-   } CATCH_AND_CALL(next);
+   } catch(...) {
+      next(read_write::push_block_results{});
+   }
 }
 
 void read_write::push_transaction(const read_write::push_transaction_params_v1& params, next_function<read_write::push_transaction_results> next) {

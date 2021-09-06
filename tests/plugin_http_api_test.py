@@ -698,10 +698,10 @@ class PluginHttpTest(unittest.TestCase):
         ret_json = Utils.runCmdReturnJson(invalid_cmd)
         self.assertEqual(ret_json["code"], 400)
         self.assertEqual(ret_json["error"]["code"], 3200006)
-        # push_block with valid parameter
+        # push_block with valid json, but invalid block
         valid_cmd = default_cmd + self.http_post_str + ("'{\"block\":\"signed_block\"}'")
         ret_json = Utils.runCmdReturnJson(valid_cmd)
-        self.assertEqual(len(ret_json), 0)
+        self.assertEqual(len(ret_json), 3)
 
         # push_transaction with empty parameter
         default_cmd = cmd_base + "push_transaction"
