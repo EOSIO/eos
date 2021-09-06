@@ -757,7 +757,7 @@ namespace eosio {
                        bool to_sync_queue = false);
       void do_queue_write();
 
-      static bool is_valid( const handshake_message& msg );
+      bool is_valid( const handshake_message& msg ) const;
 
       void handle_message( const handshake_message& msg );
       void handle_message( const chain_size_message& msg );
@@ -787,7 +787,7 @@ namespace eosio {
 
       void process_signed_block( const block_id_type& id, signed_block_ptr msg );
 
-      fc::variant_object get_logger_variant()  {
+      fc::variant_object get_logger_variant() const {
          fc::mutable_variant_object mvo;
          mvo( "_name", log_p2p_address)
             ( "_cid", connection_id )
@@ -815,43 +815,43 @@ namespace eosio {
 
       void operator()( const handshake_message& msg ) const {
          // continue call to handle_message on connection strand
-         fc_dlog( logger, "handle handshake_message" );
+         peer_dlog( c, "handle handshake_message" );
          c->handle_message( msg );
       }
 
       void operator()( const chain_size_message& msg ) const {
          // continue call to handle_message on connection strand
-         fc_dlog( logger, "handle chain_size_message" );
+         peer_dlog( c, "handle chain_size_message" );
          c->handle_message( msg );
       }
 
       void operator()( const go_away_message& msg ) const {
          // continue call to handle_message on connection strand
-         fc_dlog( logger, "handle go_away_message" );
+         peer_dlog( c, "handle go_away_message" );
          c->handle_message( msg );
       }
 
       void operator()( const time_message& msg ) const {
          // continue call to handle_message on connection strand
-         fc_dlog( logger, "handle time_message" );
+         peer_dlog( c, "handle time_message" );
          c->handle_message( msg );
       }
 
       void operator()( const notice_message& msg ) const {
          // continue call to handle_message on connection strand
-         fc_dlog( logger, "handle notice_message" );
+         peer_dlog( c, "handle notice_message" );
          c->handle_message( msg );
       }
 
       void operator()( const request_message& msg ) const {
          // continue call to handle_message on connection strand
-         fc_dlog( logger, "handle request_message" );
+         peer_dlog( c, "handle request_message" );
          c->handle_message( msg );
       }
 
       void operator()( const sync_request_message& msg ) const {
          // continue call to handle_message on connection strand
-         fc_dlog( logger, "handle sync_request_message" );
+         peer_dlog( c, "handle sync_request_message" );
          c->handle_message( msg );
       }
    };
@@ -884,7 +884,7 @@ namespace eosio {
         last_handshake_recv(),
         last_handshake_sent()
    {
-      fc_ilog( logger, "creating connection to ${n}", ("n", endpoint) );
+      fc_ilog( logger, "created connection ${c} to ${n}", ("c", connection_id)("n", endpoint) );
    }
 
    connection::connection()
@@ -926,16 +926,16 @@ namespace eosio {
             peer_add.substr( colon2 + 1 ) : peer_add.substr( colon2 + 1, end - (colon2 + 1) );
 
       if( type.empty() ) {
-         fc_dlog( logger, "Setting connection type for: ${peer} to both transactions and blocks", ("peer", peer_add) );
+         fc_dlog( logger, "Setting connection ${c} type for: ${peer} to both transactions and blocks", ("c", connection_id)("peer", peer_add) );
          connection_type = both;
       } else if( type == "trx" ) {
-         fc_dlog( logger, "Setting connection type for: ${peer} to transactions only", ("peer", peer_add) );
+         fc_dlog( logger, "Setting connection ${c} type for: ${peer} to transactions only", ("c", connection_id)("peer", peer_add) );
          connection_type = transactions_only;
       } else if( type == "blk" ) {
-         fc_dlog( logger, "Setting connection type for: ${peer} to blocks only", ("peer", peer_add) );
+         fc_dlog( logger, "Setting connection ${c} type for: ${peer} to blocks only", ("c", connection_id)("peer", peer_add) );
          connection_type = blocks_only;
       } else {
-         fc_wlog( logger, "Unknown connection type: ${t}, for ${peer}", ("t", type)("peer", peer_add) );
+         fc_wlog( logger, "Unknown connection ${c} type: ${t}, for ${peer}", ("c", connection_id)("t", type)("peer", peer_add) );
       }
    }
 
@@ -1040,8 +1040,8 @@ namespace eosio {
       }
       std::unique_lock<std::mutex> g_conn( conn_mtx );
       if( last_handshake_recv.generation >= 1 ) {
-         fc_dlog( logger, "maybe truncating branch at = ${h}:${id}",
-                  ("h", block_header::num_from_id(last_handshake_recv.head_id))("id", last_handshake_recv.head_id) );
+         peer_dlog( this, "maybe truncating branch at = ${h}:${id}",
+                    ("h", block_header::num_from_id(last_handshake_recv.head_id))("id", last_handshake_recv.head_id) );
       }
 
       block_id_type lib_id = last_handshake_recv.last_irreversible_block_id;
@@ -1647,7 +1647,7 @@ namespace eosio {
             request_next_chunk( std::move(g) );
          }
       } else {
-         fc_elog( logger, "sync_reset_lib_num called on non-current connection ${cid}", ("cid", c->connection_id) );
+         peer_elog( c, "sync_reset_lib_num called on non-current connection" );
       }
    }
 
@@ -2251,7 +2251,7 @@ namespace eosio {
           c->last_req->req_blocks.mode != none &&
           !c->last_req->req_blocks.ids.empty() &&
           c->last_req->req_blocks.ids.back() == id) {
-         fc_dlog( logger, "resetting last_req" );
+         peer_dlog( c, "resetting last_req" );
          c->last_req.reset();
       }
       g.unlock();
@@ -2676,7 +2676,7 @@ namespace eosio {
          }
 
       } catch( const fc::exception& e ) {
-         fc_elog( logger, "Exception in handling message: ${s}", ("s", e.to_detail_string()) );
+         peer_elog( this, "Exception in handling message: ${s}", ("s", e.to_detail_string()) );
          close();
          return false;
       }
@@ -2863,40 +2863,40 @@ namespace eosio {
             chain_lib_id, chain_head_blk_id, chain_fork_head_blk_id );
    }
 
-   bool connection::is_valid( const handshake_message& msg ) {
+   bool connection::is_valid( const handshake_message& msg ) const {
       // Do some basic validation of an incoming handshake_message, so things
       // that really aren't handshake messages can be quickly discarded without
       // affecting state.
       bool valid = true;
       if (msg.last_irreversible_block_num > msg.head_num) {
-         fc_wlog( logger, "Handshake message validation: last irreversible block (${i}) is greater than head block (${h})",
+         peer_wlog( this, "Handshake message validation: last irreversible block (${i}) is greater than head block (${h})",
                   ("i", msg.last_irreversible_block_num)("h", msg.head_num) );
          valid = false;
       }
       if (msg.p2p_address.empty()) {
-         fc_wlog( logger, "Handshake message validation: p2p_address is null string" );
+         peer_wlog( this, "Handshake message validation: p2p_address is null string" );
          valid = false;
       } else if( msg.p2p_address.length() > max_handshake_str_length ) {
          // see max_handshake_str_length comment in protocol.hpp
-         fc_wlog( logger, "Handshake message validation: p2p_address to large: ${p}",
-                  ("p", msg.p2p_address.substr(0, max_handshake_str_length) + "...") );
+         peer_wlog( this, "Handshake message validation: p2p_address to large: ${p}",
+                    ("p", msg.p2p_address.substr(0, max_handshake_str_length) + "...") );
          valid = false;
       }
       if (msg.os.empty()) {
-         fc_wlog( logger, "Handshake message validation: os field is null string" );
+         peer_wlog( this, "Handshake message validation: os field is null string" );
          valid = false;
       } else if( msg.os.length() > max_handshake_str_length ) {
-         fc_wlog( logger, "Handshake message validation: os field to large: ${p}",
-                  ("p", msg.os.substr(0, max_handshake_str_length) + "...") );
+         peer_wlog( this, "Handshake message validation: os field to large: ${p}",
+                    ("p", msg.os.substr(0, max_handshake_str_length) + "...") );
          valid = false;
       }
       if( msg.agent.length() > max_handshake_str_length ) {
-         fc_wlog( logger, "Handshake message validation: agent field to large: ${p}",
+         peer_wlog( this, "Handshake message validation: agent field to large: ${p}",
                   ("p", msg.agent.substr(0, max_handshake_str_length) + "...") );
          valid = false;
       }
       if ((msg.sig != chain::signature_type() || msg.token != sha256()) && (msg.token != fc::sha256::hash(msg.time))) {
-         fc_wlog( logger, "Handshake message validation: token field invalid" );
+         peer_wlog( this, "Handshake message validation: token field invalid" );
          valid = false;
       }
       return valid;
