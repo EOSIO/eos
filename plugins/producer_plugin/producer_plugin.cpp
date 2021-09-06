@@ -1611,6 +1611,7 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
       if( now < start_block_time ) {
          fc_dlog(_log, "Not producing block waiting for production window ${n} ${bt}", ("n", hbs->block_num + 1)("bt", block_time) );
          // start_block_time instead of block_time because schedule_delayed_production_loop calculates next block time from given time
+         _pending_block_mode = pending_block_mode::speculating;
          schedule_delayed_production_loop(weak_from_this(), calculate_producer_wake_up_time(start_block_time));
          return start_block_result::waiting_for_production;
       }
