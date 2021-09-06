@@ -3574,8 +3574,8 @@ namespace eosio {
          my_impl->dispatcher->add_peer_block( blk_id, c->connection_id );
          bool accepted = my_impl->chain_plug->accept_block(msg, blk_id);
          my_impl->update_chain_info();
-         if( !accepted ) return;
          reason = no_reason;
+         if( !accepted ) reason = unlinkable; // false if producing or duplicate, duplicate checked above
       } catch( const unlinkable_block_exception &ex ) {
          my_impl->dispatcher->rm_peer_block( blk_id, c->connection_id );
          fc_elog(logger, "unlinkable_block_exception connection ${cid}: #${n} ${id}...: ${m}",
