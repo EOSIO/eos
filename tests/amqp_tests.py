@@ -159,63 +159,6 @@ try:
         cmdError("%s wallet import" % (ClientName))
         errorExit("Failed to import key for account %s" % (defproduceraAccount.name))
 
-    Print("Locking wallet \"%s\"." % (testWallet.name))
-    if not walletMgr.lockWallet(testWallet):
-        cmdError("%s wallet lock" % (ClientName))
-        errorExit("Failed to lock wallet %s" % (testWallet.name))
-
-    Print("Unlocking wallet \"%s\"." % (testWallet.name))
-    if not walletMgr.unlockWallet(testWallet):
-        cmdError("%s wallet unlock" % (ClientName))
-        errorExit("Failed to unlock wallet %s" % (testWallet.name))
-
-    Print("Locking all wallets.")
-    if not walletMgr.lockAllWallets():
-        cmdError("%s wallet lock_all" % (ClientName))
-        errorExit("Failed to lock all wallets")
-
-    Print("Unlocking wallet \"%s\"." % (testWallet.name))
-    if not walletMgr.unlockWallet(testWallet):
-        cmdError("%s wallet unlock" % (ClientName))
-        errorExit("Failed to unlock wallet %s" % (testWallet.name))
-
-    Print("Getting open wallet list.")
-    wallets=walletMgr.getOpenWallets()
-    if len(wallets) == 0 or wallets[0] != testWallet.name or len(wallets) > 1:
-        Print("FAILURE - wallet list did not include %s" % (testWallet.name))
-        errorExit("Unexpected wallet list: %s" % (wallets))
-
-    Print("Getting wallet keys.")
-    actualKeys=walletMgr.getKeys(testWallet)
-    expectedkeys=[]
-    for account in accounts:
-        expectedkeys.append(account.ownerPrivateKey)
-        expectedkeys.append(account.activePrivateKey)
-    noMatch=list(set(expectedkeys) - set(actualKeys))
-    if len(noMatch) > 0:
-        errorExit("FAILURE - wallet keys did not include %s" % (noMatch), raw=True)
-
-    Print("Locking all wallets.")
-    if not walletMgr.lockAllWallets():
-        cmdError("%s wallet lock_all" % (ClientName))
-        errorExit("Failed to lock all wallets")
-
-    Print("Unlocking wallet \"%s\"." % (defproduceraWallet.name))
-    if not walletMgr.unlockWallet(defproduceraWallet):
-        cmdError("%s wallet unlock" % (ClientName))
-        errorExit("Failed to unlock wallet %s" % (defproduceraWallet.name))
-
-    Print("Unlocking wallet \"%s\"." % (testWallet.name))
-    if not walletMgr.unlockWallet(testWallet):
-        cmdError("%s wallet unlock" % (ClientName))
-        errorExit("Failed to unlock wallet %s" % (testWallet.name))
-
-    Print("Getting wallet keys.")
-    actualKeys=walletMgr.getKeys(defproduceraWallet)
-    expectedkeys=[defproduceraAccount.ownerPrivateKey]
-    noMatch=list(set(expectedkeys) - set(actualKeys))
-    if len(noMatch) > 0:
-        errorExit("FAILURE - wallet keys did not include %s" % (noMatch), raw=True)
 
     node=cluster.getNode(0)
     if amqpAddr:
