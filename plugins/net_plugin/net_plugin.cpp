@@ -3328,10 +3328,9 @@ namespace eosio {
          my_impl->dispatcher->add_peer_block( blk_id, c->connection_id );
          bool accepted = my_impl->chain_plug->accept_block(msg, blk_id);
          my_impl->update_chain_info();
-         if( !accepted ) return;
          reason = no_reason;
+         if( !accepted ) reason = unlinkable; // false if producing or duplicate, duplicate checked above
       } catch( const unlinkable_block_exception &ex) {
-         my_impl->dispatcher->rm_peer_block( blk_id, c->connection_id );
          peer_elog(c, "unlinkable_block_exception #${n} ${id}...: ${m}", ("n", blk_num)("id", blk_id.str().substr(8,16))("m",ex.to_string()));
          reason = unlinkable;
       } catch( const block_validate_exception &ex) {
@@ -3355,9 +3354,12 @@ namespace eosio {
             sync_master->sync_recv_block( c, blk_id, blk_num, true );
          });
       } else {
-         c->strand.post( [sync_master = my_impl->sync_master.get(), dispatcher = my_impl->dispatcher.get(), c, blk_id, blk_num]() {
-            sync_master->rejected_block( c, blk_num );
-            dispatcher->rejected_block( blk_id );
+         c->strand.post( [c, blk_id, blk_num, reason]() {
+            if( reason == unlinkable ) {
+               my_impl->dispatcher->rm_peer_block( blk_id, c->connection_id );
+            }
+            my_impl->sync_master->rejected_block( c, blk_num );
+            my_impl->dispatcher->rejected_block( blk_id );
          });
       }
    }
