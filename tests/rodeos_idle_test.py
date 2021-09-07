@@ -50,7 +50,7 @@ with RodeosCluster(args.dump_error_details,
 
     assert cluster.waitRodeosReady(), "Rodeos failed to stand up"
 
-    timeBetweeCommandsSeconds = 3
+    timeBetweeCommandsSeconds = [2, 1, 0.5]
 
     class NodeT(IntEnum):
         PROD = 1
@@ -70,46 +70,67 @@ with RodeosCluster(args.dump_error_details,
     # ideally this would be  computed, such as with itertools, 
     # to get all possible permutations (ensuring a node is not attempted to be restarted)
     # until it has been stopped
-    cmdSched.append([(NodeT.RODEOS, CmdT.STOP), (NodeT.RODEOS, CmdT.RESTART)])
-    cmdSched.append([(NodeT.SHIP, CmdT.STOP), (NodeT.SHIP, CmdT.RESTART)])
-    cmdSched.append([(NodeT.PROD, CmdT.STOP), (NodeT.PROD, CmdT.RESTART)])
+    nReps = len(timeBetweeCommandsSeconds)
+    cmdSched.append([(NodeT.RODEOS, CmdT.STOP, {"killsig" : 2}), (NodeT.RODEOS, CmdT.RESTART, {"clean" : False})] * nReps)
+    cmdSched.append([(NodeT.SHIP, CmdT.STOP, {"killsig" : 2}), (NodeT.SHIP, CmdT.RESTART, {"clean" : False})] * nReps)
+    cmdSched.append([(NodeT.PROD, CmdT.STOP, {"killsig" : 2}), (NodeT.PROD, CmdT.RESTART, {"clean" : False})]  * nReps)
 
+    cmdSched.append([(NodeT.RODEOS, CmdT.STOP, {"killsig" : 9}), (NodeT.RODEOS, CmdT.RESTART, {"clean" : True})] * nReps)
+    cmdSched.append([(NodeT.SHIP, CmdT.STOP, {"killsig" : 9}), (NodeT.SHIP, CmdT.RESTART, {"clean" : True})] * nReps)
+    cmdSched.append([(NodeT.PROD, CmdT.STOP, {"killsig" : 9}), (NodeT.PROD, CmdT.RESTART, {"clean" : True})] * nReps)
+
+    cmdSched.append([(NodeT.RODEOS, CmdT.STOP, {"killsig" : 15}), (NodeT.RODEOS, CmdT.RESTART, {"clean" : True})] * nReps)
+    cmdSched.append([(NodeT.SHIP, CmdT.STOP, {"killsig" : 15}), (NodeT.SHIP, CmdT.RESTART, {"clean" : True})] * nReps)
+    cmdSched.append([(NodeT.PROD, CmdT.STOP, {"killsig" : 15}), (NodeT.PROD, CmdT.RESTART, {"clean" : True})] * nReps)
+
+    # print('cmdSched=', cmdSched)
     # 2 combinations 
-    cmdSched.append([(NodeT.PROD, CmdT.STOP), (NodeT.SHIP, CmdT.STOP), 
-                     (NodeT.PROD, CmdT.RESTART), (NodeT.SHIP, CmdT.RESTART )])
+    # cmdSched.append([(NodeT.PROD, CmdT.STOP, {"killsig" : 2}), (NodeT.SHIP, CmdT.STOP, {"killsig" : 2}), 
+    #                  (NodeT.PROD, CmdT.RESTART, {"clean" : False}), (NodeT.SHIP, CmdT.RESTART, {"clean" : False} )])
 
-    cmdSched.append([(NodeT.PROD, CmdT.STOP), (NodeT.RODEOS, CmdT.STOP), 
-                     (NodeT.PROD, CmdT.RESTART), (NodeT.RODEOS, CmdT.RESTART )])                     
+    # cmdSched.append([(NodeT.PROD, CmdT.STOP, {"killsig" : 2}), (NodeT.RODEOS, CmdT.STOP, {"killsig" : 2}), 
+    #                  (NodeT.PROD, CmdT.RESTART, {"clean" : False}), (NodeT.RODEOS, CmdT.RESTART, {"clean" : False} )])                     
     
-    cmdSched.append([(NodeT.SHIP, CmdT.STOP), (NodeT.RODEOS, CmdT.STOP), 
-                     (NodeT.SHIP, CmdT.RESTART), (NodeT.RODEOS, CmdT.RESTART )])                                          
+    # cmdSched.append([(NodeT.SHIP, CmdT.STOP, {"killsig" : 2}), (NodeT.RODEOS, CmdT.STOP, {"killsig" : 2}), 
+    #                  (NodeT.SHIP, CmdT.RESTART, {"clean" : False}), (NodeT.RODEOS, CmdT.RESTART, {"clean" : False} )])                                          
     
+    i = 0
     for cmdList in cmdSched:
+        print('cmdList=', cmdList)
         for cmd in cmdList:
-            print(f"Waiting {timeBetweeCommandsSeconds} seconds ..")
-            time.sleep(timeBetweeCommandsSeconds)
+            sleepTime = timeBetweeCommandsSeconds[i]
+            
+            print(f"Waiting {sleepTime} seconds ..")
+            time.sleep(sleepTime)
+            nd = cmd[0]
+            nd_cmd = cmd[1]
+            opts = cmd[2]
 
-            if cmd[0] == NodeT.PROD:
-                if cmd[1] == CmdT.STOP:
+            if nd_cmd == CmdT.RESTART:
+                i += 1 
+                i = i % len(timeBetweeCommandsSeconds)
+
+            if nd == NodeT.PROD:
+                if nd_cmd == CmdT.STOP:
                     print("Stopping producer")
-                    cluster.stopProducer(9)
+                    cluster.stopProducer(opts['killsig'])
                 else:
                     print("Restarting producer")
-                    cluster.restartProducer(clean=False)
-            elif cmd[0] == NodeT.SHIP:
-                if cmd[1] == CmdT.STOP:
+                    cluster.restartProducer(clean=opts['clean'])
+            elif nd == NodeT.SHIP:
+                if nd_cmd == CmdT.STOP:
                     print("Stopping SHIP")
-                    cluster.stopShip(9)
+                    cluster.stopShip(opts['killsig'])
                 else:
                     print("Restarting SHIP")
-                    cluster.restartShip(clean=False)
-            elif cmd[0] == NodeT.RODEOS:
-                if cmd[1] == CmdT.STOP:
+                    cluster.restartShip(clean=opts['clean'])
+            elif nd == NodeT.RODEOS:
+                if nd_cmd == CmdT.STOP:
                     print("Stopping rodeos")
-                    cluster.stopRodeos(9)
+                    cluster.stopRodeos(opts['killsig'])
                 else:
                     print("Restarting rodeos")
-                    cluster.restartRodeos(clean=False)
+                    cluster.restartRodeos(clean=opts['clean'])
 
     # Big enough to have new blocks produced
     numBlocks=120
