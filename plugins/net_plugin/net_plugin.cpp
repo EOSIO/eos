@@ -1897,8 +1897,8 @@ namespace eosio {
                ("r", sync_last_requested_num)("e", sync_next_expected_num)("k", sync_known_lib_num)("s", sync_req_span) );
 
       if( fork_head_block_num < sync_last_requested_num && sync_source && sync_source->current() ) {
-         fc_ilog( logger, "ignoring request, head is ${h} last req = ${r}",
-                  ("h", fork_head_block_num)("r", sync_last_requested_num) );
+         fc_ilog( logger, "ignoring request, head is ${h} last req = ${r}, source connection ${c}",
+                  ("h", fork_head_block_num)("r", sync_last_requested_num)("c", sync_source->connection_id) );
          return;
       }
 
