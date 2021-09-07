@@ -15,9 +15,9 @@ import os
 import signal
 
 ###############################################################
-# nodeos_run_test
+# amqp_tests 
 #
-# General test that tests a wide range of general use actions around nodeos and keosd
+# tests for the amqp functionality 
 #
 ###############################################################
 
@@ -32,7 +32,6 @@ args = TestHelper.parse_args({"--host","--port","--prod-count","--defproducera_p
 server=args.host
 port=args.port
 debug=args.v
-#defproduceraPrvtKey="5J4epz9MPhZgVtRm8erfCKe29dN5wHVgb9SCW1kCNuJAnJSFcyU"
 defproduceraPrvtKey=args.defproducera_prvt_key
 defproducerbPrvtKey=args.defproducerb_prvt_key
 dumpErrorDetails=args.dump_error_details
@@ -45,8 +44,6 @@ killAll=args.clean_run
 sanityTest=args.sanity_test
 walletPort=args.wallet_port
 amqpAddr=args.amqp_address
-
-producerName = "defproducera"
 
 Utils.Debug=debug
 localTest=True if server == TestHelper.LOCAL_HOST else False
@@ -73,10 +70,7 @@ try:
         cluster.cleanup()
         Print("Stand up cluster")
 
-#        producers = Cluster.createAccountKeys(1)
-#        amqProducerAccount = producers[0]
         amqProducerAccount = cluster.defProducerAccounts["defproducera"]
-#        pubkey = "EOS6uhrFT3sVBDiqrtaw4cBr46aAhtkEBW7ruzFVX5RqQehrYdhtp"
 
         producerOptString = " "
         specificExtraNodeosArgs={ 0: " --backing-store=chainbase --plugin eosio::amqp_trx_plugin --amqp-trx-address %s --plugin eosio::amqp_trace_plugin --amqp-trace-address %s" % (amqpAddr, amqpAddr),
@@ -259,9 +253,6 @@ try:
     accounts=[testeraAccount, currencyAccount, exchangeAccount]
     cluster.validateAccounts(accounts)
 
-    Print("Verify account %s" % (testeraAccount))
-    if not node.verifyAccount(testeraAccount):
-        errorExit("FAILURE - account creation failed.", raw=True)
 
     transferAmount="97.5321 {0}".format(CORE_SYMBOL)
     Print("Transfer funds %s from account %s to %s" % (transferAmount, defproduceraAccount.name, testeraAccount.name))
