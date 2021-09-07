@@ -79,7 +79,7 @@ class RodeosCluster(object):
             specificExtraNodeosArgs[shipNodeId] += "--state-history-unix-socket-path ship.sock"
 
         if self.cluster.launch(pnodes=1, totalNodes=2, totalProducers=1, useBiosBootFile=False, specificExtraNodeosArgs=specificExtraNodeosArgs) is False:
-            Utils.Utils.cmdError("launcher")
+            Utils.cmdError("launcher")
             Utils.errorExit("Failed to stand up eos cluster.")
 
         self.shipNode = self.cluster.getNode(self.shipNodeId)
@@ -112,30 +112,28 @@ class RodeosCluster(object):
             if not self.keepLogs:
                 shutil.rmtree(self.rodeosDir[i], ignore_errors=True)
 
-    def relaunchNode(node: Node, chainArg="", relaunchAssertMessage="Fail to relaunch", clean=False):
+    def relaunchNode(self, node: Node, chainArg="", relaunchAssertMessage="Fail to relaunch", clean=False):
         if clean:
             shutil.rmtree(Utils.getNodeDataDir(node.nodeId))
+            os.makedirs(Utils.getNodeDataDir(node.nodeId))
 
         # skipGenesis=False starts the same chain
-        relaunchTimeout = 3 # hardcode for now
-        isRelaunchSuccess=node.relaunch(chainArg=chainArg, timeout=relaunchTimeout, skipGenesis=False, cachePopen=True)
+        isRelaunchSuccess=node.relaunch(chainArg=chainArg,                      timeout=10, skipGenesis=False, cachePopen=True)
         time.sleep(1) # Give a second to replay or resync if needed
         assert isRelaunchSuccess, relaunchAssertMessage
         return isRelaunchSuccess
 
     def restartProducer(self, clean):
         # need to reenable producing after restart
-        RodeosCluster.relaunchNode(self.prodNode, chainArg="-e -p defproducera ", clean=clean)
+        self.relaunchNode(self.prodNode, chainArg="-e -p defproducera ", clean=clean)
 
     def stopProducer(self, killSignal):
         self.prodNode.kill(killSignal)
 
     def restartShip(self, clean):
-        arg="--plugin eosio::state_history_plugin --trace-history --chain-state-history --state-history-endpoint {} --disable-replay-opts --plugin eosio::net_api_plugin ".format(self.SHIP_HOST_PORT)
-
         if self.unix_socket:
             arg += "--state-history-unix-socket-path ship.sock"
-        RodeosCluster.relaunchNode(self.shipNode, chainArg=arg, clean=clean)
+        self.relaunchNode(self.shipNode, clean=clean)
 
     def stopShip(self, killSignal):
         self.shipNode.kill(killSignal)
