@@ -580,10 +580,10 @@ namespace eosio {
 
    class connection : public std::enable_shared_from_this<connection> {
    public:
-      explicit connection( string endpoint );
+      explicit connection( const string& endpoint );
       connection();
 
-      ~connection() {}
+      ~connection() = default;
 
       bool start_session();
 
@@ -673,7 +673,7 @@ namespace eosio {
       // timestamp for the lastest message
       tstamp                         latest_msg_time{0};
       tstamp                         latest_blk_time{0};
-      tstamp                         hb_timeout;
+      tstamp                         hb_timeout{std::chrono::milliseconds{def_keepalive_interval}.count()};
 
       bool connected();
       bool current();
@@ -874,10 +874,11 @@ namespace eosio {
 
    //---------------------------------------------------------------------------
 
-   connection::connection( string endpoint )
+   connection::connection( const string& endpoint )
       : peer_addr( endpoint ),
         strand( my_impl->thread_pool->get_executor() ),
         socket( new tcp::socket( my_impl->thread_pool->get_executor() ) ),
+        log_p2p_address( endpoint ),
         connection_id( ++my_impl->current_connection_id ),
         response_expected_timer( my_impl->thread_pool->get_executor() ),
         last_handshake_recv(),
