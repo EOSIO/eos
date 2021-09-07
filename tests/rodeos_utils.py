@@ -42,6 +42,7 @@ class RodeosCluster(object):
         self.killWallet=not leave_running
         self.clean_run=clean_run
         self.unix_socket=unix_socket
+        self.producerNeverRestarted=True
 
         self.numRodeos=numRodeos
         self.rodeosDir=[]
@@ -124,8 +125,17 @@ class RodeosCluster(object):
         return isRelaunchSuccess
 
     def restartProducer(self, clean):
-        # need to reenable producing after restart
-        self.relaunchNode(self.prodNode, chainArg="-e -p defproducera ", clean=clean)
+        # The first time relaunchNode is called, it does not have
+        # "-e -p" for enabling block producing;
+        # that's why chainArg="-e -p defproducera " is needed.
+        # Calls afterward reuse command in the first call,
+        # chainArg is not needed to set any more.
+        chainArg=""
+        if self.producerNeverRestarted:
+            self.producerNeverRestarted=False
+            chainArg="-e -p defproducera "
+
+        self.relaunchNode(self.prodNode, chainArg=chainArg, clean=clean)
 
     def stopProducer(self, killSignal):
         self.prodNode.kill(killSignal)
