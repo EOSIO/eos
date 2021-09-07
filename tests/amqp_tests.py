@@ -130,19 +130,6 @@ try:
     testerbOwner = testerbAccount.ownerPublicKey
     testerbAccount.ownerPublicKey = '{"threshold":1, "accounts":[{"permission":{"actor": "' + testeraAccount.name + '", "permission":"owner"}, "weight": 1}],"keys":[{"key": "' +testerbOwner +  '", "weight": 1}],"waits":[]}'
 
-    PRV_KEY1=testeraAccount.ownerPrivateKey
-    PUB_KEY1=testeraAccount.ownerPublicKey
-    PRV_KEY2=currencyAccount.ownerPrivateKey
-    PUB_KEY2=currencyAccount.ownerPublicKey
-    PRV_KEY3=exchangeAccount.activePrivateKey
-    PUB_KEY3=exchangeAccount.activePublicKey
-
-    testeraAccount.activePrivateKey=currencyAccount.activePrivateKey=PRV_KEY3
-    testeraAccount.activePublicKey=currencyAccount.activePublicKey=PUB_KEY3
-
-    exchangeAccount.ownerPrivateKey=PRV_KEY2
-    exchangeAccount.ownerPublicKey=PUB_KEY2
-
     testWalletName="test"
     Print("Creating wallet \"%s\"." % (testWalletName))
     walletAccounts=[cluster.defproduceraAccount,cluster.defproducerbAccount]
@@ -250,7 +237,7 @@ try:
     transId=node.createInitializeAccount(exchangeAccount, cluster.defproduceraAccount, buyRAM=200000, waitForTransBlock=True, exitOnError=True)
 
     Print("Validating accounts after user accounts creation")
-    accounts=[testeraAccount, currencyAccount, exchangeAccount]
+    accounts=[testeraAccount, testerbAccount, currencyAccount, exchangeAccount]
     cluster.validateAccounts(accounts)
 
 
