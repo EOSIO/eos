@@ -3179,6 +3179,7 @@ namespace eosio {
             return;
          }
 
+         log_p2p_address = msg.p2p_address;
          if( peer_address().empty() ) {
             set_connection_type( msg.p2p_address );
          }
