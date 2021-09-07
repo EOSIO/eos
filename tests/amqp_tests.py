@@ -161,8 +161,6 @@ try:
 
 
     node=cluster.getNode(0)
-    if amqpAddr:
-        node.setAMQPAddress(amqpAddr)
 
     Print("Validating accounts before user accounts creation")
     cluster.validateAccounts(None)
