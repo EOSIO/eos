@@ -152,9 +152,12 @@ if("eos-vm-oc" IN_LIST EOSIO_WASM_RUNTIMES)
    set_property(TEST rodeos_test_eosvmoc PROPERTY LABELS nonparallelizable_tests)
 endif()
 
-add_test(NAME rodeos_idle_test COMMAND tests/rodeos_test.py -v --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
-set_property(TEST rodeos_idle_test PROPERTY LABELS nonparallelizable_tests)
-
+add_test(NAME rodeos_idle_restart_ship_test COMMAND tests/rodeos_idle_test.py -v --clean-run --dump-error-detail --node-order _ship,+ship WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_property(TEST rodeos_idle_restart_ship_test PROPERTY LABELS nonparallelizable_tests)
+add_test(NAME rodeos_idle_restart_producer_test COMMAND tests/rodeos_idle_test.py -v --clean-run --dump-error-detail --node-order _prod,+prod WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_property(TEST rodeos_idle_restart_producer_test PROPERTY LABELS nonparallelizable_tests)
+add_test(NAME rodeos_idle_restart_rodeos_test COMMAND tests/rodeos_idle_test.py -v --clean-run --dump-error-detail --node-order _rodeos,+rodeos WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_property(TEST rodeos_idle_restart_rodeos_test PROPERTY LABELS nonparallelizable_tests)
 
 # Long running tests
 add_test(NAME nodeos_sanity_lr_test COMMAND tests/nodeos_run_test.py -v --sanity-test --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})

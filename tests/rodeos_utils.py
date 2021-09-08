@@ -191,7 +191,7 @@ class RodeosCluster(object):
         Utils.Print("Wait for Nodeos to produce {} blocks".format(numBlocks))
         return self.prodNode.waitForBlock(numBlocks, blockType=BlockType.lib)
 
-    def allBlocksReceived(self, lastBlockNum, rodeosId=0):
+    def allBlocksReceived(self, lastBlockNum, rodeosId=0, timeoutSeconds=60):
         assert(rodeosId >= 0 and rodeosId < self.numRodeos)
 
         Utils.Print("Verifying {} blocks has received by rodeos #{}".format(lastBlockNum, rodeosId))
@@ -203,7 +203,7 @@ class RodeosCluster(object):
             headBlockNum = int(response['head_block_num'])
             Utils.Print("head_block_num {}".format(headBlockNum))
             if headBlockNum < lastBlockNum:
-                if numSecsSleep >= 60:
+                if numSecsSleep >= timeoutSeconds:
                     Utils.Print("Rodeos did not receive block {} after {} seconds. Only block {} received".format(lastBlockNum, numSecsSleep, headBlockNum))
                     return False
                 time.sleep(1)
