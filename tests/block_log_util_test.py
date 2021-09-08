@@ -9,6 +9,7 @@ from Node import BlockType
 import os
 import signal
 import subprocess
+import filecmp
 from TestHelper import AppArgs
 from TestHelper import TestHelper
 
@@ -117,16 +118,21 @@ try:
     assert output.find(expectedStr) != -1, "Couldn't find \"%s\" in:\n\"%s\"\n" % (expectedStr, output)
 
     blockLogDir=Utils.getNodeDataDir(0, "blocks")
+    # testing generating duplicate index file
     duplicateIndexFileName=os.path.join(blockLogDir, "duplicate.index")
     output=cluster.getBlockLog(0, blockLogAction=BlockLogAction.make_index, outputFile=duplicateIndexFileName)
     assert output is not None, "Couldn't make new index file \"%s\"\n" % (duplicateIndexFileName)
 
     blockIndexFileName=os.path.join(blockLogDir, "blocks.index")
-    blockIndexFile=open(blockIndexFileName,"rb")
-    duplicateIndexFile=open(duplicateIndexFileName,"rb")
-    blockIndexStr=blockIndexFile.read()
-    duplicateIndexStr=duplicateIndexFile.read()
-    assert blockIndexStr==duplicateIndexStr, "Generated file \%%s\" didn't match original \"%s\"" % (duplicateIndexFileName, blockIndexFileName)
+    assert filecmp.cmp(blockIndexFileName, duplicateIndexFileName), "Regenerated index file {} is different to {}".format(blockIndexFileName, duplicateIndexFileName)
+
+    # testing recreation of blocks.index when it is absent
+    os.remove(blockIndexFileName)
+    assert not os.path.exists(blockIndexFileName), "Error removing index file {}".format(blockIndexFileName)
+    output=cluster.getBlockLog(0, blockLogAction=BlockLogAction.make_index)
+    assert output is not None, "Couldn't make new index file \"%s\"\n" % (blockIndexFileName)
+    assert os.path.exists(blockIndexFileName), "Failed to create index file {}".format(blockIndexFileName)
+    assert filecmp.cmp(blockIndexFileName, duplicateIndexFileName), "Regenerated index file {} is different to {}".format(blockIndexFileName, duplicateIndexFileName)
 
     try:
         Print("Head block num %d will not be in block log (it will be in reversible DB), so --trim will throw an exception" % (headBlockNum))

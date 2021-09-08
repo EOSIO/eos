@@ -2771,12 +2771,12 @@ fc::variant read_only::get_block_header_state(const get_block_header_state_param
 void read_write::push_block(read_write::push_block_params_v1&& params, next_function<read_write::push_block_results> next) {
    try {
       app().get_method<incoming::methods::block_sync>()(std::make_shared<signed_block>( std::move( params ), true), std::optional<block_id_type>{});
-      next(read_write::push_block_results{});
    } catch ( boost::interprocess::bad_alloc& ) {
       chain_plugin::handle_db_exhaustion();
    } catch ( const std::bad_alloc& ) {
       chain_plugin::handle_bad_alloc();
-   } CATCH_AND_CALL(next);
+   } FC_LOG_AND_DROP()
+   next(read_write::push_block_results{});
 }
 
 void read_write::push_transaction(const read_write::push_transaction_params_v1& params, next_function<read_write::push_transaction_results> next) {

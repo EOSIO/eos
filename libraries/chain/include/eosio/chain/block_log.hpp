@@ -63,7 +63,7 @@ namespace eosio { namespace chain {
          const signed_block_ptr&        head() const;
          uint32_t                       first_block_num() const;
 
-         static bool exists(const fc::path& data_dir);
+         static bool exists(const fc::path& data_dir, bool check_index=true);
          /**
           *  @param ids[in,out] The list of transaction ids to be pruned. After the member function returns,
           *                     it would be modified to contain the list of transaction ids that do not
