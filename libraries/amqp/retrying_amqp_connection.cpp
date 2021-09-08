@@ -6,12 +6,16 @@
 namespace eosio {
 
 struct retrying_amqp_connection::impl : public AMQP::ConnectionHandler {
-   impl(boost::asio::io_context& io_context, const AMQP::Address& address, connection_ready_callback_t ready,
-        connection_failed_callback_t failed, fc::logger logger = fc::logger::get()) :
-     _strand(io_context), _resolver(_strand.context()), _sock(_strand.context()), _timer(_strand.context()), _address(address),
-     _ready_callback(ready), _failed_callback(failed), _logger(logger) {
+   impl(boost::asio::io_context& io_context, const AMQP::Address& address, const fc::microseconds& retry_interval,
+        connection_ready_callback_t ready, connection_failed_callback_t failed, fc::logger logger = fc::logger::get()) :
+     _strand(io_context), _resolver(_strand.context()), _sock(_strand.context()), _timer(_strand.context()),
+     _address(address), _retry_interval(retry_interval.count()),
+     _ready_callback(std::move(ready)), _failed_callback(std::move(failed)), _logger(std::move(logger)) {
 
       FC_ASSERT(!_address.secure(), "Only amqp:// URIs are supported for AMQP addresses (${a})", ("a", _address));
+      FC_ASSERT(_ready_callback, "Ready callback required");
+      FC_ASSERT(_failed_callback, "Failed callback required");
+
       start_connection();
    }
 
@@ -69,8 +73,8 @@ struct retrying_amqp_connection::impl : public AMQP::ConnectionHandler {
    void schedule_retry() {
       //in some cases, such as an async_read & async_write both outstanding at the same time during socket failure,
       // schedule_retry() can be called multiple times in quick succession. nominally this causes an already closed _sock
-      // to be closed(), and cancels the pending 1 second timer when restarting the 1 second timer. In theory though, if thread
-      // timing is particularly slow, the one second timer may have already expired (and the callback can no longer be cancelled)
+      // to be closed(), and cancels the pending timer when restarting the timer. In theory though, if thread
+      // timing is particularly slow, the timer may have already expired (and the callback can no longer be cancelled)
       // which could potentially queue up two start_connection()s.
       //Bail out early if a pending timer is already running and the callback hasn't been called.
       if(_retry_scheduled)
@@ -86,7 +90,7 @@ struct retrying_amqp_connection::impl : public AMQP::ConnectionHandler {
       _indicated_ready = false;
 
       boost::system::error_code ec;
-      _timer.expires_from_now(std::chrono::seconds(1), ec);
+      _timer.expires_from_now(_retry_interval, ec);
       if(ec)
          return;
       _retry_scheduled = true;
@@ -147,6 +151,7 @@ struct retrying_amqp_connection::impl : public AMQP::ConnectionHandler {
    boost::asio::steady_timer       _timer;
 
    AMQP::Address _address;
+   const std::chrono::microseconds _retry_interval;
 
    connection_ready_callback_t  _ready_callback;
    connection_failed_callback_t _failed_callback;
@@ -176,11 +181,15 @@ struct single_channel_retrying_amqp_connection::impl {
    using channel_ready_callback_t = single_channel_retrying_amqp_connection::channel_ready_callback_t;
    using failed_callback_t = single_channel_retrying_amqp_connection::failed_callback_t;
 
-   impl(boost::asio::io_context& io_context, const AMQP::Address& address, channel_ready_callback_t ready,
-                                                 failed_callback_t failed, fc::logger logger) :
-     _connection(io_context, address, [this](AMQP::Connection* c){conn_ready(c);},[this](){conn_failed();}, logger),
-     _timer(_connection.strand().context()), _channel_ready(ready), _failed(failed)
-   {}
+   impl(boost::asio::io_context& io_context, const AMQP::Address& address, const fc::microseconds& retry_interval,
+        channel_ready_callback_t ready, failed_callback_t failed, fc::logger logger) :
+     _connection(io_context, address, retry_interval, [this](AMQP::Connection* c){conn_ready(c);},[this](){conn_failed();}, logger),
+     _retry_interval(retry_interval.count()),
+     _timer(_connection.strand().context()), _channel_ready(std::move(ready)), _failed(std::move(failed)), _logger(logger)
+   {
+      FC_ASSERT(_channel_ready, "Channel ready callback required");
+      FC_ASSERT(_failed, "Failed callback required");
+   }
 
    void conn_ready(AMQP::Connection* c) {
       _amqp_connection = c;
@@ -189,7 +198,7 @@ struct single_channel_retrying_amqp_connection::impl {
 
    void start_retry() {
       boost::system::error_code ec;
-      _timer.expires_from_now(std::chrono::seconds(1), ec);
+      _timer.expires_from_now(_retry_interval, ec);
       if(ec)
          return;
       _timer.async_wait(boost::asio::bind_executor(_connection.strand(), [this](const auto ec) {
@@ -204,11 +213,11 @@ struct single_channel_retrying_amqp_connection::impl {
          _amqp_channel.emplace(_amqp_connection);
       }
       catch(...) {
-         wlog("AMQP channel could not start for AMQP connection ${c}; retrying", ("c", _connection.address()));
+         fc_wlog(_logger, "AMQP channel could not start for AMQP connection ${c}; retrying", ("c", _connection.address()));
          start_retry();
       }
       _amqp_channel->onError([this](const char* e) {
-         wlog("AMQP channel failure on AMQP connection ${c}; retrying : ${m}", ("c", _connection.address())("m", e));
+         fc_wlog(_logger, "AMQP channel failure on AMQP connection ${c}; retrying : ${m}", ("c", _connection.address())("m", e));
          _failed();
          start_retry();
       });
@@ -226,17 +235,22 @@ struct single_channel_retrying_amqp_connection::impl {
    }
 
    retrying_amqp_connection _connection;
+   const std::chrono::microseconds _retry_interval;
    boost::asio::steady_timer _timer;
    std::optional<AMQP::Channel> _amqp_channel;
    AMQP::Connection* _amqp_connection = nullptr;
 
    channel_ready_callback_t _channel_ready;
    failed_callback_t _failed;
+
+   fc::logger _logger;
 };
 
-retrying_amqp_connection::retrying_amqp_connection(boost::asio::io_context& io_context, const AMQP::Address& address, connection_ready_callback_t ready,
-                                  connection_failed_callback_t failed, fc::logger logger) :
-                                  my(new impl(io_context, address, ready, failed, logger)) {}
+retrying_amqp_connection::retrying_amqp_connection( boost::asio::io_context& io_context, const AMQP::Address& address,
+                                                    const fc::microseconds& retry_interval,
+                                                    connection_ready_callback_t ready,
+                                                    connection_failed_callback_t failed, fc::logger logger ) :
+      my( new impl( io_context, address, retry_interval, std::move(ready), std::move(failed), std::move(logger) ) ) {}
 
 
 const AMQP::Address& retrying_amqp_connection::address() const {
@@ -249,9 +263,12 @@ boost::asio::io_context::strand& retrying_amqp_connection::strand() {
 
 retrying_amqp_connection::~retrying_amqp_connection() = default;
 
-single_channel_retrying_amqp_connection::single_channel_retrying_amqp_connection(boost::asio::io_context& io_context, const AMQP::Address& address, channel_ready_callback_t ready,
+single_channel_retrying_amqp_connection::single_channel_retrying_amqp_connection(boost::asio::io_context& io_context,
+                                                                                 const AMQP::Address& address,
+                                                                                 const fc::microseconds& retry_interval,
+                                                                                 channel_ready_callback_t ready,
                                                                                  failed_callback_t failed, fc::logger logger) :
-  my(new impl(io_context, address, ready, failed, logger)) {}
+  my(new impl(io_context, address, retry_interval, std::move(ready), std::move(failed), std::move(logger))) {}
 
 const AMQP::Address& single_channel_retrying_amqp_connection::address() const {
    return my->_connection.address();
@@ -259,4 +276,4 @@ const AMQP::Address& single_channel_retrying_amqp_connection::address() const {
 
 single_channel_retrying_amqp_connection::~single_channel_retrying_amqp_connection() = default;
 
-}
+} // namespace eosio
