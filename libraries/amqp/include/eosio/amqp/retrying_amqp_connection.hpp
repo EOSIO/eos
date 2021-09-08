@@ -6,6 +6,7 @@
 
 #include <fc/log/logger.hpp>
 #include <fc/exception/exception.hpp>
+#include <fc/time.hpp>
 
 /*
  * A retrying_amqp_connection manages a connection to an AMQP server that will retry the connection
@@ -20,11 +21,14 @@ struct retrying_amqp_connection {
 
    /// \param io_context a strand is created on this io_context for all asio operatoins
    /// \param address AMQP address to connect to
+   /// \param retry_interval number of microseconds between retry attempts
    /// \param ready a callback when the AMQP connection has been established
    /// \param failed a callback when the AMQP connection has failed after being established; should no longer use the AMQP::Connection* after this callback
    /// \param logger logger to send logging to
-   retrying_amqp_connection(boost::asio::io_context& io_context, const AMQP::Address& address, connection_ready_callback_t ready,
-                            connection_failed_callback_t failed, fc::logger logger = fc::logger::get());
+   retrying_amqp_connection(boost::asio::io_context& io_context, const AMQP::Address& address,
+                            const fc::microseconds& retry_interval,
+                            connection_ready_callback_t ready, connection_failed_callback_t failed,
+                            fc::logger logger = fc::logger::get());
 
    const AMQP::Address& address() const;
 
@@ -43,11 +47,14 @@ struct single_channel_retrying_amqp_connection {
 
    /// \param io_context a strand is created on this io_context for all asio operatoins
    /// \param address AMQP address to connect to
+   /// \param retry_interval number of microseconds between retry attempts
    /// \param ready a callback when the AMQP channel has been established, do NOT set the .onError() for the passed AMQP::Channel
    /// \param failed a callback when the AMQP channel has failed after being established; should no longer use the AMQP::Channel* within or after this callback
    /// \param logger logger to send logging to
-   single_channel_retrying_amqp_connection(boost::asio::io_context& io_context, const AMQP::Address& address, channel_ready_callback_t ready,
-                                           failed_callback_t failed, fc::logger logger = fc::logger::get());
+   single_channel_retrying_amqp_connection(boost::asio::io_context& io_context, const AMQP::Address& address,
+                                           const fc::microseconds& retry_interval,
+                                           channel_ready_callback_t ready, failed_callback_t failed,
+                                           fc::logger logger = fc::logger::get());
 
    const AMQP::Address& address() const;
 
