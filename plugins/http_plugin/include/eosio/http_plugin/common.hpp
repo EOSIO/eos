@@ -129,13 +129,13 @@ namespace eosio {
         bool                     validate_host = true;
         set<string>              valid_hosts;
 
-        url_handlers_type  url_handlers;
+        url_handlers_type        url_handlers;
         bool                     keep_alive = false;
 
-        fc::logger logger;
+        fc::logger& logger;
 
-        http_plugin_state(fc::string logger_name) 
-            : logger(logger_name) 
+        explicit http_plugin_state(fc::logger& logger)
+            : logger(logger)
         {}
     };
 
