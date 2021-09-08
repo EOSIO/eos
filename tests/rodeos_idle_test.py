@@ -80,6 +80,7 @@ with RodeosCluster(args.dump_error_details,
     # each 2-tuple is (NodeT, CmdT)
     cmdSched = []
 
+    lastKillSig = -1
     for killSig in [2, 15, 9]:
        cmdList = []
        for nd in nodeOrder:
@@ -93,13 +94,15 @@ with RodeosCluster(args.dump_error_details,
            if sym == "_":
                cmdT = CmdT.STOP
                opts["killsig"] = killSig
+               lastKillSig = killSig
            elif sym == "+":
                cmdT = CmdT.RESTART
-               opts['clean'] = (killSig == 2)
+               opts['clean'] = (lastKillSig == 9)
            else:
                Utils.errorExit(f"'+' or '_' expected got '{sym} when parsing --node-order '{nodeOrderStr}'")
 
            cmdList.append((ndT, cmdT, opts))
+           
        cmdSched.append(cmdList * nReps)
    
     for cmdList in cmdSched:
@@ -109,27 +112,31 @@ with RodeosCluster(args.dump_error_details,
             nd = cmd[0]
             nd_cmd = cmd[1]
             opts = cmd[2]
+            if nd_cmd == CmdT.STOP:
+                s = f"killsig= {opts['killsig']}"
+            else:
+                s = f"clean= {opts['clean']}"
 
             if nd == NodeT.PROD:
                 if nd_cmd == CmdT.STOP:
-                    print("Stopping producer")
+                    print(f"Stopping producer {s}")
                     cluster.stopProducer(opts['killsig'])
                 else:
-                    print("Restarting producer")
+                    print(f"Restarting producer {s}")
                     cluster.restartProducer(clean=opts['clean'])
             elif nd == NodeT.SHIP:
                 if nd_cmd == CmdT.STOP:
-                    print("Stopping SHIP")
+                    print(f"Stopping SHIP {s}")
                     cluster.stopShip(opts['killsig'])
                 else:
-                    print("Restarting SHIP")
+                    print(f"Restarting SHIP {s}")
                     cluster.restartShip(clean=opts['clean'])
             elif nd == NodeT.RODEOS:
                 if nd_cmd == CmdT.STOP:
-                    print("Stopping rodeos")
+                    print(f"Stopping rodeos {s}")
                     cluster.stopRodeos(opts['killsig'])
                 else:
-                    print("Restarting rodeos")
+                    print(f"Restarting rodeos {s}")
                     cluster.restartRodeos(clean=opts['clean'])
                         
             sleepTime = stopWait
@@ -139,10 +146,10 @@ with RodeosCluster(args.dump_error_details,
             print(f"Waiting {sleepTime} seconds ..")
             time.sleep(sleepTime)         
 
-        # Big enough to have new blocks produced
-        numBlocks=120
-        assert cluster.produceBlocks(numBlocks), "Nodeos failed to produce {} blocks".format(numBlocks)
-        assert cluster.allBlocksReceived(numBlocks, timeoutSeconds=80), "Rodeos did not receive {} blocks".format(numBlocks)
+    # Big enough to have new blocks produced
+    numBlocks=120
+    assert cluster.produceBlocks(numBlocks), "Nodeos failed to produce {} blocks".format(numBlocks)
+    assert cluster.allBlocksReceived(numBlocks, timeoutSeconds=80), "Rodeos did not receive {} blocks".format(numBlocks)
 
     testSuccessful=True
     cluster.setTestSuccessful(testSuccessful)
