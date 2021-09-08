@@ -471,6 +471,7 @@ struct launcher_def {
    void roll (const string& host_names);
    void start_all (string &gts, launch_modes mode);
    void ignite ();
+   string find_and_remove_arg(string str, string substr);
 };
 
 void
@@ -1112,8 +1113,7 @@ launcher_def::write_config_file (tn_node_def &node) {
   }
   cfg << "plugin = eosio::net_plugin\n";
   cfg << "plugin = eosio::chain_api_plugin\n"
-      << "plugin = eosio::history_api_plugin\n"
-      << "plugin = eosio::trace_api_plugin\n";
+      << "plugin = eosio::history_api_plugin\n";
   cfg.close();
 }
 
@@ -1485,6 +1485,26 @@ launcher_def::prep_remote_config_dir (eosd_def &node, host_def *host) {
   }
 }
 
+string
+launcher_def::find_and_remove_arg(string args, string arg ){
+  if (args.empty() || arg.empty())
+     return args;
+
+  string left, middle, right;
+  size_t found = args.find(arg);
+  if (found != std::string::npos){
+    left = args.substr(0, found);
+    middle = args.substr(found + 2); //skip --
+    found = middle.find("--");
+    if (found != std::string::npos){
+      right = middle.substr(found);
+    }
+    return left + right;
+  } else {
+    return args;
+  }
+}
+
 void
 launcher_def::launch (eosd_def &instance, string &gts) {
   bfs::path dd = instance.data_dir_name;
@@ -1509,6 +1529,12 @@ launcher_def::launch (eosd_def &instance, string &gts) {
   if (!specific_nodeos_installation_paths.empty()) {
      if (specific_nodeos_installation_paths.count(node_num)) {
         install_path = specific_nodeos_installation_paths[node_num] + "/";
+        if (!eosd_extra_args.empty()){
+           // old version nodeos doesn't support trace-api-plugin
+           eosd_extra_args = find_and_remove_arg(eosd_extra_args, "--plugin eosio::trace_api_plugin");
+           eosd_extra_args = find_and_remove_arg(eosd_extra_args, "--trace-no-abis");
+           eosd_extra_args = find_and_remove_arg(eosd_extra_args, "--trace-rpc-abi");
+        }
      }
   }
   string eosdcmd = install_path + "programs/nodeos/" + string(node_executable_name) + " ";
