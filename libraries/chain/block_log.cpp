@@ -1250,8 +1250,8 @@ namespace eosio { namespace chain {
       }
    }
 
-   bool block_log::exists(const fc::path& data_dir) {
-      return fc::exists(data_dir / "blocks.log") && fc::exists(data_dir / "blocks.index");
+   bool block_log::exists(const fc::path& data_dir, bool check_index) {
+      return fc::exists(data_dir / "blocks.log") && (!check_index || fc::exists(data_dir / "blocks.index"));
    }
 
    std::pair<fc::path, fc::path> blocklog_files(const fc::path& dir, uint32_t start_block_num, uint32_t num_blocks) {
