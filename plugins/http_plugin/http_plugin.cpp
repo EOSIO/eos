@@ -3,11 +3,8 @@
 #include <eosio/http_plugin/beast_http_listener.hpp>
 #include <eosio/chain/exceptions.hpp>
 
-#include <fc/network/ip.hpp>
 #include <fc/log/logger_config.hpp>
 #include <fc/reflect/variant.hpp>
-#include <fc/io/json.hpp>
-#include <fc/io/raw.hpp>
 #include <fc/crypto/openssl.hpp>
 
 #include <boost/asio.hpp>
@@ -16,8 +13,6 @@
 #include <thread>
 #include <memory>
 #include <regex>
-
-const fc::string http_logger_name("http_plugin");
 
 namespace eosio {
 
@@ -48,8 +43,13 @@ namespace eosio {
 
    using http_plugin_impl_ptr = std::shared_ptr<class http_plugin_impl>;
 
-   // necessary so that handle_exception can use the logge
-   std::shared_ptr<http_plugin_state> g_plugin_state;
+   namespace {
+      const std::string http_logger_name("http_plugin");
+      fc::logger logger;
+      inline fc::logger& get_logger() {
+         return logger;
+      }
+   }
 
 class http_plugin_impl : public std::enable_shared_from_this<http_plugin_impl> {
       public:
@@ -77,7 +77,7 @@ class http_plugin_impl : public std::enable_shared_from_this<http_plugin_impl> {
          shared_ptr<beast_http_listener<ssl_session, tcp, tcp_socket_t > >  beast_https_server;
          shared_ptr<beast_http_listener<unix_socket_session, stream_protocol, stream_protocol::socket > > beast_unix_server;
 
-         shared_ptr<http_plugin_state> plugin_state = std::make_shared<http_plugin_state>(http_logger_name);
+         shared_ptr<http_plugin_state> plugin_state = std::make_shared<http_plugin_state>(get_logger());
          
          /**
           * Make an internal_url_handler that will run the url_handler on the app() thread and then
@@ -167,22 +167,22 @@ class http_plugin_impl : public std::enable_shared_from_this<http_plugin_impl> {
                      "!DHE:!RSA:!AES128:!RC4:!DES:!3DES:!DSS:!SRP:!PSK:!EXP:!MD5:!LOW:!aNULL:!eNULL") != 1)
                      EOS_THROW(chain::http_exception, "Failed to set HTTPS cipher list");
                } catch (const fc::exception& e) {
-                  fc_elog( plugin_state->logger, "https server initialization error: ${w}", ("w", e.to_detail_string()) );
+                  fc_elog( get_logger(), "https server initialization error: ${w}", ("w", e.to_detail_string()) );
                } catch(std::exception& e) {
-                  fc_elog( plugin_state->logger, "https server initialization error: ${w}", ("w", e.what()) );
+                  fc_elog( get_logger(), "https server initialization error: ${w}", ("w", e.what()) );
                }
 
                beast_https_server = std::make_shared<beast_http_listener<ssl_session, tcp, tcp_socket_t> >(thread_pool, ctx, plugin_state);
-               fc_ilog( plugin_state->logger, "created beast HTTPS listener");
+               fc_ilog( get_logger(), "created beast HTTPS listener");
             }
             else {
                if(isUnix) {
                   beast_unix_server = std::make_shared<beast_http_listener<unix_socket_session, stream_protocol, stream_protocol::socket> >(thread_pool, ctx, plugin_state);
-                  fc_ilog( plugin_state->logger, "created beast UNIX socket listener");
+                  fc_ilog( get_logger(), "created beast UNIX socket listener");
                }
                else {
                   beast_server = std::make_shared<beast_http_listener<plain_session, tcp, tcp_socket_t> >(thread_pool, ctx, plugin_state);
-                  fc_ilog( plugin_state->logger, "created beast HTTP listener");
+                  fc_ilog( get_logger(), "created beast HTTP listener");
                }
             }
          }
@@ -229,21 +229,21 @@ class http_plugin_impl : public std::enable_shared_from_this<http_plugin_impl> {
 
             ("access-control-allow-origin", bpo::value<string>()->notifier([this](const string& v) {
                 my->plugin_state->access_control_allow_origin = v;
-                fc_ilog( my->plugin_state->logger, "configured http with Access-Control-Allow-Origin: ${o}",
+                fc_ilog( get_logger(), "configured http with Access-Control-Allow-Origin: ${o}",
                          ("o", my->plugin_state->access_control_allow_origin) );
              }),
              "Specify the Access-Control-Allow-Origin to be returned on each requeplugin_state->")
 
             ("access-control-allow-headers", bpo::value<string>()->notifier([this](const string& v) {
                 my->plugin_state->access_control_allow_headers = v;
-                fc_ilog( my->plugin_state->logger, "configured http with Access-Control-Allow-Headers : ${o}",
+                fc_ilog( get_logger(), "configured http with Access-Control-Allow-Headers : ${o}",
                          ("o", my->plugin_state->access_control_allow_headers) );
              }),
              "Specify the Access-Control-Allow-Headers to be returned on each requeplugin_state->")
 
             ("access-control-max-age", bpo::value<string>()->notifier([this](const string& v) {
                 my->plugin_state->access_control_max_age = v;
-                fc_ilog( my->plugin_state->logger, "configured http with Access-Control-Max-Age : ${o}",
+                fc_ilog( get_logger(), "configured http with Access-Control-Max-Age : ${o}",
                          ("o", my->plugin_state->access_control_max_age) );
              }),
              "Specify the Access-Control-Max-Age to be returned on each request.")
@@ -251,7 +251,7 @@ class http_plugin_impl : public std::enable_shared_from_this<http_plugin_impl> {
             ("access-control-allow-credentials",
              bpo::bool_switch()->notifier([this](bool v) {
                 my->plugin_state->access_control_allow_credentials = v;
-                if( v ) fc_ilog( my->plugin_state->logger, "configured http with Access-Control-Allow-Credentials: true" );
+                if( v ) fc_ilog( get_logger(), "configured http with Access-Control-Allow-Credentials: true" );
              })->default_value(false),
              "Specify if Access-Control-Allow-Credentials: true should be returned on each request.")
             ("max-body-size", bpo::value<uint32_t>()->default_value(1024*1024),
@@ -276,7 +276,6 @@ class http_plugin_impl : public std::enable_shared_from_this<http_plugin_impl> {
    }
 
    void http_plugin::plugin_initialize(const variables_map& options) {
-      g_plugin_state = my->plugin_state;
       try {
          my->plugin_state->validate_host = options.at("http-validate-host").as<bool>();
          if( options.count( "http-alias" )) {
@@ -304,9 +303,9 @@ class http_plugin_impl : public std::enable_shared_from_this<http_plugin_impl> {
             string port = lipstr.substr( host.size() + 1, lipstr.size());
             try {
                my->listen_endpoint = *resolver.resolve( tcp::v4(), host, port );
-               fc_ilog(my->plugin_state->logger,  "configured http to listen on ${h}:${p}", ("h", host)( "p", port ));
+               fc_ilog(get_logger(),  "configured http to listen on ${h}:${p}", ("h", host)( "p", port ));
             } catch ( const boost::system::system_error& ec ) {
-               fc_elog(my->plugin_state->logger,  "failed to configure http to listen on ${h}:${p} (${m})",
+               fc_elog(get_logger(),  "failed to configure http to listen on ${h}:${p} (${m})",
                      ("h", host)( "p", port )( "m", ec.what()));
             }
 
@@ -326,12 +325,12 @@ class http_plugin_impl : public std::enable_shared_from_this<http_plugin_impl> {
          if( options.count( "https-server-address" ) && options.at( "https-server-address" ).as<string>().length()) {
             if( !options.count( "https-certificate-chain-file" ) ||
                 options.at( "https-certificate-chain-file" ).as<string>().empty()) {
-               fc_elog(my->plugin_state->logger, "https-certificate-chain-file is required for HTTPS" );
+               fc_elog(get_logger(), "https-certificate-chain-file is required for HTTPS" );
                return;
             }
             if( !options.count( "https-private-key-file" ) ||
                 options.at( "https-private-key-file" ).as<string>().empty()) {
-               fc_elog(my->plugin_state->logger, "https-private-key-file is required for HTTPS" );
+               fc_elog(get_logger(), "https-private-key-file is required for HTTPS" );
                return;
             }
 
@@ -340,12 +339,12 @@ class http_plugin_impl : public std::enable_shared_from_this<http_plugin_impl> {
             string port = lipstr.substr( host.size() + 1, lipstr.size());
             try {
                my->https_listen_endpoint = *resolver.resolve( tcp::v4(), host, port );
-               fc_ilog(my->plugin_state->logger, "configured https to listen on ${h}:${p} (TLS configuration will be validated momentarily)",
+               fc_ilog(get_logger(), "configured https to listen on ${h}:${p} (TLS configuration will be validated momentarily)",
                      ("h", host)( "p", port ));
                my->https_cert_chain = options.at( "https-certificate-chain-file" ).as<string>();
                my->https_key = options.at( "https-private-key-file" ).as<string>();
             } catch ( const boost::system::system_error& ec ) {
-               fc_elog(my->plugin_state->logger, "failed to configure https to listen on ${h}:${p} (${m})",
+               fc_elog(get_logger(), "failed to configure https to listen on ${h}:${p} (${m})",
                      ("h", host)( "p", port )( "m", ec.what()));
             }
 
@@ -371,18 +370,18 @@ class http_plugin_impl : public std::enable_shared_from_this<http_plugin_impl> {
                try {
                   my->create_beast_server(false);
 
-                  fc_ilog( my->plugin_state->logger, "start listening for http requests (boost::beast)" );
+                  fc_ilog( get_logger(), "start listening for http requests (boost::beast)" );
 
                   my->beast_server->listen(*my->listen_endpoint);
                   my->beast_server->start_accept();
                } catch ( const fc::exception& e ){
-                  fc_elog( my->plugin_state->logger, "http service failed to start: ${e}", ("e", e.to_detail_string()) );
+                  fc_elog( get_logger(), "http service failed to start: ${e}", ("e", e.to_detail_string()) );
                   throw;
                } catch ( const std::exception& e ){
-                  fc_elog( my->plugin_state->logger, "http service failed to start: ${e}", ("e", e.what()) );
+                  fc_elog( get_logger(), "http service failed to start: ${e}", ("e", e.what()) );
                   throw;
                } catch (...) {
-                  fc_elog( my->plugin_state->logger, "error thrown from http io service" );
+                  fc_elog( get_logger(), "error thrown from http io service" );
                   throw;
                }
             }
@@ -394,13 +393,13 @@ class http_plugin_impl : public std::enable_shared_from_this<http_plugin_impl> {
                   my->beast_unix_server->listen(*my->unix_endpoint);
                   my->beast_unix_server->start_accept();
                } catch ( const fc::exception& e ){
-                  fc_elog( my->plugin_state->logger, "unix socket service (${path}) failed to start: ${e}", ("e", e.to_detail_string())("path",my->unix_endpoint->path()) );
+                  fc_elog( get_logger(), "unix socket service (${path}) failed to start: ${e}", ("e", e.to_detail_string())("path",my->unix_endpoint->path()) );
                   throw;
                } catch ( const std::exception& e ){
-                  fc_elog( my->plugin_state->logger, "unix socket service (${path}) failed to start: ${e}", ("e", e.what())("path",my->unix_endpoint->path()) );
+                  fc_elog( get_logger(), "unix socket service (${path}) failed to start: ${e}", ("e", e.what())("path",my->unix_endpoint->path()) );
                   throw;
                } catch (...) {
-                  fc_elog( my->plugin_state->logger, "error thrown from unix socket (${path}) io service", ("path",my->unix_endpoint->path()) );
+                  fc_elog( get_logger(), "error thrown from unix socket (${path}) io service", ("path",my->unix_endpoint->path()) );
                   throw;
                }
             }
@@ -409,17 +408,17 @@ class http_plugin_impl : public std::enable_shared_from_this<http_plugin_impl> {
                try {
                   my->create_beast_server(true);
 
-                  fc_ilog( my->plugin_state->logger, "start listening for https requests (boost::beast)" );
+                  fc_ilog( get_logger(), "start listening for https requests (boost::beast)" );
                   my->beast_https_server->listen(*my->https_listen_endpoint);
                   my->beast_https_server->start_accept();
                } catch ( const fc::exception& e ){
-                  fc_elog( my->plugin_state->logger, "https service failed to start: ${e}", ("e", e.to_detail_string()) );
+                  fc_elog( get_logger(), "https service failed to start: ${e}", ("e", e.to_detail_string()) );
                   throw;
                } catch ( const std::exception& e ){
-                  fc_elog( my->plugin_state->logger, "https service failed to start: ${e}", ("e", e.what()) );
+                  fc_elog( get_logger(), "https service failed to start: ${e}", ("e", e.what()) );
                   throw;
                } catch (...) {
-                  fc_elog( my->plugin_state->logger, "error thrown from https io service" );
+                  fc_elog( get_logger(), "error thrown from https io service" );
                   throw;
                }
             }
@@ -438,14 +437,14 @@ class http_plugin_impl : public std::enable_shared_from_this<http_plugin_impl> {
             }});
             
          } catch (...) {
-            fc_elog(my->plugin_state->logger, "http_plugin startup fails, shutting down");
+            fc_elog(get_logger(), "http_plugin startup fails, shutting down");
             app().quit();
          }
       });
    }
 
    void http_plugin::handle_sighup() {
-      fc::logger::update( http_logger_name, my->plugin_state->logger );
+      fc::logger::update( http_logger_name, get_logger() );
    }
 
    void http_plugin::plugin_shutdown() {
@@ -468,12 +467,12 @@ class http_plugin_impl : public std::enable_shared_from_this<http_plugin_impl> {
    }
 
    void http_plugin::add_handler(const string& url, const url_handler& handler, int priority) {
-      fc_ilog( my->plugin_state->logger, "add api url: ${c}", ("c", url) );
+      fc_ilog( get_logger(), "add api url: ${c}", ("c", url) );
       my->plugin_state->url_handlers[url] = my->make_app_thread_url_handler(priority, handler, my);
    }
 
    void http_plugin::add_async_handler(const string& url, const url_handler& handler) {
-      fc_ilog( my->plugin_state->logger, "add api url: ${c}", ("c", url) );
+      fc_ilog( get_logger(), "add api url: ${c}", ("c", url) );
       my->plugin_state->url_handlers[url] = my->make_http_thread_url_handler(handler);
    }
 
@@ -496,24 +495,24 @@ class http_plugin_impl : public std::enable_shared_from_this<http_plugin_impl> {
          } catch (fc::eof_exception& e) {
             error_results results{422, "Unprocessable Entity", error_results::error_info(e, verbose_http_errors)};
             cb( 422, fc::variant( results ));
-            fc_elog( g_plugin_state->logger, "Unable to parse arguments to ${api}.${call}", ("api", api_name)( "call", call_name ) );
-            fc_dlog( g_plugin_state->logger, "Bad arguments: ${args}", ("args", body) );
+            fc_elog( get_logger(), "Unable to parse arguments to ${api}.${call}", ("api", api_name)( "call", call_name ) );
+            fc_dlog( get_logger(), "Bad arguments: ${args}", ("args", body) );
          } catch (fc::exception& e) {
             error_results results{500, "Internal Service Error", error_results::error_info(e, verbose_http_errors)};
             cb( 500, fc::variant( results ));
-            fc_dlog( g_plugin_state->logger, "Exception while processing ${api}.${call}: ${e}",
+            fc_dlog( get_logger(), "Exception while processing ${api}.${call}: ${e}",
                      ("api", api_name)( "call", call_name )("e", e.to_detail_string()) );
          } catch (std::exception& e) {
             error_results results{500, "Internal Service Error", error_results::error_info(fc::exception( FC_LOG_MESSAGE( error, e.what())), verbose_http_errors)};
             cb( 500, fc::variant( results ));
-            fc_elog( g_plugin_state->logger, "STD Exception encountered while processing ${api}.${call}",
+            fc_elog( get_logger(), "STD Exception encountered while processing ${api}.${call}",
                      ("api", api_name)( "call", call_name ) );
-            fc_dlog( g_plugin_state->logger, "Exception Details: ${e}", ("e", e.what()) );
+            fc_dlog( get_logger(), "Exception Details: ${e}", ("e", e.what()) );
          } catch (...) {
             error_results results{500, "Internal Service Error",
                error_results::error_info(fc::exception( FC_LOG_MESSAGE( error, "Unknown Exception" )), verbose_http_errors)};
             cb( 500, fc::variant( results ));
-            fc_elog( g_plugin_state->logger, "Unknown Exception encountered while processing ${api}.${call}",
+            fc_elog( get_logger(), "Unknown Exception encountered while processing ${api}.${call}",
                      ("api", api_name)( "call", call_name ) );
          }
       } catch (...) {
