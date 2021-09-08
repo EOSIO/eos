@@ -1,7 +1,7 @@
 #pragma once
 
-#include "beast_http_session.hpp"
-#include "common.hpp"
+#include <eosio/http_plugin/common.hpp>
+#include <eosio/http_plugin/beast_http_session.hpp>
 #include <type_traits>
 #include <sstream>
 

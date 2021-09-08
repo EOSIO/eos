@@ -129,8 +129,6 @@ namespace eosio {
         bool                     validate_host = true;
         set<string>              valid_hosts;
 
-        bool verbose_http_errors = false;
-
         url_handlers_type  url_handlers;
         bool                     keep_alive = false;
     };

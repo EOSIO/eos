@@ -1,6 +1,6 @@
 #pragma once
 
-#include "common.hpp"
+#include <eosio/http_plugin/common.hpp>
 
 #include <algorithm>
 #include <cstdlib>

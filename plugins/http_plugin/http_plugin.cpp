@@ -1,4 +1,6 @@
 #include <eosio/http_plugin/http_plugin.hpp>
+#include <eosio/http_plugin/common.hpp>
+#include <eosio/http_plugin/beast_http_listener.hpp>
 #include <eosio/chain/exceptions.hpp>
 
 #include <fc/network/ip.hpp>
@@ -14,9 +16,6 @@
 #include <thread>
 #include <memory>
 #include <regex>
-
-#include "common.hpp"
-#include "beast_http_listener.hpp"
 
 const fc::string logger_name("http_plugin");
 fc::logger logger;
@@ -284,7 +283,6 @@ class http_plugin_impl : public std::enable_shared_from_this<http_plugin_impl> {
          
          my->plugin_state->max_body_size = options.at( "max-body-size" ).as<uint32_t>();
          verbose_http_errors = options.at( "verbose-http-errors" ).as<bool>();
-         my->plugin_state->verbose_http_errors = verbose_http_errors;
 
          my->thread_pool_size = options.at( "http-threads" ).as<uint16_t>();
          EOS_ASSERT( my->thread_pool_size > 0, chain::plugin_config_exception,
@@ -529,7 +527,7 @@ class http_plugin_impl : public std::enable_shared_from_this<http_plugin_impl> {
    }
 
    bool http_plugin::verbose_errors()const {
-      return my->plugin_state->verbose_http_errors;
+      return verbose_http_errors;
    }
 
    http_plugin::get_supported_apis_result http_plugin::get_supported_apis()const {
