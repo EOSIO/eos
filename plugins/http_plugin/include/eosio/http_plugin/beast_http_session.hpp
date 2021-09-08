@@ -12,8 +12,6 @@
 #include <vector>
 #include <sstream>
 
-extern fc::logger logger;
-
 namespace eosio { 
 
     using std::chrono::steady_clock;
@@ -53,10 +51,10 @@ using local_stream = beast::basic_stream<
     // 
     //  https://github.com/boostorg/beast/issues/38
     //  https://security.stackexchange.com/questions/91435/how-to-handle-a-malicious-ssl-tls-shutdown
-    void fail(beast::error_code ec, char const* what)
+    void fail(beast::error_code ec, char const* what, fc::logger &logger, char const* action)
     {
         fc_elog(logger, "${w}: ${m}", ("w", what)("m", ec.message()));
-        fc_elog(logger, "closing connection");
+        fc_elog(logger, action);
     }
 
 
@@ -177,14 +175,14 @@ using local_stream = beast::basic_stream<
                     // look for the URL handler to handle this reosouce
                     auto handler_itr = plugin_state_->url_handlers.find( resource );
                     if( handler_itr != plugin_state_->url_handlers.end()) {
-                        fc_dlog( logger, "resource found: ${ep}", ("ep", resource) );
+                        fc_dlog( plugin_state_->logger, "resource found: ${ep}", ("ep", resource) );
                         std::string body = req.body();
                         handler_itr->second( derived().shared_from_this(), 
                                             std::move( resource ), 
                                             std::move( body ), 
                                             make_http_response_handler(thread_pool_, plugin_state_, derived().shared_from_this()) );
                     } else {
-                        fc_dlog( logger, "404 - not found: ${ep}", ("ep", resource) );
+                        fc_dlog( plugin_state_->logger, "404 - not found: ${ep}", ("ep", resource) );
                         not_found(resource, *this);                    
                     }
                 } catch (...) {
@@ -201,7 +199,7 @@ using local_stream = beast::basic_stream<
             virtual bool verify_max_bytes_in_flight() override {
                 auto bytes_in_flight_size = plugin_state_->bytes_in_flight.load();
                 if( bytes_in_flight_size > plugin_state_->max_bytes_in_flight ) {
-                    fc_dlog( logger, "429 - too many bytes in flight: ${bytes}", ("bytes", bytes_in_flight_size) );
+                    fc_dlog( plugin_state_->logger, "429 - too many bytes in flight: ${bytes}", ("bytes", bytes_in_flight_size) );
                     std::string what = "Too many bytes in flight: " + std::to_string( bytes_in_flight_size ) + ". Try again later.";;
                     report_429_error(std::move(what));
                     return false;
@@ -215,7 +213,7 @@ using local_stream = beast::basic_stream<
 
                 auto requests_in_flight_num = plugin_state_->requests_in_flight.load();
                 if( requests_in_flight_num > plugin_state_->max_requests_in_flight ) {
-                    fc_dlog( logger, "429 - too many requests in flight: ${requests}", ("requests", requests_in_flight_num) );
+                    fc_dlog( plugin_state_->logger, "429 - too many requests in flight: ${requests}", ("requests", requests_in_flight_num) );
                     std::string what = "Too many requests in flight: " + std::to_string( requests_in_flight_num ) + ". Try again later.";
                     report_429_error(std::move(what));
                     return false;
@@ -257,10 +255,10 @@ using local_stream = beast::basic_stream<
                 plugin_state_->requests_in_flight -= 1;
                 auto session_time = steady_clock::now() - session_begin_;
                 auto session_time_us = std::chrono::duration_cast<std::chrono::microseconds>(session_time).count();
-                fc_dlog(logger, "session time    ${t}", ("t", session_time_us));                            
-                fc_dlog(logger, "        read    ${t}", ("t", read_time_us_));
-                fc_dlog(logger, "        handle  ${t}", ("t", handle_time_us_));                                            
-                fc_dlog(logger, "        write   ${t}", ("t", write_time_us_));                            
+                fc_dlog(plugin_state_->logger, "session time    ${t}", ("t", session_time_us));                            
+                fc_dlog(plugin_state_->logger, "        read    ${t}", ("t", read_time_us_));
+                fc_dlog(plugin_state_->logger, "        handle  ${t}", ("t", handle_time_us_));                                            
+                fc_dlog(plugin_state_->logger, "        write   ${t}", ("t", write_time_us_));                            
             }    
 
             void do_read()
@@ -289,7 +287,7 @@ using local_stream = beast::basic_stream<
                     return derived().do_eof();
 
                 if(ec) {
-                    return fail(ec, "read");
+                    return fail(ec, "read", plugin_state_->logger, "closing connection");
                 }
 
                 auto req = req_parser_->release();
@@ -309,7 +307,7 @@ using local_stream = beast::basic_stream<
                 boost::ignore_unused(bytes_transferred);
 
                 if(ec) {
-                    return fail(ec, "write");
+                    return fail(ec, "write", plugin_state_->logger, "closing connection");
                 }
 
                 auto dt = steady_clock::now() - write_begin_;
@@ -338,13 +336,13 @@ using local_stream = beast::basic_stream<
                     throw;
                 } catch(const fc::exception& e) {
                     err_str = e.to_detail_string();
-                    fc_elog( logger, "fc::exception: ${w}", ("w", err_str) );
+                    fc_elog( plugin_state_->logger, "fc::exception: ${w}", ("w", err_str) );
                 } catch(std::exception& e) {
                     err_str = e.what(); 
-                    fc_elog( logger, "std::exception: ${w}", ("w", err_str) );
+                    fc_elog( plugin_state_->logger, "std::exception: ${w}", ("w", err_str) );
                 } catch( ... ) {
                     err_str = "unknown";
-                    fc_elog( logger, "unkonwn exception");
+                    fc_elog( plugin_state_->logger, "unkonwn exception");
                 } 
 
                 if(is_send_exception_response_) {
@@ -485,7 +483,7 @@ using local_stream = beast::basic_stream<
             void on_handshake(beast::error_code ec, std::size_t bytes_used)
             {
                 if(ec)
-                    return fail(ec, "handshake");
+                    return fail(ec, "handshake", plugin_state_->logger, "closing connection");
 
                 buffer_.consume(bytes_used);
 
@@ -506,7 +504,7 @@ using local_stream = beast::basic_stream<
             void on_shutdown(beast::error_code ec)
             {
                 if(ec)
-                    return fail(ec, "shutdown");
+                    return fail(ec, "shutdown", plugin_state_->logger, "closing connection");
                 // At this point the connection is closed gracefully
             }
 

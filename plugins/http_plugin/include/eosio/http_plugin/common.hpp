@@ -131,6 +131,12 @@ namespace eosio {
 
         url_handlers_type  url_handlers;
         bool                     keep_alive = false;
+
+        fc::logger logger;
+
+        http_plugin_state(fc::string logger_name) 
+            : logger(logger_name) 
+        {}
     };
 
     /**
