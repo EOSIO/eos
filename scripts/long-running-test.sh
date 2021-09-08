@@ -4,7 +4,8 @@ set -eo pipefail
 echo "--- $([[ "$BUILDKITE" == 'true' ]] && echo ':evergreen_tree: ')Configuring Environment"
 GIT_ROOT="$(dirname $BASH_SOURCE[0])/.."
 RABBITMQ_SERVER_DETACHED='rabbitmq-server -detached'
-[[ -z "$TEST" ]] && export TEST="$1"
+# Key '***' is used in the stability-test pipeline as a special marker.
+[[ -z "$TEST" || "$TEST" == '***' ]] && export TEST="$1"
 if [[ "$(uname)" == 'Linux' ]]; then
     . /etc/os-release
     if [[ "$ID" == 'centos' ]]; then
