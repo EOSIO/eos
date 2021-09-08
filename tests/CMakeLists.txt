@@ -85,6 +85,7 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/nested_container_multi_index_test.py 
 
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/large-lib-test.py ${CMAKE_CURRENT_BINARY_DIR}/large-lib-test.py COPYONLY)
 
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/amqp_tests.py ${CMAKE_CURRENT_BINARY_DIR}/amqp_tests.py COPYONLY)
 
 #To run plugin_test with all log from blockchain displayed, put --verbose after --, i.e. plugin_test -- --verbose
 add_test(NAME plugin_test COMMAND plugin_test --report_level=detailed --color_output)
