@@ -22,19 +22,13 @@ if [[ "$BUILDKITE" == 'true' && "$RETRY" == '0' ]]; then
 fi
 [[ "$BUILDKITE" == 'true' ]] && buildkite-agent meta-data set pipeline-upload-retries "$(( $RETRY + 1 ))"
 # guard against accidentally spawning too many jobs
-if (( $ROUNDS > 1 || $ROUND_SIZE > 1 )) && [[ -z "$TEST" ]]; then
+if (( $ROUNDS > 1 || $ROUND_SIZE > 1 )) && [[ "$BUILDKITE_PIPELINE_SLUG" != 'eosio-test-stability' ]]; then
     echo '+++ :no_entry: WARNING: Your parameters will spawn a very large number of jobs!' 1>&2
-    echo "Setting ROUNDS='$ROUNDS' and/or ROUND_SIZE='$ROUND_SIZE' in the environment without also setting TEST to a specific test will cause ALL tests to be run $(( $ROUNDS * $ROUND_SIZE )) times, which will consume a large number of agents! We recommend doing stability testing on ONE test at a time. If you're certain you want to do this, set TEST='.*' to run all tests $(( $ROUNDS * $ROUND_SIZE )) times." 1>&2
+    echo "Setting ROUNDS='$ROUNDS' and/or ROUND_SIZE='$ROUND_SIZE' in the environment will cause ALL tests to be run $(( $ROUNDS * $ROUND_SIZE )) times, which will consume a large number of agents!" 1>&2
     [[ "$BUILDKITE" == 'true' ]] && cat | buildkite-agent annotate --append --style 'error' --context 'no-TEST' <<-MD
-    Your build was cancelled because you set \`ROUNDS\` and/or \`ROUND_SIZE\` without also setting \`TEST\` in your build environment. This would cause each test to be run $(( $ROUNDS * $ROUND_SIZE )) times, which will consume a lot of Buildkite agents.
-
-    We recommend stability testing one test at a time by setting \`TEST\` equal to the test name. Alternatively, you can specify a set of test names using [Perl-Compatible Regular Expressions](https://www.debuggex.com/cheatsheet/regex/pcre), where \`TEST\` is parsed as \`^${TEST}$\`.
-
-    If you _really_ meant to run every test $(( $ROUNDS * $ROUND_SIZE )) times, set \`TEST='.*'\`.
+    Your build was cancelled because you set \`ROUNDS\` and/or \`ROUND_SIZE\` outside the eosio-test-stability pipeline.
 MD
     exit 255
-elif [[ "$TEST" = '.*' ]]; then # if they want to run every test, just spawn the jobs like normal
-    unset TEST
 fi
 # Determine if it's a forked PR and make sure to add git fetch so we don't have to git clone the forked repo's url
 if [[ $BUILDKITE_BRANCH =~ ^pull/[0-9]+/head: ]]; then
