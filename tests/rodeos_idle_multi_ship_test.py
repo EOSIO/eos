@@ -53,7 +53,8 @@ with RodeosCluster(args.dump_error_details,
     # Big enough to have new blocks produced
     numBlocks=120
     assert cluster.produceBlocks(numBlocks), "Nodeos failed to produce {} blocks".format(numBlocks)
-    assert cluster.allBlocksReceived(numBlocks), "Rodeos did not receive {} blocks".format(numBlocks)
+    for i in range(args.num_rodeos):
+        assert cluster.allBlocksReceived(numBlocks, i), "Rodeos #{} did not receive {} blocks".format(i, numBlocks)
 
     testSuccessful=True
     cluster.setTestSuccessful(testSuccessful)
