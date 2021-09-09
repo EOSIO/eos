@@ -26,7 +26,7 @@ if (( $ROUNDS > 1 || $ROUND_SIZE > 1 )) && [[ "$BUILDKITE_PIPELINE_SLUG" != 'eos
     echo '+++ :no_entry: WARNING: Your parameters will spawn a very large number of jobs!' 1>&2
     echo "Setting ROUNDS='$ROUNDS' and/or ROUND_SIZE='$ROUND_SIZE' in the environment will cause ALL tests to be run $(( $ROUNDS * $ROUND_SIZE )) times, which will consume a large number of agents!" 1>&2
     [[ "$BUILDKITE" == 'true' ]] && cat | buildkite-agent annotate --append --style 'error' --context 'no-TEST' <<-MD
-    Your build was cancelled because you set \`ROUNDS\` and/or \`ROUND_SIZE\` outside the eosio-test-stability pipeline.
+Your build was cancelled because you set \`ROUNDS\` and/or \`ROUND_SIZE\` outside the [eosio-test-stability](https://buildkite.com/EOSIO/eosio-test-stability) pipeline.
 MD
     exit 255
 fi
