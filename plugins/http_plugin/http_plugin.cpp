@@ -10,7 +10,6 @@
 #include <boost/asio.hpp>
 #include <boost/optional.hpp>
 
-#include <thread>
 #include <memory>
 #include <regex>
 
@@ -35,7 +34,7 @@ namespace eosio {
    };
 
    static http_plugin_defaults current_http_plugin_defaults;
-   static bool verbose_http_errors;
+   static bool verbose_http_errors = false;
 
    void http_plugin::set_defaults(const http_plugin_defaults& config) {
       current_http_plugin_defaults = config;
@@ -62,9 +61,6 @@ class http_plugin_impl : public std::enable_shared_from_this<http_plugin_impl> {
          http_plugin_impl& operator=(http_plugin_impl&&) = delete;
          
          std::optional<tcp::endpoint>  listen_endpoint;
-         
-         uint16_t                                       thread_pool_size = 2;
-         std::shared_ptr<eosio::chain::named_thread_pool> thread_pool;
          
          std::optional<tcp::endpoint>  https_listen_endpoint;
          string                        https_cert_chain;
@@ -93,7 +89,7 @@ class http_plugin_impl : public std::enable_shared_from_this<http_plugin_impl> {
             auto next_ptr = std::make_shared<url_handler>(std::move(next));
             return [my=std::move(my), priority, next_ptr=std::move(next_ptr)]
                        ( detail::abstract_conn_ptr conn, string r, string b, url_response_callback then ) {
-               auto tracked_b = make_in_flight<string>(std::move(b), *(my->plugin_state));
+               auto tracked_b = make_in_flight<string>(std::move(b), my->plugin_state);
                if (!conn->verify_max_bytes_in_flight()) {
                   return;
                }
@@ -139,30 +135,28 @@ class http_plugin_impl : public std::enable_shared_from_this<http_plugin_impl> {
          }
 
          void create_beast_server(bool useSSL, bool isUnix=false) {
-            // beast_ssl_ctx = {ssl::context::tlsv12}
-            auto ctx = std::make_shared<ssl::context>(ssl::context::tlsv12);
-            
             if(useSSL) {
-               try { 
-                  ctx->set_options(asio::ssl::context::default_workarounds |
+               try {
+                  plugin_state->ctx.emplace(ssl::context::tlsv12);
+                  plugin_state->ctx->set_options(asio::ssl::context::default_workarounds |
                                  asio::ssl::context::no_sslv2 |
                                  asio::ssl::context::no_sslv3 |
                                  asio::ssl::context::no_tlsv1 |
                                  asio::ssl::context::no_tlsv1_1 |
                                  asio::ssl::context::single_dh_use);
 
-                  ctx->use_certificate_chain_file(https_cert_chain);
-                  ctx->use_private_key_file(https_key, asio::ssl::context::pem);
+                  plugin_state->ctx->use_certificate_chain_file(https_cert_chain);
+                  plugin_state->ctx->use_private_key_file(https_key, asio::ssl::context::pem);
 
                   //going for the A+! Do a few more things on the native context to get ECDH in use
 
                   fc::ec_key ecdh = EC_KEY_new_by_curve_name(https_ecdh_curve == SECP384R1 ? NID_secp384r1 : NID_X9_62_prime256v1);
                   if (!ecdh)
                      EOS_THROW(chain::http_exception, "Failed to set NID_secp384r1");
-                  if(SSL_CTX_set_tmp_ecdh(ctx->native_handle(), (EC_KEY*)ecdh) != 1)
+                  if(SSL_CTX_set_tmp_ecdh(plugin_state->ctx->native_handle(), (EC_KEY*)ecdh) != 1)
                      EOS_THROW(chain::http_exception, "Failed to set ECDH PFS");
 
-                  if(SSL_CTX_set_cipher_list(ctx->native_handle(), \
+                  if(SSL_CTX_set_cipher_list(plugin_state->ctx->native_handle(), \
                      "EECDH+ECDSA+AESGCM:EECDH+aRSA+AESGCM:EECDH+ECDSA+SHA384:EECDH+ECDSA+SHA256:AES256:" \
                      "!DHE:!RSA:!AES128:!RC4:!DES:!3DES:!DSS:!SRP:!PSK:!EXP:!MD5:!LOW:!aNULL:!eNULL") != 1)
                      EOS_THROW(chain::http_exception, "Failed to set HTTPS cipher list");
@@ -172,16 +166,16 @@ class http_plugin_impl : public std::enable_shared_from_this<http_plugin_impl> {
                   fc_elog( get_logger(), "https server initialization error: ${w}", ("w", e.what()) );
                }
 
-               beast_https_server = std::make_shared<beast_http_listener<ssl_session, tcp, tcp_socket_t> >(thread_pool, ctx, plugin_state);
+               beast_https_server = std::make_shared<beast_http_listener<ssl_session, tcp, tcp_socket_t> >(plugin_state);
                fc_ilog( get_logger(), "created beast HTTPS listener");
             }
             else {
                if(isUnix) {
-                  beast_unix_server = std::make_shared<beast_http_listener<unix_socket_session, stream_protocol, stream_protocol::socket> >(thread_pool, ctx, plugin_state);
+                  beast_unix_server = std::make_shared<beast_http_listener<unix_socket_session, stream_protocol, stream_protocol::socket> >(plugin_state);
                   fc_ilog( get_logger(), "created beast UNIX socket listener");
                }
                else {
-                  beast_server = std::make_shared<beast_http_listener<plain_session, tcp, tcp_socket_t> >(thread_pool, ctx, plugin_state);
+                  beast_server = std::make_shared<beast_http_listener<plain_session, tcp, tcp_socket_t> >(plugin_state);
                   fc_ilog( get_logger(), "created beast HTTP listener");
                }
             }
@@ -232,14 +226,14 @@ class http_plugin_impl : public std::enable_shared_from_this<http_plugin_impl> {
                 fc_ilog( get_logger(), "configured http with Access-Control-Allow-Origin: ${o}",
                          ("o", my->plugin_state->access_control_allow_origin) );
              }),
-             "Specify the Access-Control-Allow-Origin to be returned on each requeplugin_state->")
+             "Specify the Access-Control-Allow-Origin to be returned on each request")
 
             ("access-control-allow-headers", bpo::value<string>()->notifier([this](const string& v) {
                 my->plugin_state->access_control_allow_headers = v;
                 fc_ilog( get_logger(), "configured http with Access-Control-Allow-Headers : ${o}",
                          ("o", my->plugin_state->access_control_allow_headers) );
              }),
-             "Specify the Access-Control-Allow-Headers to be returned on each requeplugin_state->")
+             "Specify the Access-Control-Allow-Headers to be returned on each request")
 
             ("access-control-max-age", bpo::value<string>()->notifier([this](const string& v) {
                 my->plugin_state->access_control_max_age = v;
@@ -268,7 +262,7 @@ class http_plugin_impl : public std::enable_shared_from_this<http_plugin_impl> {
              "If set to false, then any incoming \"Host\" header is considered valid")
             ("http-alias", bpo::value<std::vector<string>>()->composing(),
              "Additionaly acceptable values for the \"Host\" header of incoming HTTP requests, can be specified multiple times.  Includes http/s_server_address by default.")
-            ("http-threads", bpo::value<uint16_t>()->default_value( my->thread_pool_size ),
+            ("http-threads", bpo::value<uint16_t>()->default_value( my->plugin_state->thread_pool_size ),
              "Number of worker threads in http thread pool")
             ("http-keep-alive", bpo::value<bool>()->default_value(true),
              "If set to false, do not keep HTTP connections alive, even if client requests.")
@@ -286,9 +280,9 @@ class http_plugin_impl : public std::enable_shared_from_this<http_plugin_impl> {
          my->plugin_state->max_body_size = options.at( "max-body-size" ).as<uint32_t>();
          verbose_http_errors = options.at( "verbose-http-errors" ).as<bool>();
 
-         my->thread_pool_size = options.at( "http-threads" ).as<uint16_t>();
-         EOS_ASSERT( my->thread_pool_size > 0, chain::plugin_config_exception,
-                     "http-threads ${num} must be greater than 0", ("num", my->thread_pool_size));
+         my->plugin_state->thread_pool_size = options.at( "http-threads" ).as<uint16_t>();
+         EOS_ASSERT( my->plugin_state->thread_pool_size > 0, chain::plugin_config_exception,
+                     "http-threads ${num} must be greater than 0", ("num", my->plugin_state->thread_pool_size));
 
          my->plugin_state->max_bytes_in_flight = options.at( "http-max-bytes-in-flight-mb" ).as<uint32_t>() * 1024 * 1024;
          my->plugin_state->max_requests_in_flight = options.at( "http-max-in-flight-requests" ).as<int32_t>();
@@ -365,7 +359,8 @@ class http_plugin_impl : public std::enable_shared_from_this<http_plugin_impl> {
       app().post(appbase::priority::high, [this] ()
       {
          try {
-            my->thread_pool = std::make_shared<eosio::chain::named_thread_pool>( "http", my->thread_pool_size );
+            my->plugin_state->thread_pool =
+                  std::make_shared<eosio::chain::named_thread_pool>( "http", my->plugin_state->thread_pool_size );
             if(my->listen_endpoint) {
                try {
                   my->create_beast_server(false);
@@ -455,9 +450,9 @@ class http_plugin_impl : public std::enable_shared_from_this<http_plugin_impl> {
       if(my->beast_unix_server)
          my->beast_unix_server->stop_listening();
 
-      if( my->thread_pool ) {
-         my->thread_pool->stop();
-         my->thread_pool.reset();
+      if( my->plugin_state->thread_pool ) {
+         my->plugin_state->thread_pool->stop();
+         my->plugin_state->thread_pool.reset();
       }
 
       // release http_plugin_impl_ptr shared_ptrs captured in url handlers
@@ -476,7 +471,7 @@ class http_plugin_impl : public std::enable_shared_from_this<http_plugin_impl> {
       my->plugin_state->url_handlers[url] = my->make_http_thread_url_handler(handler);
    }
 
-   void http_plugin::handle_exception( const char *api_name, const char *call_name, const string& body, url_response_callback cb) {
+   void http_plugin::handle_exception( const char *api_name, const char *call_name, const string& body, const url_response_callback& cb) {
       try {
          try {
             throw;

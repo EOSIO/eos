@@ -44,8 +44,8 @@ namespace eosio {
     using std::map;
     using std::set;
 
-    namespace beast = boost::beast;                 // from <boost/beast.hpp>
-    namespace http = boost::beast::http;                   // from <boost/beast/http.hpp>
+    namespace beast = boost::beast;           // from <boost/beast.hpp>
+    namespace http = boost::beast::http;      // from <boost/beast/http.hpp>
     namespace asio = boost::asio;
     namespace ssl = boost::asio::ssl;
     using boost::asio::ip::tcp;               // from <boost/asio/ip/tcp.hpp>
@@ -79,10 +79,10 @@ namespace eosio {
          * @return in flight size of v
          */
         static size_t in_flight_sizeof( const fc::variant& v ) {
-            try {
-            return fc::raw::pack_size( v );
-            } catch(...) {}
-            return 0;
+           try {
+              return fc::raw::pack_size( v );
+           } catch( ... ) {}
+           return 0;
         }
 
         /**
@@ -94,10 +94,10 @@ namespace eosio {
          */
         template<typename T>
         static size_t in_flight_sizeof( const std::optional<T>& o ) {
-            if( o ) {
-            return in_flight_sizeof( *o );
-            }
-            return 0;
+           if( o ) {
+              return in_flight_sizeof( *o );
+           }
+           return 0;
         }
 
         /**
@@ -126,13 +126,18 @@ namespace eosio {
         int32_t                                        max_requests_in_flight = -1;
         fc::microseconds                               max_response_time{30*1000};
 
+        std::optional<ssl::context> ctx; // only for ssl
+
         bool                     validate_host = true;
         set<string>              valid_hosts;
 
         url_handlers_type        url_handlers;
         bool                     keep_alive = false;
 
-        fc::logger& logger;
+       uint16_t                                         thread_pool_size = 2;
+       std::shared_ptr<eosio::chain::named_thread_pool> thread_pool;
+
+       fc::logger& logger;
 
         explicit http_plugin_state(fc::logger& logger)
             : logger(logger)
@@ -147,17 +152,17 @@ namespace eosio {
      */
     template<typename T>
     struct in_flight {
-        in_flight(T&& object, http_plugin_state& plugin_state)
+        in_flight(T&& object, std::shared_ptr<http_plugin_state> plugin_state)
         :_object(std::move(object))
-        ,_plugin_state(plugin_state)
+        ,_plugin_state(std::move(plugin_state))
         {
             _count = detail::in_flight_sizeof(_object);
-            _plugin_state.bytes_in_flight += _count;
+            _plugin_state->bytes_in_flight += _count;
         }
 
         ~in_flight() {
             if (_count) {
-                _plugin_state.bytes_in_flight -= _count;
+                _plugin_state->bytes_in_flight -= _count;
             }
         }
 
@@ -193,43 +198,41 @@ namespace eosio {
 
         T _object;
         size_t _count;
-        http_plugin_state& _plugin_state;
+        std::shared_ptr<http_plugin_state> _plugin_state;
     };
 
     /**
      * convenient wrapper to make an in_flight<T>
      */
     template<typename T>
-    auto make_in_flight(T&& object, http_plugin_state& plugin_state) {
-        return std::make_shared<in_flight<T>>(std::forward<T>(object), plugin_state);
+    auto make_in_flight(T&& object, std::shared_ptr<http_plugin_state> plugin_state) {
+        return std::make_shared<in_flight<T>>(std::forward<T>(object), std::move(plugin_state));
     }
 
     /**
      * Construct a lambda appropriate for url_response_callback that will
      * JSON-stringify the provided response
      *
-     * @param thread_pool - the thread pool object, executor to pass to asio::post() method
      * @param plugin_state - plugin state object, shared state of http_plugin
      * @param session_ptr - beast_http_session object on which to invoke send_response
      * @return lambda suitable for url_response_callback
      */
-    auto make_http_response_handler(std::shared_ptr<eosio::chain::named_thread_pool> thread_pool, std::shared_ptr<http_plugin_state> plugin_state, detail::abstract_conn_ptr session_ptr) {
-    return [thread_pool{std::move(thread_pool)}, 
-           plugin_state{std::move(plugin_state)}, 
-           session_ptr{std::move(session_ptr)}] ( int code, std::optional<fc::variant> response )
+    auto make_http_response_handler(std::shared_ptr<http_plugin_state> plugin_state, detail::abstract_conn_ptr session_ptr) {
+    return [plugin_state{std::move(plugin_state)},
+            session_ptr{std::move(session_ptr)}]( int code, std::optional<fc::variant> response )
          {
-            auto tracked_response = make_in_flight(std::move(response), *plugin_state);
+            auto tracked_response = make_in_flight(std::move(response), plugin_state);
             if (!session_ptr->verify_max_bytes_in_flight()) {
                 return;
             }
 
             // post  back to an HTTP thread to to allow the response handler to be called from any thread
-            boost::asio::post(  thread_pool->get_executor(),
+            boost::asio::post(  plugin_state->thread_pool->get_executor(),
                                 [plugin_state, session_ptr, code, tracked_response=std::move(tracked_response)]() {
                 try {
                     if( tracked_response->obj().has_value() ) {
                         std::string json = fc::json::to_string( *tracked_response->obj(), fc::time_point::now() + plugin_state->max_response_time );
-                        auto tracked_json = make_in_flight( std::move( json ), *plugin_state );
+                        auto tracked_json = make_in_flight( std::move( json ), plugin_state );
                         session_ptr->send_response( std::move( tracked_json->obj() ), code );
                     } else {
                         session_ptr->send_response( {}, code );

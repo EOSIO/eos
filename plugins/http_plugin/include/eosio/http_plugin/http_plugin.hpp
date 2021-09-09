@@ -21,7 +21,7 @@ namespace eosio {
     *
     * URL handlers have this type
     *
-    * The handler must gaurantee that url_response_callback() is called;
+    * The handler must guarantee that url_response_callback() is called;
     * otherwise, the connection will hang and result in a memory leak.
     *
     * Arguments: url, request_body, response_callback
@@ -91,7 +91,7 @@ namespace eosio {
         }
 
         // standard exception handling for api handlers
-        static void handle_exception( const char *api_name, const char *call_name, const string& body, url_response_callback cb );
+        static void handle_exception( const char *api_name, const char *call_name, const string& body, const url_response_callback& cb );
 
         bool is_on_loopback() const;
         bool is_secure() const;

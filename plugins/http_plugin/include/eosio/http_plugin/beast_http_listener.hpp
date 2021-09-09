@@ -24,8 +24,6 @@ namespace eosio {
         private: 
             bool is_listening_ = false; 
 
-            std::shared_ptr<eosio::chain::named_thread_pool> thread_pool_;
-            std::shared_ptr<ssl::context> ctx_;
             std::shared_ptr<http_plugin_state> plugin_state_;
 
             typename protocol_type::acceptor acceptor_;
@@ -39,15 +37,11 @@ namespace eosio {
             beast_http_listener& operator=(const beast_http_listener&) = delete;
             beast_http_listener& operator=(beast_http_listener&&) = delete;
 
-            beast_http_listener(std::shared_ptr<eosio::chain::named_thread_pool> thread_pool, 
-                                std::shared_ptr<ssl::context> ctx, 
-                                std::shared_ptr<http_plugin_state> plugin_state) : 
+            beast_http_listener(std::shared_ptr<http_plugin_state> plugin_state) :
                 is_listening_(false)
-                , thread_pool_(std::move(thread_pool))
-                , ctx_(std::move(ctx))
                 , plugin_state_(std::move(plugin_state))
-                , acceptor_(thread_pool_->get_executor())
-                , socket_(thread_pool_->get_executor())
+                , acceptor_(plugin_state_->thread_pool->get_executor())
+                , socket_(plugin_state_->thread_pool->get_executor())
             { }
 
             virtual ~beast_http_listener() {
@@ -110,7 +104,7 @@ namespace eosio {
 
             void stop_listening() {
                 if(is_listening_) {
-                    thread_pool_->stop();
+                    plugin_state_->thread_pool->stop();
                     is_listening_ = false;
                 }
             }
@@ -126,9 +120,7 @@ namespace eosio {
                             // Create the session object and run it
                             std::make_shared<session_type>(
                                 std::move(self->socket_),
-                                self->ctx_,
-                                self->plugin_state_,
-                                self->thread_pool_)->run_session();        
+                                self->plugin_state_)->run_session();
                         }
 
                         // Accept another connection
