@@ -44,7 +44,7 @@ namespace eosio {
 
    namespace {
       const std::string http_logger_name("http_plugin");
-      std::shared_ptr<fc::logger> logger;
+      std::shared_ptr<fc::logger> logger = std::make_shared<fc::logger>(http_logger_name);
       inline fc::logger& get_logger() {
          return *logger;
       }
