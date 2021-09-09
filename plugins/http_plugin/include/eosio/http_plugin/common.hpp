@@ -135,7 +135,7 @@ namespace eosio {
         bool                     keep_alive = false;
 
        uint16_t                                         thread_pool_size = 2;
-       std::shared_ptr<eosio::chain::named_thread_pool> thread_pool;
+       std::unique_ptr<eosio::chain::named_thread_pool> thread_pool;
 
        fc::logger& logger;
 
