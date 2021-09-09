@@ -279,7 +279,7 @@ class Node(object):
         assert(isinstance(transId, str))
         exitOnErrorForDelayed=not delayedRetry and exitOnError
         timeout=3
-        cmdDesc="get transaction"
+        cmdDesc="get transaction_trace"
         cmd="%s %s" % (cmdDesc, transId)
         msg="(transaction id=%s)" % (transId);
         for i in range(0,(int(60/timeout) - 1)):
