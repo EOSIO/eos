@@ -62,30 +62,30 @@ namespace eosio {
                 // Open the acceptor
                 acceptor_.open(endpoint.protocol(), ec);
                 if(ec)  {
-                    fail(ec, "open", plugin_state_->logger, "closing port");
+                    fail(ec, "open", *plugin_state_->logger, "closing port");
                     return;
                 }
 
                 // Allow address reuse
                 acceptor_.set_option(asio::socket_base::reuse_address(true), ec);
                 if(ec)  {
-                    fail(ec, "set_option", plugin_state_->logger, "closing port");
+                    fail(ec, "set_option", *plugin_state_->logger, "closing port");
                     return;
                 }
 
                 // Bind to the server address
                 acceptor_.bind(endpoint, ec);
                 if(ec)  {
-                    fail(ec, "bind", plugin_state_->logger, "closing port");
+                    fail(ec, "bind", *plugin_state_->logger, "closing port");
                     return;
                 }
 
                 // Start listening for connections
                 auto max_connections = asio::socket_base::max_listen_connections;
-                fc_ilog( plugin_state_->logger, "acceptor_.listen()" ); 
+                fc_ilog( *plugin_state_->logger, "acceptor_.listen()" );
                 acceptor_.listen(max_connections, ec);
                 if(ec) {
-                    fail(ec, "listen", plugin_state_->logger, "closing port");
+                    fail(ec, "listen", *plugin_state_->logger, "closing port");
                     return;
                 }
                 is_listening_ = true;        
@@ -114,7 +114,7 @@ namespace eosio {
                 auto self = this->shared_from_this();
                 acceptor_.async_accept(socket_, [self](beast::error_code ec) {
                         if(ec) {
-                            fail(ec, "accept", self->plugin_state_->logger, "closing connection");
+                            fail(ec, "accept", *self->plugin_state_->logger, "closing connection");
                         }
                         else {
                             // Create the session object and run it

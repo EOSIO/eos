@@ -134,13 +134,13 @@ namespace eosio {
         url_handlers_type        url_handlers;
         bool                     keep_alive = false;
 
-       uint16_t                                         thread_pool_size = 2;
-       std::unique_ptr<eosio::chain::named_thread_pool> thread_pool;
+        uint16_t                                         thread_pool_size = 2;
+        std::unique_ptr<eosio::chain::named_thread_pool> thread_pool;
 
-       fc::logger& logger;
+        std::shared_ptr<fc::logger> logger;
 
-        explicit http_plugin_state(fc::logger& logger)
-            : logger(logger)
+        explicit http_plugin_state(std::shared_ptr<fc::logger> logger)
+            : logger(std::move(logger))
         {}
     };
 

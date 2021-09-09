@@ -44,9 +44,9 @@ namespace eosio {
 
    namespace {
       const std::string http_logger_name("http_plugin");
-      fc::logger logger;
+      std::shared_ptr<fc::logger> logger;
       inline fc::logger& get_logger() {
-         return logger;
+         return *logger;
       }
    }
 
@@ -73,7 +73,7 @@ class http_plugin_impl : public std::enable_shared_from_this<http_plugin_impl> {
          shared_ptr<beast_http_listener<ssl_session, tcp, tcp_socket_t > >  beast_https_server;
          shared_ptr<beast_http_listener<unix_socket_session, stream_protocol, stream_protocol::socket > > beast_unix_server;
 
-         shared_ptr<http_plugin_state> plugin_state = std::make_shared<http_plugin_state>(get_logger());
+         shared_ptr<http_plugin_state> plugin_state = std::make_shared<http_plugin_state>(logger);
          
          /**
           * Make an internal_url_handler that will run the url_handler on the app() thread and then
