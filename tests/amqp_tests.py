@@ -64,7 +64,7 @@ try:
     cluster.setWalletMgr(walletMgr)
     Print("SERVER: %s" % (server))
     Print("PORT: %d" % (port))
-
+    cluster.createAMQPQueue("trx")
     if localTest and not dontLaunch:
         cluster.killall(allInstances=killAll)
         cluster.cleanup()
