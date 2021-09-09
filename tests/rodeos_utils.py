@@ -29,7 +29,6 @@ import sys
 #
 ###############################################################
 class RodeosCluster(object):
-    SHIP_HOST_PORT="127.0.0.1:9999"
 
     def __init__(self, dump_error_details, keep_logs, leave_running, clean_run, unix_socket, filterName, filterWasm, enableOC=False, numRodeos=1, numShip=1):
         self.cluster=Cluster(walletd=True)
@@ -55,6 +54,7 @@ class RodeosCluster(object):
         self.numShip=numShip
         self.shipNodeIdPortsNodes={}
 
+
         port=9999
         for i in range(1, 1+numShip): # One producer
             self.shipNodeIdPortsNodes[i]=["127.0.0.1:" + str(port)]
@@ -67,7 +67,7 @@ class RodeosCluster(object):
             os.makedirs(self.rodeosDir[i], exist_ok=True)
             self.wqlHostPort.append("127.0.0.1:" + str(port))
             self.wqlEndPoints.append("http://" + self.wqlHostPort[i] + "/")
-            port+=i
+            port+=1
         
 
         self.filterName = filterName
@@ -85,14 +85,13 @@ class RodeosCluster(object):
         self.producerNodeId=0
         for i in self.shipNodeIdPortsNodes: # Nodeos args for ship nodes.
             specificExtraNodeosArgs[i]=\
-                "--plugin eosio::state_history_plugin --trace-history --chain-state-history --state-history-endpoint {} --disable-replay-opts --plugin eosio::net_api_plugin " \
-                .format(self.shipNodeIdPortsNodes[i][0])
+                "--plugin eosio::state_history_plugin --trace-history --chain-state-history --state-history-endpoint {} --disable-replay-opts --plugin eosio::net_api_plugin "\
+                    .format(self.shipNodeIdPortsNodes[i][0])
             if self.unix_socket:
-                specificExtraNodeosArgs[i] += "--state-history-unix-socket-path ship.sock"
-
+                specificExtraNodeosArgs[i]+="--state-history-unix-socket-path ship{}.sock".format(i)
 
         if self.cluster.launch(pnodes=1, totalNodes=self.totalNodes, totalProducers=1, useBiosBootFile=False, specificExtraNodeosArgs=specificExtraNodeosArgs) is False:
-            Utils.Utils.cmdError("launcher")
+            Utils.cmdError("launcher")
             Utils.errorExit("Failed to stand up eos cluster.")
 
         for i in self.shipNodeIdPortsNodes:
@@ -151,10 +150,12 @@ class RodeosCluster(object):
 
     def restartShip(self, clean, shipNodeId):
         assert (shipNodeId>=0 and shipNodeId<self.numShip), "Node ID doesn't exist!"
-        arg="--plugin eosio::state_history_plugin --trace-history --chain-state-history --state-history-endpoint {} --disable-replay-opts --plugin eosio::net_api_plugin ".format(self.shipNodeIdPortsNodes[shipNodeId][0])
 
+        arg="--plugin eosio::state_history_plugin --trace-history --chain-state-history --state-history-endpoint {} --disable-replay-opts --plugin eosio::net_api_plugin "\
+            .format(self.shipNodeIdPortsNodes[shipNodeId][0])
         if self.unix_socket:
-            arg += "--state-history-unix-socket-path ship.sock"
+            arg+="--state-history-unix-socket-path ship{}.sock".format(shipNodeId)
+
         self.relaunchNode(self.shipNodeIdPortsNodes[shipNodeId][1], chainArg=arg, clean=clean)
 
     def stopShip(self, killSignal, shipNodeId):
@@ -164,7 +165,6 @@ class RodeosCluster(object):
     def restartRodeos(self, shipNodeId, rodeosId=0, clean=True):
         assert(shipNodeId in self.shipNodeIdPortsNodes), "ShiP node Id doesn't exist"
         assert(rodeosId >= 0 and rodeosId < self.numRodeos)
-
         if clean:
             if self.rodeosStdout[rodeosId] is not None:
                 self.rodeosStdout[rodeosId].close()
@@ -174,11 +174,17 @@ class RodeosCluster(object):
             os.makedirs(self.rodeosDir[rodeosId], exist_ok=True)
             self.rodeosStdout[rodeosId]=open(os.path.join(self.rodeosDir[rodeosId], "stdout.out"), "w")
             self.rodeosStderr[rodeosId]=open(os.path.join(self.rodeosDir[rodeosId], "stderr.out"), "w")
-
-        self.rodeos.append(subprocess.Popen(['./programs/rodeos/rodeos', '--rdb-database', os.path.join(self.rodeosDir[rodeosId],'rocksdb'),
-                                        '--clone-connect-to', self.shipNodeIdPortsNodes[shipNodeId][0], '--wql-listen', self.wqlHostPort[rodeosId], '--wql-threads', '8', '--filter-name', self.filterName , '--filter-wasm', self.filterWasm ] + self.OCArg,
-                                       stdout=self.rodeosStdout[rodeosId],
-                                       stderr=self.rodeosStderr[rodeosId]))
+        if self.unix_socket:
+            socket_path=os.path.join(os.getcwd(), Utils.getNodeDataDir(shipNodeId), 'ship{}.sock'.format(shipNodeId))
+            self.rodeos.append(subprocess.Popen(['./programs/rodeos/rodeos', '--rdb-database', os.path.join(self.rodeosDir[rodeosId],'rocksdb'),
+                                '--data-dir', self.rodeosDir[rodeosId], '--clone-unix-connect-to', socket_path, '--wql-listen', self.wqlHostPort[rodeosId],
+                                '--wql-threads', '8', '--filter-name', self.filterName , '--filter-wasm', self.filterWasm ] + self.OCArg,
+                                stdout=self.rodeosStdout[rodeosId], stderr=self.rodeosStderr[rodeosId]))
+        else:
+            self.rodeos.append(subprocess.Popen(['./programs/rodeos/rodeos', '--rdb-database', os.path.join(self.rodeosDir[rodeosId],'rocksdb'),
+                                '--data-dir', self.rodeosDir[rodeosId], '--clone-connect-to', self.shipNodeIdPortsNodes[shipNodeId][0], '--wql-listen'
+                                , self.wqlHostPort[rodeosId], '--wql-threads', '8', '--filter-name', self.filterName , '--filter-wasm', self.filterWasm ] + self.OCArg,
+                                stdout=self.rodeosStdout[rodeosId], stderr=self.rodeosStderr[rodeosId]))
 
     # SIGINT to simulate CTRL-C
     def stopRodeos(self, killSignal=signal.SIGINT, rodeosId=0):
