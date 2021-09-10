@@ -152,12 +152,25 @@ if("eos-vm-oc" IN_LIST EOSIO_WASM_RUNTIMES)
    set_property(TEST rodeos_test_eosvmoc PROPERTY LABELS nonparallelizable_tests)
 endif()
 
+# rodoes restart tests
 add_test(NAME rodeos_idle_restart_ship_test COMMAND tests/rodeos_idle_test.py -v --clean-run --dump-error-detail --node-order _ship,+ship WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 set_property(TEST rodeos_idle_restart_ship_test PROPERTY LABELS nonparallelizable_tests)
 add_test(NAME rodeos_idle_restart_producer_test COMMAND tests/rodeos_idle_test.py -v --clean-run --dump-error-detail --node-order _prod,+prod WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 set_property(TEST rodeos_idle_restart_producer_test PROPERTY LABELS nonparallelizable_tests)
 add_test(NAME rodeos_idle_restart_rodeos_test COMMAND tests/rodeos_idle_test.py -v --clean-run --dump-error-detail --node-order _rodeos,+rodeos WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 set_property(TEST rodeos_idle_restart_rodeos_test PROPERTY LABELS nonparallelizable_tests)
+
+# rodeos restart scenarios, combinations of two
+add_test(NAME rodeos_idle_restart_rodeos_ship_test COMMAND tests/rodeos_idle_test.py -v --clean-run --dump-error-detail --reps 2 --node-order _rodeos,_ship,+rodeos,+ship,_ship,_rodeos,+rodoes,+ship WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_property(TEST rodeos_idle_restart_rodeos_ship_test PROPERTY LABELS nonparallelizable_tests)
+add_test(NAME rodeos_idle_restart_producer_ship_test COMMAND tests/rodeos_idle_test.py -v --clean-run --dump-error-detail --reps 2 --node-order _prod,_ship,+prod,+ship,_ship,_prod,+prod,+ship WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_property(TEST rodeos_idle_restart_producer_ship_test PROPERTY LABELS nonparallelizable_tests)
+add_test(NAME rodeos_idle_restart_rodeos_producer_test COMMAND tests/rodeos_idle_test.py -v --clean-run --dump-error-detail --reps 2 --node-order _rodeos,_prod,+rodeos,+prod,_prod,_rodeos,+rodeos,+prod WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_property(TEST rodeos_idle_restart_rodeos_producer_test PROPERTY LABELS nonparallelizable_tests)
+
+# rodeos restart scenarios, all three 
+add_test(NAME rodeos_idle_restart_all_test COMMAND tests/rodeos_idle_test.py -v --clean-run --dump-error-detail --reps 2 --node-order _rodeos,_ship,_prod,+rodeos,+ship,+prod,_prod,_rodeos,_ship,+ship,+rodeos,+prod WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_property(TEST rodeos_idle_restart_all_test PROPERTY LABELS nonparallelizable_tests)
 
 # Long running tests
 add_test(NAME nodeos_sanity_lr_test COMMAND tests/nodeos_run_test.py -v --sanity-test --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
