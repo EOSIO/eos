@@ -80,7 +80,7 @@ with RodeosCluster(args.dump_error_details,
     # each 2-tuple is (NodeT, CmdT)
     cmdSched = []
 
-    lastKillSig = -1
+    lastKillSig = { NodeT.PROD: -1, NodeT.SHIP: -1, NodeT.RODEOS: -1 }
     for killSig in [2, 15, 9]:
        cmdList = []
        for nd in nodeOrder:
@@ -94,10 +94,10 @@ with RodeosCluster(args.dump_error_details,
            if sym == "_":
                cmdT = CmdT.STOP
                opts["killsig"] = killSig
-               lastKillSig = killSig
+               lastKillSig[ndT] = killSig
            elif sym == "+":
                cmdT = CmdT.RESTART
-               opts['clean'] = (lastKillSig == 9)
+               opts['clean'] = (lastKillSig[ndT] == 9)
            else:
                Utils.errorExit("'+' or '_' expected got '" + sym + "' when parsing --node-order '" + nodeOrderStr + "'")
 
