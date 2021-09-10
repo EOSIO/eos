@@ -37,12 +37,12 @@ appArgs.add_bool("--eos-vm-oc-enable", "Use OC for rodeos")
 
 ndHelp = "Order to restart nodes. Should be 'ship', 'prod', 'rodeos' "
 ndHelp += "Prefixed by a '-' (for stop) or '+' (for restart) "
-ndHelp += "e.g '-ship,-rodeos,+ship,+rodeos "
-ndHelp += "will stop rodeos, stop ship, then restart rodeos, restart ship"
+ndHelp += "e.g '_ship,_rodeos,+ship,+rodeos "
+ndHelp += "will stop ship, stop rodeos, then restart ship, restart rodeos,"
 appArgs.add("--node-order", type=str, help=ndHelp, default="_ship,+ship")
 appArgs.add("--stop-wait", type=int, help="Wait time after stop is issued", default=1)
 appArgs.add("--restart-wait", type=int, help="Wait time after restart is issued", default=1)
-appArgs.add("--reps", type=int, help="How many times to run testm", default=5)
+appArgs.add("--reps", type=int, help="How many times to run test", default=5)
 
 args=TestHelper.parse_args({"--dump-error-details","--keep-logs","-v","--leave-running","--clean-run"}, applicationSpecificArgs=appArgs)
 
