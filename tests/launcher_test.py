@@ -184,14 +184,6 @@ try:
         cmdError("FAILURE - transfer failed")
         errorExit("Transfer verification failed. Excepted %s, actual: %s" % (expectedAmount, actualAmount))
 
-    Print("Validate last action for account %s" % (testeraAccount.name))
-    actions=node.getActions(testeraAccount, -1, -1, exitOnError=True)
-    try:
-        assert(actions["actions"][0]["action_trace"]["act"]["name"] == "transfer")
-    except (AssertionError, TypeError, KeyError) as _:
-        Print("Action validation failed. Actions: %s" % (actions))
-        raise
-
     node.waitForTransInBlock(transId)
 
     transaction=node.getTransaction(transId, exitOnError=True, delayedRetry=False)

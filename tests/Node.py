@@ -279,7 +279,10 @@ class Node(object):
         assert(isinstance(transId, str))
         exitOnErrorForDelayed=not delayedRetry and exitOnError
         timeout=3
-        cmdDesc="get transaction_trace"
+        if self.cmd.find("--plugin eosio::history_api_plugin") != -1:
+            cmdDesc="get transaction"
+        else:
+            cmdDesc="get transaction_trace"
         cmd="%s %s" % (cmdDesc, transId)
         msg="(transaction id=%s)" % (transId);
         for i in range(0,(int(60/timeout) - 1)):
@@ -332,8 +335,12 @@ class Node(object):
         refBlockNum=None
         key=""
         try:
-            key="[transaction][transaction_header][ref_block_num]"
-            refBlockNum=trans["transaction"]["transaction_header"]["ref_block_num"]
+            if self.cmd.find("--plugin eosio::history_api_plugin") != -1:
+                key="[trx][trx][ref_block_num]"
+                refBlockNum=trans["trx"]["trx"]["ref_block_num"]
+            else:
+                key="[transaction][transaction_header][ref_block_num]"
+                refBlockNum=trans["transaction"]["transaction_header"]["ref_block_num"]
             refBlockNum=int(refBlockNum)+1
         except (TypeError, ValueError, KeyError) as _:
             Utils.Print("transaction%s not found. Transaction: %s" % (key, trans))

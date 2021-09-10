@@ -3065,7 +3065,7 @@ int main( int argc, char** argv ) {
       std::cout << fc::json::to_pretty_string(call(get_controlled_accounts_func, arg)) << std::endl;
    });
 
-   // get transaction (history plugin)
+   // get transaction (history api plugin)
    string transaction_id_str;
    uint32_t block_num_hint = 0;
    auto getTransaction = get->add_subcommand("transaction", localized("Retrieve a transaction from the blockchain"));

@@ -83,14 +83,15 @@ try:
             #that means we are in multiversion mode
             for i in range( int(pnodes / 2) ):
                 associatedNodeLabels[str(i)] = "alt_ver"
-        
-        if cluster.launch(totalNodes=pnodes, 
+
+        if cluster.launch(totalNodes=pnodes,
                           pnodes=pnodes,
                           dontBootstrap=dontBootstrap,
                           pfSetupPolicy=PFSetupPolicy.PREACTIVATE_FEATURE_ONLY,
                           specificExtraNodeosArgs=specificExtraNodeosArgs,
                           alternateVersionLabelsFile=alternateVersionLabelsFile,
                           associatedNodeLabels=associatedNodeLabels,
+                          extraNodeosArgs=" --plugin eosio::history_api_plugin ",
                           printInfo=True) is False:
             cmdError("launcher")
             errorExit("Failed to stand up eos cluster.")
