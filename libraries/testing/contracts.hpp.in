@@ -24,18 +24,24 @@ struct core_sym {
 #define MAKE_READ_WASM_ABI(CN,C, D)                                                         \
    static std::vector<uint8_t> CN ## _wasm() {                                              \
       std::string s;                                                                        \
-      fc::read_file_contents("${CMAKE_BINARY_DIR}/unittests/" #D "/" #C "/" #C ".wasm", s); \
+      fc::read_file_contents(unittest_dir() / #D "/" #C "/" #C ".wasm", s); \
       return std::vector<uint8_t>(s.begin(), s.end());                                      \
    }                                                                                        \
    static std::vector<char> CN ## _abi() {                                                  \
       std::string s;                                                                        \
-      fc::read_file_contents("${CMAKE_BINARY_DIR}/unittests/" #D "/" #C "/" #C ".abi", s);  \
+      fc::read_file_contents(unittest_dir() / #D "/" #C "/" #C ".abi", s);  \
       return std::vector<char>(s.begin(), s.end());                                         \
    }
 
 namespace eosio {
    namespace testing {
       struct contracts {
+         static fc::path unittest_dir() {
+            if(const char* env_p = std::getenv("EOS_UNITTEST_DIR")) {
+               return env_p;
+            }
+            return "${CMAKE_BINARY_DIR}/unittests";
+         }
          // Contracts in `eos/unittests/contracts' directory
          MAKE_READ_WASM_ABI(eosio_bios,   eosio.bios, contracts)
          MAKE_READ_WASM_ABI(eosio_msig,   eosio.msig, contracts)
