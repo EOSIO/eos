@@ -87,7 +87,7 @@ with RodeosCluster(args.dump_error_details,
            opts = dict()
            ndStr = nd[1:]
            if ndStr not in NodeTstrMap.keys():
-               Utils.errorExit(f"unkknown node type {ndStr} when parsing --node-order '{nodeOrderStr}'")
+               Utils.errorExit("unkknown node type " + ndStr + " when parsing --node-order '" + nodeOrderStr + "'")
 
            ndT = NodeTstrMap[ndStr]
            sym = nd[0]
@@ -99,7 +99,7 @@ with RodeosCluster(args.dump_error_details,
                cmdT = CmdT.RESTART
                opts['clean'] = (lastKillSig == 9)
            else:
-               Utils.errorExit(f"'+' or '_' expected got '{sym} when parsing --node-order '{nodeOrderStr}'")
+               Utils.errorExit("'+' or '_' expected got '" + sym + "' when parsing --node-order '" + nodeOrderStr + "'")
 
            cmdList.append((ndT, cmdT, opts))
            
@@ -113,37 +113,37 @@ with RodeosCluster(args.dump_error_details,
             nd_cmd = cmd[1]
             opts = cmd[2]
             if nd_cmd == CmdT.STOP:
-                s = f"killsig= {opts['killsig']}"
+                s = "killsig= " + str(opts['killsig'])
             else:
-                s = f"clean= {opts['clean']}"
+                s = "clean= " + str(opts['clean'])
 
             if nd == NodeT.PROD:
                 if nd_cmd == CmdT.STOP:
-                    print(f"Stopping producer {s}")
+                    print("Stopping producer " + s)
                     cluster.stopProducer(opts['killsig'])
                 else:
-                    print(f"Restarting producer {s}")
+                    print("Restarting producer " + s)
                     cluster.restartProducer(clean=opts['clean'])
             elif nd == NodeT.SHIP:
                 if nd_cmd == CmdT.STOP:
-                    print(f"Stopping SHIP {s}")
+                    print("Stopping SHIP " + s)
                     cluster.stopShip(opts['killsig'])
                 else:
-                    print(f"Restarting SHIP {s}")
+                    print("Restarting SHIP " + s)
                     cluster.restartShip(clean=opts['clean'])
             elif nd == NodeT.RODEOS:
                 if nd_cmd == CmdT.STOP:
-                    print(f"Stopping rodeos {s}")
+                    print("Stopping rodeos " + s)
                     cluster.stopRodeos(opts['killsig'])
                 else:
-                    print(f"Restarting rodeos {s}")
+                    print("Restarting rodeos " + s)
                     cluster.restartRodeos(clean=opts['clean'])
                         
             sleepTime = stopWait
             if nd_cmd == CmdT.RESTART:
                 sleepTime = restartWait
                 
-            print(f"Waiting {sleepTime} seconds ..")
+            print(f"Waiting " + str(sleepTime) + " seconds ...")
             time.sleep(sleepTime)         
 
     # Big enough to have new blocks produced
