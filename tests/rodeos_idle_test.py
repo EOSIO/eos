@@ -143,7 +143,7 @@ with RodeosCluster(args.dump_error_details,
             if nd_cmd == CmdT.RESTART:
                 sleepTime = restartWait
                 
-            print(f"Waiting " + str(sleepTime) + " seconds ...")
+            print("Waiting " + str(sleepTime) + " seconds ...")
             time.sleep(sleepTime)         
 
     # Big enough to have new blocks produced
