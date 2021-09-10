@@ -78,7 +78,7 @@ try:
 
 
         manualProducerArgs = {0 : { 'key': amqProducerAccount, 'names': ['defproducera']}, 1 : { 'key': amqProducerAccount, 'names': ['defproducera']} }
-        if cluster.launch(totalNodes=2, pnodes=1, dontBootstrap=False, onlyBios=False, useBiosBootFile=True, specificExtraNodeosArgs=specificExtraNodeosArgs, manualProducerNodeConf=manualProducerArgs) is False:
+        if cluster.launch(totalNodes=2, totalProducers=3, pnodes=1, dontBootstrap=False, onlyBios=False, useBiosBootFile=True, specificExtraNodeosArgs=specificExtraNodeosArgs, manualProducerNodeConf=manualProducerArgs) is False:
             cmdError("launcher")
             errorExit("Failed to stand up eos cluster.")
     else:
