@@ -68,7 +68,7 @@ try:
         specificExtraNodeosArgs={ 0 : " --backing-store=chainbase",
                                   1 : " --backing-store=rocksdb" }
         abs_path = os.path.abspath(os.getcwd() + '/../unittests/contracts/eosio.token/eosio.token.abi')
-        traceNodeosArgs=" --trace-rpc-abi eosio.token=" + abs_path
+        traceNodeosArgs=" --plugin eosio::trace_api_plugin --trace-rpc-abi eosio.token=" + abs_path
         if cluster.launch(totalNodes=3, prodCount=prodCount, onlyBios=onlyBios, dontBootstrap=dontBootstrap, specificExtraNodeosArgs=specificExtraNodeosArgs, printInfo=True, extraNodeosArgs=traceNodeosArgs) is False:
             cmdError("launcher")
             errorExit("Failed to stand up eos cluster.")

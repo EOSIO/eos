@@ -354,10 +354,6 @@ class Cluster(object):
             assert(isinstance(extraNodeosArgs, str))
             nodeosArgs += extraNodeosArgs
 
-        nodeosArgs += "--plugin eosio::trace_api_plugin"
-        if extraNodeosArgs.find("--trace-rpc-abi") == -1:
-            nodeosArgs +=" --trace-no-abis "
-
         if nodeosArgs:
             cmdArr.append("--nodeos")
             cmdArr.append(nodeosArgs)

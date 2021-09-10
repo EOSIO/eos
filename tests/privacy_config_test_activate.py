@@ -30,6 +30,7 @@ cluster=Cluster(host=TestHelper.LOCAL_HOST, port=TestHelper.DEFAULT_PORT, wallet
 try:
     TestHelper.printSystemInfo("BEGIN")
     cluster.killall(allInstances=True, cleanup=True)
+    traceNodeosArgs=" --plugin eosio::trace_api_plugin --trace-no-abis "
 
     if not cluster.launch(pnodes=pnodes, 
                           totalNodes=totalNodes, 
@@ -37,7 +38,8 @@ try:
                           onlyBios=True, 
                           loadSystemContract=False, 
                           pfSetupPolicy=PFSetupPolicy.PREACTIVATE_FEATURE_ONLY,
-                          printInfo=True):
+                          printInfo=True,
+                          extraNodeosArgs=traceNodeosArgs):
         Utils.cmdError("launcher")
         Utils.errorExit("Failed to stand up eos cluster.")
     

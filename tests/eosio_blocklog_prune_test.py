@@ -54,7 +54,7 @@ try:
     cluster.cleanup()
 
     abs_path = os.path.abspath(os.getcwd() + '/../unittests/contracts/eosio.token/eosio.token.abi')
-    traceNodeosArgs=" --trace-rpc-abi eosio.token=" + abs_path
+    traceNodeosArgs=" --plugin eosio::trace_api_plugin --trace-rpc-abi eosio.token=" + abs_path
     assert cluster.launch(
         pnodes=1,
         prodCount=1,
@@ -117,7 +117,7 @@ try:
 
     producerNode.kill(signal.SIGTERM)
 
-    # prune the transaction with block-num=trans["block_num"], id=cfTrxId
+    # prune the transaction with block-num=cfTrxBlockNum, id=cfTrxId
     cluster.getBlockLog(producerNodeIndex, blockLogAction=BlockLogAction.prune_transactions, extraArgs=" --block-num {} --transaction {}".format(cfTrxBlockNum, cfTrxId), exitOnError=True)
 
     # try to prune the transaction where it doesn't belong
@@ -140,7 +140,7 @@ try:
     trans = producerNode.getTransaction(cfTrxId)
     assert trans, "Failed to get the transaction with context free data from the producer node"
     # check whether the transaction has been pruned based on the tag of prunable_data, if the tag is 1, then it's a prunable_data_t::none
-    ## TODO...
+    ## TODO: EPE-1237
     #assert trans["trx"]["receipt"]["trx"][1]["prunable_data"]["prunable_data"][0] == 1, "the the transaction with context free data has not been pruned"
 
     producerNode.waitForBlock(cfTrxBlockNum, blockType=BlockType.lib, timeout=WaitSpec.calculate(), errorContext="producerNode LIB did not advance")

@@ -32,7 +32,8 @@ try:
     TestHelper.printSystemInfo("BEGIN")
     cluster.killall(allInstances=True, cleanup=True)
 
-    if not cluster.launch(pnodes=pnodes, totalNodes=totalNodes, configSecurityGroup=True, onlyBios=True, printInfo=True):
+    traceNodeosArgs=" --plugin eosio::trace_api_plugin --trace-no-abis "
+    if not cluster.launch(pnodes=pnodes, totalNodes=totalNodes, configSecurityGroup=True, onlyBios=True, printInfo=True, extraNodeosArgs=traceNodeosArgs):
         Utils.cmdError("launcher")
         Utils.errorExit("Failed to stand up eos cluster.")
     
