@@ -438,7 +438,8 @@ class http_plugin_impl : public std::enable_shared_from_this<http_plugin_impl> {
    }
 
    void http_plugin::handle_sighup() {
-      fc::logger::update( logger()->name(), *logger() );
+      const std::string name = logger()->name();
+      fc::logger::update( name, *logger() );
    }
 
    void http_plugin::plugin_shutdown() {
