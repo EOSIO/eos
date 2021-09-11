@@ -29,7 +29,7 @@ namespace eosio { class transaction; }
 
 extern "C" {
     __attribute__((eosio_wasm_import))
-    void set_action_return_value(const char*, size_t);
+    void set_action_return_value(void*, size_t);
 
     __attribute__((eosio_wasm_import))
     void  eosio_assert( uint32_t test, const char* msg );
