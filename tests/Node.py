@@ -279,7 +279,7 @@ class Node(object):
         assert(isinstance(transId, str))
         exitOnErrorForDelayed=not delayedRetry and exitOnError
         timeout=3
-        if self.cmd.find("--plugin eosio::history_api_plugin") != -1:
+        if self.cmd and self.cmd.find("--plugin eosio::history_api_plugin") != -1:
             cmdDesc="get transaction"
         else:
             cmdDesc="get transaction_trace"
@@ -335,7 +335,7 @@ class Node(object):
         refBlockNum=None
         key=""
         try:
-            if self.cmd.find("--plugin eosio::history_api_plugin") != -1:
+            if self.cmd and self.cmd.find("--plugin eosio::history_api_plugin") != -1:
                 key="[trx][trx][ref_block_num]"
                 refBlockNum=trans["trx"]["trx"]["ref_block_num"]
             else:
