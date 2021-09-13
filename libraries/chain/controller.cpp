@@ -897,8 +897,10 @@ struct controller_impl {
          trx_context.finalize(); // Automatically rounds up network and CPU usage in trace and bills payers if successful
 
          auto restore = make_block_restore_point();
+         uint32_t auth_us = 0;
+         uint32_t exec_us = 0;
          trace->receipt = push_receipt( gtrx.trx_id, transaction_receipt::soft_fail,
-                                        trx_context.billed_cpu_time_us, trace->net_usage );
+                                        trx_context.billed_cpu_time_us, trace->net_usage, auth_us, exec_us );
          fc::move_append( std::get<building_block>(pending->_block_stage)._action_receipt_digests,
                           std::move(trx_context.executed_action_receipt_digests) );
 
@@ -1004,7 +1006,7 @@ struct controller_impl {
          trace->block_time = self.pending_block_time();
          trace->producer_block_id = self.pending_producer_block_id();
          trace->scheduled = true;
-         trace->receipt = push_receipt( gtrx.trx_id, transaction_receipt::expired, billed_cpu_time_us, 0 ); // expire the transaction
+         trace->receipt = push_receipt( gtrx.trx_id, transaction_receipt::expired, billed_cpu_time_us, 0, 0, 0); // expire the transaction
          trace->account_ram_delta = account_delta( gtrx.payer, trx_removal_ram_delta );
          emit( self.accepted_transaction, trx );
          emit( self.applied_transaction, std::tie(trace, trx->packed_trx()) );
@@ -1061,10 +1063,13 @@ struct controller_impl {
 
          auto restore = make_block_restore_point();
 
+         uint32_t auth_us = 0, exec_us = 0;
+         ilog("pushing receipt auth_us=0 exec_us=0");
+
          trace->receipt = push_receipt( gtrx.trx_id,
                                         transaction_receipt::executed,
                                         trx_context.billed_cpu_time_us,
-                                        trace->net_usage );
+                                        trace->net_usage, auth_us, exec_us );
 
          fc::move_append( std::get<building_block>(pending->_block_stage)._action_receipt_digests,
                           std::move(trx_context.executed_action_receipt_digests) );
@@ -1145,7 +1150,8 @@ struct controller_impl {
          resource_limits.add_transaction_usage( trx_context.bill_to_accounts, cpu_time_to_bill_us, 0,
                                                 block_timestamp_type(self.pending_block_time()).slot ); // Should never fail
 
-         trace->receipt = push_receipt(gtrx.trx_id, transaction_receipt::hard_fail, cpu_time_to_bill_us, 0);
+         uint32_t auth_us = 0, exec_us = 0;
+         trace->receipt = push_receipt(gtrx.trx_id, transaction_receipt::hard_fail, cpu_time_to_bill_us, 0, auth_us, exec_us);
          trace->account_ram_delta = account_delta( gtrx.payer, trx_removal_ram_delta );
 
          emit( self.accepted_transaction, trx );
@@ -1166,7 +1172,8 @@ struct controller_impl {
     */
    template<typename T>
    const transaction_receipt& push_receipt( const T& trx, transaction_receipt_header::status_enum status,
-                                            uint64_t cpu_usage_us, uint64_t net_usage ) {
+                                            uint64_t cpu_usage_us, uint64_t net_usage, uint32_t auth_us, uint32_t exec_us ) {
+      ilog("auth_us= ${auth} exec_us= ${exec}", ("auth", auth_us)("exec", exec_us));
       uint64_t net_usage_words = net_usage / 8;
       EOS_ASSERT( net_usage_words*8 == net_usage, transaction_exception, "net_usage is not divisible by 8" );
       auto& receipts = std::get<building_block>(pending->_block_stage)._pending_trx_receipts;
@@ -1175,7 +1182,12 @@ struct controller_impl {
       r.cpu_usage_us         = cpu_usage_us;
       r.net_usage_words      = net_usage_words;
       r.status               = status;
+      r.auth_us              = auth_us;
+      r.exec_us              = exec_us;
       auto& bb = std::get<building_block>(pending->_block_stage);
+      bb._pending_block_header_state.trx_auth_us += auth_us;
+      bb._pending_block_header_state.trx_exec_us += exec_us;
+      
       if( std::holds_alternative<digests_t>(bb._trx_mroot_or_receipt_digests) )
          std::get<digests_t>(bb._trx_mroot_or_receipt_digests).emplace_back( r.digest() );
       return r;
@@ -1251,6 +1263,7 @@ struct controller_impl {
 
             trx_context.delay = fc::seconds(trn.delay_sec);
 
+            const auto auth_start = std::chrono::system_clock::now();
             if( check_auth ) {
                auto payer = trn.resource_payer_info(self.is_builtin_activated(builtin_protocol_feature_t::resource_payer));
 
@@ -1264,7 +1277,14 @@ struct controller_impl {
                        false
                );
             }
+            const auto auth_end = std::chrono::system_clock::now();
             trx_context.exec();
+            const auto exec_end = std::chrono::system_clock::now();
+            const auto elapsed_auth = auth_end - auth_start;
+            const auto elapsed_exec = exec_end - auth_end;
+            const auto auth_us = std::chrono::duration_cast<std::chrono::microseconds>(elapsed_auth).count();
+            const auto exec_us = std::chrono::duration_cast<std::chrono::microseconds>(elapsed_exec).count();
+
             trx_context.finalize(); // Automatically rounds up network and CPU usage in trace and bills payers if successful
 
             auto restore = make_block_restore_point();
@@ -1273,7 +1293,7 @@ struct controller_impl {
                transaction_receipt::status_enum s = (trx_context.delay == fc::seconds(0))
                                                     ? transaction_receipt::executed
                                                     : transaction_receipt::delayed;
-               trace->receipt = push_receipt(*trx->packed_trx(), s, trx_context.billed_cpu_time_us, trace->net_usage);
+               trace->receipt = push_receipt(*trx->packed_trx(), s, trx_context.billed_cpu_time_us, trace->net_usage, auth_us, exec_us);
                trx->billed_cpu_time_us = trx_context.billed_cpu_time_us;
                std::get<building_block>(pending->_block_stage)._pending_trx_metas.emplace_back(trx);
             } else {
@@ -1281,6 +1301,8 @@ struct controller_impl {
                r.status = transaction_receipt::executed;
                r.cpu_usage_us = trx_context.billed_cpu_time_us;
                r.net_usage_words = trace->net_usage / 8;
+               r.auth_us = auth_us;
+               r.exec_us = exec_us;
                trace->receipt = r;
             }
 
@@ -1554,7 +1576,7 @@ struct controller_impl {
       ) );
 
       block_ptr->transactions = std::move( bb._pending_trx_receipts );
-
+      
       auto id = block_ptr->calculate_id();
 
       // Update TaPoS table:

@@ -59,6 +59,8 @@ namespace eosio { namespace chain {
       new_producers_type                new_producers;
       extensions_type                   header_extensions;
 
+      uint32_t                          trx_exec_total_us = 0;
+      uint32_t                          trx_auth_total_us = 0;
 
       block_header() = default;
 

@@ -64,6 +64,8 @@ namespace detail {
       flat_map<account_name,uint32_t>   producer_to_last_implied_irb;
       block_signing_authority           valid_block_signing_authority;
       vector<uint8_t>                   confirm_count;
+      uint32_t                          trx_auth_us;
+      uint32_t                          trx_exec_us;
    };
 
    struct schedule_info {

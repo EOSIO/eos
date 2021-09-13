@@ -28,6 +28,8 @@ namespace eosio { namespace chain {
       fc::enum_type<uint8_t,status_enum>   status;
       uint32_t                             cpu_usage_us = 0; ///< total billed CPU usage (microseconds)
       fc::unsigned_int                     net_usage_words; ///<  total billed NET usage, so we can reconstruct resource state when skipping context free data... hard failures...
+      uint32_t                             exec_us = 0;
+      uint32_t                             auth_us = 0;
    };
 
    struct transaction_receipt_v0 : public transaction_receipt_header {

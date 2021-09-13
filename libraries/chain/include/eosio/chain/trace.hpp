@@ -55,6 +55,7 @@ namespace eosio { namespace chain {
       std::optional<block_id_type>               producer_block_id;
       std::optional<transaction_receipt_header>  receipt;
       fc::microseconds                           elapsed;
+
       uint64_t                                   net_usage = 0;
       bool                                       scheduled = false;
       vector<action_trace>                       action_traces;
@@ -65,6 +66,8 @@ namespace eosio { namespace chain {
       std::optional<uint64_t>                    error_code;
       std::exception_ptr                         except_ptr;
       flat_set<account_name>                     bill_to_accounts;
+      std::chrono::microseconds                  elapsed_auth;
+      std::chrono::microseconds                  elapsed_exec;
    };
 
    /**
