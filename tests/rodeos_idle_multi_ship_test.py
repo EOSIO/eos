@@ -1,22 +1,9 @@
 #!/usr/bin/env python3
 
 from testUtils import Utils
-from datetime import datetime
-from datetime import timedelta
-import time
-from Cluster import Cluster
-from WalletMgr import WalletMgr
 from TestHelper import TestHelper
-from TestHelper import AppArgs
 from rodeos_utils import RodeosCluster
-
-import json
-import os
-import re
-import shutil
-import signal
-import sys
-
+from TestHelper import AppArgs
 ###############################################################
 # rodeos_idle_multi_ship_test
 # 
@@ -27,23 +14,28 @@ import sys
 
 Print=Utils.Print
 
-args=TestHelper.parse_args({"--dump-error-details","--keep-logs","-v","--leave-running","--clean-run"})
+extraArgs=AppArgs()
+extraArgs.add_bool("--eos-vm-oc-enable", "Use OC for rodeos")
+
+args=TestHelper.parse_args({"--dump-error-details","--keep-logs","-v","--leave-running","--clean-run"}, extraArgs)
+enableOC=args.eos_vm_oc_enable
 
 TestHelper.printSystemInfo("BEGIN")
 testSuccessful=False
-def launch_cluster(num_ships, num_rodeos, unix_socket, eos_vm_oc_enable=False):
+def launch_cluster(num_ships, num_rodeos, unix_socket_option, eos_vm_oc_enable=False):
     with RodeosCluster(args.dump_error_details,
             args.keep_logs,
             args.leave_running,
-            args.clean_run, unix_socket,
+            args.clean_run, unix_socket_option,
             'test.filter', './tests/test_filter.wasm',
             eos_vm_oc_enable,
             num_rodeos,
             num_ships) as cluster:
 
         Print("Testing cluster of {} ship nodes and {} rodeos nodes connecting through {}"\
-            .format(num_ships, num_rodeos, (lambda x: 'Unix Socket' if (x==True) else 'TCP')(unix_socket)))
-        assert cluster.waitRodeosReady(), "Rodeos failed to stand up for a cluster of {} ship node and {} rodeos node".format(num_ships, num_rodeos)
+            .format(num_ships, num_rodeos, (lambda x: 'Unix Socket' if (x==True) else 'TCP')(unix_socket_option)))
+        for i in range(num_rodeos):
+            assert cluster.waitRodeosReady(i), "Rodeos failed to stand up for a cluster of {} ship node and {} rodeos node".format(num_ships, num_rodeos)
 
         # Big enough to have new blocks produced
         numBlocks=120
@@ -56,13 +48,13 @@ def launch_cluster(num_ships, num_rodeos, unix_socket, eos_vm_oc_enable=False):
 
         cluster.setTestSuccessful(True)
 
-# Test cases: (1 ship, 1 rodeos), (2 ships, 2 rodeos), (2 ships, 3 rodeos), (3 ships, 2 rodeos)
-numSHiPs=[1, 2, 2, 3]
-numRodeos=[1, 2, 3, 2]
+# Test cases: (1 ships, 2 rodeos), (2 ships, 3 rodeos)
+numSHiPs=[1, 2]
+numRodeos=[2, 3]
 NumTestCase=len(numSHiPs)
-for i in [True, False]:
+for i in [True, False]: # True means Unix-socket option, False means TCP/IP
     for j in range(NumTestCase):
-        launch_cluster(numSHiPs[j], numRodeos[j], i)
+        launch_cluster(numSHiPs[j], numRodeos[j], i, enableOC)
 
 testSuccessful=True
 errorCode = 0 if testSuccessful else 1
