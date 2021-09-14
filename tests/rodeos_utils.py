@@ -40,8 +40,10 @@ class RodeosCluster(object):
         self.killEosInstances=not leave_running
         self.killWallet=not leave_running
         self.clean_run=clean_run
+
         self.unix_socket_option=unix_socket_option
         self.totalNodes=numShip+1 # Ship nodes + one producer # Number of producer is harded coded 
+        self.producerNeverRestarted=True
 
         self.numRodeos=numRodeos
         self.rodeosDir=[]
@@ -131,22 +133,34 @@ class RodeosCluster(object):
             if not self.keepLogs:
                 shutil.rmtree(self.rodeosDir[i], ignore_errors=True)
 
-    def relaunchNode(node: Node, chainArg="", relaunchAssertMessage="Fail to relaunch", clean=False):
+    def relaunchNode(self, node: Node, chainArg="", relaunchAssertMessage="Fail to relaunch", clean=False):
         if clean:
             shutil.rmtree(Utils.getNodeDataDir(node.nodeId))
+            os.makedirs(Utils.getNodeDataDir(node.nodeId))
 
         # skipGenesis=False starts the same chain
+
         isRelaunchSuccess=node.relaunch(chainArg=chainArg, timeout=10, skipGenesis=False, cachePopen=True)
         time.sleep(1) # Give a second to replay or resync if needed
         assert isRelaunchSuccess, relaunchAssertMessage
         return isRelaunchSuccess
 
     def restartProducer(self, clean):
-        # need to reenable producing after restart
-        self.relaunchNode(self.prodNode, chainArg="-e -p defproducera ", clean=clean)
+        # The first time relaunchNode is called, it does not have
+        # "-e -p" for enabling block producing;
+        # that's why chainArg="-e -p defproducera " is needed.
+        # Calls afterward reuse command in the first call,
+        # chainArg is not needed to set any more.
+        chainArg=""
+        if self.producerNeverRestarted:
+            self.producerNeverRestarted=False
+            chainArg="-e -p defproducera "
+
+        self.relaunchNode(self.prodNode, chainArg=chainArg, clean=clean)
 
     def stopProducer(self, killSignal):
         self.prodNode.kill(killSignal)
+
 
     def restartShip(self, clean, shipNodeId):
         assert (shipNodeId>=0 and shipNodeId<self.numShip), "Node ID doesn't exist!"
