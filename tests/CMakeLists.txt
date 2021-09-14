@@ -187,8 +187,15 @@ set_property(TEST nodeos_startup_catchup_lr_test PROPERTY LABELS long_running_te
 add_test(NAME nodeos_short_fork_take_over_lr_test COMMAND tests/nodeos_short_fork_take_over_test.py -v --wallet-port 9905 --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 set_property(TEST nodeos_short_fork_take_over_lr_test PROPERTY LABELS long_running_tests)
 
-add_test(NAME rodeos_idle_multi_ship_test COMMAND tests/rodeos_idle_multi_ship_test.py WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+add_test(NAME rodeos_idle_multi_ship_test COMMAND tests/rodeos_idle_multi_ship_test.py -v --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 set_property(TEST rodeos_idle_multi_ship_test PROPERTY LABELS nonparallelizable_tests)
+
+if("eos-vm-oc" IN_LIST EOSIO_WASM_RUNTIMES)
+
+  add_test(NAME rodeos_idle_multi_ship_eos_vm_oc_test COMMAND tests/rodeos_idle_multi_ship_test.py -v --clean-run --dump-error-detail --eos-vm-oc-enable WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+  set_property(TEST rodeos_idle_multi_ship_eos_vm_oc_test PROPERTY LABELS nonparallelizable_tests)
+
+endif()
 
 if(ENABLE_MULTIVERSION_PROTOCOL_TEST)
   set(ALTERNATE_VERSION_LABELS_FILE "${CMAKE_BINARY_DIR}/tests/multiversion_paths.conf")
