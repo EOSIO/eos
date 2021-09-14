@@ -324,7 +324,7 @@ EOF
             IFS=$oIFS
             SERIAL_TESTS="$(cat tests/CMakeLists.txt | grep nonparallelizable_tests | grep -v "^#" | awk -F" " '{ print $2 }')"
             for TEST_NAME in $SERIAL_TESTS; do
-                IS_RODEOS_RESTART_EOS_VM_OC=`echo "$TEST_NAME" > grep 'rodeos_idle_restart_*eos-vm-oc'`
+                IS_RODEOS_RESTART_EOS_VM_OC=`echo "$TEST_NAME" | grep 'rodeos_idle_restart_*eos-vm-oc'`
                 if [[ ! "$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)" =~ 'macos' ]]; then
                     cat <<EOF
   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - $TEST_NAME"
