@@ -145,7 +145,7 @@ steps:
     timeout: 180
     skip: ${SKIP_UBUNTU_20_04}${SKIP_LINUX}
 
-  - label: ":oracle: Oracle 8.3 - Base Image Unpinned"
+  - label: ":oracle: Oracle_Linux 8.3 - Base Image Unpinned"
     command:
       - "./.cicd/generate-base-images.sh"
     env:
@@ -157,7 +157,7 @@ steps:
     timeout: 180
     skip: ${SKIP_ORACLE_LINUX_8_3}${SKIP_LINUX}    
 
-  - label: ":oracle: Oracle 8.3 - Base Image Pinned"
+  - label: ":oracle: Oracle_Linux 8.3 - Base Image Pinned"
     command:
       - "./.cicd/generate-base-images.sh"
     env:
