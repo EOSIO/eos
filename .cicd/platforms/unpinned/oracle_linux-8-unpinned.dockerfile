@@ -4,7 +4,7 @@ ENV VERSION 1
 # install dependencies.
 RUN yum update -y && \
     yum install -y which git autoconf automake libtool make bzip2  \
-    graphviz bzip2-devel openssl openssl-devel gmp-devel \
+    graphviz bzip2-devel openssl openssl-devel gmp-devel ncurses-devel \
     python38 file libusbx-devel python3-pip libcurl-devel patch vim-common jq \
     glibc-locale-source glibc-langpack-en postgresql-server postgresql-devel && \
     yum clean all && rm -rf /var/cache/yum
