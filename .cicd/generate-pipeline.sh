@@ -669,7 +669,7 @@ EOF
     timeout: ${TIMEOUT:-10}
     skip: ${SKIP_UBUNTU_20_04}${SKIP_PACKAGE_BUILDER}${SKIP_LINUX}
 
-    - label: ":oracle_linux: Oracle Linux 8.3 - Package Builder"
+  - label: ":oracle_linux: Oracle Linux 8.3 - Package Builder"
     command:
       - "buildkite-agent artifact download build.tar.gz . --step ':centos: CentOS 7.7 - Build' && tar -xzf build.tar.gz"
       - "./.cicd/package.sh"
