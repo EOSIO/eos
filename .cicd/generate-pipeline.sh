@@ -342,7 +342,7 @@ EOF
     skip: $(echo "$PLATFORM_JSON" | jq -r '.PLATFORM_SKIP_VAR | env[.] // empty')${SKIP_SERIAL_TESTS}
 
 EOF
-            elif [[ "$TEST_NAME" != 'rodeos_test_eosvmoc' ]]; then
+            elif [[ "$TEST_NAME" != 'rodeos_test_eosvmoc' && "$TEST_NAME" != 'rodeos_idle_multi_ship_eos_vm_oc_test']]; then
                 cat <<EOF
   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - $TEST_NAME"
     command:
