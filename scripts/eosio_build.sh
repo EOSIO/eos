@@ -180,6 +180,9 @@ if [[ $ARCH == "Linux" ]]; then
       "Ubuntu")
          FILE="${REPO_ROOT}/scripts/eosio_build_ubuntu.sh"
       ;;
+      "Oracle Linux")
+         FILE="${REPO_ROOT}/scripts/eosio_build_oraclelinux.sh"
+      ;;
       *) print_supported_linux_distros_and_exit;;
    esac
    CMAKE_PREFIX_PATHS="${EOSIO_INSTALL_DIR}"
