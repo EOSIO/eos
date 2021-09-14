@@ -166,8 +166,8 @@ set_property(TEST rodeos_idle_restart_rodeos_ship_test PROPERTY LABELS nonparall
 add_test(NAME rodeos_idle_restart_rodeos_producer_test COMMAND tests/rodeos_idle_test.py -v --clean-run --dump-error-detail --reps 2 --node-order _rodeos,_prod,+rodeos,+prod,_prod,_rodeos,+rodeos,+prod WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 set_property(TEST rodeos_idle_restart_rodeos_producer_test PROPERTY LABELS nonparallelizable_tests)
 
-# with eos-vm-oc
-if("eos-vm-oc" IN_LIST EOSIO_WASM_RUNTIMES)
+# dont run eos-vm-oc on Apple for now
+if(NOT APPLE) 
   add_test(NAME rodeos_idle_restart_ship_eos-vm-oc_test COMMAND tests/rodeos_idle_test.py -v --clean-run --dump-error-detail --node-order _ship,+ship --eos-vm-oc-enable WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
   set_property(TEST rodeos_idle_restart_ship_eos-vm-oc_test PROPERTY LABELS nonparallelizable_tests)
   add_test(NAME rodeos_idle_restart_producer_eos-vm-oc_test COMMAND tests/rodeos_idle_test.py -v --clean-run --dump-error-detail --node-order _prod,+prod --eos-vm-oc-enable WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
