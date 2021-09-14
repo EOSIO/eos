@@ -15,6 +15,12 @@ RUN dnf update && dnf install -y clang cmake llvm llvm-devel llvm-toolset && \
 # doxygen prereqs
 RUN yum install -y flex bison && yum clean all && rm -rf /var/cache/yum
 
+# install erlang and rabbitmq
+RUN curl -s https://packagecloud.io/install/repositories/rabbitmq/erlang/script.rpm.sh | bash && \
+    yum install -y erlang
+RUN curl -s https://packagecloud.io/install/repositories/rabbitmq/rabbitmq-server/script.rpm.sh | bash && \
+    yum install -y rabbitmq-server
+    
 # build doxygen
 RUN curl -LO https://github.com/doxygen/doxygen/archive/refs/tags/Release_1_9_2.tar.gz && \
     tar -xzvf Release_1_9_2.tar.gz && \

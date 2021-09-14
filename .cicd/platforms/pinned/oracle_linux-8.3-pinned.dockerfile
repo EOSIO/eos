@@ -15,6 +15,12 @@ RUN dnf update && dnf install -y cmake && \
 # doxygen prereqs
 RUN yum install -y flex bison && yum clean all && rm -rf /var/cache/yum
 
+# install erlang and rabbitmq
+RUN curl -s https://packagecloud.io/install/repositories/rabbitmq/erlang/script.rpm.sh | bash && \
+    yum install -y erlang
+RUN curl -s https://packagecloud.io/install/repositories/rabbitmq/rabbitmq-server/script.rpm.sh | bash && \
+    yum install -y rabbitmq-server
+    
 # build clang10
 RUN cd / && git clone --single-branch --branch llvmorg-10.0.0 https://github.com/llvm/llvm-project clang10 && \
     mkdir /clang10/build && cd /clang10/build && \
