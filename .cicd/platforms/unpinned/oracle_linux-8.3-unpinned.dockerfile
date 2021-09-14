@@ -1,4 +1,4 @@
-FROM oraclelinux:8
+FROM oraclelinux:8.3
 
 ENV VERSION 1
 # install dependencies.

@@ -83,6 +83,18 @@ steps:
     timeout: 180
     skip: ${SKIP_UBUNTU_20_04}${SKIP_LINUX}
 
+  - label: ":oracle: Oracle_Linux 8.3 - Build Pinned"
+    plugins:
+      - docker#v3.3.0:
+          image: "oraclelinux:8.3"
+          always-pull: true
+    agents:
+      queue: "automation-eks-eos-builder-fleet"
+    command:
+      - "./scripts/eosio_build.sh -P -y"
+    timeout: 180
+    skip: ${SKIP_ORACLE_LINUX_8_3}${SKIP_LINUX}
+
   - label: ":aws: Amazon_Linux 2 - Build UnPinned"
     plugins:
       - docker#v3.3.0:
@@ -165,3 +177,15 @@ steps:
       - "./scripts/eosio_build.sh -y"
     timeout: 180
     skip: ${SKIP_UBUNTU_20_04}${SKIP_LINUX}
+  
+  - label: ":oracle: Oracle_Linux 8.3 - Build Unpinned"
+    plugins:
+      - docker#v3.3.0:
+          image: "oraclelinux:8.3"
+          always-pull: true
+    agents:
+      queue: "automation-eks-eos-builder-fleet"
+    command:
+      - "./scripts/eosio_build.sh -y"
+    timeout: 180
+    skip: ${SKIP_ORACLE_LINUX_8_3}${SKIP_LINUX}
