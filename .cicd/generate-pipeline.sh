@@ -75,7 +75,7 @@ for FILE in $(ls "$CICD_DIR/platforms/$PLATFORM_TYPE"); do
     [[ $FILE_NAME =~ 'ubuntu' ]] && export ICON=':ubuntu:'
     [[ $FILE_NAME =~ 'centos' ]] && export ICON=':centos:'
     [[ $FILE_NAME =~ 'macos' ]] && export ICON=':darwin:'
-    [[ $FILE_NAME =~ 'oracle' ]] && export ICON=':oracle:'
+    [[ $FILE_NAME =~ 'oracle' ]] && export ICON=':oracle_linux:'
     . "$HELPERS_DIR/file-hash.sh" "$CICD_DIR/platforms/$PLATFORM_TYPE/$FILE" # returns HASHED_IMAGE_TAG, etc
     export PLATFORM_SKIP_VAR="SKIP_${PLATFORM_NAME_UPCASE}_${VERSION_MAJOR}${VERSION_MINOR}"
     # Anka Template and Tags
@@ -669,7 +669,7 @@ EOF
     timeout: ${TIMEOUT:-10}
     skip: ${SKIP_UBUNTU_20_04}${SKIP_PACKAGE_BUILDER}${SKIP_LINUX}
 
-    - label: ":oracle: Oracle Linux 8.3 - Package Builder"
+    - label: ":oracle_linux: Oracle Linux 8.3 - Package Builder"
     command:
       - "buildkite-agent artifact download build.tar.gz . --step ':centos: CentOS 7.7 - Build' && tar -xzf build.tar.gz"
       - "./.cicd/package.sh"
