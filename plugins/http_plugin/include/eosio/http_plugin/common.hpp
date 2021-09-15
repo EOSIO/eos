@@ -137,9 +137,9 @@ namespace eosio {
         uint16_t                                         thread_pool_size = 2;
         std::unique_ptr<eosio::chain::named_thread_pool> thread_pool;
 
-        fc::logger* logger;
+        fc::logger& logger;
 
-        explicit http_plugin_state(fc::logger* log)
+        explicit http_plugin_state(fc::logger& log)
             : logger(log)
         {}
     };
