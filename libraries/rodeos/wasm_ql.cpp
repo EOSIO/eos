@@ -629,7 +629,7 @@ const std::vector<char>& query_send_transaction(wasm_ql::thread_state&   thread_
    if (params.compression != "0" && params.compression != "none")
       throw std::runtime_error("Compression must be 0 or none"); // todo
    ship_protocol::packed_transaction trx{ 0,
-                                          { ship_protocol::prunable_data_type::full_legacy{
+                                          { ship_protocol::prunable_data_full_legacy{
                                                 std::move(params.signatures), params.packed_context_free_data.data } },
                                           params.packed_trx.data };
 
@@ -648,14 +648,14 @@ const std::vector<char>& query_send_transaction(wasm_ql::thread_state&   thread_
 } // query_send_transaction
 
 bool is_signatures_empty(const ship_protocol::prunable_data_type& data) {
-   return std::visit(overloaded{ [](const ship_protocol::prunable_data_type::none&) { return true; },
+   return std::visit(overloaded{ [](const ship_protocol::prunable_data_none&) { return true; },
                                  [](const auto& v) { return v.signatures.empty(); } },
                      data.prunable_data);
 }
 
 bool is_context_free_data_empty(const ship_protocol::prunable_data_type& data) {
-   return std::visit(overloaded{ [](const ship_protocol::prunable_data_type::none&) { return true; },
-                                 [](const ship_protocol::prunable_data_type::full_legacy& v) {
+   return std::visit(overloaded{ [](const ship_protocol::prunable_data_none&) { return true; },
+                                 [](const ship_protocol::prunable_data_full_legacy& v) {
                                     return v.packed_context_free_data.pos == v.packed_context_free_data.end;
                                  },
                                  [](const auto& v) { return v.context_free_segments.empty(); } },

@@ -20,7 +20,9 @@ using namespace std::literals;
 using prunable_data_type = eosio::chain::packed_transaction::prunable_data_type;
 
 namespace bio = boost::iostreams;
-extern const char* const state_history_plugin_abi;
+namespace eosio { namespace ship_protocol {
+extern const char* const ship_abi;
+}}
 
 prunable_data_type::prunable_data_t
 get_prunable_data_from_traces(std::vector<eosio::state_history::transaction_trace>& traces,
@@ -84,7 +86,7 @@ struct state_history_abi_serializer {
 
    state_history_abi_serializer(tester& chn)
        : chain(chn)
-       , sr(fc::json::from_string(state_history_plugin_abi).as<abi_def>(),
+       , sr(fc::json::from_string(eosio::ship_protocol::ship_abi).as<abi_def>(),
             abi_serializer::create_yield_function(chain.abi_serializer_max_time)) {}
 
    fc::variant deserialize(const eosio::chain::bytes& data, const char* type) {
@@ -168,7 +170,7 @@ BOOST_AUTO_TEST_CASE(test_trace_log) {
    auto traces = get_traces(log, cfd_trace->block_num);
    BOOST_REQUIRE(traces.size());
 
-   BOOST_REQUIRE(!std::holds_alternative<eosio::ship_protocol::prunable_data_type::none>(
+   BOOST_REQUIRE(!std::holds_alternative<eosio::ship_protocol::prunable_data_none>(
        get_prunable_data_from_traces(traces, cfd_trace->id)));
 
    std::vector<transaction_id_type> ids{cfd_trace->id};
@@ -181,7 +183,7 @@ BOOST_AUTO_TEST_CASE(test_trace_log) {
    auto                            pruned_traces = get_traces(new_log, cfd_trace->block_num);
    BOOST_REQUIRE(pruned_traces.size());
 
-   BOOST_CHECK(std::holds_alternative<eosio::ship_protocol::prunable_data_type::none>(
+   BOOST_CHECK(std::holds_alternative<eosio::ship_protocol::prunable_data_none>(
        get_prunable_data_from_traces(pruned_traces, cfd_trace->id)));
    new_log.stop();
 }
@@ -376,7 +378,7 @@ BOOST_AUTO_TEST_CASE(test_splitted_log) {
    auto traces = get_traces(chain.traces_log, cfd_trace->block_num);
    BOOST_REQUIRE(traces.size());
 
-   BOOST_REQUIRE(!std::holds_alternative<eosio::ship_protocol::prunable_data_type::none>(
+   BOOST_REQUIRE(!std::holds_alternative<eosio::ship_protocol::prunable_data_none>(
        get_prunable_data_from_traces(traces, cfd_trace->id)));
 
    std::vector<transaction_id_type> ids{cfd_trace->id};
@@ -390,7 +392,7 @@ BOOST_AUTO_TEST_CASE(test_splitted_log) {
    auto pruned_traces = get_traces(new_log, cfd_trace->block_num);
    BOOST_REQUIRE(pruned_traces.size());
 
-   BOOST_CHECK(std::holds_alternative<eosio::ship_protocol::prunable_data_type::none>(
+   BOOST_CHECK(std::holds_alternative<eosio::ship_protocol::prunable_data_none>(
        get_prunable_data_from_traces(pruned_traces, cfd_trace->id)));
 }
 
