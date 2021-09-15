@@ -33,7 +33,7 @@ ndHelp += "will stop ship, stop rodeos, then restart ship, restart rodeos,"
 appArgs.add("--node-order", type=str, help=ndHelp, default="_ship,+ship")
 appArgs.add("--stop-wait", type=int, help="Wait time after stop is issued", default=1)
 appArgs.add("--restart-wait", type=int, help="Wait time after restart is issued", default=1)
-appArgs.add("--reps", type=int, help="How many times to run test", default=5)
+appArgs.add("--reps", type=int, help="How many times to run test", default=3)
 
 args=TestHelper.parse_args({"--dump-error-details","--keep-logs","-v","--leave-running","--clean-run"}, applicationSpecificArgs=appArgs)
 
