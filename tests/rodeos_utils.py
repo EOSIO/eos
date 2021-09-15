@@ -55,7 +55,6 @@ class RodeosCluster(object):
         self.numShip=numShip
         self.shipNodeIdPortsNodes={}
 
-
         port=9999
         for i in range(1, 1+numShip): # One producer
             self.shipNodeIdPortsNodes[i]=["127.0.0.1:" + str(port)]
@@ -163,13 +162,7 @@ class RodeosCluster(object):
 
     def restartShip(self, clean, shipNodeId=1):
         assert(shipNodeId in self.shipNodeIdPortsNodes), "ShiP node Id doesn't exist"
-
-        arg="--plugin eosio::state_history_plugin --trace-history --chain-state-history --state-history-endpoint {} --disable-replay-opts --plugin eosio::net_api_plugin "\
-            .format(self.shipNodeIdPortsNodes[shipNodeId][0])
-        if self.unix_socket_option:
-            arg+="--state-history-unix-socket-path ship{}.sock".format(shipNodeId)
-
-        self.relaunchNode(self.shipNodeIdPortsNodes[shipNodeId][1], chainArg=arg, clean=clean)
+        self.relaunchNode(self.shipNodeIdPortsNodes[shipNodeId][1], clean=clean)
 
     def stopShip(self, killSignal, shipNodeId=1):
         assert(shipNodeId in self.shipNodeIdPortsNodes), "ShiP node Id doesn't exist"
