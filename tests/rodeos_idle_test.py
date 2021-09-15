@@ -72,7 +72,7 @@ with RodeosCluster(args.dump_error_details,
     cmdSched = []
 
     lastKillSig = { NodeT.PROD: -1, NodeT.SHIP: -1, NodeT.RODEOS: -1 }
-    for killSig in [2, 15, 9]:
+    for killSig in [2, 15]:
        cmdList = []
        for nd in nodeOrder:
            opts = dict()
