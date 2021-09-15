@@ -15,11 +15,20 @@ RUN dnf update && dnf install -y clang cmake llvm llvm-devel llvm-toolset && \
 # doxygen prereqs
 RUN yum install -y flex bison && yum clean all && rm -rf /var/cache/yum
 
-# install erlang and rabbitmq
-RUN curl -s https://packagecloud.io/install/repositories/rabbitmq/erlang/script.rpm.sh | bash && \
-    yum install -y erlang
-RUN curl -s https://packagecloud.io/install/repositories/rabbitmq/rabbitmq-server/script.rpm.sh | bash && \
-    yum install -y rabbitmq-server
+# build erlang from source (required for rabbitmq)
+RUN curl -LO https://github.com/erlang/otp/releases/download/OTP-23.3.4.7/otp_src_23.3.4.7.tar.gz && \
+    tar -xzvf otp_src_23.3.4.7.tar.gz && \
+    cd otp_src_23.3.4.7 && export ERL_TOP=`pwd` && \
+    ./configure && make -j$(nproc) && \
+    cd .. && rm -rf otp_src_23.3.4.7 otp_src_23.3.4.7.tar.gz
+
+# manually install rabbitmq from binary 
+RUN dnf update && dnf install -y xz && \
+    curl -LO https://github.com/rabbitmq/rabbitmq-server/releases/download/v3.9.5/rabbitmq-server-generic-unix-3.9.5.tar.xz && \
+    tar -xf rabbitmq-server-generic-unix-3.9.5.tar.xz && \
+    cp rabbitmq_server-3.9.5/sbin/* /usr/sbin && \
+    mv rabbitmq_server-3.9.5 /usr/share && \
+    rm rabbitmq-server-generic-unix-3.9.5.tar.xz
     
 # build doxygen
 RUN curl -LO https://github.com/doxygen/doxygen/archive/refs/tags/Release_1_9_2.tar.gz && \
