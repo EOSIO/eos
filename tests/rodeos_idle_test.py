@@ -1,21 +1,14 @@
 #!/usr/bin/env python3
 
 from testUtils import Utils
-from datetime import datetime
-from datetime import timedelta
 import time
-from Cluster import Cluster
-from WalletMgr import WalletMgr
 from TestHelper import TestHelper
 from TestHelper import AppArgs
 from rodeos_utils import RodeosCluster
 
-import json
-import os
+from enum import IntEnum
+
 import re
-import shutil
-import signal
-import sys
 
 ###############################################################
 # rodeos_idle_test
@@ -33,7 +26,22 @@ appArgs.add(flag="--num-rodeos", type=int, help="How many rodeos' should be star
 appArgs.add_bool(flag="--unix-socket", help="Run ship over unix socket")
 appArgs.add_bool("--eos-vm-oc-enable", "Use OC for rodeos")
 
+ndHelp = "Order to restart nodes. Should be 'ship', 'prod', 'rodeos' "
+ndHelp += "Prefixed by a '-' (for stop) or '+' (for restart) "
+ndHelp += "e.g '_ship,_rodeos,+ship,+rodeos "
+ndHelp += "will stop ship, stop rodeos, then restart ship, restart rodeos,"
+appArgs.add("--node-order", type=str, help=ndHelp, default="_ship,+ship")
+appArgs.add("--stop-wait", type=int, help="Wait time after stop is issued", default=1)
+appArgs.add("--restart-wait", type=int, help="Wait time after restart is issued", default=1)
+appArgs.add("--reps", type=int, help="How many times to run test", default=3)
+
 args=TestHelper.parse_args({"--dump-error-details","--keep-logs","-v","--leave-running","--clean-run"}, applicationSpecificArgs=appArgs)
+
+nodeOrderStr = args.node_order
+nodeOrder = re.split(",", nodeOrderStr)
+stopWait = args.stop_wait
+restartWait = args.restart_wait
+nReps = args.reps
 
 testSuccessful=False
 TestHelper.printSystemInfo("BEGIN")
@@ -47,6 +55,87 @@ with RodeosCluster(args.dump_error_details,
         args.num_rodeos) as cluster:
 
     assert cluster.waitRodeosReady(), "Rodeos failed to stand up"
+
+    class NodeT(IntEnum):
+        PROD = 1
+        SHIP = 2
+        RODEOS = 3
+  
+    class CmdT(IntEnum):
+        STOP = 1
+        RESTART = 2
+
+    NodeTstrMap = {"prod" : NodeT.PROD, "ship" : NodeT.SHIP, "rodeos" : NodeT.RODEOS }
+
+    # the command schedule, which consist of a list of lists tuples of 2-tuples
+    # each 2-tuple is (NodeT, CmdT)
+    cmdSched = []
+
+    lastKillSig = { NodeT.PROD: -1, NodeT.SHIP: -1, NodeT.RODEOS: -1 }
+    for killSig in [2, 15]:
+       cmdList = []
+       for nd in nodeOrder:
+           opts = dict()
+           ndStr = nd[1:]
+           if ndStr not in NodeTstrMap.keys():
+               Utils.errorExit("unkknown node type " + ndStr + " when parsing --node-order '" + nodeOrderStr + "'")
+
+           ndT = NodeTstrMap[ndStr]
+           sym = nd[0]
+           if sym == "_":
+               cmdT = CmdT.STOP
+               opts["killsig"] = killSig
+               lastKillSig[ndT] = killSig
+           elif sym == "+":
+               cmdT = CmdT.RESTART
+               opts['clean'] = (lastKillSig[ndT] == 9)
+           else:
+               Utils.errorExit("'+' or '_' expected got '" + sym + "' when parsing --node-order '" + nodeOrderStr + "'")
+
+           cmdList.append((ndT, cmdT, opts))
+           
+       cmdSched.append(cmdList * nReps)
+   
+    for cmdList in cmdSched:
+        print('cmdList=', cmdList)
+        for cmd in cmdList:
+            
+            nd = cmd[0]
+            nd_cmd = cmd[1]
+            opts = cmd[2]
+            if nd_cmd == CmdT.STOP:
+                s = "killsig= " + str(opts['killsig'])
+            else:
+                s = "clean= " + str(opts['clean'])
+
+            if nd == NodeT.PROD:
+                if nd_cmd == CmdT.STOP:
+                    print("Stopping producer " + s)
+                    cluster.stopProducer(opts['killsig'])
+                else:
+                    print("Restarting producer " + s)
+                    cluster.restartProducer(clean=opts['clean'])
+            elif nd == NodeT.SHIP:
+                if nd_cmd == CmdT.STOP:
+                    print("Stopping SHIP " + s)
+                    cluster.stopShip(opts['killsig'])
+                else:
+                    print("Restarting SHIP " + s)
+                    cluster.restartShip(clean=opts['clean'])
+            elif nd == NodeT.RODEOS:
+                if nd_cmd == CmdT.STOP:
+                    print("Stopping rodeos " + s)
+                    cluster.stopRodeos(opts['killsig'])
+                else:
+                    print("Restarting rodeos " + s)
+                    cluster.restartRodeos(clean=opts['clean'])
+                        
+            sleepTime = stopWait
+            if nd_cmd == CmdT.RESTART:
+                sleepTime = restartWait
+                
+            print("Waiting " + str(sleepTime) + " seconds ...")
+            time.sleep(sleepTime)         
 
     # Big enough to have new blocks produced
     numBlocks=120
