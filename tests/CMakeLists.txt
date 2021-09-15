@@ -155,6 +155,28 @@ endif()
 add_test(NAME rodeos_idle_test COMMAND tests/rodeos_test.py -v --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 set_property(TEST rodeos_idle_test PROPERTY LABELS nonparallelizable_tests)
 
+# rodeos restart scenarios, combinations of two
+add_test(NAME rodeos_idle_restart_rodeos_ship_test COMMAND tests/rodeos_idle_test.py -v --clean-run --dump-error-detail --reps 2 --node-order _rodeos,_ship,+rodeos,+ship,_ship,_rodeos,+rodeos,+ship WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_property(TEST rodeos_idle_restart_rodeos_ship_test PROPERTY LABELS nonparallelizable_tests)
+add_test(NAME rodeos_idle_restart_rodeos_producer_test COMMAND tests/rodeos_idle_test.py -v --clean-run --dump-error-detail --reps 2 --node-order _rodeos,_prod,+rodeos,+prod,_prod,_rodeos,+rodeos,+prod WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_property(TEST rodeos_idle_restart_rodeos_producer_test PROPERTY LABELS nonparallelizable_tests)
+# TODO add restart_producer_ship when it becomes stable
+
+# dont run eos-vm-oc on Apple for now
+
+add_test(NAME rodeos_idle_restart_ship_eos-vm-oc_test COMMAND tests/rodeos_idle_test.py -v --clean-run --dump-error-detail --node-order _ship,+ship --eos-vm-oc-enable WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_property(TEST rodeos_idle_restart_ship_eos-vm-oc_test PROPERTY LABELS nonparallelizable_tests)
+add_test(NAME rodeos_idle_restart_producer_eos-vm-oc_test COMMAND tests/rodeos_idle_test.py -v --clean-run --dump-error-detail --node-order _prod,+prod --eos-vm-oc-enable WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_property(TEST rodeos_idle_restart_producer_eos-vm-oc_test PROPERTY LABELS nonparallelizable_tests)
+add_test(NAME rodeos_idle_restart_rodeos_eos-vm-oc_test COMMAND tests/rodeos_idle_test.py -v --clean-run --dump-error-detail --node-order _rodeos,+rodeos --eos-vm-oc-enable WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_property(TEST rodeos_idle_restart_rodeos_eos-vm-oc_test PROPERTY LABELS nonparallelizable_tests)
+
+# TODO add restart_producer_ship_eos-vm-oc when it becomes stable
+# TODO add restart_rodeos_ship_eos-vm-oc when it becomes stable
+add_test(NAME rodeos_idle_restart_rodeos_producer_eos-vm-oc_test COMMAND tests/rodeos_idle_test.py -v --clean-run --dump-error-detail --reps 2 --node-order _rodeos,_prod,+rodeos,+prod,_prod,_rodeos,+rodeos,+prod --eos-vm-oc-enable WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_property(TEST rodeos_idle_restart_rodeos_producer_eos-vm-oc_test PROPERTY LABELS nonparallelizable_tests)
+
+# TODO add test restart all three  (rodeos, producer, ship) shutdown then brought back up
 
 # Long running tests
 add_test(NAME nodeos_sanity_lr_test COMMAND tests/nodeos_run_test.py -v --sanity-test --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
