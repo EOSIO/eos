@@ -304,7 +304,7 @@ function build-clang() {
 }
 
 function build-doxygen() {
-    execute bash -c "cd ${TEMP_DIR} \
+    execute bash -c "\
     curl -LO https://github.com/doxygen/doxygen/archive/refs/tags/Release_1_9_2.tar.gz && \
     tar -xzvf Release_1_9_2.tar.gz && \
     cd doxygen-Release_1_9_2 && \
