@@ -324,7 +324,6 @@ EOF
             IFS=$oIFS
             SERIAL_TESTS="$(cat tests/CMakeLists.txt | grep nonparallelizable_tests | grep -v "^#" | awk -F" " '{ print $2 }')"
             for TEST_NAME in $SERIAL_TESTS; do
-                IS_RODEOS_RESTART_EOSVMOC=$(echo ${TEST_NAME} | grep eos-vm-oc)
                 if [[ ! "$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)" =~ 'macos' ]]; then
                     cat <<EOF
   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - $TEST_NAME"
@@ -343,7 +342,12 @@ EOF
     skip: $(echo "$PLATFORM_JSON" | jq -r '.PLATFORM_SKIP_VAR | env[.] // empty')${SKIP_SERIAL_TESTS}
 
 EOF
-            elif [[ "$TEST_NAME" != 'rodeos_test_eosvmoc' ]] && [[ -z "${IS_RODEOS_RESTART_EOSVMOC}" ]]; then
+            elif [[ "$TEST_NAME" != 'rodeos_test_eosvmoc' ]] && \
+                 [[ "$TEST_NAME" != 'rodeos_idle_restart_producer_eos-vm-oc_test' ]] && \
+                 [[ "$TEST_NAME" != 'rodeos_idle_restart_rodeos_eos-vm-oc_test' ]] && \
+                 [[ "$TEST_NAME" != 'rodeos_idle_restart_ship_eos-vm-oc_test' ]] && \
+                 [[ "$TEST_NAME" != 'rodeos_idle_restart_rodeos_producer_eos-vm-oc_test' ]] 
+                then
                 cat <<EOF
   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - $TEST_NAME"
     command:
