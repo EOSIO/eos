@@ -83,7 +83,7 @@ steps:
     timeout: 180
     skip: ${SKIP_UBUNTU_20_04}${SKIP_LINUX}
 
-  - label: ":oracle: Oracle_Linux 8.3 - Build Pinned"
+  - label: ":oracle_linux: Oracle_Linux 8.3 - Build Pinned"
     plugins:
       - docker#v3.3.0:
           image: "oraclelinux:8.3"
@@ -178,7 +178,7 @@ steps:
     timeout: 180
     skip: ${SKIP_UBUNTU_20_04}${SKIP_LINUX}
   
-  - label: ":oracle: Oracle_Linux 8.3 - Build Unpinned"
+  - label: ":oracle_linux: Oracle_Linux 8.3 - Build Unpinned"
     plugins:
       - docker#v3.3.0:
           image: "oraclelinux:8.3"
