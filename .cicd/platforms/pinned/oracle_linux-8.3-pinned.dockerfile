@@ -50,7 +50,9 @@ RUN dnf update && dnf install -y xz && \
     tar -xf rabbitmq-server-generic-unix-3.9.5.tar.xz && \
     mv rabbitmq_server-3.9.5 /usr/share && \
     rm rabbitmq-server-generic-unix-3.9.5.tar.xz && \
-    echo 'export PATH=$PATH:/usr/share/rabbitmq_server-3.9.5' >> ~/.bashrc   
+    ln -s /usr/share/rabbitmq_server-3.9.5/sbin/rabbitmq-server  /usr/sbin/rabbitmq-server && \
+    ln -s /usr/share/rabbitmq_server-3.9.5/sbin/rabbitmq-plugins  /usr/sbin/rabbitmq-plugins && \
+    ln -s /usr/share/rabbitmq_server-3.9.5/sbin/rabbitmq-env  /usr/sbin/rabbitmq-env     
 
 # build doxygen
 RUN curl -LO https://github.com/doxygen/doxygen/archive/refs/tags/Release_1_9_2.tar.gz && \
