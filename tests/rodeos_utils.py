@@ -29,7 +29,6 @@ import sys
 #
 ###############################################################
 class RodeosCluster(object):
-
     def __init__(self, dump_error_details, keep_logs, leave_running, clean_run, unix_socket_option, filterName, filterWasm, enableOC=False, numRodeos=1, numShip=1):
         self.cluster=Cluster(walletd=True)
         self.dumpErrorDetails=dump_error_details
@@ -162,8 +161,8 @@ class RodeosCluster(object):
         self.prodNode.kill(killSignal)
 
 
-    def restartShip(self, clean, shipNodeId):
-        assert (shipNodeId>=0 and shipNodeId<self.numShip), "Node ID doesn't exist!"
+    def restartShip(self, clean, shipNodeId=1):
+        assert(shipNodeId in self.shipNodeIdPortsNodes), "ShiP node Id doesn't exist"
 
         arg="--plugin eosio::state_history_plugin --trace-history --chain-state-history --state-history-endpoint {} --disable-replay-opts --plugin eosio::net_api_plugin "\
             .format(self.shipNodeIdPortsNodes[shipNodeId][0])
@@ -172,11 +171,11 @@ class RodeosCluster(object):
 
         self.relaunchNode(self.shipNodeIdPortsNodes[shipNodeId][1], chainArg=arg, clean=clean)
 
-    def stopShip(self, killSignal, shipNodeId):
-        assert (shipNodeId>=0 and shipNodeId<=self.numShip), "Node ID doesn't exist!"
+    def stopShip(self, killSignal, shipNodeId=1):
+        assert(shipNodeId in self.shipNodeIdPortsNodes), "ShiP node Id doesn't exist"
         self.shipNodeIdPortsNodes[shipNodeId][1].kill(killSignal)
 
-    def restartRodeos(self, shipNodeId, rodeosId=0, clean=True):
+    def restartRodeos(self, shipNodeId=1, rodeosId=0, clean=True):
         assert(shipNodeId in self.shipNodeIdPortsNodes), "ShiP node Id doesn't exist"
         assert(rodeosId >= 0 and rodeosId < self.numRodeos)
         if clean:
