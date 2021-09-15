@@ -343,6 +343,7 @@ EOF
 
 EOF
             elif [[ "$TEST_NAME" != 'rodeos_test_eosvmoc' ]] && \
+                 [[ "$TEST_NAME" != 'rodeos_idle_multi_ship_eos_vm_oc_test' ]] && \
                  [[ "$TEST_NAME" != 'rodeos_idle_restart_producer_eos-vm-oc_test' ]] && \
                  [[ "$TEST_NAME" != 'rodeos_idle_restart_rodeos_eos-vm-oc_test' ]] && \
                  [[ "$TEST_NAME" != 'rodeos_idle_restart_ship_eos-vm-oc_test' ]] && \
