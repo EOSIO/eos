@@ -84,7 +84,7 @@ function install-package() {
     ( [[ $2 =~ "--" ]] || [[ $3 =~ "--" ]] ) && OPTIONS="${2}${3}"
     # Can't use $SUDO_COMMAND: https://askubuntu.com/questions/953485/where-do-i-find-the-sudo-command-environment-variable
     [[ $CURRENT_USER != "root" ]] && [[ ! -z $SUDO_LOCATION ]] && NEW_SUDO_COMMAND="$SUDO_LOCATION -E"
-    ( [[ $NAME =~ "Amazon Linux" ]] || [[ $NAME == "CentOS Linux" ]] ) && eval $EXECUTION_FUNCTION $NEW_SUDO_COMMAND $YUM $OPTIONS install -y $1
+    ( [[ $NAME =~ "Amazon Linux" ]] || [[ $NAME == "CentOS Linux" ]] || [[ $NAME == "Oracle Linux Server" ]]) && eval $EXECUTION_FUNCTION $NEW_SUDO_COMMAND $YUM $OPTIONS install -y $1
     ( [[ $NAME =~ "Ubuntu" ]] ) && eval $EXECUTION_FUNCTION $NEW_SUDO_COMMAND $APTGET $OPTIONS install -y $1
   fi
   true # Required; Weird behavior without it
@@ -97,7 +97,7 @@ function group-install-package() {
     ( [[ $2 =~ "--" ]] || [[ $3 =~ "--" ]] ) && OPTIONS="${2}${3}"
     # Can't use $SUDO_COMMAND: https://askubuntu.com/questions/953485/where-do-i-find-the-sudo-command-environment-variable
     [[ $CURRENT_USER != "root" ]] && [[ ! -z $SUDO_LOCATION ]] && NEW_SUDO_COMMAND="$SUDO_LOCATION -E"
-    ( [[ $NAME =~ "Amazon Linux" ]] || [[ $NAME == "CentOS Linux" ]] ) && eval $EXECUTION_FUNCTION $NEW_SUDO_COMMAND $YUM $OPTIONS groupinstall -y '$1'
+    ( [[ $NAME =~ "Amazon Linux" ]] || [[ $NAME == "CentOS Linux" ]] || [[ $NAME == "Oracle Linux Server" ]] ) && eval $EXECUTION_FUNCTION $NEW_SUDO_COMMAND $YUM $OPTIONS groupinstall -y '$1'
     ( [[ $NAME =~ "Ubuntu" ]] ) && eval $EXECUTION_FUNCTION $NEW_SUDO_COMMAND $APTGET $OPTIONS install -y $1
   fi
   true # Required; Weird behavior without it
@@ -112,7 +112,7 @@ function uninstall-package() {
     ( [[ $2 =~ "--" ]] || [[ $3 =~ "--" ]] ) && OPTIONS="${2}${3}"
     [[ $CURRENT_USER != "root" ]] && [[ ! -z $SUDO_LOCATION ]] && NEW_SUDO_COMMAND="$SUDO_LOCATION -E"
     # Check if the packages exist before uninstalling them. This speeds things up for tests.
-    ( ( [[ $NAME =~ "Amazon Linux" ]] || [[ $NAME == "CentOS Linux" ]] ) && [[ ! -z $(rpm -qa $1) ]] ) && eval $EXECUTION_FUNCTION $NEW_SUDO_COMMAND $YUM $OPTIONS $REMOVE -y $1
+    ( ( [[ $NAME =~ "Amazon Linux" ]] || [[ $NAME == "CentOS Linux" ]] || [[ $NAME == "Oracle Linux Server" ]]) && [[ ! -z $(rpm -qa $1) ]] ) && eval $EXECUTION_FUNCTION $NEW_SUDO_COMMAND $YUM $OPTIONS $REMOVE -y $1
     ( [[ $NAME =~ "Ubuntu" ]] && $(dpkg -s $1 &>/dev/null) ) && eval $EXECUTION_FUNCTION $NEW_SUDO_COMMAND $APTGET $OPTIONS $REMOVE -y $1
   fi
   true

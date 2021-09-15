@@ -12,7 +12,7 @@ if [[ -z "${NAME}" ]]; then
 fi
 
 # Setup yum and apt variables
-if [[ $NAME =~ "Amazon Linux" ]] || [[ $NAME == "CentOS Linux" ]]; then
+if [[ $NAME =~ "Amazon Linux" ]] || [[ $NAME == "CentOS Linux" ]] || [[ $NAME == "Oracle Linux Server" ]]; then
     if ! YUM=$( command -v yum 2>/dev/null ); then echo "${COLOR_RED}YUM must be installed to compile EOSIO${COLOR_NC}" && exit 1; fi
 elif [[ $NAME == "Ubuntu" ]]; then
     if ! APTGET=$( command -v apt-get 2>/dev/null ); then echo "${COLOR_RED}APT-GET must be installed to compile EOSIO${COLOR_NC}" && exit 1; fi
@@ -301,4 +301,15 @@ function build-clang() {
         export CXX=$CPP_COMP
         export CC=$CC_COMP
     fi
+}
+
+function build-doxygen() {
+    execute bash -c "cd ${TEMP_DIR} \
+    curl -LO https://github.com/doxygen/doxygen/archive/refs/tags/Release_1_9_2.tar.gz && \
+    tar -xzvf Release_1_9_2.tar.gz && \
+    cd doxygen-Release_1_9_2 && \
+    mkdir build && cd build && cmake -G \"Unix Makefiles\" .. && \
+    make -j$(nproc) && make install && \
+    rm -rf doxygen-Release_1_9_2 Release_1_9_2.tar.gz"
+    echo " - Doxygen 1.9 successfully installed"
 }
