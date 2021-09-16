@@ -150,7 +150,7 @@ steps:
       - "./.cicd/generate-base-images.sh"
     env:
       FORCE_BASE_IMAGE: true
-      IMAGE_TAG: oracle-8.3-unpinned
+      IMAGE_TAG: oracle_linux-8.3-unpinned
       PLATFORM_TYPE: unpinned
     agents:
       queue: "automation-eks-eos-builder-fleet"
@@ -162,7 +162,7 @@ steps:
       - "./.cicd/generate-base-images.sh"
     env:
       FORCE_BASE_IMAGE: true
-      IMAGE_TAG: oracle-8.3-pinned
+      IMAGE_TAG: oracle_linux-8.3-pinned
       PLATFORM_TYPE: pinned
     agents:
       queue: "automation-eks-eos-builder-fleet"
