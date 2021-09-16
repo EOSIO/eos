@@ -57,7 +57,7 @@ def launch_cluster(num_ships, num_rodeos, unix_socket, cleanRestart, killSignal,
         # Stop rodeosId=1
         rodeosKilledId=1
         SHiPIdHostRodeos=cluster.rodeosShipConnectionMap[rodeosKilledId]
-        Print("Stopping rodeos #{} with {} signal".format(rodeosKilledId, (lambda x: 'SIGINT' if (x==signal.SIGINT) else 'SIGTERM')(killSignal)))
+        Print("Stopping rodeos #{} with {} signal".format(rodeosKilledId, killSignal))
         cluster.stopRodeos(killSignal, rodeosKilledId)
 
         # Producing 10 more blocks
@@ -90,7 +90,7 @@ def launch_cluster(num_ships, num_rodeos, unix_socket, cleanRestart, killSignal,
         
         # Stop ShipId = 1
         shipKilledId=1
-        Print("Stopping SHiP #{} with {} signal".format(shipKilledId, (lambda x: 'SIGINT' if (x==signal.SIGINT) else 'SIGTERM')(killSignal)))
+        Print("Stopping SHiP #{} with {} signal".format(shipKilledId, killSignal))
         cluster.stopShip(killSignal, shipKilledId)
 
         # Producing 10 more blocks after ShiP stop
@@ -133,7 +133,7 @@ numRodeos=[2]
 NumTestCase=len(numSHiPs)
 for i in [False, True]: # True means Unix-socket, False means TCP/IP
     for j in range(NumTestCase):
-        for killSignal in [signal.SIGINT, signal.SIGTERM]: 
+        for killSignal in [signal.SIGKILL, signal.SIGINT, signal.SIGTERM]: 
             launch_cluster(numSHiPs[j], numRodeos[j], i, cleanRestart, killSignal, enableOC)
 
 
