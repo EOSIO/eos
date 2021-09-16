@@ -231,10 +231,19 @@ set_property(TEST rodeos_idle_multi_ship_test PROPERTY LABELS nonparallelizable_
 add_test(NAME rodeos_idle_multi_ship_kill_restart COMMAND tests/rodeos_idle_multi_ship_kill_restart.py -v --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 set_property(TEST rodeos_idle_multi_ship_kill_restart PROPERTY LABELS nonparallelizable_tests)
 
+add_test(NAME rodeos_idle_multi_ship_kill_clean_restart COMMAND tests/rodeos_idle_multi_ship_kill_restart.py -v --clean-run --dump-error-detail --clean-restart WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_property(TEST rodeos_idle_multi_ship_kill_clean_restart PROPERTY LABELS nonparallelizable_tests)
+
 if("eos-vm-oc" IN_LIST EOSIO_WASM_RUNTIMES)
 
   add_test(NAME rodeos_idle_multi_ship_eos_vm_oc_test COMMAND tests/rodeos_idle_multi_ship_test.py -v --clean-run --dump-error-detail --eos-vm-oc-enable WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
   set_property(TEST rodeos_idle_multi_ship_eos_vm_oc_test PROPERTY LABELS nonparallelizable_tests)
+
+  add_test(NAME rodeos_idle_multi_ship_kill_clean_restart_eos_vm_oc COMMAND tests/rodeos_idle_multi_ship_kill_restart.py -v --clean-run --dump-error-detail --clean-restart --eos-vm-oc-enable WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+  set_property(TEST rodeos_idle_multi_ship_kill_clean_restart_eos_vm_oc PROPERTY LABELS nonparallelizable_tests)
+
+  add_test(NAME rodeos_idle_multi_ship_kill_restart_eos_vm_oc COMMAND tests/rodeos_idle_multi_ship_kill_restart.py -v --clean-run --dump-error-detail --eos-vm-oc-enable WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+  set_property(TEST rodeos_idle_multi_ship_kill_restart_eos_vm_oc PROPERTY LABELS nonparallelizable_tests)
 
 endif()
 
