@@ -20,14 +20,16 @@ Print=Utils.Print
 
 extraArgs=AppArgs()
 extraArgs.add_bool("--eos-vm-oc-enable", "Use OC for rodeos")
+extraArgs.add_bool("--clean-restart", "Use for clean restart of SHiP and Rodeos")
 
 args=TestHelper.parse_args({"--dump-error-details","--keep-logs","-v","--leave-running","--clean-run"}, extraArgs)
 enableOC=args.eos_vm_oc_enable
+cleanRestart=args.clean_restart
 
 TestHelper.printSystemInfo("BEGIN")
 testSuccessful=False
 
-def launch_cluster(num_ships, num_rodeos, unix_socket, eos_vm_oc_enable=False):
+def launch_cluster(num_ships, num_rodeos, unix_socket, cleanRestart, killSignal, eos_vm_oc_enable=False):
     with RodeosCluster(args.dump_error_details,
             args.keep_logs,
             args.leave_running,
@@ -53,12 +55,12 @@ def launch_cluster(num_ships, num_rodeos, unix_socket, eos_vm_oc_enable=False):
         # Stop rodeosId=1
         rodeosKilledId=1
         SHiPIdHostRodeos=cluster.rodeosShipConnectionMap[rodeosKilledId]
-        Print("Stopping rodeos #{}".format(rodeosKilledId))
-        cluster.stopRodeos(signal.SIGINT, rodeosKilledId)
+        Print("Stopping rodeos #{} with {} signal".format(rodeosKilledId, (lambda x: 'SIGINT' if (x==signal.SIGINT) else 'SIGTERM')(killSignal)))
+        cluster.stopRodeos(killSignal, rodeosKilledId)
 
-        # Producing 30 more blocks
+        # Producing 10 more blocks
         currentBlockNum=cluster.prodNode.getHeadBlockNum()
-        numBlocks= currentBlockNum + 30
+        numBlocks= currentBlockNum + 10
         assert cluster.produceBlocks(numBlocks), "Nodeos failed to produce {} blocks for a cluster of {} ship node and {} rodeos node"\
             .format(numBlocks, num_ships, num_rodeos)
 
@@ -69,29 +71,29 @@ def launch_cluster(num_ships, num_rodeos, unix_socket, eos_vm_oc_enable=False):
                     .format(i, numBlocks, num_ships, num_rodeos)
 
         # Restarting rodeos        
-        Print("Restarting rodeos #{}".format(rodeosKilledId))
-        cluster.restartRodeos(SHiPIdHostRodeos, rodeosKilledId)     
+        Print("{} restart of rodeos #{}".format((lambda x: 'Clean mode' if (x==True) else 'Non-clean mode')(cleanRestart), rodeosKilledId))
+        cluster.restartRodeos(SHiPIdHostRodeos, rodeosKilledId, cleanRestart)     
         print("Wait for Rodeos #{} to get ready after a restart".format(rodeosKilledId))
         cluster.waitRodeosReady(rodeosKilledId)
         
-        # Producing 30 more blocks after rodeos restart
+        # Producing 10 more blocks after rodeos restart
         currentBlockNum=cluster.prodNode.getHeadBlockNum()
-        numBlocks= currentBlockNum + 30
+        numBlocks= currentBlockNum + 10
         assert cluster.produceBlocks(numBlocks), "Nodeos failed to produce {} blocks for a cluster of {} ship node and {} rodeos node"\
             .format(numBlocks, num_ships, num_rodeos)
         
         # verify that rodeos receives all blocks from start to now
-        assert cluster.allBlocksReceived(numBlocks, rodeosKilledId), "Rodeos #{} did not receive {} blocks after a rodeos node shutdown"\
+        assert cluster.allBlocksReceived(numBlocks, rodeosKilledId), "Rodeos #{} did not receive {} blocks after the other rodeos node shutdown"\
                 .format(rodeosKilledId, numBlocks, num_ships, num_rodeos)
         
         # Stop ShipId = 1
         shipKilledId=1
-        Print("Stopping SHiP #{}".format(shipKilledId))
-        cluster.stopShip(signal.SIGINT, shipKilledId)
+        Print("Stopping SHiP #{} with {} signal".format(shipKilledId, (lambda x: 'SIGINT' if (x==signal.SIGINT) else 'SIGTERM')(killSignal)))
+        cluster.stopShip(killSignal, shipKilledId)
 
-        # Producing 30 more blocks after ShiP stop
+        # Producing 10 more blocks after ShiP stop
         currentBlockNum=cluster.prodNode.getHeadBlockNum()
-        numBlocks= currentBlockNum + 30
+        numBlocks= currentBlockNum + 10
         assert cluster.produceBlocks(numBlocks), "Nodeos failed to produce {} blocks for a cluster of {} ship node and {} rodeos node"\
             .format(numBlocks, num_ships, num_rodeos)
 
@@ -103,14 +105,14 @@ def launch_cluster(num_ships, num_rodeos, unix_socket, eos_vm_oc_enable=False):
                         .format(j, numBlocks, num_ships - 1, num_rodeos)
 
         # Restart Ship
-        Print("Restarting SHiP #{}".format(shipKilledId))
-        cluster.restartShip(True, shipKilledId)
+        Print("Restart of SHiP #{}".format(shipKilledId))
+        cluster.restartShip(cleanRestart, shipKilledId)
         newShipNode = cluster.cluster.getNode(shipKilledId)
         newShipNode.waitForLibToAdvance()
 
-        # Producing 30 more blocks after ShiP restart
+        # Producing 10 more blocks after ShiP restart
         currentBlockNum=cluster.prodNode.getHeadBlockNum()
-        numBlocks= currentBlockNum + 30
+        numBlocks= currentBlockNum + 10
         assert cluster.produceBlocks(numBlocks), "Nodeos failed to produce {} blocks for a cluster of {} ship node and {} rodeos node"\
             .format(numBlocks, num_ships, num_rodeos)
 
@@ -123,13 +125,14 @@ def launch_cluster(num_ships, num_rodeos, unix_socket, eos_vm_oc_enable=False):
 
 
 
-# Test cases: (2 ships, 2 rodeos), (2 ships, 3 rodeos)
+# Test cases: (2 ships, 2 rodeos)
 numSHiPs=[2]
 numRodeos=[2]
 NumTestCase=len(numSHiPs)
 for i in [False, True]: # True means Unix-socket, False means TCP/IP
     for j in range(NumTestCase):
-        launch_cluster(numSHiPs[j], numRodeos[j], i)
+        for killSignal in [signal.SIGINT, signal.SIGTERM]: 
+            launch_cluster(numSHiPs[j], numRodeos[j], i, cleanRestart, killSignal, enableOC)
 
 
 testSuccessful=True
