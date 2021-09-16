@@ -15,11 +15,11 @@ echo ""
 ensure-yum-packages "${REPO_ROOT}/scripts/eosio_build_oraclelinux8_deps"
 
 dnf update && dnf install -y cmake
-if [[ ! $PIN_COMPILER ]]; then
+if [[  $PIN_COMPILER == "true" ]]; then
+	yum install -y gcc-c++;
+else
 	# for unpinned builds, install clang as well
 	dnf install -y clang llvm llvm-devel llvm-toolset;
-else
-	yum install -y gcc-c++;
 fi
 
 # Handle clang/compiler
