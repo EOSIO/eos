@@ -18,7 +18,7 @@ else # Linux
         ARTIFACT='*.deb'
         PACKAGE_TYPE='deb'
         PACKAGE_COMMANDS="./generate_package.sh \"$PACKAGE_TYPE\""
-    elif [[ "$IMAGE_TAG" =~ "centos" ]]; then
+    elif [[ "$IMAGE_TAG" =~ "centos" ]] || [[ "$IMAGE_TAG" =~ "oracle" ]]; then
         ARTIFACT='*.rpm'
         PACKAGE_TYPE='rpm'
         PACKAGE_COMMANDS="mkdir -p ~/rpmbuild/BUILD && mkdir -p ~/rpmbuild/BUILDROOT && mkdir -p ~/rpmbuild/RPMS && mkdir -p ~/rpmbuild/SOURCES && mkdir -p ~/rpmbuild/SPECS && mkdir -p ~/rpmbuild/SRPMS && yum install -y rpm-build && ./generate_package.sh \"$PACKAGE_TYPE\""
