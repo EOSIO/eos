@@ -90,7 +90,7 @@ namespace eosio { namespace trace_api {
   };
 
   struct block_trxs_entry {
-      std::vector<chain::transaction_id_type> ids;
+      std::set<chain::transaction_id_type> ids;
       uint32_t block_num;
   };
 

@@ -88,7 +88,6 @@ private:
          std::vector<transaction_trace_t>& traces = std::get<std::vector<transaction_trace_t>>(bt.transactions);
          traces.reserve( block_state->block->transactions.size() + 1 );
          block_trxs_entry tt;
-         tt.ids.reserve(block_state->block->transactions.size() + 1);
          if( onblock_trace )
             traces.emplace_back( to_transaction_trace<transaction_trace_t>( *onblock_trace ));
          for( const auto& r : block_state->block->transactions ) {
@@ -102,14 +101,14 @@ private:
             if( it != cached_traces.end() ) {
                traces.emplace_back( to_transaction_trace<transaction_trace_t>( it->second ));
             }
-            tt.ids.emplace_back(id);
+            tt.ids.insert(id);
          }
          clear_caches();
 
          //store transaction ids
          if (tt.ids.size() == 0){
             transaction_id_type  place_holder_id{"0"};
-            tt.ids.emplace_back(place_holder_id);
+            tt.ids.insert(place_holder_id);
          }
          tt.block_num = bt.number;
          store.append_trx_ids( std::move(tt) );
