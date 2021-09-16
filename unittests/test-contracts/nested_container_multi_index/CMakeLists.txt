@@ -1,0 +1,6 @@
+if( EOSIO_COMPILE_TEST_CONTRACTS )
+   add_contract( nested_container_multi_index nested_container_multi_index nested_container_multi_index.cpp )
+else()
+   configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/nested_container_multi_index.wasm ${CMAKE_CURRENT_BINARY_DIR}/nested_container_multi_index.wasm COPYONLY )
+   configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/nested_container_multi_index.abi  ${CMAKE_CURRENT_BINARY_DIR}/nested_container_multi_index.abi  COPYONLY )
+endif()

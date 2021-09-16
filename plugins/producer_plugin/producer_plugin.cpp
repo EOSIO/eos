@@ -1534,7 +1534,7 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
 
    const auto& hbs = chain.head_block_state();
 
-   if( chain.get_terminate_at_block() > 0 && chain.get_terminate_at_block() < hbs->block_num ) {
+   if( chain.get_terminate_at_block() > 0 && chain.get_terminate_at_block() < chain.head_block_num() ) {
       ilog("Reached configured maximum block ${num}; terminating", ("num", chain.get_terminate_at_block()));
       app().quit();
       return start_block_result::failed;
@@ -1960,6 +1960,11 @@ bool producer_plugin_impl::process_unapplied_trxs( const fc::time_point& deadlin
             auto resource_payer = trx->packed_trx()->get_transaction().resource_payer(is_resource_payer_pf_activated);
             if( account_fails.failure_limit( resource_payer ) ) {
                ++num_failed;
+               if( itr->next ) {
+                  itr->next( std::make_shared<tx_cpu_usage_exceeded>(
+                        FC_LOG_MESSAGE( error, "transaction ${id} exceeded failure limit for account ${a}",
+                                        ("id", trx->id())("a", resource_payer) ) ) );
+               }
                itr = _unapplied_transactions.erase( itr );
                continue;
             }
@@ -2001,7 +2006,13 @@ bool producer_plugin_impl::process_unapplied_trxs( const fc::time_point& deadlin
                      _subjective_billing.subjective_bill_failure( resource_payer, trace->elapsed, fc::time_point::now() );
                   }
                   ++num_failed;
-                  if( itr->next ) itr->next( trace );
+                  if( itr->next ) {
+                     if( itr->return_failure_trace ) {
+                        itr->next( trace );
+                     } else {
+                        itr->next( trace->except->dynamic_copy_exception() );
+                     }
+                  }
                   itr = _unapplied_transactions.erase( itr );
                   continue;
                }
