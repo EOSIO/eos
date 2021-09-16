@@ -29,7 +29,9 @@ void rocksdb_plugin::set_program_options(options_description& cli, options_descr
    op("rdb-threads", bpo::value<uint32_t>(),
       "Deprecated. Please use max_background_jobs in options file to configure it. Default is 20. An example options file is <build-dir>/programs/rodeos/rocksdb_options.ini"); 
    op("rdb-max-files", bpo::value<uint32_t>(),
-      "Deprecated. Please use max_open_files in options file to configure it. Default is 765. An example options file is <build-dir>/programs/rodeos/rocksdb_options.ini"); 
+      "Deprecated. Please use max_open_files in options file to configure it. Default is 765. An example options file is <build-dir>/programs/rodeos/rocksdb_options.ini");
+   op("delete-rdb-database", bpo::bool_switch()->default_value(false),
+      "Delete database at start" );
 }
 
 void rocksdb_plugin::plugin_initialize(const variables_map& options) {
@@ -42,6 +44,8 @@ void rocksdb_plugin::plugin_initialize(const variables_map& options) {
          my->db_path = app().data_dir() / db_path;
       else
          my->db_path = db_path;
+      if (options["delete-rdb-database"].as<bool>() && bfs::exists(my->db_path))
+         bfs::remove_all(my->db_path);
       if (!options["rdb-options-file"].empty()) {
          my->options_file_name = options["rdb-options-file"].as<bfs::path>();
          EOS_ASSERT( bfs::exists(*my->options_file_name), eosio::chain::plugin_config_exception, "options file ${f} does not exist.", ("f", my->options_file_name->string()) );
