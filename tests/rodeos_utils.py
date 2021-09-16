@@ -57,6 +57,9 @@ class RodeosCluster(object):
         self.numShip=numShip
         self.shipNodeIdPortsNodes={}
 
+        self.rodeosShipConnectionMap={} # stores which rodeos connects to which ship
+        self.ShiprodeosConnectionMap={} # stores which ship connects to which rodeos
+
         port=9999
         for i in range(1, 1+numShip): # One producer
             self.shipNodeIdPortsNodes[i]=["127.0.0.1:" + str(port)]
@@ -114,6 +117,11 @@ class RodeosCluster(object):
             if res == None:
                 it=iter(self.shipNodeIdPortsNodes)
                 res = next(it)
+            self.rodeosShipConnectionMap[i]=res
+            if res not in self.ShiprodeosConnectionMap:
+                self.ShiprodeosConnectionMap[res]=[i]
+            else:
+                self.ShiprodeosConnectionMap[res].append(i)
             self.restartRodeos(res, i, clean=True)
 
         return self
