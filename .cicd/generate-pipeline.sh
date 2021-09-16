@@ -689,7 +689,7 @@ EOF
       - "buildkite-agent artifact download '*.rpm' . --step ':oracle_linux: Oracle_Linux 8.3 - Package Builder' --agent-access-token \$\$BUILDKITE_AGENT_ACCESS_TOKEN"
       - "./.cicd/test-package.docker.sh"
     env:
-      IMAGE: "oracle:8.3"
+      IMAGE: "oraclelinux:8.3"
     agents:
       queue: "$BUILDKITE_TEST_AGENT_QUEUE"
     depends_on: "oracle8pb"
