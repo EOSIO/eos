@@ -9,11 +9,13 @@ from TestHelper import AppArgs
 ###############################################################
 # rodeos_idle_multi_ship_kill_restart
 # 
-#   Test senario: first launch a cluster of 2 SHiPs and 2 Rodeos, verifies cluster is operating properly and it is stable.
-#   Stop a rodeos node and verify the other rodeos is receiving blocks.
-#   Restart rodeos and verify that rodeos receives blocks and has all the blocks 
-#   Stop ShiP and verify that the other SHiP and rodeos node are operating properly.
-#   Restart ShiP and verify that rodeos listening to its endpoint is receiving blocks.
+# 1- Launch a cluster of 2 SHiPs and 2 Rodeos, verifies cluster is operating properly and it is stable.
+# 2- Stop a rodeos node and verify the other rodeos is receiving blocks.
+# 3- Restart rodeos and verify that rodeos receives blocks and has all the blocks
+# 4- Stop a SHiP and verify that the other SHiPs and rodeos nodes are operating properly.
+# 5- Restart a SHiP and verify that rodeos listening to its endpoint is again receiving blocks.
+#
+#This test repeats this scenario for Unix-socket, TCP/IP, Clean vs non-clean mode restart, and SIGINT, SIGTERM kill signals.
 #
 ###############################################################
 Print=Utils.Print
