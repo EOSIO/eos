@@ -62,7 +62,8 @@ struct reliable_amqp_publisher_impl {
    const std::string routing_key;
    const std::optional<std::string> message_id;
 
-   boost::asio::strand<boost::asio::io_context::executor_type> user_submitted_work_strand = boost::asio::make_strand(ctx);
+   boost::asio::strand<boost::asio::io_context::executor_type> user_submitted_work_strand =
+         boost::asio::strand<boost::asio::io_context::executor_type>(ctx.get_executor());
 };
 
 reliable_amqp_publisher_impl::reliable_amqp_publisher_impl(const std::string& url, const std::string& exchange, const std::string& routing_key,
