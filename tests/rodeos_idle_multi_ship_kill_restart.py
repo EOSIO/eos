@@ -57,7 +57,7 @@ def launch_cluster(num_ships, num_rodeos, unix_socket, cleanRestart, killSignal,
         # Stop rodeosId=1
         rodeosKilledId=1
         SHiPIdHostRodeos=cluster.rodeosShipConnectionMap[rodeosKilledId]
-        Print("Stopping rodeos #{} with {} signal".format(rodeosKilledId, killSignal))
+        Print("Stopping rodeos #{} with kill -{} signal".format(rodeosKilledId, killSignal))
         cluster.stopRodeos(killSignal, rodeosKilledId)
 
         # Producing 10 more blocks
@@ -73,7 +73,7 @@ def launch_cluster(num_ships, num_rodeos, unix_socket, cleanRestart, killSignal,
                     .format(i, numBlocks, num_ships, num_rodeos)
 
         # Restarting rodeos        
-        Print("{} restart of rodeos #{}".format((lambda x: 'Clean mode' if (x==True) else 'Non-clean mode')(cleanRestart), rodeosKilledId))
+        Print("Restarting rodeos #{}".format(rodeosKilledId))
         cluster.restartRodeos(SHiPIdHostRodeos, rodeosKilledId, cleanRestart)     
         print("Wait for Rodeos #{} to get ready after a restart".format(rodeosKilledId))
         cluster.waitRodeosReady(rodeosKilledId)
@@ -90,7 +90,7 @@ def launch_cluster(num_ships, num_rodeos, unix_socket, cleanRestart, killSignal,
         
         # Stop ShipId = 1
         shipKilledId=1
-        Print("Stopping SHiP #{} with {} signal".format(shipKilledId, killSignal))
+        Print("Stopping SHiP #{} with kill -{} signal".format(shipKilledId, killSignal))
         cluster.stopShip(killSignal, shipKilledId)
 
         # Producing 10 more blocks after ShiP stop
@@ -107,7 +107,7 @@ def launch_cluster(num_ships, num_rodeos, unix_socket, cleanRestart, killSignal,
                         .format(j, numBlocks, num_ships - 1, num_rodeos)
 
         # Restart Ship
-        Print("Restart of SHiP #{}".format(shipKilledId))
+        Print("Restarting SHiP #{}".format(shipKilledId))
         cluster.restartShip(cleanRestart, shipKilledId)
         newShipNode = cluster.cluster.getNode(shipKilledId)
         newShipNode.waitForLibToAdvance()
@@ -133,7 +133,9 @@ numRodeos=[2]
 NumTestCase=len(numSHiPs)
 for i in [False, True]: # True means Unix-socket, False means TCP/IP
     for j in range(NumTestCase):
-        for killSignal in [signal.SIGKILL, signal.SIGINT, signal.SIGTERM]: 
+        for killSignal in [signal.SIGKILL, signal.SIGINT, signal.SIGTERM]:
+            if killSignal == signal.SIGKILL and cleanRestart == False: # With ungraceful shutdown, clean restart is required.
+                continue
             launch_cluster(numSHiPs[j], numRodeos[j], i, cleanRestart, killSignal, enableOC)
 
 
