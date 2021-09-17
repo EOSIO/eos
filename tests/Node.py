@@ -340,7 +340,7 @@ class Node(object):
                 refBlockNum=trans["trx"]["trx"]["ref_block_num"]
             else:
                 key="[transaction][transaction_header][ref_block_num]"
-                refBlockNum=trans["transaction"]["transaction_header"]["ref_block_num"]
+                refBlockNum=trans["transaction_header"]["ref_block_num"]
             refBlockNum=int(refBlockNum)+1
         except (TypeError, ValueError, KeyError) as _:
             Utils.Print("transaction%s not found. Transaction: %s" % (key, trans))

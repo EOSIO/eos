@@ -105,11 +105,7 @@ private:
          }
          clear_caches();
 
-         //store transaction ids
-         if (tt.ids.size() == 0){
-            transaction_id_type  place_holder_id{"0"};
-            tt.ids.insert(place_holder_id);
-         }
+         // tt entry acts as a placeholder in a trx id slice if this block has no transaction
          tt.block_num = bt.number;
          store.append_trx_ids( std::move(tt) );
 

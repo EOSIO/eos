@@ -192,10 +192,10 @@ try:
     amountVal=None
     key=""
     try:
-        key = "[transaction][actions][0][action]"
-        typeVal = transaction["transaction"]["actions"][0]["action"]
-        key = "[transaction][actions][0][params][quantity]"
-        amountVal = transaction["transaction"]["actions"][0]["params"]["quantity"]
+        key = "[actions][0][action]"
+        typeVal = transaction["actions"][0]["action"]
+        key = "[actions][0][params][quantity]"
+        amountVal = transaction["actions"][0]["params"]["quantity"]
         amountVal = int(decimal.Decimal(amountVal.split()[0]) * 10000)
     except (TypeError, KeyError) as e:
         Print("transaction%s not found. Transaction: %s" % (key, transaction))

@@ -2,28 +2,8 @@
 #include <appbase/application.hpp>
 #include <eosio/chain_plugin/chain_plugin.hpp>
 #include <eosio/http_plugin/http_plugin.hpp>
-#include <eosio/trace_api/trace.hpp>
 
 namespace eosio {
-
-   typedef shared_ptr<struct trace_api_rpc_plugin_impl> trace_api_rpc_ptr;
-   namespace trace_apis {
-      class read_only {
-         trace_api_rpc_ptr trace_api_rpc;
-         public:
-            read_only(trace_api_rpc_ptr&& trace_api_rpc): trace_api_rpc(trace_api_rpc) {}
-
-            struct get_transaction_params {
-               string                                id;
-               std::optional<uint32_t>               block_num_hint;
-            };
-            struct get_transaction_result {
-               fc::variant  transaction;
-            };
-            get_transaction_result get_transaction( const get_transaction_params& ) const;
-       };
-   } // namespace trace_apis
-
    /**
     * Plugin that runs both a data extraction  and the HTTP RPC in the same application
     */
@@ -42,7 +22,6 @@ namespace eosio {
 
       void handle_sighup() override;
 
-      trace_apis::read_only  get_read_only_api()const { return trace_apis::read_only(trace_api_rpc_ptr(rpc)); }
    private:
       std::shared_ptr<struct trace_api_plugin_impl>     my;
       std::shared_ptr<struct trace_api_rpc_plugin_impl> rpc;
@@ -69,8 +48,4 @@ namespace eosio {
    private:
       std::shared_ptr<struct trace_api_rpc_plugin_impl> rpc;
    };
-
 }
-
-FC_REFLECT( eosio::trace_apis::read_only::get_transaction_params, (id)(block_num_hint) )
-FC_REFLECT( eosio::trace_apis::read_only::get_transaction_result, (transaction) )

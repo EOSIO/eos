@@ -2573,6 +2573,21 @@ read_only::get_producer_schedule_result read_only::get_producer_schedule( const 
    return result;
 }
 
+struct resolver_factory {
+   static auto make( const controller& control, abi_serializer::yield_function_t yield) {
+      return [&control, yield{std::move(yield)}](const account_name &name) -> std::optional<abi_serializer> {
+         const auto* accnt = control.db().template find<account_object, by_name>(name);
+         if (accnt != nullptr) {
+            abi_def abi;
+            if (abi_serializer::to_abi(accnt->abi, abi)) {
+               return abi_serializer(abi, yield);
+            }
+         }
+         return std::optional<abi_serializer>();
+      };
+   }
+};
+
 auto make_resolver(const controller& control, abi_serializer::yield_function_t yield) {
    return resolver_factory::make(control, std::move( yield ));
 }

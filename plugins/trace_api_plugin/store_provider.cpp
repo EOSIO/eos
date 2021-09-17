@@ -7,7 +7,7 @@ namespace {
       static constexpr uint32_t _current_version = 1;
       static constexpr const char* _trace_prefix = "trace_";
       static constexpr const char* _trace_index_prefix = "trace_index_";
-      static constexpr const char* _trace_blk_id_prefix = "trace_blk_id_";
+      static constexpr const char* _trace_trx_id_prefix = "trace_trx_id_";
       static constexpr const char* _trace_ext = ".log";
       static constexpr const char* _compressed_trace_ext = ".clog";
       static constexpr uint _max_filename_size = std::char_traits<char>::length(_trace_index_prefix) + 10 + 1 + 10 + std::char_traits<char>::length(_compressed_trace_ext) + 1; // "trace_index_" + 10-digits + '-' + 10-digits + ".clog" + null-char
@@ -252,7 +252,7 @@ namespace eosio::trace_api {
    }
 
    bool slice_directory::find_trx_id_slice(uint32_t slice_number, open_state state, fc::cfile& trx_id_file, bool open_file) const {
-      const bool found = find_slice(_trace_blk_id_prefix, slice_number, trx_id_file, open_file);
+      const bool found = find_slice(_trace_trx_id_prefix, slice_number, trx_id_file, open_file);
       if( !found || !open_file ) {
          return found;
       }
