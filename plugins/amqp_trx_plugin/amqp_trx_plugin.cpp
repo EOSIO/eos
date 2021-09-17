@@ -1,7 +1,7 @@
 #include <eosio/amqp_trx_plugin/amqp_trx_plugin.hpp>
 #include <eosio/amqp_trx_plugin/fifo_trx_processing_queue.hpp>
 #include <eosio/amqp/amqp_handler.hpp>
-#include <eosio/amqp_trace_plugin/amqp_trace_plugin_impl.hpp>
+#include <eosio/amqp_trx_plugin/amqp_trace_plugin_impl.hpp>
 #include <eosio/chain_plugin/chain_plugin.hpp>
 #include <eosio/resource_monitor_plugin/resource_monitor_plugin.hpp>
 
@@ -219,6 +219,7 @@ private:
 amqp_trx_plugin::amqp_trx_plugin()
 : my(std::make_shared<amqp_trx_plugin_impl>()) {
    app().register_config_type<ack_mode>();
+   app().register_config_type<amqp_trace_plugin_impl::reliable_mode>();
 }
 
 amqp_trx_plugin::~amqp_trx_plugin() {}

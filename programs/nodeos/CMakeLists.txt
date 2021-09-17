@@ -58,7 +58,6 @@ target_link_libraries( ${NODE_EXECUTABLE_NAME}
         PRIVATE -Wl,${whole_archive_flag} test_control_plugin        -Wl,${no_whole_archive_flag}
         PRIVATE -Wl,${whole_archive_flag} test_control_api_plugin    -Wl,${no_whole_archive_flag}
         PRIVATE -Wl,${whole_archive_flag} amqp_trx_plugin            -Wl,${no_whole_archive_flag}
-        PRIVATE -Wl,${whole_archive_flag} amqp_trace_plugin          -Wl,${no_whole_archive_flag}
         PRIVATE -Wl,${whole_archive_flag} witness_plugin             -Wl,${no_whole_archive_flag}
         PRIVATE -Wl,${whole_archive_flag} amqp_witness_plugin        -Wl,${no_whole_archive_flag}
         PRIVATE -Wl,${whole_archive_flag} witness_trx_plugin         -Wl,${no_whole_archive_flag}
