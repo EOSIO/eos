@@ -27,6 +27,7 @@ extraArgs.add_bool("--clean-restart", "Use for clean restart of SHiP and Rodeos"
 args=TestHelper.parse_args({"--dump-error-details","--keep-logs","-v","--leave-running","--clean-run"}, extraArgs)
 enableOC=args.eos_vm_oc_enable
 cleanRestart=args.clean_restart
+Utils.Debug=args.v
 
 TestHelper.printSystemInfo("BEGIN")
 testSuccessful=False
