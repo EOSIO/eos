@@ -87,9 +87,12 @@ class RodeosCluster(object):
         # non-producing nodes are at the end of the cluster's nodes, so reserving the last one for SHiP node
 
         self.producerNodeId=0
+        # for load testing
+        specificExtraNodeosArgs[self.producerNodeId]="--chain-state-db-size-mb=131072 --plugin eosio::txn_test_gen_plugin --disable-replay-opts "
+
         for i in self.shipNodeIdPortsNodes: # Nodeos args for ship nodes.
             specificExtraNodeosArgs[i]=\
-                "--plugin eosio::state_history_plugin --trace-history --chain-state-history --state-history-endpoint {} --disable-replay-opts --plugin eosio::net_api_plugin "\
+                "--plugin eosio::state_history_plugin --trace-history --chain-state-history --chain-state-db-size-mb=131072 --state-history-endpoint {} --disable-replay-opts --plugin eosio::net_api_plugin "\
                     .format(self.shipNodeIdPortsNodes[i][0])
             if self.unix_socket_option:
                 specificExtraNodeosArgs[i]+="--state-history-unix-socket-path ship{}.sock".format(i)
@@ -111,6 +114,8 @@ class RodeosCluster(object):
         # which makes SHiP not fork
         self.cluster.biosNode.kill(signal.SIGTERM)
 
+        self.prepareLoad()
+
         it=iter(self.shipNodeIdPortsNodes)
         for i in range(self.numRodeos): # connecting each ship to rodeos and if there are more rodeos nodes than ships, rodeos will be connected to same set of ship.
             res = next(it, None)
@@ -123,6 +128,9 @@ class RodeosCluster(object):
             else:
                 self.ShiprodeosConnectionMap[res].append(i)
             self.restartRodeos(res, i, clean=True)
+
+        self.waitRodeosReady()
+        Utils.Print("Rodeos ready")
 
         return self
 
@@ -164,6 +172,9 @@ class RodeosCluster(object):
             chainArg="-e -p defproducera "
 
         self.relaunchNode(self.prodNode, chainArg=chainArg, clean=clean)
+
+        if clean:
+           self.prepareLoad()
 
     def stopProducer(self, killSignal):
         self.prodNode.kill(killSignal)
@@ -272,3 +283,79 @@ class RodeosCluster(object):
 
     def setTestSuccessful(self, testSuccessful):
         self.testSuccessful=testSuccessful
+
+    def prepareLoad(self):
+        Utils.Print("set contracts and accounts for running load")
+        contract="kvload"
+        contractDir="unittests/test-contracts/kv_load"
+        wasmFile="{}.wasm".format(contract)
+        abiFile="{}.abi".format(contract)
+        try:
+            self.prodNode.publishContract(self.cluster.eosioAccount, contractDir, wasmFile, abiFile, True)
+        except TypeError:
+            # due to empty JSON response, which is expected
+            pass
+
+        self.prodNode.pushMessage("eosio", "setkvparam", '[\"eosio.kvram\"]', "--permission eosio")
+        cmd="curl --data-binary '[\"eosio\",\"5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3\"]' %s/v1/txn_test_gen/create_test_accounts" % (self.prodNode.endpointHttp)
+        Utils.Print("{}".format(cmd))
+        try:
+            result = Utils.runCmdReturnJson(cmd)
+            Utils.Print("create_test_accounts result {}".format(result))
+            # When create_test_accounts fails, it returns error
+            # message in JSON
+            Utils.errorExit("txn_test_gen/create_test_accounts failed")
+        except subprocess.CalledProcessError as ex:
+            # When create_test_accounts succeeds, it returns nothing, which
+            # causes curl to return error 52 (Empty reply from server),
+            # and in turn causes runCmdReturnJson to raise exception
+            if ex.returncode != 52:
+                msg=ex.output.decode("utf-8")
+                Utils.Print("Exception during create_test_accounts {}".format(msg))
+                Utils.errorExit("txn_test_gen/create_test_accounts failed")
+
+        testWalletName="rodeotest"
+        self.walletMgr.create(testWalletName)
+
+        # for txn.test.b
+        cmd='wallet import -n rodeotest --private-key 5KExyeiK338cxYQo36AmKYrHxRDF9rR4JHFXUR9oZxXbKue7gdL'
+        try:
+            self.prodNode.processCleosCmd(cmd, cmd, silentErrors=True)
+        except TypeError:
+            # due to empty JSON response, which is expected
+            pass
+
+        cmd='set contract txn.test.b ' + contractDir + ' ' + wasmFile + ' ' + abiFile
+        Utils.Print("{}".format(cmd))
+        try:
+            self.prodNode.processCleosCmd(cmd, cmd, silentErrors=True)
+        except TypeError:
+            pass
+
+    def startLoad(self, tps=400):
+        # period in in milliseconds
+        period=20
+        # batchSize is number of transactions per period. must even
+        batchSize=int(tps//(1000/period))
+        if batchSize % 2 != 0:
+            batchSize+=1
+
+        cmd="curl -s --data-binary '[\"\", {}, {}]' {}/v1/txn_test_gen/start_generation".format(period, batchSize, self.prodNode.endpointHttp)
+        Utils.Print("{}".format(cmd))
+        try:
+            result = Utils.runCmdReturnJson(cmd)
+            Utils.Print("start_generation result {}".format(result))
+        except subprocess.CalledProcessError as ex:
+            msg=ex.output.decode("utf-8")
+            Utils.Print("Exception during start_generation {}".format(msg))
+            Utils.errorExit("txn_test_gen/start_generation failed")
+
+    def stopLoad(self):
+        cmd="curl -s --data-binary '[\"\"]' %s/v1/txn_test_gen/stop_generation" % (self.prodNode.endpointHttp)
+        try:
+            result = Utils.runCmdReturnJson(cmd)
+            Utils.Print("stop_generation result {}".format(result))
+        except subprocess.CalledProcessError as ex:
+            msg=ex.output.decode("utf-8")
+            Utils.Print("Exception during stop_generation {}".format(msg))
+            Utils.errorExit("txn_test_gen/stop_generation failed")
