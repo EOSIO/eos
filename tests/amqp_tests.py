@@ -26,38 +26,30 @@ errorExit=Utils.errorExit
 cmdError=Utils.cmdError
 from core_symbol import CORE_SYMBOL
 
-args = TestHelper.parse_args({"--host","--port","--prod-count","--defproducera_prvt_key","--defproducerb_prvt_key"
-                                 ,"--dump-error-details","--dont-launch","--keep-logs","-v","--leave-running","--only-bios","--clean-run"
-                                 ,"--sanity-test","--wallet-port","--amqp-address"})
+args = TestHelper.parse_args({"--host","--port"
+                                 ,"--dump-error-details","--dont-launch","--keep-logs","-v","--leave-running","--clean-run"
+                                 ,"--wallet-port","--amqp-address"})
 server=args.host
 port=args.port
 debug=args.v
-defproduceraPrvtKey=args.defproducera_prvt_key
-defproducerbPrvtKey=args.defproducerb_prvt_key
 dumpErrorDetails=args.dump_error_details
 keepLogs=args.keep_logs
 dontLaunch=args.dont_launch
 dontKill=args.leave_running
-prodCount=args.prod_count
-onlyBios=args.only_bios
 killAll=args.clean_run
-sanityTest=args.sanity_test
 walletPort=args.wallet_port
 amqpAddr=args.amqp_address
 
 Utils.Debug=debug
 localTest=True if server == TestHelper.LOCAL_HOST else False
-cluster=Cluster(host=server, port=port, walletd=True, defproduceraPrvtKey=defproduceraPrvtKey, defproducerbPrvtKey=defproduceraPrvtKey)
+cluster=Cluster(host=server, port=port, walletd=True)
 walletMgr=WalletMgr(True, port=walletPort)
 testSuccessful=False
 killEosInstances=not dontKill
 killWallet=not dontKill
-dontBootstrap=sanityTest # intent is to limit the scope of the sanity test to just verifying that nodes can be started
 
 WalletdName=Utils.EosWalletName
 ClientName="cleos"
-timeout = .5 * 12 * 2 + 60 # time for finalization with 1 producer + 60 seconds padding
-Utils.setIrreversibleTimeout(timeout)
 
 try:
     TestHelper.printSystemInfo("BEGIN")
@@ -70,15 +62,12 @@ try:
         cluster.cleanup()
         Print("Stand up cluster")
 
-        amqProducerAccount = cluster.defProducerAccounts["defproducera"]
+        amqProducerAccount = cluster.defProducerAccounts["eosio"]
 
-        producerOptString = " "
-        specificExtraNodeosArgs={ 0: " --backing-store=chainbase --plugin eosio::amqp_trx_plugin --amqp-trx-address %s " % (amqpAddr),
-                                  1: " --backing-store=chainbase --plugin eosio::amqp_trx_plugin --amqp-trx-address %s " % (amqpAddr)}
+        specificExtraNodeosArgs={ 0: " --backing-store=chainbase --plugin eosio::amqp_trx_plugin --amqp-trx-address %s" % (amqpAddr),
+                                  1: " --backing-store=chainbase --plugin eosio::amqp_trx_plugin --amqp-trx-address %s" % (amqpAddr)}
 
-
-        manualProducerArgs = {0 : { 'key': amqProducerAccount, 'names': ['defproducera']}, 1 : { 'key': amqProducerAccount, 'names': ['defproducera']} }
-        if cluster.launch(totalNodes=2, totalProducers=3, pnodes=1, dontBootstrap=False, onlyBios=False, useBiosBootFile=True, specificExtraNodeosArgs=specificExtraNodeosArgs, manualProducerNodeConf=manualProducerArgs) is False:
+        if cluster.launch(totalNodes=2, totalProducers=3, pnodes=2, dontBootstrap=False, onlyBios=False, useBiosBootFile=True, specificExtraNodeosArgs=specificExtraNodeosArgs) is False:
             cmdError("launcher")
             errorExit("Failed to stand up eos cluster.")
     else:
@@ -92,47 +81,31 @@ try:
             cmdError("%s" % (WalletdName))
             errorExit("Failed to stand up eos walletd.")
 
-    if sanityTest:
-        testSuccessful=True
-        exit(0)
-
-    
-
-
     Print("Validating system accounts after bootstrap")
     cluster.validateAccounts(None)
 
-    amqProducerAccount = cluster.defProducerAccounts["defproducera"]
-    Print("defproducera opk=%s" % (amqProducerAccount.ownerPublicKey) )
-    producerOptString = " --pause-on-startup --producer-name defproducera --plugin eosio::producer_plugin --signature-provider {}=KEY:{} ".format(amqProducerAccount.ownerPublicKey, amqProducerAccount.ownerPrivateKey)
+    amqProducerAccount = cluster.defProducerAccounts["eosio"]
     backup_node = cluster.getNode(1)
     backup_node.kill(signal.SIGTERM)
     backup_node.relaunch(addSwapFlags={
         "--pause-on-startup": "",
-        "--producer-name": "defproducera",
+        "--producer-name": "eosio",
         "--plugin": "eosio::producer_plugin",
         "--plugin": "eosio::producer_api_plugin",
         "--signature-provider": "{}=KEY:{}".format(amqProducerAccount.ownerPublicKey, amqProducerAccount.ownerPrivateKey)
     })
 
-    accounts=Cluster.createAccountKeys(4)
+    accounts=Cluster.createAccountKeys(2)
     if accounts is None:
         errorExit("FAILURE - create keys")
     testeraAccount=accounts[0]
     testeraAccount.name="testera11111"
     currencyAccount=accounts[1]
     currencyAccount.name="currency1111"
-    exchangeAccount=accounts[2]
-    exchangeAccount.name="exchange1111"
-    # account to test newaccount with authority
-    testerbAccount=accounts[3]
-    testerbAccount.name="testerb11111"
-    testerbOwner = testerbAccount.ownerPublicKey
-    testerbAccount.ownerPublicKey = '{"threshold":1, "accounts":[{"permission":{"actor": "' + testeraAccount.name + '", "permission":"owner"}, "weight": 1}],"keys":[{"key": "' +testerbOwner +  '", "weight": 1}],"waits":[]}'
 
     testWalletName="test"
     Print("Creating wallet \"%s\"." % (testWalletName))
-    walletAccounts=[cluster.defproduceraAccount,cluster.defproducerbAccount]
+    walletAccounts=[cluster.defproduceraAccount]
     if not dontLaunch:
         walletAccounts.append(cluster.eosioAccount)
     testWallet=walletMgr.create(testWalletName, walletAccounts)
@@ -152,7 +125,6 @@ try:
     Print("Wallet \"%s\" password=%s." % (defproduceraWalletName, defproduceraWallet.password.encode("utf-8")))
 
     defproduceraAccount=cluster.defproduceraAccount
-    defproducerbAccount=cluster.defproducerbAccount
 
     Print("Importing keys for account %s into wallet %s." % (defproduceraAccount.name, defproduceraWallet.name))
     if not walletMgr.importKey(defproduceraAccount, defproduceraWallet):
@@ -168,23 +140,17 @@ try:
     Print("Create new account %s via %s" % (testeraAccount.name, cluster.defproduceraAccount.name))
     transId=node.createInitializeAccount(testeraAccount, cluster.defproduceraAccount, stakedDeposit=0, waitForTransBlock=False, exitOnError=True)
 
-    Print("Create new account %s via %s" % (testerbAccount.name, cluster.defproduceraAccount.name))
-    transId=node.createInitializeAccount(testerbAccount, cluster.defproduceraAccount, stakedDeposit=0, waitForTransBlock=False, exitOnError=True)
-
     Print("Create new account %s via %s" % (currencyAccount.name, cluster.defproduceraAccount.name))
     transId=node.createInitializeAccount(currencyAccount, cluster.defproduceraAccount, buyRAM=200000, stakedDeposit=5000, exitOnError=True)
 
-    Print("Create new account %s via %s" % (exchangeAccount.name, cluster.defproduceraAccount.name))
-    transId=node.createInitializeAccount(exchangeAccount, cluster.defproduceraAccount, buyRAM=200000, waitForTransBlock=True, exitOnError=True)
-
     Print("Validating accounts after user accounts creation")
-    accounts=[testeraAccount, testerbAccount, currencyAccount, exchangeAccount]
+    accounts=[testeraAccount, currencyAccount]
     cluster.validateAccounts(accounts)
 
 
     transferAmount="97.5321 {0}".format(CORE_SYMBOL)
     Print("Transfer funds %s from account %s to %s" % (transferAmount, defproduceraAccount.name, testeraAccount.name))
-    node.transferFunds(defproduceraAccount, testeraAccount, transferAmount, "test transfer", waitForTransBlock=amqpAddr)
+    node.transferFunds(defproduceraAccount, testeraAccount, transferAmount, "test transfer", waitForTransBlock=True)
 
     expectedAmount=transferAmount
     Print("Verify transfer, Expected: %s" % (expectedAmount))
@@ -193,11 +159,24 @@ try:
         cmdError("FAILURE - transfer failed")
         errorExit("Transfer verification failed. Excepted %s, actual: %s" % (expectedAmount, actualAmount))
 
-    Print("**** Killing Main Producer Node****")
+    Print("**** Killing Main Producer Node & bios node ****")
     cluster.getNode(0).kill(signal.SIGTERM)
+    cluster.discoverBiosNode().kill(signal.SIGTERM)
 
     node = cluster.getNode(1)
+    if amqpAddr:
+        node.setAMQPAddress(amqpAddr)
 
+    Print("**** Transfer with no producer, waits on timeout ****")
+    transferAmount="0.0100 {0}".format(CORE_SYMBOL)
+    Print("Force transfer funds %s from account %s to %s" % (
+        transferAmount, defproduceraAccount.name, testeraAccount.name))
+    result = node.transferFunds(defproduceraAccount, testeraAccount, transferAmount, "test transfer", expiration=3600, waitForTransBlock=False, exitOnError=False)
+    transId = node.getTransId(result)
+    noTrans = node.getTransaction(transId, silentErrors=True)
+    if noTrans is not None:
+        cmdError("FAILURE - transfer should not have been executed yet")
+        errorExit("result: %s" % (noTrans))
 
     Print("**** Resuming Backup Node ****")
     resumeResults = node.processCurlCmd(resource="producer", command="resume", payload="{}")
@@ -205,10 +184,8 @@ try:
 
     node.waitForHeadToAdvance()
 
-    transferAmount="0.0100 {0}".format(CORE_SYMBOL)
-    Print("Force transfer funds %s from account %s to %s" % (
-        transferAmount, defproduceraAccount.name, testeraAccount.name))
-    node.transferFunds(defproduceraAccount, testeraAccount, transferAmount, "test transfer", expiration=3600, waitForTransBlock=amqpAddr)
+    Print("**** Waiting for transaction ****")
+    node.waitForTransInBlock(transId)
 
     expectedAmount="97.5421 {0}".format(CORE_SYMBOL)
     Print("Verify transfer, Expected: %s" % (expectedAmount))
@@ -218,13 +195,13 @@ try:
         errorExit("Transfer verification failed. Excepted %s, actual: %s" % (expectedAmount, actualAmount))
 
 
-    Print("**** Processed Tranfer ****")
+    Print("**** Processed Transfer ****")
 
 
     transferAmount="97.5311 {0}".format(CORE_SYMBOL)
     Print("Transfer funds %s from account %s to %s" % (
         transferAmount, testeraAccount.name, currencyAccount.name))
-    trans=node.transferFunds(testeraAccount, currencyAccount, transferAmount, "test transfer a->b", waitForTransBlock=amqpAddr)
+    trans=node.transferFunds(testeraAccount, currencyAccount, transferAmount, "test transfer a->b", waitForTransBlock=True)
     transId=Node.getTransId(trans)
 
     expectedAmount="98.0311 {0}".format(CORE_SYMBOL) # 5000 initial deposit
