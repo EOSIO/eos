@@ -61,11 +61,11 @@ namespace eosio::trace_api {
       _slice_directory.set_lib(lib);
    }
 
-   void store_provider::append_trx_ids(const block_trxs_entry& tt){
+   void store_provider::append_trx_ids(block_trxs_entry tt){
       fc::cfile trx_id_file;
       const uint32_t slice_number = _slice_directory.slice_number(tt.block_num);
       _slice_directory.find_or_create_trx_id_slice(slice_number, open_state::write, trx_id_file);
-      auto entry = metadata_log_entry { tt };
+      auto entry = metadata_log_entry { std::move(tt) };
       append_store(entry, trx_id_file);
    }
 

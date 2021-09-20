@@ -273,7 +273,7 @@ namespace eosio::trace_api {
       template<typename BlockTrace>
       void append(const BlockTrace& bt);
       void append_lib(uint32_t lib);
-      void append_trx_ids(const block_trxs_entry& tt);
+      void append_trx_ids(block_trxs_entry tt);
 
       /**
        * Read the trace for a given block
