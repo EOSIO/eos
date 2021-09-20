@@ -2,6 +2,7 @@
 
 from testUtils import Account
 from testUtils import Utils
+from testUtils import WaitSpec
 from Cluster import Cluster
 from WalletMgr import WalletMgr
 from Node import Node
@@ -13,11 +14,12 @@ import re
 import json
 import os
 import signal
+import time
 
 ###############################################################
 # amqp_tests 
 #
-# tests for the amqp functionality 
+# tests for the amqp functionality of pause/resume of producer
 #
 ###############################################################
 
@@ -147,6 +149,7 @@ try:
     accounts=[testeraAccount, currencyAccount]
     cluster.validateAccounts(accounts)
 
+    Print("**** transfer http ****")
 
     transferAmount="97.5321 {0}".format(CORE_SYMBOL)
     Print("Transfer funds %s from account %s to %s" % (transferAmount, defproduceraAccount.name, testeraAccount.name))
@@ -163,11 +166,12 @@ try:
     cluster.getNode(0).kill(signal.SIGTERM)
     cluster.discoverBiosNode().kill(signal.SIGTERM)
 
+    Print("**** Start AMQP Testing ****")
     node = cluster.getNode(1)
     if amqpAddr:
         node.setAMQPAddress(amqpAddr)
 
-    Print("**** Transfer with no producer, waits on timeout ****")
+    Print("**** Transfer with producer paused on startup, waits on timeout ****")
     transferAmount="0.0100 {0}".format(CORE_SYMBOL)
     Print("Force transfer funds %s from account %s to %s" % (
         transferAmount, defproduceraAccount.name, testeraAccount.name))
@@ -177,16 +181,24 @@ try:
     if noTrans is not None:
         cmdError("FAILURE - transfer should not have been executed yet")
         errorExit("result: %s" % (noTrans))
+    expectedAmount="97.5321 {0}".format(CORE_SYMBOL)
+    Print("Verify no transfer, Expected: %s" % (expectedAmount))
+    actualAmount=node.getAccountEosBalanceStr(testeraAccount.name)
+    if expectedAmount != actualAmount:
+        cmdError("FAILURE - transfer executed")
+        errorExit("Verification failed. Excepted %s, actual: %s" % (expectedAmount, actualAmount))
 
-    Print("**** Resuming Backup Node ****")
+    Print("**** Resuming Producer Node ****")
     resumeResults = node.processCurlCmd(resource="producer", command="resume", payload="{}")
     Print(resumeResults)
 
+    Print("**** Verify producing ****")
     node.waitForHeadToAdvance()
 
     Print("**** Waiting for transaction ****")
     node.waitForTransInBlock(transId)
 
+    Print("**** Verify transfer waiting in queue was processed ****")
     expectedAmount="97.5421 {0}".format(CORE_SYMBOL)
     Print("Verify transfer, Expected: %s" % (expectedAmount))
     actualAmount=node.getAccountEosBalanceStr(testeraAccount.name)
@@ -194,66 +206,68 @@ try:
         cmdError("FAILURE - transfer failed")
         errorExit("Transfer verification failed. Excepted %s, actual: %s" % (expectedAmount, actualAmount))
 
-
     Print("**** Processed Transfer ****")
 
-
-    transferAmount="97.5311 {0}".format(CORE_SYMBOL)
+    Print("**** Another transfer ****")
+    transferAmount="0.0001 {0}".format(CORE_SYMBOL)
     Print("Transfer funds %s from account %s to %s" % (
-        transferAmount, testeraAccount.name, currencyAccount.name))
-    trans=node.transferFunds(testeraAccount, currencyAccount, transferAmount, "test transfer a->b", waitForTransBlock=True)
+        transferAmount, defproduceraAccount.name, testeraAccount.name))
+    trans=node.transferFunds(defproduceraAccount, testeraAccount, transferAmount, "test transfer 2", waitForTransBlock=True)
     transId=Node.getTransId(trans)
 
-    expectedAmount="98.0311 {0}".format(CORE_SYMBOL) # 5000 initial deposit
+    expectedAmount="97.5422 {0}".format(CORE_SYMBOL)
     Print("Verify transfer, Expected: %s" % (expectedAmount))
-    actualAmount=node.getAccountEosBalanceStr(currencyAccount.name)
+    actualAmount=node.getAccountEosBalanceStr(testeraAccount.name)
     if expectedAmount != actualAmount:
         cmdError("FAILURE - transfer failed")
         errorExit("Transfer verification failed. Excepted %s, actual: %s" % (expectedAmount, actualAmount))
 
-    Print("Validate last action for account %s" % (testeraAccount.name))
-    actions=node.getActions(testeraAccount, -1, -1, exitOnError=True)
-    try:
-        assert (actions["actions"][0]["action_trace"]["act"]["name"] == "transfer")
-    except (AssertionError, TypeError, KeyError) as _:
-        Print("Action validation failed. Actions: %s" % (actions))
-        raise
+    Print("**** Pause producer ****")
+    resumeResults = node.processCurlCmd(resource="producer", command="pause", payload="{}")
+    Print(resumeResults)
 
+    Print("**** Give time for producer to pause, pause only signals to pause on next block ****")
+    time.sleep(WaitSpec.block_interval)
+
+    Print("**** ********************************** ****")
+    Print("**** Run same test with paused producer ****")
+
+    Print("**** Transfer with producer paused, waits on timeout ****")
+    transferAmount="0.0100 {0}".format(CORE_SYMBOL)
+    Print("Force transfer funds %s from account %s to %s" % (
+        transferAmount, defproduceraAccount.name, testeraAccount.name))
+    result = node.transferFunds(defproduceraAccount, testeraAccount, transferAmount, "test transfer", expiration=3600, waitForTransBlock=False, exitOnError=False)
+    transId = node.getTransId(result)
+    noTrans = node.getTransaction(transId, silentErrors=True)
+    if noTrans is not None:
+        cmdError("FAILURE - transfer should not have been executed yet")
+        errorExit("result: %s" % (noTrans))
+    expectedAmount="97.5422 {0}".format(CORE_SYMBOL)
+    Print("Verify no transfer, Expected: %s" % (expectedAmount))
+    actualAmount=node.getAccountEosBalanceStr(testeraAccount.name)
+    if expectedAmount != actualAmount:
+        cmdError("FAILURE - transfer executed")
+        errorExit("Verification failed. Excepted %s, actual: %s" % (expectedAmount, actualAmount))
+
+    Print("**** Resuming Backup Node ****")
+    resumeResults = node.processCurlCmd(resource="producer", command="resume", payload="{}")
+    Print(resumeResults)
+
+    Print("**** Verify producing ****")
+    node.waitForHeadToAdvance()
+
+    Print("**** Waiting for transaction ****")
     node.waitForTransInBlock(transId)
 
-    transaction=node.getTransaction(transId, exitOnError=True, delayedRetry=False)
+    Print("**** Verify transfer waiting in queue was processed ****")
+    expectedAmount="97.5522 {0}".format(CORE_SYMBOL)
+    Print("Verify transfer, Expected: %s" % (expectedAmount))
+    actualAmount=node.getAccountEosBalanceStr(testeraAccount.name)
+    if expectedAmount != actualAmount:
+        cmdError("FAILURE - transfer failed")
+        errorExit("Transfer verification failed. Excepted %s, actual: %s" % (expectedAmount, actualAmount))
 
-    typeVal=None
-    amountVal=None
-    key=""
-    try:
-        key = "[traces][0][act][name]"
-        typeVal = transaction["traces"][0]["act"]["name"]
-        key = "[traces][0][act][data][quantity]"
-        amountVal = transaction["traces"][0]["act"]["data"]["quantity"]
-        amountVal = int(decimal.Decimal(amountVal.split()[0]) * 10000)
-    except (TypeError, KeyError) as e:
-        Print("transaction%s not found. Transaction: %s" % (key, transaction))
-        raise
-
-    if typeVal != "transfer" or amountVal != 975311:
-        errorExit("FAILURE - get transaction trans_id failed: %s %s %s" % (transId, typeVal, amountVal), raw=True)
-
-
-    if localTest:
-        p = re.compile('Assert')
-        errFileName="var/lib/node_00/stderr.txt"
-        assertionsFound=False
-        with open(errFileName) as errFile:
-            for line in errFile:
-                if p.search(line):
-                    assertionsFound=True
-
-        if assertionsFound:
-            # Too many assertion logs, hard to validate how many are genuine. Make this a warning
-            #  for now, hopefully the logs will get cleaned up in future.
-            Print("WARNING: Asserts in var/lib/node_00/stderr.txt")
-            #errorExit("FAILURE - Assert in var/lib/node_00/stderr.txt")
+    Print("**** Processed Transfer ****")
 
     testSuccessful=True
 finally:
