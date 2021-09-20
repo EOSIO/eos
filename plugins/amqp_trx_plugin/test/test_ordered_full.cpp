@@ -171,7 +171,7 @@ BOOST_AUTO_TEST_CASE(order) {
       const size_t num_pushes = 4242;
       for( size_t i = 1; i <= num_pushes; ++i ) {
          auto ptrx = make_unique_trx( chain_id );
-         queue->push( ptrx,
+         queue->push( ptrx, 0,
                       [ptrx, &next_calls, &next_trx_match, &trxs](
                             const std::variant<fc::exception_ptr, chain::transaction_trace_ptr>& result ) {
                          if( !std::holds_alternative<fc::exception_ptr>(result) && !std::get<chain::transaction_trace_ptr>(result)->except ) {
