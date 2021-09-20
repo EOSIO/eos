@@ -684,7 +684,7 @@ EOF
     timeout: ${TIMEOUT:-10}
     skip: ${SKIP_ORACLE_LINUX_8_3}${SKIP_PACKAGE_BUILDER}${SKIP_LINUX}
 
-  - label: ":oracle_linux: Oracle Linux 8.3 - Test Package"
+  - label: ":oracle_linux: Oracle_Linux 8.3 - Test Package"
     command:
       - "buildkite-agent artifact download '*.rpm' . --step ':oracle_linux: Oracle_Linux 8.3 - Package Builder' --agent-access-token \$\$BUILDKITE_AGENT_ACCESS_TOKEN"
       - "./.cicd/test-package.docker.sh"
