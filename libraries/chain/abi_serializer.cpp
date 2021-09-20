@@ -207,6 +207,19 @@ namespace eosio { namespace chain {
       return ends_with(type, "[]");
    }
 
+   bool abi_serializer::is_szarray(const string_view& type)const {
+      auto pos1 = type.find_last_of('[');
+      auto pos2 = type.find_last_of(']');
+      if(pos1 == string_view::npos || pos2 == string_view::npos) return false;
+      auto pos = pos1 + 1;
+      if(pos == pos2) return false;
+      while(pos < pos2) {
+         if( ! (type[pos] >= '0' && type[pos] <= '9') ) return false;
+         ++pos;
+      }
+      return true;
+   }
+
    bool abi_serializer::is_optional(const string_view& type)const {
       return ends_with(type, "?");
    }
@@ -223,6 +236,8 @@ namespace eosio { namespace chain {
    std::string_view abi_serializer::fundamental_type(const std::string_view& type)const {
       if( is_array(type) ) {
          return type.substr(0, type.size()-2);
+      } else if (is_szarray (type) ){
+         return type.substr(0, type.find_last_of('['));
       } else if ( is_optional(type) ) {
          return type.substr(0, type.size()-1);
       } else {
