@@ -47,7 +47,8 @@ struct transactional_amqp_publisher_impl {
    const std::string exchange;
    const fc::microseconds ack_time_out;
 
-   boost::asio::strand<boost::asio::io_context::executor_type> submitted_work_strand = boost::asio::make_strand(ctx);
+   boost::asio::strand<boost::asio::io_context::executor_type> submitted_work_strand =
+         boost::asio::strand<boost::asio::io_context::executor_type>(ctx.get_executor());
 
    class acked_cond {
    private:
