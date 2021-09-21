@@ -92,10 +92,6 @@ namespace {
          store->append_trx_ids(tt);
       }
 
-      void increase_total_blocks(){
-          store->increase_total_blocks();
-      }
-
       std::shared_ptr<Store> store;
    };
 }
@@ -328,7 +324,7 @@ struct trace_api_rpc_plugin_impl : public std::enable_shared_from_this<trace_api
          try {
             const auto deadline = that->calc_deadline( max_response_time );
             // search for the block that contains the transaction
-            get_block_n blk_num = common->store->get_trx_block_number(*trx_id, [deadline]() { FC_CHECK_DEADLINE(deadline); });
+            get_block_n blk_num = common->store->get_trx_block_number(*trx_id, common->minimum_irreversible_history_blocks, [deadline]() { FC_CHECK_DEADLINE(deadline); });
             if (!blk_num.has_value()){
                error_results results{404, "block number not found in the transaction id log files"};
                cb( 404, fc::variant( results ));

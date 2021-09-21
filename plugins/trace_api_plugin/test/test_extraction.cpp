@@ -190,9 +190,6 @@ struct extraction_test_fixture {
          }
       }
 
-      void increase_total_blocks(){
-      }
-
       extraction_test_fixture& fixture;
    };
 
@@ -212,7 +209,8 @@ struct extraction_test_fixture {
    // fixture data and methods
    uint32_t max_lib = 0;
    std::vector<data_log_entry> data_log = {};
-   std::unordered_map<uint32_t, std::set<chain::transaction_id_type>> id_log;
+   std::unordered_map<uint32_t, fc::flat_set<chain::transaction_id_type, chain::sha256_less>> id_log;
+
 
    chain_extraction_impl_type<mock_logfile_provider_type> extraction_impl;
 };

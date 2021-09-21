@@ -110,8 +110,6 @@ private:
          store.append_trx_ids( tt );
 
          store.append( std::move( bt ) );
-         store.increase_total_blocks();
-
       } catch( ... ) {
          except_handler( MAKE_EXCEPTION_WITH_CONTEXT( std::current_exception() ) );
       }

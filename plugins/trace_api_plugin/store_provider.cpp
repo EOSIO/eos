@@ -97,20 +97,25 @@ namespace eosio::trace_api {
       return std::make_tuple( entry.value(), irreversible );
    }
 
-    get_block_n store_provider::get_trx_block_number(const chain::transaction_id_type& trx_id, const yield_function& yield) {
+   get_block_n store_provider::get_trx_block_number(const chain::transaction_id_type& trx_id, std::optional<uint32_t> minimum_irreversible_history_blocks, const yield_function& yield) {
       fc::cfile trx_id_file;
-      uint32_t num_slices = _slice_directory.slice_number(_total_blocks) + 1; // slice number starts at 0
-      for (auto slice_number = 0U; slice_number < num_slices; ++slice_number) {
+      int32_t slice_number;
+      if (minimum_irreversible_history_blocks) {
+         slice_number = _slice_directory.slice_number(*minimum_irreversible_history_blocks);
+      } else {
+         slice_number = 0;
+      }
+
+      while (true){
          const bool found = _slice_directory.find_trx_id_slice(slice_number, open_state::read, trx_id_file);
-         // some slices may have been deleted during maintenance
-         if( !found ) continue;
+         if( !found ) break; // traversed all slices
 
          metadata_log_entry entry;
          auto ds = trx_id_file.create_datastream();
          const uint64_t end = file_size(trx_id_file.get_file_path());
          uint64_t offset = trx_id_file.tellp();
          while (offset < end) {
-            //yield();
+            yield();
             fc::raw::unpack(ds, entry);
             FC_ASSERT( std::holds_alternative<block_trxs_entry>(entry) == true, "unpacked data should be a block trxs entry" );
             const auto& trxs_entry = std::get<block_trxs_entry>(entry);
@@ -120,6 +125,7 @@ namespace eosio::trace_api {
             }
             offset = trx_id_file.tellp();
          }
+         slice_number++;
       }
       return get_block_n{};
    }

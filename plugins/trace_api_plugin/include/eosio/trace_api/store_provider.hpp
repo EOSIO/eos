@@ -283,11 +283,7 @@ namespace eosio::trace_api {
        */
       get_block_t get_block(uint32_t block_height, const yield_function& yield= {});
 
-      get_block_n get_trx_block_number(const chain::transaction_id_type& trx_id, const yield_function& yield= {});
-
-      void increase_total_blocks() {
-          _total_blocks++;
-      }
+      get_block_n get_trx_block_number(const chain::transaction_id_type& trx_id, std::optional<uint32_t> minimum_irreversible_history_blocks, const yield_function& yield= {});
 
       void start_maintenance_thread( log_handler log ) {
          _slice_directory.start_maintenance_thread( std::move(log) );
@@ -383,7 +379,6 @@ namespace eosio::trace_api {
 
 
       slice_directory _slice_directory;
-      uint64_t _total_blocks = 0;
    };
 
 }
