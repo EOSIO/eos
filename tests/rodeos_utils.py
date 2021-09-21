@@ -254,7 +254,7 @@ class RodeosCluster(object):
             headBlockNum = int(response['head_block_num'])
             Utils.Print("head_block_num {}".format(headBlockNum))
             if headBlockNum < lastBlockNum:
-                if numSecsSleep >= 60:
+                if numSecsSleep >= 120: # rodeos might need more time to catch up for load test
                     Utils.Print("Rodeos did not receive block {} after {} seconds. Only block {} received".format(lastBlockNum, numSecsSleep, headBlockNum))
                     return False
                 time.sleep(1)
@@ -287,7 +287,7 @@ class RodeosCluster(object):
     def prepareLoad(self):
         Utils.Print("set contracts and accounts for running load")
         contract="kvload"
-        contractDir="unittests/test-contracts/kv_load"
+        contractDir="unittests/test-contracts/kvload"
         wasmFile="{}.wasm".format(contract)
         abiFile="{}.abi".format(contract)
         try:
@@ -332,7 +332,7 @@ class RodeosCluster(object):
         except TypeError:
             pass
 
-    def startLoad(self, tps=400):
+    def startLoad(self, tps=100):
         # period in in milliseconds
         period=20
         # batchSize is number of transactions per period. must even

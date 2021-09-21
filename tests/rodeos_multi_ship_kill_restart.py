@@ -7,7 +7,7 @@ import signal
 from TestHelper import AppArgs
 
 ###############################################################
-# rodeos_idle_multi_ship_kill_restart
+# rodeos_multi_ship_kill_restart
 # 
 # 1- Launch a cluster of 2 SHiPs and 2 Rodeos, verifies cluster is operating properly and it is stable.
 # 2- Stop a rodeos node and verify the other rodeos is receiving blocks.
@@ -15,7 +15,8 @@ from TestHelper import AppArgs
 # 4- Stop a SHiP and verify that the other SHiPs and rodeos nodes are operating properly.
 # 5- Restart a SHiP and verify that rodeos listening to its endpoint is again receiving blocks.
 #
-#This test repeats this scenario for Unix-socket, TCP/IP, Clean vs non-clean mode restart, and SIGINT, SIGTERM kill signals.
+#This test repeats this scenario for idle state (empty blocks) vs under load test (generating transactions), Unix-socket, TCP/IP, 
+# Clean vs non-clean mode restart, and SIGKILL, SIGINT, and SIGTERM kill signals.
 #
 ###############################################################
 Print=Utils.Print
@@ -23,10 +24,12 @@ Print=Utils.Print
 extraArgs=AppArgs()
 extraArgs.add_bool("--eos-vm-oc-enable", "Use OC for rodeos")
 extraArgs.add_bool("--clean-restart", "Use for clean restart of SHiP and Rodeos")
+extraArgs.add_bool("--load-test-enable", "Enable load test")
 
 args=TestHelper.parse_args({"--dump-error-details","--keep-logs","-v","--leave-running","--clean-run"}, extraArgs)
 enableOC=args.eos_vm_oc_enable
 cleanRestart=args.clean_restart
+enableLoadTest=args.load_test_enable
 Utils.Debug=args.v
 
 TestHelper.printSystemInfo("BEGIN")
@@ -46,6 +49,9 @@ def launch_cluster(num_ships, num_rodeos, unix_socket, cleanRestart, killSignal,
             .format(num_ships, num_rodeos, (lambda x: 'Unix Socket' if (x==True) else 'TCP')(unix_socket)))
         assert cluster.waitRodeosReady(), "Rodeos failed to stand up for a cluster of {} ship node and {} rodeos node".format(num_ships, num_rodeos)
 
+        if enableLoadTest:
+            Print("Starting load generation")
+            cluster.startLoad()
         # Big enough to have new blocks produced
         numBlocks=120
         assert cluster.produceBlocks(numBlocks), "Nodeos failed to produce {} blocks for a cluster of {} ship node and {} rodeos node"\
@@ -84,11 +90,11 @@ def launch_cluster(num_ships, num_rodeos, unix_socket, cleanRestart, killSignal,
         numBlocks= currentBlockNum + 10
         assert cluster.produceBlocks(numBlocks), "Nodeos failed to produce {} blocks for a cluster of {} ship node and {} rodeos node"\
             .format(numBlocks, num_ships, num_rodeos)
-        
+
         # verify that rodeos receives all blocks from start to now
         assert cluster.allBlocksReceived(numBlocks, rodeosKilledId), "Rodeos #{} did not receive {} blocks after the other rodeos node shutdown"\
                 .format(rodeosKilledId, numBlocks, num_ships, num_rodeos)
-        
+
         # Stop ShipId = 1
         shipKilledId=1
         Print("Stopping SHiP #{} with kill -{} signal".format(shipKilledId, killSignal))
@@ -119,13 +125,14 @@ def launch_cluster(num_ships, num_rodeos, unix_socket, cleanRestart, killSignal,
         assert cluster.produceBlocks(numBlocks), "Nodeos failed to produce {} blocks for a cluster of {} ship node and {} rodeos node"\
             .format(numBlocks, num_ships, num_rodeos)
 
+
         # Verify that the rodeos node listening to the newly started Ship is receiving blocks.
         for j in cluster.ShiprodeosConnectionMap[shipKilledId]:
             assert cluster.allBlocksReceived(numBlocks, j), "Rodeos #{} did not receive {} blocks after a rodeos node shutdown"\
                     .format(j, numBlocks, num_ships, num_rodeos)
-
+        if enableLoadTest:
+            cluster.stopLoad()
         cluster.setTestSuccessful(True)
-
 
 
 # Test cases: (2 ships, 2 rodeos)
