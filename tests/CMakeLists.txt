@@ -79,6 +79,7 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/privacy_network_from_snapshot.py ${CM
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/read_only_query_tests.py ${CMAKE_CURRENT_BINARY_DIR}/read_only_query_tests.py COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/cleos_action_no_params.py ${CMAKE_CURRENT_BINARY_DIR}/cleos_action_no_params.py COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/large-lib-test.py ${CMAKE_CURRENT_BINARY_DIR}/large-lib-test.py COPYONLY)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/amqp_tests.py ${CMAKE_CURRENT_BINARY_DIR}/amqp_tests.py COPYONLY)
 
 #To run plugin_test with all log from blockchain displayed, put --verbose after --, i.e. plugin_test -- --verbose
 add_test(NAME plugin_test COMMAND plugin_test --report_level=detailed --color_output)
@@ -105,6 +106,8 @@ set_property(TEST p2p_dawn515_test PROPERTY LABELS nonparallelizable_tests)
 if (DEFINED AMQP_CONN_STR)
   add_test(NAME nodeos_run_test-rabbitmq COMMAND tests/nodeos_run_test.py --amqp-address ${AMQP_CONN_STR} -v --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
   set_property(TEST nodeos_run_test-rabbitmq PROPERTY LABELS nonparallelizable_tests)
+  add_test(NAME amqp_tests-rabbit COMMAND tests/amqp_tests.py --amqp-address ${AMQP_CONN_STR} -v --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+  set_property(TEST amqp_tests-rabbit PROPERTY LABELS nonparallelizable_tests)
   add_test(NAME nodeos_high_transaction_lr_test-rabbitmq COMMAND tests/nodeos_high_transaction_test.py --amqp-address ${AMQP_CONN_STR} -v --clean-run --dump-error-detail -p 4 -n 8 --num-transactions 10000 --max-transactions-per-second 500 WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
   set_property(TEST nodeos_high_transaction_lr_test-rabbitmq PROPERTY LABELS long_running_tests)
 endif()
