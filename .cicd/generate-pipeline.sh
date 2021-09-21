@@ -351,7 +351,7 @@ EOF
                  [[ "$TEST_NAME" != 'rodeos_idle_restart_rodeos_producer_eos-vm-oc_test' ]] && \
                  [[ "$TEST_NAME" != 'rodeos_multi_ship_kill_clean_restart_eos_vm_oc_idle_test' ]] && \
                  [[ "$TEST_NAME" != 'rodeos_multi_ship_kill_clean_restart_eos_vm_oc_load_test' ]] && \
-                 [[ "$TEST_NAME" != 'rodeos_multi_ship_kill_restart_eos_vm_oc_idle_test' ]]
+                 [[ "$TEST_NAME" != 'rodeos_multi_ship_kill_restart_eos_vm_oc_idle_test' ]] && \
                  [[ "$TEST_NAME" != 'rodeos_multi_ship_kill_restart_eos_vm_oc_load_test' ]]
                  then
                 cat <<EOF
