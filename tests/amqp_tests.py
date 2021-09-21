@@ -73,8 +73,8 @@ try:
         amqProducerAccount = cluster.defProducerAccounts["defproducera"]
 
         producerOptString = " "
-        specificExtraNodeosArgs={ 0: " --backing-store=chainbase --plugin eosio::amqp_trx_plugin --amqp-trx-address %s --plugin eosio::amqp_trace_plugin --amqp-trace-address %s" % (amqpAddr, amqpAddr),
-                                  1: " --backing-store=chainbase --plugin eosio::amqp_trx_plugin --amqp-trx-address %s --plugin eosio::amqp_trace_plugin --amqp-trace-address %s" % (amqpAddr, amqpAddr)}
+        specificExtraNodeosArgs={ 0: " --backing-store=chainbase --plugin eosio::amqp_trx_plugin --amqp-trx-address %s --plugin eosio::amqp_trace_plugin " % (amqpAddr, amqpAddr),
+                                  1: " --backing-store=chainbase --plugin eosio::amqp_trx_plugin --amqp-trx-address %s --plugin eosio::amqp_trace_plugin " % (amqpAddr, amqpAddr)}
 
 
         manualProducerArgs = {0 : { 'key': amqProducerAccount, 'names': ['defproducera']}, 1 : { 'key': amqProducerAccount, 'names': ['defproducera']} }
