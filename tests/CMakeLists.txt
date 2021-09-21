@@ -160,7 +160,7 @@ set_property(TEST rodeos_idle_test PROPERTY LABELS nonparallelizable_tests)
 
 add_test(NAME rodeos_idle_restart_ship_test COMMAND tests/rodeos_idle_test.py -v --clean-run --dump-error-detail --node-order _ship-k2,+ship-n,_ship-k15,+ship-n WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 set_property(TEST rodeos_idle_restart_ship_test PROPERTY LABELS nonparallelizable_tests)
-add_test(NAME rodeos_idle_restart_producer_test COMMAND tests/rodeos_idle_test.py -v --clean-run --dump-error-detail --node-order _prod-k2,+prod-n._prod-k15,+prod-n WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+add_test(NAME rodeos_idle_restart_producer_test COMMAND tests/rodeos_idle_test.py -v --clean-run --dump-error-detail --node-order _prod-k2,+prod-n,_prod-k15,+prod-n WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 set_property(TEST rodeos_idle_restart_producer_test PROPERTY LABELS nonparallelizable_tests)
 add_test(NAME rodeos_idle_restart_rodeos_test COMMAND tests/rodeos_idle_test.py -v --clean-run --dump-error-detail --node-order _rodeos-k2,+rodeos-n,_rodeos-k15,+rodeos-n WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 set_property(TEST rodeos_idle_restart_rodeos_test PROPERTY LABELS nonparallelizable_tests)
@@ -176,7 +176,7 @@ set_property(TEST rodeos_idle_restart_rodeos_producer_test PROPERTY LABELS nonpa
 
 add_test(NAME rodeos_idle_restart_ship_eos-vm-oc_test COMMAND tests/rodeos_idle_test.py -v --clean-run --dump-error-detail --node-order _ship-k2,+ship-n,_ship-k15,+ship-n  --eos-vm-oc-enable WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 set_property(TEST rodeos_idle_restart_ship_eos-vm-oc_test PROPERTY LABELS nonparallelizable_tests)
-add_test(NAME rodeos_idle_restart_producer_eos-vm-oc_test COMMAND tests/rodeos_idle_test.py -v --clean-run --dump-error-detail --node-order _prod-k2,+prod-n._prod-k15,+prod-n --eos-vm-oc-enable WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+add_test(NAME rodeos_idle_restart_producer_eos-vm-oc_test COMMAND tests/rodeos_idle_test.py -v --clean-run --dump-error-detail --node-order _prod-k2,+prod-n,_prod-k15,+prod-n --eos-vm-oc-enable WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 set_property(TEST rodeos_idle_restart_producer_eos-vm-oc_test PROPERTY LABELS nonparallelizable_tests)
 add_test(NAME rodeos_idle_restart_rodeos_eos-vm-oc_test COMMAND tests/rodeos_idle_test.py -v --clean-run --dump-error-detail --node-order _rodeos-k2,+rodeos-n,_rodeos-k15,+rodeos-n --eos-vm-oc-enable WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 set_property(TEST rodeos_idle_restart_rodeos_eos-vm-oc_test PROPERTY LABELS nonparallelizable_tests)
