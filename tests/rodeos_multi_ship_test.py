@@ -7,7 +7,7 @@ from TestHelper import AppArgs
 ###############################################################
 # rodeos_idle_multi_ship_test
 # 
-#   This test verifies launch of a cluster of several ship and rodeos nodes in idle state, rodeos receives (empty)
+#   This test verifies launch of a cluster of several ship and rodeos nodes in idle and under load states, rodeos receives
 #   blocks from SHiP. Rodeos and SHiP connections are either Unix socket or TCP/IP.
 #
 ###############################################################
@@ -16,9 +16,12 @@ Print=Utils.Print
 
 extraArgs=AppArgs()
 extraArgs.add_bool("--eos-vm-oc-enable", "Use OC for rodeos")
+extraArgs.add_bool("--load-test-enable", "Enable load test")
 
 args=TestHelper.parse_args({"--dump-error-details","--keep-logs","-v","--leave-running","--clean-run"}, extraArgs)
 enableOC=args.eos_vm_oc_enable
+enableLoadTest=args.load_test_enable
+Utils.Debug=args.v
 
 TestHelper.printSystemInfo("BEGIN")
 testSuccessful=False
@@ -37,14 +40,21 @@ def launch_cluster(num_ships, num_rodeos, unix_socket_option, eos_vm_oc_enable=F
         for i in range(num_rodeos):
             assert cluster.waitRodeosReady(i), "Rodeos failed to stand up for a cluster of {} ship node and {} rodeos node".format(num_ships, num_rodeos)
 
-        # Big enough to have new blocks produced
-        numBlocks=120
+        if enableLoadTest:
+            Print("Starting load generation")
+            cluster.startLoad()
+
+        # generate blocks
+        currentBlockNum=cluster.prodNode.getHeadBlockNum()
+        numBlocks= currentBlockNum + 30
         assert cluster.produceBlocks(numBlocks), "Nodeos failed to produce {} blocks for a cluster of {} ship node and {} rodeos node"\
             .format(numBlocks, num_ships, num_rodeos)
         
         for i in range(num_rodeos):
             assert cluster.allBlocksReceived(numBlocks, i), "Rodeos #{} did not receive {} blocks in a cluster of {} ship node and {} rodeos node"\
             .format(i, numBlocks, num_ships, num_rodeos)
+        if enableLoadTest:
+            cluster.stopLoad()
 
         cluster.setTestSuccessful(True)
 
