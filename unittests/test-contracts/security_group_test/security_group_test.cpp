@@ -1,5 +1,4 @@
 #include <eosio/eosio.hpp>
-#include <security_group_test.hpp>
 #include <eosio/security_group.hpp>
 
 using namespace eosio;
