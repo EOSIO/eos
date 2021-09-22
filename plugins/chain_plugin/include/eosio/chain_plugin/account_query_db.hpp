@@ -147,4 +147,5 @@ namespace fc {
 FC_REFLECT( eosio::chain_apis::account_query_db::get_accounts_by_authorizers_params, (accounts)(keys))
 FC_REFLECT( eosio::chain_apis::account_query_db::get_accounts_by_authorizers_result::account_result, (account_name)(permission_name)(authorizing_account)(authorizing_key)(weight)(threshold))
 FC_REFLECT( eosio::chain_apis::account_query_db::get_accounts_by_authorizers_result, (accounts))
+FC_REFLECT( eosio::chain_apis::account_query_db::get_all_accounts_result::account_result, (name)(creation_date))
 FC_REFLECT( eosio::chain_apis::account_query_db::get_all_accounts_result, (accounts))
