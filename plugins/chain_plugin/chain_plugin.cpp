@@ -3310,6 +3310,13 @@ account_query_db::get_accounts_by_authorizers_result read_only::get_accounts_by_
    EOS_ASSERT(aqdb.has_value(), plugin_config_exception, "Account Queries being accessed when not enabled");
    return aqdb->get_accounts_by_authorizers(args);
 }  
+
+account_query_db::get_all_accounts_result read_only::get_all_accounts( const get_all_accounts_params& params ) const
+{
+   EOS_ASSERT(aqdb.has_value(), plugin_config_exception, "Account Queries being accessed when not enabled");
+   return aqdb->get_all_accounts();
+}  
+
   
 namespace detail {
    struct ram_market_exchange_state_t {

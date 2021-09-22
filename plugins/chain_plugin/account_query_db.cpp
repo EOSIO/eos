@@ -3,6 +3,8 @@
 #include <eosio/chain/contract_types.hpp>
 #include <eosio/chain/controller.hpp>
 #include <eosio/chain/permission_object.hpp>
+#include <eosio/chain/account_object.hpp>
+
 
 #include <boost/multi_index_container.hpp>
 #include <boost/multi_index/ordered_index.hpp>
@@ -476,6 +478,24 @@ namespace eosio::chain_apis {
          return result;
       }
 
+      account_query_db::get_all_accounts_result 
+      get_all_accounts( ) const {
+         std::shared_lock read_lock(rw_mutex);
+
+         using result_t = account_query_db::get_all_accounts_result;
+         result_t result;
+
+         using acct_obj_idx_type = chainbase::get_index_type<chain::account_object>::type;        
+         const auto& accts = controller.db().get_index<acct_obj_idx_type >().indices().get<chain::by_name>();
+
+         for (auto& a : accts) {
+            result.accounts.push_back({a.name, a.creation_date});
+         }
+
+         return result;
+      }
+
+
       /**
        * Convenience aliases
        */
@@ -528,6 +548,10 @@ namespace eosio::chain_apis {
 
    account_query_db::get_accounts_by_authorizers_result account_query_db::get_accounts_by_authorizers( const account_query_db::get_accounts_by_authorizers_params& args) const {
       return _impl->get_accounts_by_authorizers(args);
+   }
+
+   account_query_db::get_all_accounts_result account_query_db::get_all_accounts() const {
+      return _impl->get_all_accounts( );
    }
 
 }

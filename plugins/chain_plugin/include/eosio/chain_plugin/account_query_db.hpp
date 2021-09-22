@@ -72,6 +72,17 @@ namespace eosio::chain_apis {
 
          std::vector<account_result> accounts;
       };
+
+      struct get_all_accounts_result{
+         struct account_result {
+            chain::name                          name;
+            // chain::account_object::id_type       id;   
+            chain::block_timestamp_type          creation_date;
+         };
+
+         std::vector<account_result> accounts;
+      };
+
       /**
        * Given a set of account names and public keys, find all account permission authorities that are, in part or whole,
        * satisfiable.
@@ -80,6 +91,8 @@ namespace eosio::chain_apis {
        * @return
        */
       get_accounts_by_authorizers_result get_accounts_by_authorizers( const get_accounts_by_authorizers_params& args) const;
+
+      get_all_accounts_result get_all_accounts( ) const;
 
    private:
       std::unique_ptr<struct account_query_db_impl> _impl;
@@ -134,3 +147,4 @@ namespace fc {
 FC_REFLECT( eosio::chain_apis::account_query_db::get_accounts_by_authorizers_params, (accounts)(keys))
 FC_REFLECT( eosio::chain_apis::account_query_db::get_accounts_by_authorizers_result::account_result, (account_name)(permission_name)(authorizing_account)(authorizing_key)(weight)(threshold))
 FC_REFLECT( eosio::chain_apis::account_query_db::get_accounts_by_authorizers_result, (accounts))
+FC_REFLECT( eosio::chain_apis::account_query_db::get_all_accounts_result, (accounts))
