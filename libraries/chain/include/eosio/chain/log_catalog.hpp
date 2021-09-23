@@ -139,10 +139,13 @@ struct log_catalog {
 
    std::optional<uint64_t> get_block_position(uint32_t block_num, mapmode mode = mapmode::readonly) {
       try {
+         dlog("get_block_position: block_num = ${bn}", ("bn", block_num));
          if (active_index != npos) {
             auto active_item = collection.nth(active_index);
+            dlog("get_block_position: active_item->first = ${f} active_item->second.last_block_num = ${l}", ("f", active_item->first)("l", active_item->second.last_block_num));
             if (active_item->first <= block_num && block_num <= active_item->second.last_block_num &&
                 log_data.flags() == mode) {
+               dlog("log_data.first_block_num() = ${f}", ("f", log_data.first_block_num()));
                return log_index.nth_block_position(block_num - log_data.first_block_num());
             }
          }
@@ -150,12 +153,13 @@ struct log_catalog {
             return {};
 
          auto it = --collection.upper_bound(block_num);
-
+         dlog("get_block_position: it->second.last_block_num = ${lb}", ("lb", it->second.last_block_num));
          if (block_num <= it->second.last_block_num) {
             auto name = it->second.filename_base;
             log_data.open(name.replace_extension("log"), mode);
             log_index.open(name.replace_extension("index"));
             this->active_index = collection.index_of(it);
+            dlog("log_data.first_block_num() = ${f}", ("f", log_data.first_block_num()));
             return log_index.nth_block_position(block_num - log_data.first_block_num());
          }
          return {};
@@ -168,6 +172,7 @@ struct log_catalog {
    std::pair<fc::datastream<const char*>, uint32_t> ro_stream_for_block(uint32_t block_num) {
       auto pos = get_block_position(block_num, mapmode::readonly);
       if (pos) {
+         dlog("ro_stream_for_block: get_block_position returned ${pos}", ("pos", pos));
          return log_data.ro_stream_at(*pos);
       }
       return {fc::datastream<const char*>(nullptr, 0), static_cast<uint32_t>(0)};

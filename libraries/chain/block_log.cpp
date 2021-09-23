@@ -242,6 +242,7 @@ namespace eosio { namespace chain {
    template <typename Stream>
    std::unique_ptr<signed_block> read_block(Stream&& ds, uint32_t version, uint32_t expect_block_num = 0) {
       std::unique_ptr<signed_block> block;
+      dlog("version = ${v}", ("v", version));
       if (version >= pruned_transaction_version) {
          block = std::make_unique<signed_block>();
          unpack(ds, *block);
@@ -844,6 +845,7 @@ namespace eosio { namespace chain {
 
    std::unique_ptr<signed_block> detail::block_log_impl::read_block_by_num(uint32_t block_num) {
       uint64_t pos = get_block_pos(block_num);
+      dlog("block_log_impl::read_block_by_num get_block_pos returned ${pos} for ${bnum}", ("pos", pos)("bnum", block_num));
       if (pos != block_log::npos) {
          block_file.seek(pos);
          return read_block(block_file, preamble.version, block_num);
@@ -877,6 +879,10 @@ namespace eosio { namespace chain {
    }
 
    uint64_t detail::block_log_impl::get_block_pos(uint32_t block_num) {
+      if (head){
+         dlog("head->block_num() = ${b} preamble.first_block_num = ${f}", ("b", head->block_num())("f", preamble.first_block_num));
+      }
+
       if (!(head && block_num <= head->block_num() && block_num >= preamble.first_block_num))
          return block_log::npos;
       index_file.seek(sizeof(uint64_t) * (block_num - preamble.first_block_num));
