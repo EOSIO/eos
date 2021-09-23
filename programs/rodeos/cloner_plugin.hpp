@@ -16,7 +16,7 @@ class cloner_plugin : public appbase::plugin<cloner_plugin> {
    void         plugin_shutdown();
    void         handle_sighup() override;
 
-   void set_streamer(std::function<void(const char* data, uint64_t data_size)> streamer_function);
+   void set_streamer(std::shared_ptr<struct streamer_t> streamer);
 
  private:
    std::shared_ptr<struct cloner_plugin_impl> my;

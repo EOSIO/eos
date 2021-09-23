@@ -40,7 +40,7 @@ The following information shows the different positionals and options you can us
 - `--delay-sec` _UINT_ - Set the delay_sec seconds, defaults to 0s
 
 ## Requirements
-For the prerequisites to run this command see the Before you Begin section of [How to Buy Ram](../02_how-to-guides/how-to-buy-ram.md)  
+For the prerequisites to run this command see the Before you Begin section of [How to Buy Ram](../../02_how-to-guides/how-to-buy-ram.md)  
 
 ## Examples
-* [How to Buy Ram](../02_how-to-guides/how-to-buy-ram.md)
+* [How to Buy Ram](../../02_how-to-guides/how-to-buy-ram.md)

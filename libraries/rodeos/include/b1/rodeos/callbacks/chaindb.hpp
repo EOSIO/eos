@@ -45,10 +45,9 @@ class iterator_cache {
       auto map_it = table_to_index.find(key);
       if (map_it != table_to_index.end())
          return map_it->second;
-      if (!view.get(state_account.value,
-                    chain_kv::to_slice(eosio::convert_to_key(std::make_tuple(
-                                                          (uint8_t)0x01, eosio::name{ "contract.tab" },
-                                                          eosio::name{ "primary" }, key.code, key.table, key.scope)))))
+      if (!view.get(state_account.value, chain_kv::to_slice(eosio::convert_to_key(std::make_tuple(
+                                               (uint8_t)0x01, eosio::name{ "contract.tab" }, eosio::name{ "primary" },
+                                               key.code, key.table, key.scope)))))
          return -1;
       if (tables.size() != table_to_index.size() || tables.size() != end_iterators.size())
          throw std::runtime_error("internal error: tables.size() mismatch");
@@ -84,9 +83,9 @@ class iterator_cache {
             iterators.emplace_back();
             it = &iterators.back();
             eosio::input_stream stream{ view_it.get_kv()->value.data(), view_it.get_kv()->value.size() };
-            auto row = std::get<0>(eosio::from_bin<eosio::ship_protocol::contract_row>(stream));
-            it->table_index = rk.table_index;
-            it->primary     = row.primary_key;
+            auto                row = std::get<0>(eosio::from_bin<eosio::ship_protocol::contract_row>(stream));
+            it->table_index         = rk.table_index;
+            it->primary             = row.primary_key;
             it->value.insert(it->value.end(), row.value.pos, row.value.end);
          }
       }
@@ -134,15 +133,14 @@ class iterator_cache {
       if (!view_it) {
          // std::cout << "db_next_i64: db_view::iterator\n";
          const auto& table_key = tables[it.table_index];
-         view_it               = chain_kv::view::iterator{
-            view, state_account.value,
-            chain_kv::to_slice(eosio::convert_to_key(std::make_tuple( //
-                                     (uint8_t)0x01, eosio::name{ "contract.row" }, eosio::name{ "primary" },
-                                     table_key.code, table_key.table, table_key.scope)))
-         };
-         view_it->lower_bound(eosio::convert_to_key(std::make_tuple(
-                                                 (uint8_t)0x01, eosio::name{ "contract.row" }, eosio::name{ "primary" },
-                                                 table_key.code, table_key.table, table_key.scope, it.primary)));
+         view_it =
+               chain_kv::view::iterator{ view, state_account.value,
+                                         chain_kv::to_slice(eosio::convert_to_key(std::make_tuple( //
+                                               (uint8_t)0x01, eosio::name{ "contract.row" }, eosio::name{ "primary" },
+                                               table_key.code, table_key.table, table_key.scope))) };
+         view_it->lower_bound(eosio::convert_to_key(std::make_tuple((uint8_t)0x01, eosio::name{ "contract.row" },
+                                                                    eosio::name{ "primary" }, table_key.code,
+                                                                    table_key.table, table_key.scope, it.primary)));
       }
       ++*view_it;
       if (view_it->is_end()) {
@@ -150,9 +148,9 @@ class iterator_cache {
          return it.next;
       } else {
          eosio::input_stream stream{ view_it->get_kv()->value.data(), view_it->get_kv()->value.size() };
-         auto row = std::get<0>(eosio::from_bin<eosio::ship_protocol::contract_row>(stream));
-         primary  = row.primary_key;
-         it.next  = get_iterator({ it.table_index, primary }, std::move(*view_it));
+         auto                row = std::get<0>(eosio::from_bin<eosio::ship_protocol::contract_row>(stream));
+         primary                 = row.primary_key;
+         it.next                 = get_iterator({ it.table_index, primary }, std::move(*view_it));
          return it.next;
       }
    }
@@ -171,11 +169,11 @@ class iterator_cache {
       }
       // std::cout << "lower_bound: db_view::iterator\n";
       chain_kv::view::iterator it{ view, state_account.value,
-                                   chain_kv::to_slice(eosio::convert_to_key(std::make_tuple(
-                                                                         (uint8_t)0x01, eosio::name{ "contract.row" },
-                                                                         eosio::name{ "primary" }, code, table, scope))) };
+                                   chain_kv::to_slice(eosio::convert_to_key(
+                                         std::make_tuple((uint8_t)0x01, eosio::name{ "contract.row" },
+                                                         eosio::name{ "primary" }, code, table, scope))) };
       it.lower_bound(eosio::convert_to_key(std::make_tuple((uint8_t)0x01, eosio::name{ "contract.row" },
-                                                               eosio::name{ "primary" }, code, table, scope, key)));
+                                                           eosio::name{ "primary" }, code, table, scope, key)));
       return get_iterator(rk, std::move(it));
    }
 }; // iterator_cache
@@ -236,16 +234,16 @@ struct chaindb_callbacks {
    template <typename Rft>
    static void register_callbacks() {
       // todo: preconditions
-      Rft::template add<&Derived::db_store_i64>("env", "db_store_i64");
-      Rft::template add<&Derived::db_update_i64>("env", "db_update_i64");
-      Rft::template add<&Derived::db_remove_i64>("env", "db_remove_i64");
-      Rft::template add<&Derived::db_get_i64>("env", "db_get_i64");
-      Rft::template add<&Derived::db_next_i64>("env", "db_next_i64");
-      Rft::template add<&Derived::db_previous_i64>("env", "db_previous_i64");
-      Rft::template add<&Derived::db_find_i64>("env", "db_find_i64");
-      Rft::template add<&Derived::db_lowerbound_i64>("env", "db_lowerbound_i64");
-      Rft::template add<&Derived::db_upperbound_i64>("env", "db_upperbound_i64");
-      Rft::template add<&Derived::db_end_i64>("env", "db_end_i64");
+      RODEOS_REGISTER_CALLBACK(Rft, Derived, db_store_i64);
+      RODEOS_REGISTER_CALLBACK(Rft, Derived, db_update_i64);
+      RODEOS_REGISTER_CALLBACK(Rft, Derived, db_remove_i64);
+      RODEOS_REGISTER_CALLBACK(Rft, Derived, db_get_i64);
+      RODEOS_REGISTER_CALLBACK(Rft, Derived, db_next_i64);
+      RODEOS_REGISTER_CALLBACK(Rft, Derived, db_previous_i64);
+      RODEOS_REGISTER_CALLBACK(Rft, Derived, db_find_i64);
+      RODEOS_REGISTER_CALLBACK(Rft, Derived, db_lowerbound_i64);
+      RODEOS_REGISTER_CALLBACK(Rft, Derived, db_upperbound_i64);
+      RODEOS_REGISTER_CALLBACK(Rft, Derived, db_end_i64);
    }
 };
 

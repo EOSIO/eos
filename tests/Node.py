@@ -30,7 +30,7 @@ class Node(object):
 
     # pylint: disable=too-many-instance-attributes
     # pylint: disable=too-many-arguments
-    def __init__(self, host, port, nodeId, pid=None, cmd=None, walletMgr=None, participant=None):
+    def __init__(self, host, port, nodeId, pid=None, cmd=None, walletMgr=None, participant=None, amqpAddr=None):
         self.host=host
         self.port=port
         self.pid=pid
@@ -48,6 +48,7 @@ class Node(object):
         self.lastRetrievedHeadBlockProducer=""
         self.transCache={}
         self.walletMgr=walletMgr
+        self.amqpAddr=amqpAddr
         self.missingTransaction=False
         self.participant=participant
         if participant is not None: Utils.Print("Creating participant: {}".format(participant))
@@ -63,6 +64,9 @@ class Node(object):
 
     def __eq__(self, obj):
         return isinstance(obj, Node) and str(self) == str(obj)
+
+    def setAMQPAddress(self, ampqAddr=None):
+        self.amqpAddr=ampqAddr
 
     @staticmethod
     def validateTransaction(trans):
@@ -326,7 +330,7 @@ class Node(object):
 
         return False
 
-    def getBlockNumByTransId(self, transId, exitOnError=True, delayedRetry=True, blocksAhead=1):
+    def getBlockNumByTransId(self, transId, exitOnError=True, delayedRetry=True, blocksAhead=5):
         """Given a transaction Id (string), will return the actual block id (int) containing the transaction"""
         assert(transId)
         assert(isinstance(transId, str))
@@ -383,12 +387,12 @@ class Node(object):
 
 
     # Create & initialize account and return creation transactions. Return transaction json object
-    def createInitializeAccount(self, account, creatorAccount, stakedDeposit=1000, waitForTransBlock=False, stakeNet=100, stakeCPU=100, buyRAM=10000, exitOnError=False, sign=False):
+    def createInitializeAccount(self, account, creatorAccount, stakedDeposit=1000, waitForTransBlock=False, stakeNet=100, stakeCPU=100, buyRAM=10000, exitOnError=False, sign=False, additionalArgs=''):
         signStr = Node.__sign_str(sign, [ creatorAccount.activePublicKey ])
         cmdDesc="system newaccount"
-        cmd='%s -j %s %s \'%s\' \'%s\' --stake-net "%s %s" --stake-cpu "%s %s" --buy-ram "%s %s"' % (
+        cmd='%s -j %s %s \'%s\' \'%s\' --stake-net "%s %s" --stake-cpu "%s %s" --buy-ram "%s %s" %s' % (
             cmdDesc, creatorAccount.name, account.name, account.ownerPublicKey,
-            account.activePublicKey, stakeNet, CORE_SYMBOL, stakeCPU, CORE_SYMBOL, buyRAM, CORE_SYMBOL)
+            account.activePublicKey, stakeNet, CORE_SYMBOL, stakeCPU, CORE_SYMBOL, buyRAM, CORE_SYMBOL, additionalArgs)
         msg="(creator account=%s, account=%s)" % (creatorAccount.name, account.name);
         trans=self.processCleosCmd(cmd, cmdDesc, silentErrors=False, exitOnError=exitOnError, exitMsg=msg)
         self.trackCmdTransaction(trans)
@@ -581,6 +585,11 @@ class Node(object):
         assert(isinstance(destination, Account))
         assert(expiration is None or isinstance(expiration, int))
 
+        amqpAddrStr = ""
+        if self.amqpAddr is not None:
+            amqpAddrStr = "--amqp %s " % self.amqpAddr
+            reportStatus = False
+
         dontSendStr = ""
         if dontSend:
             dontSendStr = "--dont-broadcast "
@@ -591,8 +600,10 @@ class Node(object):
         expirationStr = ""
         if expiration is not None:
             expirationStr = "--expiration %d " % (expiration)
-        cmd="%s %s -v transfer -j %s %s" % (
-            Utils.EosClientPath, self.eosClientArgs(), dontSendStr, expirationStr)
+        else:
+            expirationStr = "--expiration 120" # 2 minutes
+        cmd="%s %s %s -v transfer -j %s %s" % (
+            Utils.EosClientPath, amqpAddrStr, self.eosClientArgs(), dontSendStr, expirationStr)
         cmdArr=cmd.split()
         # not using __sign_str, since cmdArr messes up the string
         if sign:
@@ -835,6 +846,7 @@ class Node(object):
 
     # returns tuple with indication if transaction was successfully sent and either the transaction or else the exception output
     def pushMessage(self, account, action, data, opts, silentErrors=False, signatures=None):
+        reportStatus = True
         cmd="%s %s push action -j %s %s" % (Utils.EosClientPath, self.eosClientArgs(), account, action)
         Utils.Print("cmd: {}".format(cmd))
         cmdArr=cmd.split()
@@ -850,7 +862,7 @@ class Node(object):
         start=time.perf_counter()
         try:
             trans=Utils.runCmdArrReturnJson(cmdArr)
-            self.trackCmdTransaction(trans, ignoreNonTrans=True)
+            self.trackCmdTransaction(trans, ignoreNonTrans=True, reportStatus=reportStatus)
             if Utils.Debug:
                 end=time.perf_counter()
                 Utils.Print("cmd Duration: %.3f sec" % (end-start))
@@ -867,7 +879,12 @@ class Node(object):
         assert(isinstance(trans, dict))
         if isinstance(permissions, str):
             permissions=[permissions]
-        cmd="%s %s push transaction -j" % (Utils.EosClientPath, self.eosClientArgs())
+        reportStatus = True
+        amqpAddrStr = ""
+        if self.amqpAddr is not None:
+            amqpAddrStr = "--amqp %s " % self.amqpAddr
+            reportStatus = False
+        cmd="%s %s %s push transaction -j" % (Utils.EosClientPath, amqpAddrStr, self.eosClientArgs())
         cmdArr=cmd.split()
         transStr = json.dumps(trans, separators=(',', ':'))
         transStr = transStr.replace("'", '"')
@@ -884,7 +901,7 @@ class Node(object):
         start=time.perf_counter()
         try:
             retTrans=Utils.runCmdArrReturnJson(cmdArr)
-            self.trackCmdTransaction(retTrans, ignoreNonTrans=True)
+            self.trackCmdTransaction(retTrans, ignoreNonTrans=True, reportStatus=reportStatus)
             if Utils.Debug:
                 end=time.perf_counter()
                 Utils.Print("cmd Duration: %.3f sec" % (end-start))
@@ -1249,7 +1266,7 @@ class Node(object):
 
     # pylint: disable=too-many-locals
     # If nodeosPath is equal to None, it will use the existing nodeos path
-    def relaunch(self, chainArg=None, newChain=False, skipGenesis=True, timeout=Utils.systemWaitTimeout, addSwapFlags=None, deleteFlags={}, cachePopen=False, nodeosPath=None):
+    def relaunch(self, chainArg=None, newChain=False, skipGenesis=True, timeout=Utils.systemWaitTimeout, addSwapFlags=None, deleteFlags={}, cachePopen=False, nodeosPath=None, waitForTerm=True):
 
         assert(self.pid is None)
         assert(self.killed)
@@ -1319,7 +1336,7 @@ class Node(object):
                     else:
                         return False
 
-        if "terminate-at-block" not in cmd:
+        if "terminate-at-block" not in cmd or not waitForTerm:
             isAlive=Utils.waitForTruth(isNodeAlive, timeout, sleepTime=1)
         else:
             lam=DidProcessExitGracefully(self.popenProc, timeout)

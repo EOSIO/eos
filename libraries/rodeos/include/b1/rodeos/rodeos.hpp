@@ -39,6 +39,7 @@ struct rodeos_db_partition {
 struct rodeos_db_snapshot {
    std::shared_ptr<rodeos_db_partition>    partition       = {};
    std::shared_ptr<chain_kv::database>     db              = {};
+   bool                                    undo_stack_enabled = false;
    std::optional<chain_kv::undo_stack>     undo_stack      = {}; // only if persistent
    std::optional<rocksdb::ManagedSnapshot> snap            = {}; // only if !persistent
    std::optional<chain_kv::write_session>  write_session   = {};
@@ -49,8 +50,9 @@ struct rodeos_db_snapshot {
    eosio::checksum256                      irreversible_id = {};
    uint32_t                                first           = 0;
    std::optional<uint32_t>                 writing_block   = {};
+   uint32_t                                force_write_stride = 1; // used in modulus so init to 1 for eosio-tester
 
-   rodeos_db_snapshot(std::shared_ptr<rodeos_db_partition> partition, bool persistent);
+   rodeos_db_snapshot(std::shared_ptr<rodeos_db_partition> partition, bool persistent, bool undo_stack_disabled = false);
 
    void refresh();
    void end_write(bool write_fill);
@@ -59,13 +61,16 @@ struct rodeos_db_snapshot {
    void check_write(const eosio::ship_protocol::get_blocks_result_base& result);
    void write_block_info(const eosio::ship_protocol::get_blocks_result_v0& result);
    void write_block_info(const eosio::ship_protocol::get_blocks_result_v1& result);
+   void write_block_info(const eosio::ship_protocol::get_blocks_result_v2& result);
    void write_deltas(const eosio::ship_protocol::get_blocks_result_v0& result, std::function<bool()> shutdown);
    void write_deltas(const eosio::ship_protocol::get_blocks_result_v1& result, std::function<bool()> shutdown);
+   void write_deltas(const eosio::ship_protocol::get_blocks_result_v2& result, std::function<bool()> shutdown);
 
  private:
    void write_block_info(uint32_t block_num, const eosio::checksum256& id,
                          const eosio::ship_protocol::signed_block_header& block);
-   void write_deltas(uint32_t block_num, eosio::opaque<std::vector<eosio::ship_protocol::table_delta>> deltas, std::function<bool()> shutdown);
+   void write_deltas(uint32_t block_num, eosio::opaque<std::vector<eosio::ship_protocol::table_delta>> deltas,
+                     std::function<bool()> shutdown);
    void write_fill_status();
 };
 
@@ -74,7 +79,13 @@ struct rodeos_filter {
    std::unique_ptr<filter::backend_t>    backend      = {};
    std::unique_ptr<filter::filter_state> filter_state = {};
 
-   rodeos_filter(eosio::name name, const std::string& wasm_filename);
+   rodeos_filter(eosio::name name, const std::string& wasm_filename
+#ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
+                 ,
+                 const boost::filesystem::path&       eosvmoc_path   = "",
+                 const eosio::chain::eosvmoc::config& eosvmoc_config = {}, bool eosvmoc_enable = false
+#endif
+   );
 
    void process(rodeos_db_snapshot& snapshot, const eosio::ship_protocol::get_blocks_result_base& result,
                 eosio::input_stream bin, const std::function<void(const char* data, uint64_t size)>& push_data);
@@ -83,7 +94,7 @@ struct rodeos_filter {
 struct rodeos_query_handler {
    std::shared_ptr<rodeos_db_partition>               partition;
    const std::shared_ptr<const wasm_ql::shared_state> shared_state;
-   wasm_ql::thread_state_cache                        state_cache;
+   const std::shared_ptr<wasm_ql::thread_state_cache> state_cache;
 
    rodeos_query_handler(std::shared_ptr<rodeos_db_partition>         partition,
                         std::shared_ptr<const wasm_ql::shared_state> shared_state);

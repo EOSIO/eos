@@ -1,13 +1,15 @@
 #include <fc/log/logger_config.hpp> //set_thread_name
+#include <fc/scoped_exit.hpp>
 
 #include <eosio/chain/webassembly/eos-vm-oc/code_cache.hpp>
 #include <eosio/chain/webassembly/eos-vm-oc/config.hpp>
-#include <eosio/chain/webassembly/common.hpp>
-#include <eosio/chain/webassembly/eos-vm-oc/memory.hpp>
 #include <eosio/chain/webassembly/eos-vm-oc/eos-vm-oc.hpp>
-#include <eosio/chain/webassembly/eos-vm-oc/intrinsic.hpp>
 #include <eosio/chain/webassembly/eos-vm-oc/compile_monitor.hpp>
 #include <eosio/chain/exceptions.hpp>
+
+#include <boost/iostreams/copy.hpp>
+#include <boost/iostreams/device/file_descriptor.hpp>
+#include <boost/iostreams/device/array.hpp>
 
 #include <unistd.h>
 #include <sys/syscall.h>
@@ -17,10 +19,12 @@
 #include "IR/Module.h"
 #include "IR/Validate.h"
 #include "WASM/WASM.h"
-#include "LLVMJIT.h"
+
+#ifndef _POSIX_SYNCHRONIZED_IO
+#error _POSIX_SYNCHRONIZED_IO not defined for this platform
+#endif
 
 using namespace IR;
-using namespace Runtime;
 
 namespace eosio { namespace chain { namespace eosvmoc {
 
@@ -39,8 +43,21 @@ static constexpr size_t descriptor_ptr_from_file_start = header_offset + offseto
 
 static_assert(sizeof(code_cache_header) <= header_size, "code_cache_header too big");
 
-code_cache_async::code_cache_async(const bfs::path data_dir, const eosvmoc::config& eosvmoc_config, const chainbase::database& db) :
-   code_cache_base(data_dir, eosvmoc_config, db),
+namespace impl {
+   //allows handing off a naked file descriptor to boost::interprocess::mapped_region; normally one would use a bip::file_mapping
+   // but it's not possible to construct a file_mapping with an existing file descriptor. It may be interesting to extend the existing
+   // eosvmoc::wrapped_fd to provide get_mapping_handle(), and remove the naked file descriptors from code_cache.
+   struct bip_wrapped_handle {
+      bip_wrapped_handle(int fd) : fd(fd) {}
+      bip_wrapped_handle(const bip_wrapped_handle&) = delete;
+      bip_wrapped_handle& operator=(const bip_wrapped_handle&) = delete;
+      bip::mapping_handle_t get_mapping_handle() const {return bip::mapping_handle_t{fd, false};}
+      int fd;
+   };
+}
+
+code_cache_async::code_cache_async(const bfs::path data_dir, const eosvmoc::config& eosvmoc_config, code_finder db) :
+   code_cache_base(data_dir, eosvmoc_config, std::move(db)),
    _result_queue(eosvmoc_config.threads * 2),
    _threads(eosvmoc_config.threads)
 {
@@ -119,11 +136,11 @@ const code_descriptor* const code_cache_async::get_descriptor_for_code(const dig
 
          //it's not clear this check is required: if apply() was called for code then it existed in the code_index; and then
          // if we got notification of it no longer existing we would have removed it from queued_compiles
-         const code_object* const codeobject = _db.find<code_object,by_code_hash>(boost::make_tuple(nextup->code_id, 0, nextup->vm_version));
-         if(codeobject) {
+         std::string_view const codeobject = _db(nextup->code_id, nextup->vm_version);
+         if(!codeobject.empty()) {
             _outstanding_compiles_and_poison.emplace(*nextup, false);
             std::vector<wrapped_fd> fds_to_pass;
-            fds_to_pass.emplace_back(memfd_for_bytearray(codeobject->code));
+            fds_to_pass.emplace_back(memfd_for_bytearray(codeobject));
             FC_ASSERT(write_message_with_fds(_compile_monitor_write_socket, compile_wasm_message{ *nextup }, fds_to_pass), "EOS VM failed to communicate to OOP manager");
             --count_processed;
          }
@@ -154,13 +171,13 @@ const code_descriptor* const code_cache_async::get_descriptor_for_code(const dig
       return nullptr;
    }
 
-   const code_object* const codeobject = _db.find<code_object,by_code_hash>(boost::make_tuple(code_id, 0, vm_version));
-   if(!codeobject) //should be impossible right?
+   std::string_view const codeobject = _db(code_id, vm_version);
+   if(codeobject.empty()) //should be impossible right?
       return nullptr;
 
    _outstanding_compiles_and_poison.emplace(ct, false);
    std::vector<wrapped_fd> fds_to_pass;
-   fds_to_pass.emplace_back(memfd_for_bytearray(codeobject->code));
+   fds_to_pass.emplace_back(memfd_for_bytearray(codeobject));
    write_message_with_fds(_compile_monitor_write_socket, compile_wasm_message{ ct }, fds_to_pass);
    return nullptr;
 }
@@ -182,12 +199,12 @@ const code_descriptor* const code_cache_sync::get_descriptor_for_code_sync(const
       return &*it;
    }
 
-   const code_object* const codeobject = _db.find<code_object,by_code_hash>(boost::make_tuple(code_id, 0, vm_version));
-   if(!codeobject) //should be impossible right?
+   std::string_view const codeobject = _db(code_id, vm_version);
+   if(codeobject.empty()) //should be impossible right?
       return nullptr;
 
    std::vector<wrapped_fd> fds_to_pass;
-   fds_to_pass.emplace_back(memfd_for_bytearray(codeobject->code));
+   fds_to_pass.emplace_back(memfd_for_bytearray(codeobject));
 
    write_message_with_fds(_compile_monitor_write_socket, compile_wasm_message{ {code_id, vm_version} }, fds_to_pass);
    auto [success, message, fds] = read_message_with_fds(_compile_monitor_read_socket);
@@ -202,97 +219,185 @@ const code_descriptor* const code_cache_sync::get_descriptor_for_code_sync(const
    return &*_cache_index.push_front(std::move(std::get<code_descriptor>(result.result))).first;
 }
 
-code_cache_base::code_cache_base(const boost::filesystem::path data_dir, const eosvmoc::config& eosvmoc_config, const chainbase::database& db) :
-   _db(db),
-   _cache_file_path(data_dir/"code_cache.bin")
+int code_cache_base::get_huge_memfd(size_t map_size, int memfd_flags) const {
+   int ret;
+
+   ret = syscall(SYS_memfd_create, "eosvmoc_cc", MFD_CLOEXEC | memfd_flags);
+   if(ret < 0)
+      return -1;
+
+   auto close_failed_creation = fc::make_scoped_exit([&](){close(ret);});
+
+   if(ftruncate(ret, map_size) == -1)
+      return -1;
+
+   //Empirically on 5.13.9 there is no need to pass MAP_HUGETLB to have the mapping actually use hugepages.
+   //That makes sense due to the underlying implementation of memfd, but the docs seem ambiguous on expected behavior.
+
+   //The man page states w.r.t. MAP_POPULATE:
+   //     The mmap() call doesn't fail if the mapping cannot be populated (for example,
+   //     due to limitations on the number of mapped huge pages when using MAP_HUGETLB).
+   //Well, empirically on 5.13.9 MAP_POPULATE does cause a failure if there aren't actually enough hugepages available
+   // at the given size. It's not clear how to (easily) more robustly handle what the documentation suggests: where the MAP_POPULATE
+   // passively ignores that we're overcommitted. We could attempt to force the pages to be allocated in a loop after the mmap(),
+   // but we'd just be SIGBUSed if pages aren't available. Handling SIGBUS would fully resolve this I suppose, but that's more
+   // complication than I'd like.
+   //Thus there seems to be a risk according to the documentation that there may be a nasty situation where the platform indicates
+   // 1GB pages are available, MAP_POPULATE passively succeeds, so we then plan to use 1GB pages, but then the later iostreams::copy()
+   // fails via a SIGBUS because the hugepages were overcommitted and not enough are actually available. In such a situation a user
+   // would be stuck and unable to use heap/locked mode; worse, the SIGBUS may leave the main chainbase database dirty.
+   void* mapped = mmap(NULL, map_size, PROT_READ|PROT_WRITE, MAP_SHARED|MAP_POPULATE, ret, 0);
+   if(mapped == MAP_FAILED)
+      return -1;
+
+   if(munmap(mapped, map_size))
+      return -1;
+
+   close_failed_creation.cancel();
+   return ret;
+}
+
+code_cache_base::code_cache_base(const boost::filesystem::path data_dir, const eosvmoc::config& eosvmoc_config, code_finder db) :
+   _db(std::move(db))
 {
    static_assert(sizeof(allocator_t) <= header_offset, "header offset intersects with allocator");
 
    bfs::create_directories(data_dir);
+   boost::filesystem::path cache_file_path = data_dir/"code_cache.bin";
 
-   if(!bfs::exists(_cache_file_path)) {
+   if(!bfs::exists(cache_file_path)) {
       EOS_ASSERT(eosvmoc_config.cache_size >= allocator_t::get_min_size(total_header_size), database_exception, "configured code cache size is too small");
-      std::ofstream ofs(_cache_file_path.generic_string(), std::ofstream::trunc);
+      std::ofstream ofs(cache_file_path.generic_string(), std::ofstream::trunc);
       EOS_ASSERT(ofs.good(), database_exception, "unable to create EOS VM Optimized Compiler code cache");
-      bfs::resize_file(_cache_file_path, eosvmoc_config.cache_size);
-      bip::file_mapping creation_mapping(_cache_file_path.generic_string().c_str(), bip::read_write);
+      bfs::resize_file(cache_file_path, eosvmoc_config.cache_size);
+      bip::file_mapping creation_mapping(cache_file_path.generic_string().c_str(), bip::read_write);
       bip::mapped_region creation_region(creation_mapping, bip::read_write);
       new (creation_region.get_address()) allocator_t(eosvmoc_config.cache_size, total_header_size);
       new ((char*)creation_region.get_address() + header_offset) code_cache_header;
    }
 
+   _cache_file_fd = open(cache_file_path.c_str(), O_RDWR);
+   EOS_ASSERT(_cache_file_fd >= 0, database_exception, "failure to open code cache file");
+   auto cleanup_cache_file_fd_on_ctor_exception = fc::make_scoped_exit([&](){close(_cache_file_fd);});
+
    code_cache_header cache_header;
-   {
-      char header_buff[total_header_size];
-      std::ifstream hs(_cache_file_path.generic_string(), std::ifstream::binary);
-      hs.read(header_buff, sizeof(header_buff));
-      EOS_ASSERT(!hs.fail(), bad_database_version_exception, "failed to read code cache header");
-      memcpy((char*)&cache_header, header_buff + header_offset, sizeof(cache_header));
-   }
+   char header_buff[total_header_size];
+   EOS_ASSERT(read(_cache_file_fd, header_buff, sizeof(header_buff)) == sizeof(header_buff), bad_database_version_exception, "failed to read code cache header");
+   memcpy((char*)&cache_header, header_buff + header_offset, sizeof(cache_header));
 
    EOS_ASSERT(cache_header.id == header_id, bad_database_version_exception, "existing EOS VM OC code cache not compatible with this version");
    EOS_ASSERT(!cache_header.dirty, database_exception, "code cache is dirty");
 
    set_on_disk_region_dirty(true);
 
-   auto existing_file_size = bfs::file_size(_cache_file_path);
+   auto existing_file_size = bfs::file_size(cache_file_path);
+   size_t on_disk_size = existing_file_size;
    if(eosvmoc_config.cache_size > existing_file_size) {
-      bfs::resize_file(_cache_file_path, eosvmoc_config.cache_size);
+      EOS_ASSERT(!ftruncate(_cache_file_fd, eosvmoc_config.cache_size), database_exception, "Failed to grow code cache file: ${e}", ("e", strerror(errno)));
 
-      bip::file_mapping resize_mapping(_cache_file_path.generic_string().c_str(), bip::read_write);
-      bip::mapped_region resize_region(resize_mapping, bip::read_write);
+      impl::bip_wrapped_handle wh(_cache_file_fd);
 
+      bip::mapped_region resize_region(wh, bip::read_write);
       allocator_t* resize_allocator = reinterpret_cast<allocator_t*>(resize_region.get_address());
       resize_allocator->grow(eosvmoc_config.cache_size - existing_file_size);
+      on_disk_size = eosvmoc_config.cache_size;
    }
 
-   _cache_fd = ::open(_cache_file_path.generic_string().c_str(), O_RDWR | O_CLOEXEC);
-   EOS_ASSERT(_cache_fd >= 0, database_exception, "failure to open code cache");
+   auto cleanup_cache_handle_fd_on_ctor_exception = fc::make_scoped_exit([&]() {if(_cache_fd >= 0) close(_cache_fd);});
+
+   if(eosvmoc_config.map_mode == chainbase::pinnable_mapped_file::map_mode::mapped) {
+      _cache_fd = dup(_cache_file_fd);
+      EOS_ASSERT(_cache_fd >= 0, database_exception, "failure to open code cache");
+      _mapped_size = on_disk_size;
+   }
+   else {
+      const unsigned _1gb = 1u<<30u;
+      const unsigned _2mb = 1u<<21u;
+
+      _populate_on_map = true;
+      _mlock_map = (eosvmoc_config.map_mode == chainbase::pinnable_mapped_file::map_mode::locked);
+
+      auto round_up_file_size_to = [&](size_t r) {
+         return (on_disk_size + (r-1u))/r*r;
+      };
+
+#if defined(MFD_HUGETLB) && defined(MFD_HUGE_1GB)
+      if((_cache_fd = get_huge_memfd(_mapped_size = round_up_file_size_to(_1gb), MFD_HUGETLB|MFD_HUGE_1GB)) >= 0) {
+         ilog("EOS VM OC code cache using 1GB pages");
+      } else
+#endif
+#if defined(MFD_HUGETLB) && defined(MFD_HUGE_2MB)
+      if((_cache_fd = get_huge_memfd(_mapped_size = round_up_file_size_to(_2mb), MFD_HUGETLB|MFD_HUGE_2MB)) >= 0) {
+         ilog("EOS VM OC code cache using 2MB pages");
+      } else
+#endif
+      {
+         _cache_fd = get_huge_memfd(_mapped_size = round_up_file_size_to(getpagesize()), 0);
+         EOS_ASSERT(_cache_fd >= 0, database_exception, "Failed to allocate code cache memory");
+      }
+
+      ilog("Preloading EOS VM OC code cache. This may take a moment...");
+
+      EOS_ASSERT(lseek(_cache_file_fd, 0, SEEK_SET) == 0, database_exception, "Failed to seek in code cache file");
+      impl::bip_wrapped_handle wh(_cache_fd);
+      bip::mapped_region load_region(wh, bip::read_write);
+
+      boost::iostreams::file_descriptor_source source(_cache_file_fd, boost::iostreams::never_close_handle);
+      boost::iostreams::array_sink sink((char*)load_region.get_address(), load_region.get_size());
+      std::streamsize copied = boost::iostreams::copy(source, sink, 1024*1024);
+      EOS_ASSERT(copied >= on_disk_size, database_exception, "Failed to preload code cache memory");
+   }
 
    //load up the previous cache index
-   char* code_mapping = (char*)mmap(nullptr, eosvmoc_config.cache_size, PROT_READ|PROT_WRITE, MAP_SHARED, _cache_fd, 0);
-   EOS_ASSERT(code_mapping != MAP_FAILED, database_exception, "failure to mmap code cache");
+   impl::bip_wrapped_handle wh(_cache_fd);
 
-   allocator_t* allocator = reinterpret_cast<allocator_t*>(code_mapping);
+   bip::mapped_region load_region(wh, bip::read_write);
+   allocator_t* allocator = reinterpret_cast<allocator_t*>(load_region.get_address());
 
    if(cache_header.serialized_descriptor_index) {
-      fc::datastream<const char*> ds(code_mapping + cache_header.serialized_descriptor_index, eosvmoc_config.cache_size - cache_header.serialized_descriptor_index);
+      fc::datastream<const char*> ds((char*)load_region.get_address() + cache_header.serialized_descriptor_index, eosvmoc_config.cache_size - cache_header.serialized_descriptor_index);
       unsigned number_entries;
       fc::raw::unpack(ds, number_entries);
       for(unsigned i = 0; i < number_entries; ++i) {
          code_descriptor cd;
          fc::raw::unpack(ds, cd);
          if(cd.codegen_version != 0) {
-            allocator->deallocate(code_mapping + cd.code_begin);
-            allocator->deallocate(code_mapping + cd.initdata_begin);
+            allocator->deallocate((char*)load_region.get_address() + cd.code_begin);
+            allocator->deallocate((char*)load_region.get_address() + cd.initdata_begin);
             continue;
          }
          _cache_index.push_back(std::move(cd));
       }
-      allocator->deallocate(code_mapping + cache_header.serialized_descriptor_index);
+      allocator->deallocate((char*)load_region.get_address() + cache_header.serialized_descriptor_index);
 
       ilog("EOS VM Optimized Compiler code cache loaded with ${c} entries; ${f} of ${t} bytes free", ("c", number_entries)("f", allocator->get_free_memory())("t", allocator->get_size()));
    }
-   munmap(code_mapping, eosvmoc_config.cache_size);
 
-   _free_bytes_eviction_threshold = eosvmoc_config.cache_size * .1;
+   _free_bytes_eviction_threshold = on_disk_size * .1;
 
    wrapped_fd compile_monitor_conn = get_connection_to_compile_monitor(_cache_fd);
 
    //okay, let's do this by the book: we're not allowed to write & read on different threads to the same asio socket. So create two fds
    //representing the same unix socket. we'll read on one and write on the other
    int duped = dup(compile_monitor_conn);
+   EOS_ASSERT(duped >= 0, database_exception, "failure to dup compile monitor socket");
    _compile_monitor_write_socket.assign(local::datagram_protocol(), duped);
    _compile_monitor_read_socket.assign(local::datagram_protocol(), compile_monitor_conn.release());
+
+   cleanup_cache_file_fd_on_ctor_exception.cancel();
+   cleanup_cache_handle_fd_on_ctor_exception.cancel();
 }
 
 void code_cache_base::set_on_disk_region_dirty(bool dirty) {
-   bip::file_mapping dirty_mapping(_cache_file_path.generic_string().c_str(), bip::read_write);
-   bip::mapped_region dirty_region(dirty_mapping, bip::read_write);
-
-   *((char*)dirty_region.get_address()+header_dirty_bit_offset_from_file_start) = dirty;
-   if(dirty_region.flush(0, 0, false) == false)
-      elog("Syncing code cache failed");
+   if(lseek(_cache_file_fd, header_dirty_bit_offset_from_file_start, SEEK_SET) == -1) {
+      elog("Seeking to code cache dirty bit failed");
+      return;
+   }
+   char write_me = dirty;
+   if(::write(_cache_file_fd, &write_me, 1) != 1)
+      elog("Writing dirty bit in code cache failed");
+   if(fsync(_cache_file_fd))
+      elog("Syncing code cache dirtyness failed");
 }
 
 template <typename T>
@@ -303,21 +408,35 @@ void code_cache_base::serialize_cache_index(fc::datastream<T>& ds) {
       fc::raw::pack(ds, cd);
 }
 
+void code_cache_base::cache_mapping_for_execution(const int prot_flags, uint8_t*& addr, size_t& map_size) const {
+   int map_flags = MAP_SHARED;
+   if(_populate_on_map)
+      map_flags |= MAP_POPULATE; //see comments in get_huge_memfd(). This is intended solely to populate page table for existing allocated pages
+
+   addr = (uint8_t*)mmap(nullptr, _mapped_size, prot_flags, map_flags, _cache_fd, 0);
+   FC_ASSERT(addr != MAP_FAILED, "failed to map code cache (${e})", ("e", strerror(errno)));
+
+   if(_mlock_map && mlock(addr, _mapped_size)) {
+      int lockerr = errno;
+      munmap(addr, _mapped_size);
+      FC_ASSERT(false, "failed to lock code cache (${e})", ("e", strerror(lockerr)));
+   }
+
+   map_size = _mapped_size;
+}
+
 code_cache_base::~code_cache_base() {
    //reopen the code cache in our process
-   struct stat st;
-   if(fstat(_cache_fd, &st))
-      return;
-   char* code_mapping = (char*)mmap(nullptr, st.st_size, PROT_READ|PROT_WRITE, MAP_SHARED, _cache_fd, 0);
-   if(code_mapping == MAP_FAILED)
-      return;
-
-   allocator_t* allocator = reinterpret_cast<allocator_t*>(code_mapping);
+   impl::bip_wrapped_handle wh(_cache_fd);
+   bip::mapped_region load_region(wh, bip::read_write);
+   allocator_t* allocator = reinterpret_cast<allocator_t*>(load_region.get_address());
 
    //serialize out the cache index
    fc::datastream<size_t> dssz;
    serialize_cache_index(dssz);
    size_t sz = dssz.tellp();
+
+   char* code_mapping = (char*)load_region.get_address();
 
    char* p = nullptr;
    while(_cache_index.size()) {
@@ -343,11 +462,31 @@ code_cache_base::~code_cache_base() {
    else
       *((uintptr_t*)(code_mapping+descriptor_ptr_from_file_start)) = 0;
 
-   msync(code_mapping, allocator->get_size(), MS_SYNC);
-   munmap(code_mapping, allocator->get_size());
+   if(!_populate_on_map) {
+      msync(code_mapping, _mapped_size, MS_SYNC);
+      munmap(code_mapping, _mapped_size);
+   }
+   else {
+      ilog("Writing EOS VM OC code cache to disk. This may take a moment...");
+      struct stat st;
+      if(lseek(_cache_file_fd, 0, SEEK_SET) == 0 && fstat(_cache_file_fd, &st) == 0) {
+         //don't use the mmaped size for source since it has been rounded up from the file size, use file size
+         boost::iostreams::array_source source(code_mapping, st.st_size);
+         boost::iostreams::file_descriptor_sink sink(_cache_file_fd, boost::iostreams::never_close_handle);
+
+         if(boost::iostreams::copy(source, sink, 1024*1024) != st.st_size)
+            elog("Failed to write out EOS VM OC code cache");
+         if(fsync(_cache_file_fd))
+            elog("Syncing code cache data failed");
+      }
+      else {
+         elog("Failed to write out EOS VM OC code cache");
+      }
+   }
+
    close(_cache_fd);
    set_on_disk_region_dirty(false);
-
+   close(_cache_file_fd);
 }
 
 void code_cache_base::free_code(const digest_type& code_id, const uint8_t& vm_version) {
@@ -378,6 +517,7 @@ void code_cache_base::run_eviction_round() {
 }
 
 void code_cache_base::check_eviction_threshold(size_t free_bytes) {
+   _last_known_free_bytes = free_bytes;
    if(free_bytes < _free_bytes_eviction_threshold)
       run_eviction_round();
 }

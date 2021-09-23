@@ -79,11 +79,13 @@ namespace eosio { namespace client { namespace http {
                              bool print_response = false);
 
    const string chain_func_base = "/v1/chain";
+   const string chain_func_base_v2 = "/v2/chain";
    const string get_info_func = chain_func_base + "/get_info";
    const string send_txn_func = chain_func_base + "/send_transaction";
+   const string send_txn_func_v2 = chain_func_base_v2 + "/send_transaction";
    const string push_txn_func = chain_func_base + "/push_transaction";
    const string push_txns_func = chain_func_base + "/push_transactions";
-   const string push_ro_txns_func = chain_func_base + "/push_ro_transaction";
+   const string send_ro_txns_func = chain_func_base + "/send_ro_transaction";
    const string json_to_bin_func = chain_func_base + "/abi_json_to_bin";
    const string get_block_func = chain_func_base + "/get_block";
    const string get_block_info_func = chain_func_base + "/get_block_info";

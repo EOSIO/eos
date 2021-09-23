@@ -27,7 +27,7 @@ from core_symbol import CORE_SYMBOL
 
 args = TestHelper.parse_args({"--host","--port","--prod-count","--defproducera_prvt_key","--defproducerb_prvt_key"
                               ,"--dump-error-details","--dont-launch","--keep-logs","-v","--leave-running","--only-bios","--clean-run"
-                              ,"--sanity-test","--wallet-port"})
+                              ,"--sanity-test","--wallet-port","--amqp-address"})
 server=args.host
 port=args.port
 debug=args.v
@@ -42,6 +42,7 @@ onlyBios=args.only_bios
 killAll=args.clean_run
 sanityTest=args.sanity_test
 walletPort=args.wallet_port
+amqpAddr=args.amqp_address
 
 Utils.Debug=debug
 localTest=True if server == TestHelper.LOCAL_HOST else False
@@ -65,11 +66,18 @@ try:
         cluster.killall(allInstances=killAll)
         cluster.cleanup()
         Print("Stand up cluster")
-        specificExtraNodeosArgs={ 0 : " --backing-store=chainbase",
-                                  1 : " --backing-store=rocksdb" }
+
         abs_path = os.path.abspath(os.getcwd() + '/../unittests/contracts/eosio.token/eosio.token.abi')
         traceNodeosArgs=" --plugin eosio::trace_api_plugin --trace-rpc-abi eosio.token=" + abs_path
-        if cluster.launch(totalNodes=3, prodCount=prodCount, onlyBios=onlyBios, dontBootstrap=dontBootstrap, specificExtraNodeosArgs=specificExtraNodeosArgs, printInfo=True, extraNodeosArgs=traceNodeosArgs) is False:
+
+        if not amqpAddr:
+            specificExtraNodeosArgs={ 0 : " --backing-store=chainbase",
+                                      1 : " --backing-store=rocksdb" }
+        else:
+            cluster.createAMQPQueue("trx")
+            specificExtraNodeosArgs={ 0: "--backing-store=chainbase --plugin eosio::amqp_trx_plugin --amqp-trx-address %s" % (amqpAddr),
+                                      1 : " --backing-store=rocksdb" }
+        if cluster.launch(totalNodes=3, prodCount=prodCount, onlyBios=onlyBios, dontBootstrap=dontBootstrap, specificExtraNodeosArgs=specificExtraNodeosArgs, extraNodeosArgs=traceNodeosArgs) is False:
             cmdError("launcher")
             errorExit("Failed to stand up eos cluster.")
     else:
@@ -207,6 +215,8 @@ try:
         errorExit("FAILURE - wallet keys did not include %s" % (noMatch), raw=True)
 
     node=cluster.getNode(0)
+    if amqpAddr:
+        node.setAMQPAddress(amqpAddr)
 
     Print("Validating accounts before user accounts creation")
     cluster.validateAccounts(None)
@@ -233,7 +243,7 @@ try:
 
     transferAmount="97.5321 {0}".format(CORE_SYMBOL)
     Print("Transfer funds %s from account %s to %s" % (transferAmount, defproduceraAccount.name, testeraAccount.name))
-    node.transferFunds(defproduceraAccount, testeraAccount, transferAmount, "test transfer")
+    node.transferFunds(defproduceraAccount, testeraAccount, transferAmount, "test transfer", waitForTransBlock=amqpAddr)
 
     expectedAmount=transferAmount
     Print("Verify transfer, Expected: %s" % (expectedAmount))
@@ -245,7 +255,7 @@ try:
     transferAmount="0.0100 {0}".format(CORE_SYMBOL)
     Print("Force transfer funds %s from account %s to %s" % (
         transferAmount, defproduceraAccount.name, testeraAccount.name))
-    node.transferFunds(defproduceraAccount, testeraAccount, transferAmount, "test transfer", force=True)
+    node.transferFunds(defproduceraAccount, testeraAccount, transferAmount, "test transfer", force=True, waitForTransBlock=amqpAddr)
 
     expectedAmount="97.5421 {0}".format(CORE_SYMBOL)
     Print("Verify transfer, Expected: %s" % (expectedAmount))
@@ -271,7 +281,7 @@ try:
     transferAmount="97.5311 {0}".format(CORE_SYMBOL)
     Print("Transfer funds %s from account %s to %s" % (
         transferAmount, testeraAccount.name, currencyAccount.name))
-    trans=node.transferFunds(testeraAccount, currencyAccount, transferAmount, "test transfer a->b")
+    trans=node.transferFunds(testeraAccount, currencyAccount, transferAmount, "test transfer a->b", waitForTransBlock=amqpAddr)
     transId=Node.getTransId(trans)
 
     expectedAmount="98.0311 {0}".format(CORE_SYMBOL) # 5000 initial deposit
@@ -381,6 +391,10 @@ try:
     except (AssertionError, KeyError) as _:
         Print("ERROR: Failed get currecy stats assertion. %s" % (res))
         raise
+
+    # disable amqp since cleos with amqp does not return a trace
+    if amqpAddr:
+        node.setAMQPAddress(None)
 
     dupRejected=False
     dupTransAmount=10

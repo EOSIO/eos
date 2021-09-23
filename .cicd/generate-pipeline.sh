@@ -20,19 +20,13 @@ if [[ "$BUILDKITE" == 'true' && "$RETRY" == '0' ]]; then
 fi
 [[ "$BUILDKITE" == 'true' ]] && buildkite-agent meta-data set pipeline-upload-retries "$(( $RETRY + 1 ))"
 # guard against accidentally spawning too many jobs
-if (( $ROUNDS > 1 || $ROUND_SIZE > 1 )) && [[ -z "$TEST" ]]; then
+if (( $ROUNDS > 1 || $ROUND_SIZE > 1 )) && [[ "$BUILDKITE_PIPELINE_SLUG" != 'eosio-test-stability' ]]; then
     echo '+++ :no_entry: WARNING: Your parameters will spawn a very large number of jobs!' 1>&2
-    echo "Setting ROUNDS='$ROUNDS' and/or ROUND_SIZE='$ROUND_SIZE' in the environment without also setting TEST to a specific test will cause ALL tests to be run $(( $ROUNDS * $ROUND_SIZE )) times, which will consume a large number of agents! We recommend doing stability testing on ONE test at a time. If you're certain you want to do this, set TEST='.*' to run all tests $(( $ROUNDS * $ROUND_SIZE )) times." 1>&2
+    echo "Setting ROUNDS='$ROUNDS' and/or ROUND_SIZE='$ROUND_SIZE' in the environment will cause ALL tests to be run $(( $ROUNDS * $ROUND_SIZE )) times, which will consume a large number of agents!" 1>&2
     [[ "$BUILDKITE" == 'true' ]] && cat | buildkite-agent annotate --append --style 'error' --context 'no-TEST' <<-MD
-    Your build was cancelled because you set \`ROUNDS\` and/or \`ROUND_SIZE\` without also setting \`TEST\` in your build environment. This would cause each test to be run $(( $ROUNDS * $ROUND_SIZE )) times, which will consume a lot of Buildkite agents.
-
-    We recommend stability testing one test at a time by setting \`TEST\` equal to the test name. Alternatively, you can specify a set of test names using [Perl-Compatible Regular Expressions](https://www.debuggex.com/cheatsheet/regex/pcre), where \`TEST\` is parsed as \`^${TEST}$\`.
-
-    If you _really_ meant to run every test $(( $ROUNDS * $ROUND_SIZE )) times, set \`TEST='.*'\`.
+Your build was cancelled because you set \`ROUNDS\` and/or \`ROUND_SIZE\` outside the [eosio-test-stability](https://buildkite.com/EOSIO/eosio-test-stability) pipeline.
 MD
     exit 255
-elif [[ "$TEST" = '.*' ]]; then # if they want to run every test, just spawn the jobs like normal
-    unset TEST
 fi
 # Determine if it's a forked PR and make sure to add git fetch so we don't have to git clone the forked repo's url
 if [[ $BUILDKITE_BRANCH =~ ^pull/[0-9]+/head: ]]; then
@@ -361,8 +355,8 @@ EOF
     skip: $(echo "$PLATFORM_JSON" | jq -r '.PLATFORM_SKIP_VAR | env[.] // empty')${SKIP_SERIAL_TESTS}
 
 EOF
-                else
-                    cat <<EOF
+            elif [[ "$TEST_NAME" != 'rodeos_test_eosvmoc' ]]; then
+                cat <<EOF
   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - $TEST_NAME"
     command:
       - "git clone \$BUILDKITE_REPO eos && cd eos && $GIT_FETCH git checkout -f \$BUILDKITE_COMMIT && git submodule update --init --recursive"
@@ -483,7 +477,8 @@ EOF
 EOF
         fi
         if [[ "$ROUND" != "$ROUNDS" ]]; then
-            echo '  - wait'
+            echo '  - wait: ~'
+            [[ "$BUILDKITE_SOURCE" == 'schedule' || "$CONTINUE_ON_FAILURE" == 'true' ]] && echo '    continue_on_failure: true'
             echo ''
         fi
     done
@@ -551,7 +546,7 @@ EOF
 fi
 # pipeline tail
 cat <<EOF
-  - wait:
+  - wait: ~
     continue_on_failure: true
 
   - label: ":bar_chart: Test Metrics"
@@ -594,7 +589,7 @@ EOF
   - label: ":centos: CentOS 7 - Test Package"
     command:
       - "buildkite-agent artifact download '*.rpm' . --step ':centos: CentOS 7.7 - Package Builder' --agent-access-token \$\$BUILDKITE_AGENT_ACCESS_TOKEN"
-      - "./.cicd/test-package.sh"
+      - "./.cicd/test-package.docker.sh"
     env:
       IMAGE: "centos:7"
     agents:
@@ -607,7 +602,7 @@ EOF
   - label: ":aws: Amazon Linux 2 - Test Package"
     command:
       - "buildkite-agent artifact download '*.rpm' . --step ':centos: CentOS 7.7 - Package Builder' --agent-access-token \$\$BUILDKITE_AGENT_ACCESS_TOKEN"
-      - "./.cicd/test-package.sh"
+      - "./.cicd/test-package.docker.sh"
     env:
       IMAGE: "amazonlinux:2"
     agents:
@@ -635,7 +630,7 @@ EOF
   - label: ":ubuntu: Ubuntu 18.04 - Test Package"
     command:
       - "buildkite-agent artifact download '*.deb' . --step ':ubuntu: Ubuntu 18.04 - Package Builder' --agent-access-token \$\$BUILDKITE_AGENT_ACCESS_TOKEN"
-      - "./.cicd/test-package.sh"
+      - "./.cicd/test-package.docker.sh"
     env:
       IMAGE: "ubuntu:18.04"
     agents:
@@ -657,13 +652,13 @@ EOF
     agents:
       queue: "$BUILDKITE_TEST_AGENT_QUEUE"
     key: "ubuntu2004pb"
-    timeout: ${TIMEOUT:-10}
+    timeout: ${TIMEOUT:-20}
     skip: ${SKIP_UBUNTU_20_04}${SKIP_PACKAGE_BUILDER}${SKIP_LINUX}
 
   - label: ":ubuntu: Ubuntu 20.04 - Test Package"
     command:
       - "buildkite-agent artifact download '*.deb' . --step ':ubuntu: Ubuntu 20.04 - Package Builder' --agent-access-token \$\$BUILDKITE_AGENT_ACCESS_TOKEN"
-      - "./.cicd/test-package.sh"
+      - "./.cicd/test-package.docker.sh"
     env:
       IMAGE: "ubuntu:20.04"
     agents:
@@ -672,7 +667,7 @@ EOF
     allow_dependency_failure: false
     timeout: ${TIMEOUT:-10}
     skip: ${SKIP_UBUNTU_20_04}${SKIP_PACKAGE_BUILDER}${SKIP_LINUX}
-  
+
   - label: ":darwin: macOS 10.15 - Package Builder"
     command:
       - "git clone \$BUILDKITE_REPO eos && cd eos && $GIT_FETCH git checkout -f \$BUILDKITE_COMMIT"
@@ -696,7 +691,36 @@ EOF
           cd: ~
     agents:
       - "queue=mac-anka-node-fleet"
+    key: "macos1015pb"
     timeout: ${TIMEOUT:-30}
+    skip: ${SKIP_MACOS_10_15}${SKIP_PACKAGE_BUILDER}${SKIP_MAC}
+
+  - label: ":darwin: macOS 10.15 - Test Package"
+    command:
+      - "git clone \$BUILDKITE_REPO eos && cd eos && $GIT_FETCH git checkout -f \$BUILDKITE_COMMIT"
+      - "cd eos && buildkite-agent artifact download '*' . --step ':darwin: macOS 10.15 - Package Builder' --agent-access-token \$\$BUILDKITE_AGENT_ACCESS_TOKEN"
+      - "cd eos && ./.cicd/test-package.anka.sh"
+    plugins:
+      - EOSIO/anka#v0.6.1:
+          no-volume: true
+          inherit-environment-vars: true
+          vm-name: 10.15.5_6C_14G_80G
+          vm-registry-tag: "clean::cicd::git-ssh::nas::brew::buildkite-agent"
+          always-pull: true
+          debug: true
+          wait-network: true
+          pre-execute-sleep: 5
+          pre-execute-ping-sleep: github.com
+          failover-registries:
+            - 'registry_1'
+            - 'registry_2'
+      - EOSIO/skip-checkout#v0.1.1:
+          cd: ~
+    agents:
+      - "queue=mac-anka-node-fleet"
+    depends_on: "macos1015pb"
+    allow_dependency_failure: false
+    timeout: ${TIMEOUT:-10}
     skip: ${SKIP_MACOS_10_15}${SKIP_PACKAGE_BUILDER}${SKIP_MAC}
 
   - label: ":darwin: macOS 11 - Package Builder"
@@ -722,7 +746,36 @@ EOF
           cd: ~
     agents:
       - "queue=mac-anka-node-fleet"
+    key: "macos11pb"
     timeout: ${TIMEOUT:-30}
+    skip: ${SKIP_MACOS_11}${SKIP_PACKAGE_BUILDER}${SKIP_MAC}
+
+  - label: ":darwin: macOS 11 - Test Package"
+    command:
+      - "git clone \$BUILDKITE_REPO eos && cd eos && $GIT_FETCH git checkout -f \$BUILDKITE_COMMIT"
+      - "cd eos && buildkite-agent artifact download '*' . --step ':darwin: macOS 11 - Package Builder' --agent-access-token \$\$BUILDKITE_AGENT_ACCESS_TOKEN"
+      - "cd eos && ./.cicd/test-package.anka.sh"
+    plugins:
+      - EOSIO/anka#v0.6.1:
+          no-volume: true
+          inherit-environment-vars: true
+          vm-name: 11.2.0_6C_16G_64G
+          vm-registry-tag: "clean::cicd::git-ssh::nas::brew::buildkite-agent"
+          always-pull: true
+          debug: true
+          wait-network: true
+          pre-execute-sleep: 5
+          pre-execute-ping-sleep: github.com
+          failover-registries:
+            - 'registry_1'
+            - 'registry_2'
+      - EOSIO/skip-checkout#v0.1.1:
+          cd: ~
+    agents:
+      - "queue=mac-anka-node-fleet"
+    depends_on: "macos11pb"
+    allow_dependency_failure: false
+    timeout: ${TIMEOUT:-10}
     skip: ${SKIP_MACOS_11}${SKIP_PACKAGE_BUILDER}${SKIP_MAC}
 
   - label: ":docker: Docker - Label Container with Git Branch and Git Tag"

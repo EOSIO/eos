@@ -40,6 +40,7 @@ struct abi_serializer {
    /// @return string_view of `t` or internal string type
    std::string_view resolve_type(const std::string_view& t)const;
    bool      is_array(const std::string_view& type)const;
+   bool      is_szarray(const std::string_view& type)const;
    bool      is_optional(const std::string_view& type)const;
    bool      is_type( const std::string_view& type, const yield_function_t& yield )const;
    bool      is_builtin_type(const std::string_view& type)const;

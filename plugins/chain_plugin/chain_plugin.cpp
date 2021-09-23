@@ -345,6 +345,8 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
           "Timeout for sending Zipkin span." )
          ("telemetry-retry-interval-us", bpo::value<uint32_t>()->default_value(30000000),
           "Retry interval for connecting to Zipkin." )
+         ("telemetry-wait-timeout-seconds", bpo::value<uint32_t>()->default_value(0),
+          "Initial wait time for Zipkin to become available, stop the program if the connection cannot be established within the wait time.")
          ("actor-whitelist", boost::program_options::value<vector<string>>()->composing()->multitoken(),
           "Account added to actor whitelist (may specify multiple times)")
          ("actor-blacklist", boost::program_options::value<vector<string>>()->composing()->multitoken(),
@@ -367,10 +369,13 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
           "In \"irreversible\" mode: database contains state changes by only transactions in the blockchain up to the last irreversible block; transactions received via the P2P network are not relayed and transactions cannot be pushed via the chain API.\n"
           )
          ( "api-accept-transactions", bpo::value<bool>()->default_value(true), "Allow API transactions to be evaluated and relayed if valid.")
+#ifndef EOSIO_REQUIRE_FULL_VALIDATION
          ("validation-mode", boost::program_options::value<eosio::chain::validation_mode>()->default_value(eosio::chain::validation_mode::FULL),
           "Chain validation mode (\"full\" or \"light\").\n"
           "In \"full\" mode all incoming blocks will be fully validated.\n"
           "In \"light\" mode all incoming blocks headers will be fully validated; transactions in those validated blocks will be trusted \n")
+         ("trusted-producer", bpo::value<vector<string>>()->composing(), "Indicate a producer whose blocks headers signed by it will be fully validated, but transactions in those validated blocks will be trusted.")
+#endif
          ("disable-ram-billing-notify-checks", bpo::bool_switch()->default_value(false),
           "Disable the check which subjectively fails a transaction if a contract bills more RAM to another account within the context of a notification handler (i.e. when the receiver is not the code of the action).")
 #ifdef EOSIO_DEVELOPER
@@ -379,7 +384,6 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
 #endif
          ("maximum-variable-signature-length", bpo::value<uint32_t>()->default_value(16384u),
           "Subjectively limit the maximum length of variable components in a variable legnth signature to this size in bytes")
-         ("trusted-producer", bpo::value<vector<string>>()->composing(), "Indicate a producer whose blocks headers signed by it will be fully validated, but transactions in those validated blocks will be trusted.")
          ("database-map-mode", bpo::value<chainbase::pinnable_mapped_file::map_mode>()->default_value(chainbase::pinnable_mapped_file::map_mode::mapped),
           "Database map mode (\"mapped\", \"heap\", or \"locked\").\n"
           "In \"mapped\" mode database is memory mapped as a file.\n"
@@ -397,6 +401,12 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
                   EOS_ASSERT(false, plugin_exception, "");
                }
          }), "Number of threads to use for EOS VM OC tier-up")
+         ("eos-vm-oc-code-cache-map-mode", bpo::value<chainbase::pinnable_mapped_file::map_mode>()->default_value(chain::eosvmoc::config().map_mode),
+          "Map mode for EOS VM OC code cache (\"mapped\", \"heap\", or \"locked\").\n"
+          "In \"mapped\" mode code cache is memory mapped as a file.\n"
+          "In \"heap\" mode code cache is preloaded in to swappable memory and will use huge pages if available.\n"
+          "In \"locked\" mode code cache is preloaded, locked in to memory, and will use huge pages if available.\n"
+         )
          ("eos-vm-oc-enable", bpo::bool_switch(), "Enable EOS VM OC tier-up runtime")
 #endif
          ("enable-account-queries", bpo::value<bool>()->default_value(false), "enable queries to find accounts by various metadata.")
@@ -717,6 +727,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
    ilog("initializing chain plugin");
 
    try {
+      
       try {
          genesis_state gs; // Check if EOSIO_ROOT_KEY is bad
       } catch ( const std::exception& ) {
@@ -1165,6 +1176,8 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          my->chain_config->eosvmoc_config.cache_size = options.at( "eos-vm-oc-cache-size-mb" ).as<uint64_t>() * 1024u * 1024u;
       if( options.count("eos-vm-oc-compile-threads") )
          my->chain_config->eosvmoc_config.threads = options.at("eos-vm-oc-compile-threads").as<uint64_t>();
+      if( options.count("eos-vm-oc-code-cache-map-mode") )
+         my->chain_config->eosvmoc_config.map_mode = options.at("eos-vm-oc-code-cache-map-mode").as<chainbase::pinnable_mapped_file::map_mode>();
       if( options["eos-vm-oc-enable"].as<bool>() )
          my->chain_config->eosvmoc_tierup = true;
 #endif
@@ -1206,7 +1219,8 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          fc::zipkin_config::init( options["telemetry-url"].as<std::string>(),
                                   options["telemetry-service-name"].as<std::string>(),
                                   options["telemetry-timeout-us"].as<uint32_t>(),
-                                  options["telemetry-retry-interval-us"].as<uint32_t>() );
+                                  options["telemetry-retry-interval-us"].as<uint32_t>(),
+                                  options["telemetry-wait-timeout-seconds"].as<uint32_t>());
       }
 
 
@@ -2754,18 +2768,18 @@ fc::variant read_only::get_block_header_state(const get_block_header_state_param
    return vo;
 }
 
-void read_write::push_block(read_write::push_block_params&& params, next_function<read_write::push_block_results> next) {
+void read_write::push_block(read_write::push_block_params_v1&& params, next_function<read_write::push_block_results> next) {
    try {
-      app().get_method<incoming::methods::block_sync>()(std::make_shared<signed_block>( std::move( params ), true), {});
-      next(read_write::push_block_results{});
+      app().get_method<incoming::methods::block_sync>()(std::make_shared<signed_block>( std::move( params ), true), std::optional<block_id_type>{});
    } catch ( boost::interprocess::bad_alloc& ) {
       chain_plugin::handle_db_exhaustion();
    } catch ( const std::bad_alloc& ) {
       chain_plugin::handle_bad_alloc();
-   } CATCH_AND_CALL(next);
+   } FC_LOG_AND_DROP()
+   next(read_write::push_block_results{});
 }
 
-void read_write::push_transaction(const read_write::push_transaction_params& params, next_function<read_write::push_transaction_results> next) {
+void read_write::push_transaction(const read_write::push_transaction_params_v1& params, next_function<read_write::push_transaction_results> next) {
    try {
       packed_transaction_v0 input_trx_v0;
       auto resolver = make_resolver(db, abi_serializer::create_yield_function( abi_serializer_max_time ));
@@ -2781,7 +2795,7 @@ void read_write::push_transaction(const read_write::push_transaction_params& par
       fc_add_tag(trx_span, "method", "push_transaction");
 
       app().get_method<incoming::methods::transaction_async>()(input_trx, true, false, false,
-            [this, token=trx_trace.get_token(), input_trx, next]
+            [this, token=fc_get_token(trx_trace), input_trx, next]
             (const std::variant<fc::exception_ptr, transaction_trace_ptr>& result) -> void {
 
          auto trx_span = fc_create_span_from_token(token, "Processed");
@@ -2871,7 +2885,7 @@ void read_write::push_transaction(const read_write::push_transaction_params& par
    } CATCH_AND_CALL(next);
 }
 
-static void push_recurse(read_write* rw, int index, const std::shared_ptr<read_write::push_transactions_params>& params, const std::shared_ptr<read_write::push_transactions_results>& results, const next_function<read_write::push_transactions_results>& next) {
+static void push_recurse(read_write* rw, int index, const std::shared_ptr<read_write::push_transactions_params_v1>& params, const std::shared_ptr<read_write::push_transactions_results>& results, const next_function<read_write::push_transactions_results>& next) {
    auto wrapped_next = [=](const std::variant<fc::exception_ptr, read_write::push_transaction_results>& result) {
       if (std::holds_alternative<fc::exception_ptr>(result)) {
          const auto& e = std::get<fc::exception_ptr>(result);
@@ -2892,10 +2906,10 @@ static void push_recurse(read_write* rw, int index, const std::shared_ptr<read_w
    rw->push_transaction(params->at(index), wrapped_next);
 }
 
-void read_write::push_transactions(const read_write::push_transactions_params& params, next_function<read_write::push_transactions_results> next) {
+void read_write::push_transactions(const read_write::push_transactions_params_v1& params, next_function<read_write::push_transactions_results> next) {
    try {
       EOS_ASSERT( params.size() <= 1000, too_many_tx_at_once, "Attempt to push too many transactions at once" );
-      auto params_copy = std::make_shared<read_write::push_transactions_params>(params.begin(), params.end());
+      auto params_copy = std::make_shared<read_write::push_transactions_params_v1>(params.begin(), params.end());
       auto result = std::make_shared<read_write::push_transactions_results>();
       result->reserve(params.size());
 
@@ -2907,7 +2921,7 @@ void read_write::push_transactions(const read_write::push_transactions_params& p
    } CATCH_AND_CALL(next);
 }
 
-void read_write::send_transaction(const read_write::send_transaction_params& params, next_function<read_write::send_transaction_results> next) {
+void read_write::send_transaction(const read_write::send_transaction_params_v1& params, next_function<read_write::send_transaction_results> next) {
 
    try {
       packed_transaction_v0 input_trx_v0;
@@ -2918,52 +2932,78 @@ void read_write::send_transaction(const read_write::send_transaction_params& par
          input_trx = std::make_shared<packed_transaction>( std::move( input_trx_v0 ), true );
       } EOS_RETHROW_EXCEPTIONS(chain::packed_transaction_type_exception, "Invalid packed transaction")
 
-      auto trx_trace = fc_create_trace_with_id("Transaction", input_trx->id());
-      auto trx_span = fc_create_span(trx_trace, "HTTP Received");
-      fc_add_tag(trx_span, "trx_id", input_trx->id());
-      fc_add_tag(trx_span, "method", "send_transaction");
+      send_transaction(input_trx, "send_transaction", false, next);
 
-      app().get_method<incoming::methods::transaction_async>()(input_trx, true, false, false,
-            [this, token=trx_trace.get_token(), input_trx, next]
-            (const std::variant<fc::exception_ptr, transaction_trace_ptr>& result) -> void {
-         auto trx_span = fc_create_span_from_token(token, "Processed");
-         fc_add_tag(trx_span, "trx_id", input_trx->id());
-
-         if (std::holds_alternative<fc::exception_ptr>(result)) {
-            auto& eptr = std::get<fc::exception_ptr>(result);
-            fc_add_tag(trx_span, "error", eptr->to_string());
-            next(eptr);
-         } else {
-            auto& trx_trace_ptr = std::get<transaction_trace_ptr>(result);
-
-            fc_add_tag(trx_span, "block_num", trx_trace_ptr->block_num);
-            fc_add_tag(trx_span, "block_time", trx_trace_ptr->block_time.to_time_point());
-            fc_add_tag(trx_span, "elapsed", trx_trace_ptr->elapsed.count());
-            if( trx_trace_ptr->receipt ) {
-               fc_add_tag(trx_span, "status", std::string(trx_trace_ptr->receipt->status));
-            }
-            if( trx_trace_ptr->except ) {
-               fc_add_tag(trx_span, "error", trx_trace_ptr->except->to_string());
-            }
-
-            try {
-               fc::variant output;
-               try {
-                  output = db.to_variant_with_abi( *trx_trace_ptr, abi_serializer::create_yield_function( abi_serializer_max_time ) );
-               } catch( chain::abi_exception& ) {
-                  output = *trx_trace_ptr;
-               }
-
-               const chain::transaction_id_type& id = trx_trace_ptr->id;
-               next(read_write::send_transaction_results{id, output});
-            } CATCH_AND_CALL(next);
-         }
-      });
    } catch ( boost::interprocess::bad_alloc& ) {
       chain_plugin::handle_db_exhaustion();
    } catch ( const std::bad_alloc& ) {
       chain_plugin::handle_bad_alloc();
    } CATCH_AND_CALL(next);
+}
+
+
+void read_write::send_transaction(const read_write::send_transaction_params_v2& params, next_function<read_write::send_transaction_results> next) {
+
+   try {
+      packed_transaction_v0 input_trx_v0;
+      auto resolver = make_resolver(db, abi_serializer::create_yield_function( abi_serializer_max_time ));
+      packed_transaction_ptr input_trx;
+      try {
+         abi_serializer::from_variant(params.transaction, input_trx_v0, std::move( resolver ), abi_serializer::create_yield_function( abi_serializer_max_time ));
+         input_trx = std::make_shared<packed_transaction>( std::move( input_trx_v0 ), true );
+      } EOS_RETHROW_EXCEPTIONS(chain::packed_transaction_type_exception, "Invalid packed transaction")
+
+      send_transaction(input_trx, "/v2/chain/send_transaction", params.return_failure_traces, next);
+
+   } catch ( boost::interprocess::bad_alloc& ) {
+      chain_plugin::handle_db_exhaustion();
+   } catch ( const std::bad_alloc& ) {
+      chain_plugin::handle_bad_alloc();
+   } CATCH_AND_CALL(next);
+}
+
+void read_write::send_transaction(packed_transaction_ptr input_trx, const std::string method, bool return_failure_traces, chain::plugin_interface::next_function<send_transaction_results> next) {
+   auto trx_trace = fc_create_trace_with_id("Transaction", input_trx->id());
+   auto trx_span = fc_create_span(trx_trace, "HTTP Received");
+   fc_add_tag(trx_span, "trx_id", input_trx->id());
+   fc_add_tag(trx_span, "method", method);
+
+   app().get_method<incoming::methods::transaction_async>()(input_trx, true, false, static_cast<const bool>(return_failure_traces),
+         [this, token=fc_get_token(trx_trace), input_trx, next]
+         (const std::variant<fc::exception_ptr, transaction_trace_ptr>& result) -> void {
+      auto trx_span = fc_create_span_from_token(token, "Processed");
+      fc_add_tag(trx_span, "trx_id", input_trx->id());
+
+      if (std::holds_alternative<fc::exception_ptr>(result)) {
+         auto& eptr = std::get<fc::exception_ptr>(result);
+         fc_add_tag(trx_span, "error", eptr->to_string());
+         next(eptr);
+      } else {
+         auto& trx_trace_ptr = std::get<transaction_trace_ptr>(result);
+
+         fc_add_tag(trx_span, "block_num", trx_trace_ptr->block_num);
+         fc_add_tag(trx_span, "block_time", trx_trace_ptr->block_time.to_time_point());
+         fc_add_tag(trx_span, "elapsed", trx_trace_ptr->elapsed.count());
+         if( trx_trace_ptr->receipt ) {
+            fc_add_tag(trx_span, "status", std::string(trx_trace_ptr->receipt->status));
+         }
+         if( trx_trace_ptr->except ) {
+            fc_add_tag(trx_span, "error", trx_trace_ptr->except->to_string());
+         }
+
+         try {
+            fc::variant output;
+            try {
+               output = db.to_variant_with_abi( *trx_trace_ptr, abi_serializer::create_yield_function( abi_serializer_max_time ) );
+            } catch( chain::abi_exception& ) {
+               output = *trx_trace_ptr;
+            }
+
+            const chain::transaction_id_type& id = trx_trace_ptr->id;
+            next(read_write::send_transaction_results{id, output});
+         } CATCH_AND_CALL(next);
+      }
+   });
 }
 
 read_only::get_abi_results read_only::get_abi( const get_abi_params& params )const {
@@ -3195,7 +3235,7 @@ read_only::get_transaction_id_result read_only::get_transaction_id( const read_o
    return params.id();
 }
 
-void read_only::push_ro_transaction(const read_only::push_ro_transaction_params& params, chain::plugin_interface::next_function<read_only::push_ro_transaction_results> next) const {
+void read_only::send_ro_transaction(const read_only::send_ro_transaction_params_v1& params, chain::plugin_interface::next_function<read_only::send_ro_transaction_results> next) const {
    try {
       packed_transaction_v0 input_trx_v0;
       auto resolver = make_resolver(db, abi_serializer::create_yield_function( abi_serializer_max_time ));
@@ -3208,10 +3248,10 @@ void read_only::push_ro_transaction(const read_only::push_ro_transaction_params&
       auto trx_trace = fc_create_trace_with_id("TransactionReadOnly", input_trx->id());
       auto trx_span = fc_create_span(trx_trace, "HTTP Received");
       fc_add_tag(trx_span, "trx_id", input_trx->id());
-      fc_add_tag(trx_span, "method", "push_ro_transaction");
+      fc_add_tag(trx_span, "method", "send_ro_transaction");
 
       app().get_method<incoming::methods::transaction_async>()(input_trx, true, true, static_cast<const bool>(params.return_failure_traces),
-            [this, token=trx_trace.get_token(), input_trx, params, next]
+            [this, token=fc_get_token(trx_trace), input_trx, params, next]
             (const std::variant<fc::exception_ptr, transaction_trace_ptr>& result) -> void {
          auto trx_span = fc_create_span_from_token(token, "Processed");
          fc_add_tag(trx_span, "trx_id", input_trx->id());
@@ -3253,7 +3293,7 @@ void read_only::push_ro_transaction(const read_only::push_ro_transaction_params&
                      pending_transactions.push_back(std::get<packed_transaction>(receipt.trx).id());
                   }
                }
-               next(read_only::push_ro_transaction_results{db.head_block_num(), db.head_block_id(), db.last_irreversible_block_num(), db.last_irreversible_block_id(),
+               next(read_only::send_ro_transaction_results{db.head_block_num(), db.head_block_id(), db.last_irreversible_block_num(), db.last_irreversible_block_id(),
                                                            accnt_metadata_obj.code_hash, pending_transactions, output});
             } CATCH_AND_CALL(next);
          }
