@@ -26,11 +26,12 @@ appArgs.add(flag="--num-rodeos", type=int, help="How many rodeos' should be star
 appArgs.add_bool(flag="--unix-socket", help="Run ship over unix socket")
 appArgs.add_bool("--eos-vm-oc-enable", "Use OC for rodeos")
 
-ndHelp = "Order to restart nodes. Should be 'ship', 'prod', 'rodeos' "
-ndHelp += "Prefixed by a '-' (for stop) or '+' (for restart) "
-ndHelp += "e.g '_ship,_rodeos,+ship,+rodeos "
-ndHelp += "will stop ship, stop rodeos, then restart ship, restart rodeos,"
-appArgs.add("--node-order", type=str, help=ndHelp, default="_ship,+ship")
+ndHelp = "Order to restart nodes. Should be 'ship', 'prod', 'rodeos'\n"
+ndHelp += "Prefixed by a '_' (for stop) or '+' (for restart)\n"
+ndHelp += "Suffixed by '-k<#>' where '<#>' kill signal (e.g, 2, 9, 15) for stop and '-c' or '-n' for clean or normal restart.\n"
+ndHelp += "Example: '_ship-k2,_rodeos-k9,+ship-n,+rodeos-c\n "
+ndHelp += "will stop ship (kill signal 2), stop rodeos (kill signal 9), then restart ship (normal), restart rodeos (clean)"
+appArgs.add("--node-order", type=str, help=ndHelp, default="_ship-k2,+ship-n")
 appArgs.add("--stop-wait", type=int, help="Wait time after stop is issued", default=1)
 appArgs.add("--restart-wait", type=int, help="Wait time after restart is issued", default=1)
 appArgs.add("--reps", type=int, help="How many times to run test", default=3)
@@ -72,29 +73,48 @@ with RodeosCluster(args.dump_error_details,
     cmdSched = []
 
     lastKillSig = { NodeT.PROD: -1, NodeT.SHIP: -1, NodeT.RODEOS: -1 }
-    for killSig in [2, 15]:
-       cmdList = []
-       for nd in nodeOrder:
-           opts = dict()
-           ndStr = nd[1:]
-           if ndStr not in NodeTstrMap.keys():
-               Utils.errorExit("unkknown node type " + ndStr + " when parsing --node-order '" + nodeOrderStr + "'")
+    
+    cmdList = []
+    for cmdStr in nodeOrder:
+        opts = dict()
+        r = re.split('-', cmdStr)
+        if len(r) != 2:
+            Utils.errorExit("Bad command " + cmdStr + " when parsing --node-order '" + nodeOrderStr + "'.  The character '-' must occur exactly once")
+        ndCmd = r[0]
+        suffix = r[1]
 
-           ndT = NodeTstrMap[ndStr]
-           sym = nd[0]
-           if sym == "_":
-               cmdT = CmdT.STOP
-               opts["killsig"] = killSig
-               lastKillSig[ndT] = killSig
-           elif sym == "+":
-               cmdT = CmdT.RESTART
-               opts['clean'] = (lastKillSig[ndT] == 9)
-           else:
-               Utils.errorExit("'+' or '_' expected got '" + sym + "' when parsing --node-order '" + nodeOrderStr + "'")
+        ndStr = ndCmd[1:]
+        if ndStr not in NodeTstrMap.keys():
+            Utils.errorExit("Inknown node type " + ndStr + " when parsing --node-order '" + nodeOrderStr + "'")
 
-           cmdList.append((ndT, cmdT, opts))
+        ndT = NodeTstrMap[ndStr]
+        sym = ndCmd[0]
+        if sym == "_":
+            cmdT = CmdT.STOP
+            if not suffix[0] == 'k':
+                Utils.errorExit("On STOP command, expected 'k<#>', got '" + suffix +  "' when parsing '" + nodeOrderStr + "'")
+            sigStr = suffix[1:]
+            try:
+                killSig = int(sigStr)
+            except Exception as e:
+                Utils.errorExit("Failed to parse kill signal '" + sigStr + "' when parsing --node-order '" + nodeOrderStr + "'")
+            opts["killsig"] = killSig
+            lastKillSig[ndT] = killSig
+        elif sym == "+":
+            cmdT = CmdT.RESTART
+            if suffix == 'c':
+                clean = True
+            elif suffix == 'n':
+                clean = False
+            else:
+                Utils.errorExit("Unknown restart flag '" + suffix + "' when parsing --node-order '" + nodeOrderStr + "'")
+            opts['clean'] = clean
+        else:
+            Utils.errorExit("'+' or '_' expected got '" + sym + "' when parsing --node-order '" + nodeOrderStr + "'")
+
+        cmdList.append((ndT, cmdT, opts))
            
-       cmdSched.append(cmdList * nReps)
+    cmdSched.append(cmdList * nReps)
    
     for cmdList in cmdSched:
         print('cmdList=', cmdList)
