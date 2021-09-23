@@ -333,6 +333,8 @@ namespace eosio { namespace chain {
 
          void enable_security_groups(bool enable);
 
+         std::mutex& acct_obj_mutex();
+
 #if defined(EOSIO_EOS_VM_RUNTIME_ENABLED) || defined(EOSIO_EOS_VM_JIT_RUNTIME_ENABLED)
          vm::wasm_allocator&  get_wasm_allocator();
 #endif

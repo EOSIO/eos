@@ -18,7 +18,7 @@ namespace eosio::chain_apis {
        * for the life of the account query DB
        * @param chain - controller to read data from
        */
-      account_query_db( const class eosio::chain::controller& chain );
+      account_query_db( class eosio::chain::controller& chain );
       ~account_query_db();
 
       /**

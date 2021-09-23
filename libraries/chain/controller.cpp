@@ -190,6 +190,11 @@ struct controller_impl {
    map< account_name, map<handler_key, apply_handler> >   apply_handlers;
    unordered_map< builtin_protocol_feature_t, std::function<void(controller_impl&)>, enum_hash<builtin_protocol_feature_t> > protocol_feature_activation_handlers;
 
+   // mutex for account object
+   // this is necessary to ensure thread safety between chain_plugin "get_all_accounts" RPC call 
+   // and account creation, which should be mutually exclusive
+   std::mutex acct_obj_mutex; 
+
    void pop_block() {
       auto prev = fork_db.get_block( head->header.previous );
 
@@ -719,6 +724,7 @@ struct controller_impl {
    }
 
    void create_native_account( const fc::time_point& initial_timestamp, account_name name, const authority& owner, const authority& active, bool is_privileged = false ) {
+      std::lock_guard<std::mutex> lock(acct_obj_mutex);
       db.create<account_object>([&](auto& a) {
          a.name = name;
          a.creation_date = initial_timestamp;
@@ -3350,6 +3356,10 @@ void controller::replace_account_keys( name account, name permission, const publ
    int64_t new_size = (int64_t)(chain::config::billable_size_v<permission_object> + perm->auth.get_billable_size());
    rlm.add_pending_ram_usage(account, new_size - old_size, generic_storage_usage_trace(0));
    rlm.verify_account_ram_usage(account);
+}
+
+std::mutex& controller::acct_obj_mutex() {
+   return my->acct_obj_mutex;
 }
 
 /// Protocol feature activation handlers:
