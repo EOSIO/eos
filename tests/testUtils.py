@@ -84,7 +84,7 @@ class WaitSpec:
             # calculation is performing worst case (irreversible block progression) which at worst will waste 5 seconds
             blocksPerWindow = 12
             blockWindowsToWait = (endBlockNum - startBlockNum + blocksPerWindow - 1) / blocksPerWindow
-            secondsPerWindow = blocksPerWindow / 2
+            secondsPerWindow = blocksPerWindow * WaitSpec.block_interval
             timeout += blockWindowsToWait * secondsPerWindow
 
         self.value = timeout
@@ -106,6 +106,7 @@ class WaitSpec:
 
     default_seconds = 60
     default_leeway = 10
+    block_interval = 0.5 # has to match libraries/chain/include/eosio/chain/config.hpp block_interval_ms
 
 ###########################################################################################
 
