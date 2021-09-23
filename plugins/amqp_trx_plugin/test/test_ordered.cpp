@@ -113,7 +113,7 @@ BOOST_AUTO_TEST_CASE(order_mock_producer_plugin) {
    for( size_t i = 0; i < 42; ++i ) {
       auto ptrx = make_unique_trx(chain_id);
       trxs.push_back( ptrx );
-      queue->push( ptrx,
+      queue->push( ptrx, 0,
                    [ptrx, &next_calls, &next_trx_match]( const std::variant<fc::exception_ptr, chain::transaction_trace_ptr>& result ) {
          if( std::get<chain::transaction_trace_ptr>(result)->id != ptrx->id() ) {
             next_trx_match = false;

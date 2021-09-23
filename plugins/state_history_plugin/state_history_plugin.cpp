@@ -22,12 +22,30 @@ using tcp    = boost::asio::ip::tcp;
 using unixs  = boost::asio::local::stream_protocol;
 namespace ws = boost::beast::websocket;
 
-extern const char* const state_history_plugin_abi;
+/* Prior to boost 1.70, if socket type is not boost::asio::ip::tcp::socket nor boost::asio::ssl::stream beast requires
+   an overload of async_teardown. This has been improved in 1.70+ to support any basic_stream_socket<> out of the box
+   which includes unix sockets. */
+#if BOOST_VERSION < 107000
+namespace boost::beast::websocket {
+template<typename TeardownHandler>
+void async_teardown(role_type, unixs::socket& sock, TeardownHandler&& handler) {
+   boost::system::error_code ec;
+   sock.close(ec);
+   boost::asio::post(boost::asio::get_associated_executor(handler, sock.get_executor()), [h=std::move(handler),ec]() mutable {
+      h(ec);
+   });
+}
+}
+#endif
 
 namespace eosio {
 using namespace chain;
 using namespace state_history;
 using boost::signals2::scoped_connection;
+
+namespace ship_protocol {
+extern const char* const ship_abi;
+}
 
 static appbase::abstract_plugin& _state_history_plugin = app().register_plugin<state_history_plugin>();
 
@@ -316,7 +334,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
             self->callback(ec, "async_accept", [self] {
                self->socket_stream.binary(false);
                self->socket_stream.async_write(
-                   boost::asio::buffer(state_history_plugin_abi, strlen(state_history_plugin_abi)),
+                   boost::asio::buffer(ship_protocol::ship_abi, strlen(ship_protocol::ship_abi)),
                    [self](boost::system::error_code ec, size_t) {
                       self->callback(ec, "async_write", [self] {
                          self->socket_stream.binary(true);
