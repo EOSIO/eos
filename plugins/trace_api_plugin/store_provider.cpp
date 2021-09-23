@@ -108,7 +108,8 @@ namespace eosio::trace_api {
 
       while (true){
          const bool found = _slice_directory.find_trx_id_slice(slice_number, open_state::read, trx_id_file);
-         if( !found ) break; // traversed all slices
+         if( !found )
+            break; // traversed all slices
 
          metadata_log_entry entry;
          auto ds = trx_id_file.create_datastream();
@@ -119,9 +120,9 @@ namespace eosio::trace_api {
             fc::raw::unpack(ds, entry);
             FC_ASSERT( std::holds_alternative<block_trxs_entry>(entry) == true, "unpacked data should be a block trxs entry" );
             const auto& trxs_entry = std::get<block_trxs_entry>(entry);
-            auto search_id = trxs_entry.ids.find(trx_id);
-            if (search_id != trxs_entry.ids.end()){
-               return trxs_entry.block_num;
+            for (auto i = 0U; i < trxs_entry.ids.size(); ++i){
+               if (trxs_entry.ids[i] == trx_id)
+                  return trxs_entry.block_num;
             }
             offset = trx_id_file.tellp();
          }

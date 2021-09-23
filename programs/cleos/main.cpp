@@ -3082,12 +3082,8 @@ int main( int argc, char** argv ) {
    // get transaction_trace (trace api plugin)
    auto getTransactionTrace = get->add_subcommand("transaction_trace", localized("Retrieve a transaction from trace logs"));
    getTransactionTrace->add_option("id", transaction_id_str, localized("ID of the transaction to retrieve"))->required();
-   getTransactionTrace->add_option( "-b,--block-hint", block_num_hint, localized("The block number this transaction may be in") );
    getTransactionTrace->callback([&] {
       auto arg= fc::mutable_variant_object( "id", transaction_id_str);
-      if ( block_num_hint > 0 ) {
-         arg = arg("block_num_hint", block_num_hint);
-      }
       std::cout << fc::json::to_pretty_string(call(get_transaction_trace_func, arg)) << std::endl;
    });
 

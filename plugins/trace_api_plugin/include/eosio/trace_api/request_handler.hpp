@@ -72,12 +72,13 @@ namespace eosio::trace_api {
             auto& b_mvo = resp.get_object();
             if (b_mvo.contains("transactions")) {
                auto& transactions = b_mvo["transactions"];
+               std::string input_id = trxid.str();
                for (uint32_t i = 0; i < transactions.size(); ++i) {
                   if (transactions[i].is_null()) continue;
                   auto& t_mvo = transactions[i].get_object();
                   if (t_mvo.contains("id")) {
                      const auto& t_id = t_mvo["id"].get_string();
-                     if (t_id == trxid.str()) {
+                     if (t_id == input_id) {
                         result = transactions[i];
                         break;
                      }
