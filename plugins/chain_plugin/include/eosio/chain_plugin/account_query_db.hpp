@@ -90,9 +90,9 @@ namespace eosio::chain_apis {
        * @param args
        * @return
        */
-      get_accounts_by_authorizers_result get_accounts_by_authorizers( const get_accounts_by_authorizers_params& args) const;
+      get_accounts_by_authorizers_result get_accounts_by_authorizers( const get_accounts_by_authorizers_params& args);
 
-      get_all_accounts_result get_all_accounts( ) const;
+      get_all_accounts_result get_all_accounts( ) ;
 
    private:
       std::unique_ptr<struct account_query_db_impl> _impl;

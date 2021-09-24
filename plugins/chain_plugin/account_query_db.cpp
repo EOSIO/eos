@@ -419,7 +419,7 @@ namespace eosio::chain_apis {
       }
 
       account_query_db::get_accounts_by_authorizers_result
-      get_accounts_by_authorizers( const account_query_db::get_accounts_by_authorizers_params& args) const {
+      get_accounts_by_authorizers( const account_query_db::get_accounts_by_authorizers_params& args) {
          std::shared_lock read_lock(rw_mutex);
 
          using result_t = account_query_db::get_accounts_by_authorizers_result;
@@ -479,7 +479,7 @@ namespace eosio::chain_apis {
       }
 
       account_query_db::get_all_accounts_result 
-      get_all_accounts( ) const {
+      get_all_accounts( ) {
          std::lock_guard<std::mutex> lock(controller.acct_obj_mutex());
 
          using result_t = account_query_db::get_all_accounts_result;
@@ -546,11 +546,11 @@ namespace eosio::chain_apis {
       } FC_LOG_AND_DROP(("ACCOUNT DB commit_block ERROR"));
    }
 
-   account_query_db::get_accounts_by_authorizers_result account_query_db::get_accounts_by_authorizers( const account_query_db::get_accounts_by_authorizers_params& args) const {
+   account_query_db::get_accounts_by_authorizers_result account_query_db::get_accounts_by_authorizers( const account_query_db::get_accounts_by_authorizers_params& args) {
       return _impl->get_accounts_by_authorizers(args);
    }
 
-   account_query_db::get_all_accounts_result account_query_db::get_all_accounts() const {
+   account_query_db::get_all_accounts_result account_query_db::get_all_accounts() {
       return _impl->get_all_accounts( );
    }
 
