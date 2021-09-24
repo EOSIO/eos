@@ -184,7 +184,7 @@ BOOST_FIXTURE_TEST_CASE( get_info, TESTER ) try {
 BOOST_FIXTURE_TEST_CASE( get_all_accounts, TESTER ) try {
    produce_blocks(2);
 
-   std::vector<account_name> accs{{ "alice"_n, "bob"_n, "cindy"_n, "dan"_n, "emily"_n, "fred"_n}};
+   std::vector<account_name> accs{{ "alice"_n, "bob"_n, "cindy"_n}};
    create_accounts(accs);
 
    produce_block();
@@ -199,13 +199,13 @@ BOOST_FIXTURE_TEST_CASE( get_all_accounts, TESTER ) try {
       BOOST_REQUIRE_EQUAL(name("alice"_n), result.accounts[0].name);
       BOOST_REQUIRE_EQUAL(name("bob"_n), result.accounts[1].name);
       BOOST_REQUIRE_EQUAL(name("cindy"_n), result.accounts[2].name);
-      BOOST_REQUIRE_EQUAL(name("dan"_n), result.accounts[3].name);
-      BOOST_REQUIRE_EQUAL(name("emily"_n), result.accounts[4].name);
-      BOOST_REQUIRE_EQUAL(name("fred"_n), result.accounts[5].name);
+      BOOST_REQUIRE_EQUAL(name("eosio"_n), result.accounts[3].name);
+      BOOST_REQUIRE_EQUAL(name("eosio.null"_n), result.accounts[4].name);
+      BOOST_REQUIRE_EQUAL(name("eosio.prods"_n), result.accounts[5].name);
    }
 
    // page size bigger than result
-   p.page_size = 7;
+   p.page_size = 12;
    result = plugin.read_only::get_all_accounts(p);
 
    BOOST_REQUIRE_EQUAL(6u, result.accounts.size());
@@ -213,9 +213,9 @@ BOOST_FIXTURE_TEST_CASE( get_all_accounts, TESTER ) try {
       BOOST_REQUIRE_EQUAL(name("alice"_n), result.accounts[0].name);
       BOOST_REQUIRE_EQUAL(name("bob"_n), result.accounts[1].name);
       BOOST_REQUIRE_EQUAL(name("cindy"_n), result.accounts[2].name);
-      BOOST_REQUIRE_EQUAL(name("dan"_n), result.accounts[3].name);
-      BOOST_REQUIRE_EQUAL(name("emily"_n), result.accounts[4].name);
-      BOOST_REQUIRE_EQUAL(name("fred"_n), result.accounts[5].name);
+      BOOST_REQUIRE_EQUAL(name("eosio"_n), result.accounts[3].name);
+      BOOST_REQUIRE_EQUAL(name("eosio.null"_n), result.accounts[4].name);
+      BOOST_REQUIRE_EQUAL(name("eosio.prods"_n), result.accounts[5].name);
    }
 
    // pagination
@@ -233,7 +233,7 @@ BOOST_FIXTURE_TEST_CASE( get_all_accounts, TESTER ) try {
    BOOST_REQUIRE_EQUAL(2u, result.accounts.size());
    if (result.accounts.size() >= 2) {
       BOOST_REQUIRE_EQUAL(name("cindy"_n), result.accounts[0].name);
-      BOOST_REQUIRE_EQUAL(name("dan"_n), result.accounts[1].name);      
+      BOOST_REQUIRE_EQUAL(name("eosio"_n), result.accounts[1].name);
    }
 
    p.page = 2;
@@ -241,8 +241,8 @@ BOOST_FIXTURE_TEST_CASE( get_all_accounts, TESTER ) try {
    result = plugin.read_only::get_all_accounts(p);
    BOOST_REQUIRE_EQUAL(2u, result.accounts.size());
    if (result.accounts.size() >= 2) {
-      BOOST_REQUIRE_EQUAL(name("emily"_n), result.accounts[0].name);
-      BOOST_REQUIRE_EQUAL(name("fred"_n), result.accounts[1].name);
+      BOOST_REQUIRE_EQUAL(name("eosio.null"_n), result.accounts[0].name);
+      BOOST_REQUIRE_EQUAL(name("eosio.prods"_n), result.accounts[1].name);
    }
 
    // pagination with prime # of accounts
@@ -267,13 +267,14 @@ BOOST_FIXTURE_TEST_CASE( get_all_accounts, TESTER ) try {
    result = plugin.read_only::get_all_accounts(p);
    BOOST_REQUIRE_EQUAL(3u, result.accounts.size());
    if (result.accounts.size() >= 3) {
-      BOOST_REQUIRE_EQUAL(name("dan"_n), result.accounts[0].name);
-      BOOST_REQUIRE_EQUAL(name("emily"_n), result.accounts[1].name);
-      BOOST_REQUIRE_EQUAL(name("fred"_n), result.accounts[2].name);      
+      BOOST_REQUIRE_EQUAL(name("eosio"_n), result.accounts[0].name);
+      BOOST_REQUIRE_EQUAL(name("eosio.null"_n), result.accounts[1].name);
+      BOOST_REQUIRE_EQUAL(name("eosio.prods"_n), result.accounts[2].name);
    }
 
    p.page = 2;
    p.page_size = 3;
+   result = plugin.read_only::get_all_accounts(p);
    BOOST_REQUIRE_EQUAL(1u, result.accounts.size());
    if (result.accounts.size() >= 1) {
       BOOST_REQUIRE_EQUAL(name("gwen"_n), result.accounts[0].name);

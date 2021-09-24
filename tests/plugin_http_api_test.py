@@ -781,7 +781,7 @@ class PluginHttpTest(unittest.TestCase):
         self.assertEqual(ret_json["code"], 500)
 
         # get_all_acoounts with empty parameter
-        default_cmd = cmd_base + "get_all_acoounts"
+        default_cmd = cmd_base + "get_all_accounts"
         ret_json = Utils.runCmdReturnJson(default_cmd)
         self.assertEqual(ret_json["code"], 400)
         self.assertEqual(ret_json["error"]["code"], 3200006)
@@ -798,8 +798,16 @@ class PluginHttpTest(unittest.TestCase):
         # get_all_acoounts with valid parameter
         valid_cmd = default_cmd + self.http_post_str + "'{\"page\": 0, \"page_size\" : 1024 }'"
         ret_json = Utils.runCmdReturnJson(valid_cmd)
-        self.assertEqual(ret_json["code"], 500)
+        self.assertIn("accounts", ret_json)
+        accts = ret_json["accounts"]
+        eosioFound = False
+        for a in accts:
+            eosioFound = eosioFound or a['name'] == "eosio"
+            
+        self.assertTrue(eosioFound)
 
+
+        
     # test all history api
     def test_HistoryApi(self) :
         cmd_base = self.base_node_cmd_str + "history/"
@@ -1261,7 +1269,7 @@ class PluginHttpTest(unittest.TestCase):
         ret_json = Utils.runCmdReturnJson(valid_cmd)
         self.assertIn("rows", ret_json)
 
-        # get_all_accounts
+        
 
     # test all wallet api
     def test_WalletApi(self) :
