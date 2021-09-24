@@ -921,11 +921,11 @@ public:
 
    using get_accounts_by_authorizers_result = account_query_db::get_accounts_by_authorizers_result;
    using get_accounts_by_authorizers_params = account_query_db::get_accounts_by_authorizers_params;
-   get_accounts_by_authorizers_result get_accounts_by_authorizers( const get_accounts_by_authorizers_params& args);
+   get_accounts_by_authorizers_result get_accounts_by_authorizers( const get_accounts_by_authorizers_params& args) const;
    using get_all_accounts_result = account_query_db::get_all_accounts_result; 
    using get_all_accounts_params = empty;
 
-   get_all_accounts_result get_all_accounts( const get_all_accounts_params& params);
+   get_all_accounts_result get_all_accounts( const get_all_accounts_params& params)  const;
    chain::symbol extract_core_symbol()const;
 
 };
