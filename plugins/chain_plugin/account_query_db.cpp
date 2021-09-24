@@ -3,8 +3,6 @@
 #include <eosio/chain/contract_types.hpp>
 #include <eosio/chain/controller.hpp>
 #include <eosio/chain/permission_object.hpp>
-#include <eosio/chain/account_object.hpp>
-
 
 #include <boost/multi_index_container.hpp>
 #include <boost/multi_index/ordered_index.hpp>
@@ -131,7 +129,7 @@ namespace eosio::chain_apis {
     * Implementation details of the account query DB
     */
    struct account_query_db_impl {
-      account_query_db_impl(chain::controller& controller)
+      account_query_db_impl(const chain::controller& controller)
       :controller(controller)
       {}
 
@@ -478,31 +476,13 @@ namespace eosio::chain_apis {
          return result;
       }
 
-      account_query_db::get_all_accounts_result 
-      get_all_accounts( ) const {
-         std::lock_guard<std::mutex> lock(controller.acct_obj_mutex());
-
-         using result_t = account_query_db::get_all_accounts_result;
-         result_t result;
-
-         using acct_obj_idx_type = chainbase::get_index_type<chain::account_object>::type;        
-         const auto& accts = controller.db().get_index<acct_obj_idx_type >().indices().get<chain::by_name>();
-
-         for (auto& a : accts) {
-            result.accounts.push_back({a.name, a.creation_date});
-         }
-
-         return result;
-      }
-
-
       /**
        * Convenience aliases
        */
       using cached_trace_map_t = std::map<chain::transaction_id_type, chain::transaction_trace_ptr>;
       using onblock_trace_t = std::optional<chain::transaction_trace_ptr>;
 
-      chain::controller&         controller;               ///< the controller to read data from
+      const chain::controller&   controller;               ///< the controller to read data from
       cached_trace_map_t         cached_trace_map;         ///< temporary cache of uncommitted traces
       onblock_trace_t            onblock_trace;            ///< temporary cache of on_block trace
 
@@ -525,7 +505,7 @@ namespace eosio::chain_apis {
       mutable std::shared_mutex  rw_mutex;                 ///< mutex for read/write locking on the Multi-index and bimaps
    };
 
-   account_query_db::account_query_db( chain::controller& controller )
+   account_query_db::account_query_db( const chain::controller& controller )
    :_impl(std::make_unique<account_query_db_impl>(controller))
    {
       _impl->build_account_query_map();
@@ -548,10 +528,6 @@ namespace eosio::chain_apis {
 
    account_query_db::get_accounts_by_authorizers_result account_query_db::get_accounts_by_authorizers( const account_query_db::get_accounts_by_authorizers_params& args) const {
       return _impl->get_accounts_by_authorizers(args);
-   }
-
-   account_query_db::get_all_accounts_result account_query_db::get_all_accounts() const {
-      return _impl->get_all_accounts( );
    }
 
 }
