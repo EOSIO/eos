@@ -1621,12 +1621,12 @@ namespace eosio {
          sync_source.reset();
       }
       if( !c ) return;
-      if( !closing && c->current() ) {
+      if( !closing ) {
          std::lock_guard<std::mutex> g_conn( c->conn_mtx );
          if( c->last_handshake_recv.last_irreversible_block_num > sync_known_lib_num ) {
             sync_known_lib_num = c->last_handshake_recv.last_irreversible_block_num;
          }
-      } else if ( closing ) {
+      } else {
          // Closing connection, therefore its view of LIB can no longer be considered as we will no longer be connected.
          // Determine current LIB of remaining peers as our sync_known_lib_num.
          uint32_t highest_lib_num = 0;
@@ -1647,8 +1647,6 @@ namespace eosio {
             sync_next_expected_num = head_blk_num + 1;
             request_next_chunk( std::move(g) );
          }
-      } else {
-         peer_elog( c, "sync_reset_lib_num called on non-current connection" );
       }
    }
 
