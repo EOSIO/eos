@@ -725,6 +725,17 @@ class http_plugin_impl : public std::enable_shared_from_this<http_plugin_impl> {
 
    void http_plugin::plugin_initialize(const variables_map& options) {
       try {
+         my->max_body_size = options.at( "max-body-size" ).as<uint32_t>();
+         verbose_http_errors = options.at( "verbose-http-errors" ).as<bool>();
+
+         my->thread_pool_size = options.at( "http-threads" ).as<uint16_t>();
+         EOS_ASSERT( my->thread_pool_size > 0, chain::plugin_config_exception,
+                     "http-threads ${num} must be greater than 0", ("num", my->thread_pool_size));
+
+         my->max_bytes_in_flight = options.at( "http-max-bytes-in-flight-mb" ).as<uint32_t>() * 1024 * 1024;
+         my->max_requests_in_flight = options.at( "http-max-in-flight-requests" ).as<int32_t>();
+         my->max_response_time = fc::microseconds( options.at("http-max-response-time-ms").as<uint32_t>() * 1000 );
+         
          my->validate_host = options.at("http-validate-host").as<bool>();
          if( options.count( "http-alias" )) {
             const auto& aliases = options["http-alias"].as<vector<string>>();
@@ -792,16 +803,6 @@ class http_plugin_impl : public std::enable_shared_from_this<http_plugin_impl> {
                my->add_aliases_for_endpoint(*my->https_listen_endpoint, host, port);
             }
          }
-
-         my->max_body_size = options.at( "max-body-size" ).as<uint32_t>();
-         verbose_http_errors = options.at( "verbose-http-errors" ).as<bool>();
-
-         my->thread_pool_size = options.at( "http-threads" ).as<uint16_t>();
-         EOS_ASSERT( my->thread_pool_size > 0, chain::plugin_config_exception,
-                     "http-threads ${num} must be greater than 0", ("num", my->thread_pool_size));
-
-         my->max_bytes_in_flight = options.at( "http-max-bytes-in-flight-mb" ).as<uint32_t>() * 1024 * 1024;
-         my->max_response_time = fc::microseconds( options.at("http-max-response-time-ms").as<uint32_t>() * 1000 );
 
          //watch out for the returns above when adding new code here
       } FC_LOG_AND_RETHROW()
