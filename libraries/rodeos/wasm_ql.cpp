@@ -607,7 +607,7 @@ EOSIO_REFLECT(send_transaction_params, signatures, compression, packed_context_f
 
 eosio::ship_protocol::transaction_trace_v0
 query_send_transaction(wasm_ql::thread_state&   thread_state,
-                       const std::vector<char>& contract_kv_prefix, std::string_view body) {
+                       const std::vector<char>& contract_kv_prefix, std::string_view body, std::vector<std::vector<char>>& memory) {
    send_transaction_params params;
    {
       std::string              s{ body.begin(), body.end() };
@@ -627,7 +627,6 @@ query_send_transaction(wasm_ql::thread_state&   thread_state,
 
    rocksdb::ManagedSnapshot snapshot{ thread_state.shared->db->rdb.get() };
 
-   std::vector<std::vector<char>> memory;
    return query_send_transaction(thread_state, contract_kv_prefix, trx, snapshot.snapshot(), memory, true);
 } // query_send_transaction
 

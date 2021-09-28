@@ -120,7 +120,8 @@ const std::vector<char>& query_get_required_keys(wasm_ql::thread_state& thread_s
 eosio::ship_protocol::transaction_trace_v0
 query_send_transaction(wasm_ql::thread_state& thread_state,
                        const std::vector<char>& contract_kv_prefix,
-                       std::string_view body);
+                       std::string_view body,
+                       std::vector<std::vector<char>>& memory);
 eosio::ship_protocol::transaction_trace_v0
 query_send_transaction(wasm_ql::thread_state& thread_state, const std::vector<char>& contract_kv_prefix,
                        const eosio::ship_protocol::packed_transaction& trx, const rocksdb::Snapshot* snapshot,

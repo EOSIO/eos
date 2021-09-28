@@ -284,11 +284,18 @@ void handle_request(const wasm_ql::http_config& http_config, const wasm_ql::shar
                   error(http::status::bad_request, "Unsupported HTTP-method for " + req.target().to_string() + "\n"));
          auto thread_state = state_cache.get_state();
          send_transaction_results results;
+         std::vector<std::vector<char>> memory;
          results.processed = query_send_transaction(*thread_state, temp_contract_kv_prefix,
-                                                    std::string_view{ req.body().data(), req.body().size() });
+                                                    std::string_view{ req.body().data(), req.body().size() }, memory);
          if (!results.processed.except) { // todo: support /v2/chain/send_transaction option for partial trace
-            auto json = eosio::convert_to_json(results);
-            send(ok(std::vector<char>{json.begin(), json.end()}, "application/json"));
+            // convert to vector<char>, would be nice if this was provided by abieos as an alternative to convert_to_json
+            eosio::size_stream ss;
+            eosio::to_json(results, ss);
+            std::vector<char> json_result(ss.size);
+            eosio::fixed_buf_stream fbs(json_result.data(), json_result.size());
+            to_json(results, fbs);
+            eosio::check( fbs.pos == fbs.end, convert_stream_error(eosio::stream_error::underrun) );
+            send(ok(std::move(json_result), "application/json"));
          } else {
             try {
                // elog("query failed: ${s}", ("s", e.what()));
