@@ -37,6 +37,8 @@ public:
          : first_connect_()
          , thread_pool_( "ampq", 1 ) // amqp is not thread safe, use only one thread
          , timer_( thread_pool_.get_executor() )
+         , consume_start_timer_(thread_pool_.get_executor())
+         , next_retry_timer_(thread_pool_.get_executor())
          , retry_timeout_( retry_timeout.count() )
          , amqp_connection_(  thread_pool_.get_executor(), address, retry_interval,
                               [this](AMQP::Channel* c){channel_ready(c);}, [this](){channel_failed();} )
@@ -261,7 +263,7 @@ public:
             }
             queue_name_ = std::move(qn);
             on_consume_ = std::move(on_consume);
-            init_consume(recover);
+            retrying_init_consume(recover);
          } FC_LOG_AND_DROP()
       } );
    }
@@ -328,6 +330,37 @@ private:
 
    }
 
+   void retrying_init_consume(bool recover) {
+       boost::system::error_code ec;
+       consume_start_timer_.expires_from_now(retry_timeout_, ec);
+
+       // what to do if ec?
+
+       timer_.async_wait(boost::asio::bind_executor(thread_pool_.get_executor(), [&](const auto& ec) {
+           if(ec)
+               return;
+           elog( "AMQP start consume timeout" );
+           on_error("AMQP start consume timeout");
+       }));
+
+       init_consume(recover);
+   }
+
+   void schedule_retry_consume(bool recover) {
+       boost::system::error_code ec;
+       consume_start_timer_.expires_from_now(retry_timeout_, ec);
+
+       // what to do if ec?
+
+       timer_.async_wait(boost::asio::bind_executor(thread_pool_.get_executor(), [&](const auto& ec) {
+           if(ec)
+               return;
+           elog( "Retrying consume..." );
+           init_consume(recover);
+       }));
+
+   }
+
    // called from amqp thread
    void init_consume(bool recover) {
       if( channel_ && on_consume_ ) {
@@ -342,6 +375,7 @@ private:
 
          auto& consumer = channel_->consume(queue_name_);
          consumer.onSuccess([&](const std::string& consumer_tag) {
+            consume_start_timer_.cancel();
             ilog("consume started, queue: ${q}, tag: ${tag}, for ${a}",
                  ("q", queue_name_)("tag", consumer_tag)("a", amqp_connection_.address()));
             consumer_tag_ = consumer_tag;
@@ -350,7 +384,7 @@ private:
             elog("consume failed, queue ${q}, tag: ${t} error: ${e}, for ${a}",
                  ("q", queue_name_)("t", consumer_tag_)("e", message)("a", amqp_connection_.address()));
             consumer_tag_.clear();
-            on_error(message);
+            schedule_retry_consume(recover);
          });
          static_assert(std::is_same_v<on_consume_t, AMQP::MessageCallback>, "AMQP::MessageCallback interface changed");
          consumer.onReceived(on_consume_);
@@ -416,6 +450,8 @@ private:
    start_cond first_connect_;
    eosio::chain::named_thread_pool thread_pool_;
    boost::asio::steady_timer timer_;
+   boost::asio::steady_timer consume_start_timer_;
+   boost::asio::steady_timer next_retry_timer_;
    const std::chrono::microseconds retry_timeout_;
    single_channel_retrying_amqp_connection amqp_connection_;
    AMQP::Channel* channel_ = nullptr; // null when not connected
