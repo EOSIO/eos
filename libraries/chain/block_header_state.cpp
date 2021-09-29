@@ -189,6 +189,8 @@ namespace eosio { namespace chain {
       h.transaction_mroot = transaction_mroot;
       h.action_mroot      = action_mroot;
       h.schedule_version  = active_schedule_version;
+      h.trx_auth_total_us = trx_auth_us;
+      h.trx_exec_total_us = trx_exec_us;
 
       if( new_protocol_feature_activations.size() > 0 ) {
          emplace_extension(

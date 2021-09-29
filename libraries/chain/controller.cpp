@@ -1173,7 +1173,7 @@ struct controller_impl {
    template<typename T>
    const transaction_receipt& push_receipt( const T& trx, transaction_receipt_header::status_enum status,
                                             uint64_t cpu_usage_us, uint64_t net_usage, uint32_t auth_us, uint32_t exec_us ) {
-      ilog("auth_us= ${auth} exec_us= ${exec}", ("auth", auth_us)("exec", exec_us));
+      // ilog("auth_us= ${auth} exec_us= ${exec}", ("auth", auth_us)("exec", exec_us));
       uint64_t net_usage_words = net_usage / 8;
       EOS_ASSERT( net_usage_words*8 == net_usage, transaction_exception, "net_usage is not divisible by 8" );
       auto& receipts = std::get<building_block>(pending->_block_stage)._pending_trx_receipts;
