@@ -82,11 +82,6 @@ RUN python3 -m pip install requests
 RUN curl -L0 https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.0/install.sh && \
     bash install.sh
 
-# install node 10
-RUN bash -c '. ~/.bashrc; nvm install --lts=dubnium' && \
-    ln -s "/root/.nvm/versions/node/$(ls -p /root/.nvm/versions/node | sort -Vr | head -1)bin/node" /usr/local/bin/node
-RUN yum install -y nodejs && \
-    yum clean all && rm -rf /var/cache/yum
 # setup Postgress
 RUN localedef -c -f UTF-8 -i en_US en_US.UTF-8 && \
     su - postgres -c initdb
