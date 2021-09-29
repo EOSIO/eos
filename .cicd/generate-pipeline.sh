@@ -669,33 +669,33 @@ EOF
     timeout: ${TIMEOUT:-10}
     skip: ${SKIP_UBUNTU_20_04}${SKIP_PACKAGE_BUILDER}${SKIP_LINUX}
 
-  - label: ":oracle_linux: Oracle_Linux 8.3 - Package Builder"
+  - label: ":oracle_linux: Oracle_Linux 8 - Package Builder"
     command:
-      - "buildkite-agent artifact download build.tar.gz . --step ':oracle_linux: Oracle_Linux 8.3 - Build' && tar -xzf build.tar.gz"
+      - "buildkite-agent artifact download build.tar.gz . --step ':oracle_linux: Oracle_Linux 8 - Build' && tar -xzf build.tar.gz"
       - "./.cicd/package.sh"
     env:
-      IMAGE_TAG: "oracle_linux-8.3-$PLATFORM_TYPE"
+      IMAGE_TAG: "oracle_linux-8-$PLATFORM_TYPE"
       PLATFORM_TYPE: $PLATFORM_TYPE
-      OS: "oracle_linux-8.3" # OS and PKGTYPE required for lambdas
+      OS: "oracle_linux-8" # OS and PKGTYPE required for lambdas
       PKGTYPE: "rpm"
     agents:
       queue: "$BUILDKITE_TEST_AGENT_QUEUE"
     key: "oracle8pb"
     timeout: ${TIMEOUT:-10}
-    skip: ${SKIP_ORACLE_LINUX_8_3}${SKIP_PACKAGE_BUILDER}${SKIP_LINUX}
+    skip: ${SKIP_ORACLE_LINUX_8}${SKIP_PACKAGE_BUILDER}${SKIP_LINUX}
 
-  - label: ":oracle_linux: Oracle_Linux 8.3 - Test Package"
+  - label: ":oracle_linux: Oracle_Linux 8 - Test Package"
     command:
-      - "buildkite-agent artifact download '*.rpm' . --step ':oracle_linux: Oracle_Linux 8.3 - Package Builder' --agent-access-token \$\$BUILDKITE_AGENT_ACCESS_TOKEN"
+      - "buildkite-agent artifact download '*.rpm' . --step ':oracle_linux: Oracle_Linux 8 - Package Builder' --agent-access-token \$\$BUILDKITE_AGENT_ACCESS_TOKEN"
       - "./.cicd/test-package.docker.sh"
     env:
-      IMAGE: "oraclelinux:8.3"
+      IMAGE: "oraclelinux:8"
     agents:
       queue: "$BUILDKITE_TEST_AGENT_QUEUE"
     depends_on: "oracle8pb"
     allow_dependency_failure: false
     timeout: ${TIMEOUT:-10}
-    skip: ${SKIP_ORACLE_LINUX_8_3}${SKIP_PACKAGE_BUILDER}${SKIP_LINUX}
+    skip: ${SKIP_ORACLE_LINUX_8}${SKIP_PACKAGE_BUILDER}${SKIP_LINUX}
 
   - label: ":darwin: macOS 10.15 - Package Builder"
     command:
