@@ -84,7 +84,8 @@ function install-package() {
     ( [[ $2 =~ "--" ]] || [[ $3 =~ "--" ]] ) && OPTIONS="${2}${3}"
     # Can't use $SUDO_COMMAND: https://askubuntu.com/questions/953485/where-do-i-find-the-sudo-command-environment-variable
     [[ $CURRENT_USER != "root" ]] && [[ ! -z $SUDO_LOCATION ]] && NEW_SUDO_COMMAND="$SUDO_LOCATION -E"
-    ( [[ $NAME =~ "Amazon Linux" ]] || [[ $NAME == "CentOS Linux" ]] || [[ $NAME == "Oracle Linux Server" ]] ) && eval $EXECUTION_FUNCTION $NEW_SUDO_COMMAND $YUM $OPTIONS install -y $1
+    ( [[ $NAME =~ "Amazon Linux" ]] || [[ $NAME == "CentOS Linux" ]] ) && eval $EXECUTION_FUNCTION $NEW_SUDO_COMMAND $YUM $OPTIONS install -y $1
+    ( [[ $NAME == "Oracle Linux Server" ]] ) && eval $EXECUTION_FUNCTION $NEW_SUDO_COMMAND $DNF $OPTIONS install -y $1
     ( [[ $NAME =~ "Ubuntu" ]] ) && eval $EXECUTION_FUNCTION $NEW_SUDO_COMMAND $APTGET $OPTIONS install -y $1
   fi
   true # Required; Weird behavior without it
@@ -387,4 +388,8 @@ function ensure-apt-packages() {
         echo ""
     fi
     IFS=$OLDIFS
+}
+
+function ensure-dnf-packages() {
+    YUM=${DNF} && ensure-yum-packages
 }

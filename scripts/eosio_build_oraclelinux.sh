@@ -12,15 +12,19 @@ echo "Disk space available: ${DISK_AVAIL}G"
 echo ""
 
 # Ensure packages exist
-ensure-yum-packages "${REPO_ROOT}/scripts/eosio_build_oraclelinux8_deps"
+ensure-dnf-packages "${REPO_ROOT}/scripts/eosio_build_oraclelinux8_deps"
 
-dnf update && dnf install -y cmake
+dnf update
 if [[  $PIN_COMPILER == "true" ]]; then
-	yum install -y gcc-c++;
+	dnf install -y gcc-c++;
 else
 	# for unpinned builds, install clang as well
 	dnf install -y clang llvm llvm-devel llvm-toolset;
 fi
+
+# install doxygen package
+curl -LO https://yum.oracle.com/repo/OracleLinux/OL8/codeready/builder/x86_64/getPackage/doxygen-1.8.14-12.el8.x86_64.rpm && \
+rpm -i doxygen-1.8.14-12.el8.x86_64.rpm
 
 # Handle clang/compiler
 ensure-compiler
@@ -32,5 +36,3 @@ build-clang
 ensure-llvm
 # BOOST Installation
 ensure-boost
-# Build doxygen 
-build-doxygen
