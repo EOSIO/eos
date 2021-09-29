@@ -84,7 +84,7 @@ class WaitSpec:
             # calculation is performing worst case (irreversible block progression) which at worst will waste 5 seconds
             blocksPerWindow = 12
             blockWindowsToWait = (endBlockNum - startBlockNum + blocksPerWindow - 1) / blocksPerWindow
-            secondsPerWindow = blocksPerWindow / 2
+            secondsPerWindow = blocksPerWindow * WaitSpec.block_interval
             timeout += blockWindowsToWait * secondsPerWindow
 
         self.value = timeout
@@ -106,6 +106,7 @@ class WaitSpec:
 
     default_seconds = 60
     default_leeway = 10
+    block_interval = 0.5 # has to match libraries/chain/include/eosio/chain/config.hpp block_interval_ms
 
 ###########################################################################################
 
@@ -554,6 +555,55 @@ class Utils:
         if asset[1] != delta[1]:
             return None
         return "{0} {1}".format(round(float(asset[0]) - float(delta[0]), 4), asset[1])
+
+    @staticmethod
+    def makeHTTPReqStr(host : str, port : str, api_call : str, body : str, keepAlive=False) -> str:
+        hdr = "POST " + api_call + " HTTP/1.1\r\n" 
+        hdr += f"Host: {host}:{port}\r\n"
+        body += "\r\n"
+        body_len = len(body)
+        hdr +=  f"content-length: {body_len}\r\n" 
+        hdr +=  "Accept: */*\r\n"
+        hdr += "Connection: "
+        if keepAlive:
+            hdr += "Keep-Alive\r\n"
+        else:
+            hdr += "Close\r\n"
+        hdr += "\r\n"
+        return hdr + body
+
+    @staticmethod
+    def readSocketData(sock : socket.socket, maxMsgSize : int) -> bytes:
+        """Read data from a socket until maxMsgSize is reached or timeout
+        Retrusn data as bytes object"""
+        sock.settimeout(1)
+        moreData = True
+        data = None
+        bufSize = 64
+        while moreData and maxMsgSize > 0:
+            try:
+                bufSize = min(bufSize, maxMsgSize)
+                d = sock.recv(bufSize)
+                dataSz = len(d)
+                maxMsgSize -= dataSz
+                if data is None:
+                    data = d
+                else:
+                    data += d
+                moreData = (dataSz == bufSize)
+            except Exception as e:
+                moreData = False
+        return data
+
+    @staticmethod
+    def readSocketDataStr(sock : socket.socket, maxMsgSize : int, enc : str) -> str:
+        """Read data from a socket until maxMsgSize is reached or timeout
+        Retrusn data as decoded string object"""
+        data = Utils.readSocketData(sock, maxMsgSize) 
+        return data.decode(enc)
+        
+
+
 ###########################################################################################
 class Account(object):
     # pylint: disable=too-few-public-methods
