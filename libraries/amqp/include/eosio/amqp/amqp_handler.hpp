@@ -339,7 +339,7 @@ private:
       if (ec)
           return;
 
-      timer_.async_wait(boost::asio::bind_executor(thread_pool_.get_executor(), [&](const auto& ec) {
+      consume_start_timer_.async_wait(boost::asio::bind_executor(thread_pool_.get_executor(), [&](const auto& ec) {
           if(ec)
               return;
           elog( "AMQP start consume timeout" );
@@ -351,11 +351,12 @@ private:
 
    void schedule_retry_consume(bool recover) {
        boost::system::error_code ec;
-       consume_start_timer_.expires_from_now(retry_interval_, ec);
+       next_retry_timer_.expires_from_now(retry_interval_, ec);
 
-       // what to do if ec?
+       if (ec)
+           return;
 
-       timer_.async_wait(boost::asio::bind_executor(thread_pool_.get_executor(), [&](const auto& ec) {
+       next_retry_timer_.async_wait(boost::asio::bind_executor(thread_pool_.get_executor(), [&](const auto& ec) {
            if(ec)
                return;
            elog( "Retrying consume..." );
