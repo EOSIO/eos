@@ -16,15 +16,18 @@ ensure-dnf-packages "${REPO_ROOT}/scripts/eosio_build_oraclelinux8_deps"
 
 dnf update
 if [[  $PIN_COMPILER == "true" ]]; then
-	dnf install -y gcc-c++;
+    dnf install -y gcc-c++;
 else
-	# for unpinned builds, install clang as well
-	dnf install -y clang llvm llvm-devel llvm-toolset;
+    # for unpinned builds, install clang as well
+    dnf install -y clang llvm llvm-devel llvm-toolset;
 fi
 
 # install doxygen package
-curl -LO https://yum.oracle.com/repo/OracleLinux/OL8/codeready/builder/x86_64/getPackage/doxygen-1.8.14-12.el8.x86_64.rpm && \
-rpm -i doxygen-1.8.14-12.el8.x86_64.rpm
+if [[ -z $(rpm -qa | grep doxygen) ]]; then
+    curl -LO https://yum.oracle.com/repo/OracleLinux/OL8/codeready/builder/x86_64/getPackage/doxygen-1.8.14-12.el8.x86_64.rpm && \
+    rpm -i doxygen-1.8.14-12.el8.x86_64.rpm
+    rm doxygen-1.8.14-12.el8.x86_64.rpm
+fi
 
 # Handle clang/compiler
 ensure-compiler

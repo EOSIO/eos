@@ -204,6 +204,7 @@ function ensure-build-essential() {
     fi
 }
 
+# also handles DNF
 function ensure-yum-packages() {
     ( [[ -z "${1}" ]] || [[ ! -f "${1}" ]] ) && echo "\$1 must be the location of your dependency file!" && exit 1
     DEPS_FILE="${TEMP_DIR}/$(basename ${1})"
@@ -215,8 +216,15 @@ function ensure-yum-packages() {
         _2=("$(echo $2 | sed 's/-qa /-qa\n/g')")
         for ((i = 0; i < ${#_2[@]}; i++)); do echo "${_2[$i]}\n" | sed 's/-qa\\n/-qa/g' >> $DEPS_FILE; done
     fi
+
+    # assume YUM if we are not passed third argument
+    PKG_MGR="YUM"
+    if [[ -n ${3} ]]; then
+        PKG_MGR="DNF"
+    fi
+
     while true; do
-        [[ $NONINTERACTIVE == false ]] && printf "${COLOR_YELLOW}Do you wish to update YUM repositories? (y/n)?${COLOR_NC}" && read -p " " PROCEED
+        [[ $NONINTERACTIVE == false ]] && printf "${COLOR_YELLOW}Do you wish to update ${PKG_MGR} repositories? (y/n)?${COLOR_NC}" && read -p " " PROCEED
         echo ""
         case $PROCEED in
             "" ) echo "What would you like to do?";;
@@ -391,5 +399,5 @@ function ensure-apt-packages() {
 }
 
 function ensure-dnf-packages() {
-    YUM=${DNF} && ensure-yum-packages
+    YUM=${DNF} && ensure-yum-packages "${1}" "${2}" "DNF"
 }
