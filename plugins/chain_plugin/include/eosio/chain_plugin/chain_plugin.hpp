@@ -924,7 +924,23 @@ public:
    get_accounts_by_authorizers_result get_accounts_by_authorizers( const get_accounts_by_authorizers_params& args) const;
 
    chain::symbol extract_core_symbol()const;
+   friend struct resolver_factory<read_only>;
 
+   struct get_all_accounts_result {
+      struct account_result {
+         chain::name                          name;
+         chain::block_timestamp_type          creation_date;
+      };
+
+      std::vector<account_result> accounts;
+   };
+
+   struct get_all_accounts_params {
+      uint16_t page;
+      uint16_t page_size;
+   };
+
+   get_all_accounts_result get_all_accounts( const get_all_accounts_params& params)  const;
 };
 
 class read_write {
@@ -1149,5 +1165,7 @@ FC_REFLECT( eosio::chain_apis::read_only::abi_bin_to_json_result, (args) )
 FC_REFLECT( eosio::chain_apis::read_only::get_required_keys_params, (transaction)(available_keys) )
 FC_REFLECT( eosio::chain_apis::read_only::get_required_keys_result, (required_keys) )
 FC_REFLECT( eosio::chain_apis::read_only::send_ro_transaction_params_v1, (return_failure_traces)(transaction) )
-FC_REFLECT( eosio::chain_apis::read_only::send_ro_transaction_results, (head_block_num)(head_block_id)(last_irreversible_block_num)(last_irreversible_block_id)(code_hash)(pending_transactions)(result) )
-
+FC_REFLECT( eosio::chain_apis::read_only::send_ro_transaction_results, (head_block_num)(head_block_id)(last_irreversible_block_num)(last_irreversible_block_id)(code_hash)(pending_transactions)(result) ),
+FC_REFLECT( eosio::chain_apis::read_only::get_all_accounts_params, (page)(page_size))
+FC_REFLECT( eosio::chain_apis::read_only::get_all_accounts_result::account_result, (name)(creation_date))
+FC_REFLECT( eosio::chain_apis::read_only::get_all_accounts_result, (accounts))

@@ -3356,6 +3356,27 @@ eosio::chain::backing_store_type read_only::get_backing_store() const {
    return kv_database.get_backing_store();
 }
 
+read_only::get_all_accounts_result
+read_only::get_all_accounts( const get_all_accounts_params& params ) const
+{
+   get_all_accounts_result result;
+
+   using acct_obj_idx_type = chainbase::get_index_type<chain::account_object>::type;
+   const auto& accts = db.db().get_index<acct_obj_idx_type >().indices().get<chain::by_name>();
+
+   uint32_t i = 0;
+   uint32_t start_idx = params.page * params.page_size;
+   for (auto& a : accts) {
+      if (i >= start_idx)
+         result.accounts.push_back({a.name, a.creation_date});
+      i++;
+      if (result.accounts.size() >= params.page_size)
+         break;
+   }
+
+   return result;
+}
+
 } // namespace chain_apis
 
 fc::variant chain_plugin::get_entire_trx_trace(const transaction_trace_ptr& trx_trace )const {
