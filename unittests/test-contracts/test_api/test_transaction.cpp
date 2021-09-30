@@ -191,18 +191,6 @@ void test_transaction::send_transaction(uint64_t receiver, uint64_t, uint64_t) {
    trx.send( 0, name{receiver} );
 }
 
-void test_transaction::send_action_sender( uint64_t receiver, uint64_t, uint64_t ) {
-   using namespace eosio;
-   uint64_t cur_send;
-   eosio::read_action_data( &cur_send, sizeof(name) );
-
-   auto trx = transaction();
-   std::vector<permission_level> permissions = { {"testapi"_n, "active"_n} };
-
-   trx.actions.emplace_back(permissions, name{"testapi"}, name{WASM_TEST_ACTION( "test_action", "test_current_sender" )}, &cur_send);
-   trx.send( 0, name{receiver} );
-}
-
 void test_transaction::send_transaction_empty( uint64_t receiver, uint64_t, uint64_t ) {
    using namespace eosio;
    auto trx = transaction();
