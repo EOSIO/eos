@@ -62,6 +62,30 @@ struct error_results {
 
 EOSIO_REFLECT(error_results, code, message, error)
 
+struct send_transaction_results {
+   eosio::checksum256   transaction_id; // todo: redundant with processed.id
+   eosio::ship_protocol::transaction_trace_v0 processed;
+};
+
+EOSIO_REFLECT(send_transaction_results, transaction_id, processed)
+
+struct send_error_info {
+   int64_t                                                code = {};
+   std::string                                            name = {};
+   std::string                                            what = {};
+   std::optional<eosio::ship_protocol::transaction_trace> trace = {};
+};
+
+EOSIO_REFLECT(send_error_info, code, name, what, trace)
+
+struct send_error_results {
+   uint16_t         code = {};
+   std::string      message = {};
+   send_error_info  error = {};
+};
+
+EOSIO_REFLECT(send_error_results, code, message, error)
+
 namespace b1::rodeos::wasm_ql {
 
 // Report a failure
@@ -259,11 +283,33 @@ void handle_request(const wasm_ql::http_config& http_config, const wasm_ql::shar
             return send(
                   error(http::status::bad_request, "Unsupported HTTP-method for " + req.target().to_string() + "\n"));
          auto thread_state = state_cache.get_state();
-         send(ok(query_send_transaction(*thread_state, temp_contract_kv_prefix,
-                                        std::string_view{ req.body().data(), req.body().size() },
-                                        false // todo: switch to true when /v1/chain/send_transaction2
-                                        ),
-                 "application/json"));
+         send_transaction_results results;
+         std::vector<std::vector<char>> memory;
+         results.processed = query_send_transaction(*thread_state, temp_contract_kv_prefix,
+                                                    std::string_view{ req.body().data(), req.body().size() }, memory);
+         if (!results.processed.except) { // todo: support /v2/chain/send_transaction option for partial trace
+            // convert to vector<char>, would be nice if this was provided by abieos as an alternative to convert_to_json
+            eosio::size_stream ss;
+            eosio::to_json(results, ss);
+            std::vector<char> json_result(ss.size);
+            eosio::fixed_buf_stream fbs(json_result.data(), json_result.size());
+            to_json(results, fbs);
+            eosio::check( fbs.pos == fbs.end, convert_stream_error(eosio::stream_error::underrun) );
+            send(ok(std::move(json_result), "application/json"));
+         } else {
+            try {
+               // elog("query failed: ${s}", ("s", e.what()));
+               send_error_results err;
+               err.code       = (uint16_t)http::status::internal_server_error;
+               err.message    = "Internal Service Error";
+               err.error.name = "failed transaction";
+               err.error.what = *results.processed.except;
+               err.error.trace = std::move(results.processed);
+               return send(error(http::status::internal_server_error, eosio::convert_to_json(err), "application/json"));
+            } catch (...) { //
+               return send(error(http::status::internal_server_error, "failure reporting vm::exception failure\n"));
+            }
+         }
          return;
       } else if (req.target() == "/v1/rodeos/create_checkpoint") {
          if (!http_config.checkpoint_dir)
@@ -338,7 +384,7 @@ void handle_request(const wasm_ql::http_config& http_config, const wasm_ql::shar
          err.error.what = e.what() + std::string(": ") + e.detail();
          return send(error(http::status::internal_server_error, eosio::convert_to_json(err), "application/json"));
       } catch (...) { //
-         return send(error(http::status::internal_server_error, "failure reporting failure\n"));
+         return send(error(http::status::internal_server_error, "failure reporting vm::exception failure\n"));
       }
    } catch (const std::exception& e) {
       try {
@@ -350,7 +396,7 @@ void handle_request(const wasm_ql::http_config& http_config, const wasm_ql::shar
          err.error.what = e.what();
          return send(error(http::status::internal_server_error, eosio::convert_to_json(err), "application/json"));
       } catch (...) { //
-         return send(error(http::status::internal_server_error, "failure reporting failure\n"));
+         return send(error(http::status::internal_server_error, "failure reporting exception failure\n"));
       }
    } catch (...) {
       elog("query failed: unknown exception");
