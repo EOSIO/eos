@@ -4,6 +4,19 @@ import http.client
 import sys
 import json
 
+def getJSONResp(conn, rpc, req_body=""):
+    conn.request("POST", rpc, body=req_body)
+    resp = conn.getresponse()
+    json_resp = resp.read()
+    json_data = json.loads(json_resp)
+    if 'code' in json_data:
+        print(f"ERROR calling '{rpc}'")
+        print(f"body= {req_body}")
+        print(f"json_resp= {json_resp}")
+        exit(1)
+
+    return json_data
+
 rpc_endpt = "127.0.0.1:8888"
 if len(sys.argv) > 1:
     rpc_endpt = sys.argv[1]
@@ -14,10 +27,7 @@ if len(sys.argv) > 2:
 
 # get the server info
 conn = http.client.HTTPConnection(rpc_endpt)
-conn.request("POST", "/v1/chain/get_info")
-resp = conn.getresponse()
-info_json = resp.read()
-server_info_begin = json.loads(info_json)
+server_info_begin = getJSONResp(conn, "/v1/chain/get_info")
 
 # get all accounts on the chain
 page = 0
@@ -25,11 +35,8 @@ isResp = True
 all_accts = []
 while isResp:
     req_body = '{"page":' + str(page) + ', "page_size":' + str(page_size) + '}'
-    conn.request("POST", "/v1/chain/get_all_accounts", body=req_body)
-
-    resp = conn.getresponse()
-    accts_json = resp.read()
-    accts = json.loads(accts_json)
+    accts = getJSONResp(conn, "/v1/chain/get_all_accounts", req_body)
+    
     page += 1
     all_accts.append(accts['accounts'])
     isResp = len(accts['accounts']) > 0
@@ -45,40 +52,55 @@ for accts in all_accts:
         e = { 'name' : nm }
 
         req_body = '{ "account_name": "' + nm + '" }'
-        conn.request("POST", "/v1/chain/get_account", body=req_body)
-        resp = conn.getresponse()
-        acct_resp = resp.read()
-        metadata = json.loads(acct_resp)
+        metadata = getJSONResp(conn, "/v1/chain/get_account", req_body)
+
         e['privileged'] = metadata['privileged']
         e['permissions'] = metadata['permissions']
 
         # get code hash of account
-        conn.request("POST", "/v1/chain/get_code_hash", body=req_body)
-        resp = conn.getresponse()
-        code_resp = resp.read()
-        code_hash = json.loads(code_resp)
+        code_hash = getJSONResp(conn, "/v1/chain/get_code_hash", req_body)
         e['code_hash'] = code_hash['code_hash']
 
         accts_lst.append(e)
 
+scope_limit = 10
+table_row_limit = 10
+for a in accts_lst:
+    # get scopes and tables
+    nm = a['name']
+    req_body = '{' + f'"code":"{nm}", "table":"", "lower_bound":"", "upper_bound":"", "limit":{scope_limit}, "reverse":false' + '}'
+    scopes = getJSONResp(conn, "/v1/chain/get_table_by_scope", req_body)
+    scope_rows = scopes["rows"]
+    a['scopes'] = scopes
+    a['tables'] = dict()
+    for scope in scope_rows:
+        sc = scope['scope']
+        tbl = scope['table']
+
+        req_body = '{' + f'"json":true, "code":"{nm}", "scope":"{sc}", "table":"{tbl}", "lower_bound":"",\
+"upper_bound":"", "limit": {table_row_limit},"table_key": "",  "key_type": "", "index_position": "",\
+"encode_type": "bytes", "reverse": false, "show_payer": false' + '}'
+        table_rows = getJSONResp(conn, "/v1/chain/get_table_rows", req_body)
+        a['tables'][sc + ":" + tbl] = table_rows
+
+    # get abi so we can determine kv_tables
+    req_body = '{' + f'"account_name": "{nm}"' + '}'
+    abi = getJSONResp(conn, "/v1/chain/get_abi", req_body)
+    if 'abi' in abi:
+        kv_tables = abi['abi']['kv_tables']
+        # TODO: get kv_tables for account
+
 data = {'accounts' : accts_lst}
 
-conn.request("POST", "/v1/chain/get_producer_schedule")
-resp = conn.getresponse()
-prod_sched = json.loads(resp.read())
+prod_sched = getJSONResp(conn, "/v1/chain/get_producer_schedule")
 data['producer_schedule'] = prod_sched
 
-conn.request("POST", "/v1/chain/get_activated_protocol_features")
-resp = conn.getresponse()
-prot_feats = json.loads(resp.read())
+prot_feats = getJSONResp(conn, "/v1/chain/get_activated_protocol_features")
 prot_feats = prot_feats['activated_protocol_features']
 data['activated_protocol_features'] = prot_feats
 
 # get the server info again
-conn.request("POST", "/v1/chain/get_info")
-resp = conn.getresponse()
-info_json = resp.read()
-server_info_end = json.loads(info_json)
+server_info_end = getJSONResp(conn, "/v1/chain/get_info")
 
 data['server_info_begin'] = server_info_begin
 data['server_info_end'] = server_info_end
@@ -99,28 +121,22 @@ try:
         print(f"{a['name']:13} | {a['privileged']:5} | {a['code_hash']}")
 
     print("\n\n     ======  ACCOUNT PERMISSIONS ======")
-    print("Accoount        Perm Name       Parent         Auth Threshold / Keys / Accounts / Weights                    ")
+    print("Accoount        Perm Name       Parent         Auth Threshold / [(Key, Weight)..] / Accounts / Waits                    ")
     print("---------------------------------------------------------------------------------------------------------")
     for a in accts_lst:
         for p in a['permissions']:
             print(f"{a['name']:13} | {p['perm_name']:13} | {p['parent']:13} | ", end="")
             auth = p['required_auth']
-            print(f"{auth['threshold']}", end=" / ")
-            if len(auth['keys']) == 0:
-                print("(none)", end="")
+            print(f"{auth['threshold']}", end=" / [")
             for k in auth['keys']:
-                print(f"({k['key']}, w={k['weight']})", end=",")
-            print(" / ", end="")
-            if len(auth['accounts']) == 0:
-                print("(none)", end="")
+                print(f"({k['key']}, {k['weight']})", end=",")
+            print("] / [", end="")
             for auth_a in auth['accounts']:
                 print(f"{auth_a}", end=",")
-            print(" / ", end="")
-            if len(auth['waits']) == 0:
-                print("(none)", end="")
+            print("] / [", end="")
             for auth_w in auth['waits']:
                 print(f"{auth_w}", end=",")
-            print()
+            print("]")
 
     for s in ('active', 'pending', 'proposed'):
         sched = prod_sched[s]
@@ -153,9 +169,39 @@ try:
     else:
         for feat in prot_feats:
             print(feat)
+
+    print("\n\n     ====== CONTRACT TABLES (MI) ======")
+    print("Account        Scope:Table                  Values")
+    print("---------------------------------------------------------------------------------------------------------")
+    atLeastOne = False
+    for a in accts_lst:
+        scopes = a['scopes']
+        for s in scopes['rows']:
+            scope_table = s['scope'] + ":" + s['table']
+            print(f"{s['code']:13} | {scope_table:27}", end=" ")
+            tbl = a['tables'][scope_table]
+            print('[', end="")
+            for v in tbl['rows']:
+                print(v, end= ", ")
+            if tbl['more']:
+                print("(truncated)", end="")
+            print(']')
+            atLeastOne = True
+        if scopes['more']:
+            print(f"{a['name']:13} | (truncated)")
+    if not atLeastOne:
+        print("(None)")       
+   
+    # TODO: print kv_tables here
+
+    print("\nFULL SERVER INFO:\n")
+    for k, v in server_info_end.items():
+        print(f"{k:>30} : {v}")
+
 except Exception as e:
     print("\n\n***** exception occured when outputting tables *****")
     print(e)
+    raise e
 
 # save results as json
 with open("blockchain_audit_data.json", "wt") as f:
