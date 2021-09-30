@@ -70,7 +70,7 @@ try:
                                   1: " --backing-store=chainbase --plugin eosio::amqp_trx_plugin --amqp-trx-address %s" % (amqpAddr)}
 
         traceNodeosArgs=" --plugin eosio::trace_api_plugin --trace-no-abis "
-        if cluster.launch(totalNodes=2, totalProducers=3, pnodes=1, dontBootstrap=False, onlyBios=False, useBiosBootFile=True, specificExtraNodeosArgs=specificExtraNodeosArgs, extraNodeosArgs=traceNodeosArgs) is False:
+        if cluster.launch(totalNodes=2, totalProducers=3, pnodes=2, dontBootstrap=False, onlyBios=False, useBiosBootFile=True, specificExtraNodeosArgs=specificExtraNodeosArgs, extraNodeosArgs=traceNodeosArgs) is False:
             cmdError("launcher")
             errorExit("Failed to stand up eos cluster.")
     else:
