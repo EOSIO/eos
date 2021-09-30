@@ -40,6 +40,7 @@ public:
          , consume_start_timer_(thread_pool_.get_executor())
          , next_retry_timer_(thread_pool_.get_executor())
          , retry_timeout_( retry_timeout.count() )
+         , retry_interval_( retry_interval.count() )
          , amqp_connection_(  thread_pool_.get_executor(), address, retry_interval,
                               [this](AMQP::Channel* c){channel_ready(c);}, [this](){channel_failed();} )
          , on_error_( std::move( on_err ) )
@@ -331,24 +332,26 @@ private:
    }
 
    void retrying_init_consume(bool recover) {
-       boost::system::error_code ec;
-       consume_start_timer_.expires_from_now(retry_timeout_, ec);
+      wlog( "attempting consume timeout: ${r}", ("r", retry_timeout_.count()) );
 
-       // what to do if ec?
+      boost::system::error_code ec;
+      consume_start_timer_.expires_from_now(retry_timeout_, ec);
+      if (ec)
+          return;
 
-       timer_.async_wait(boost::asio::bind_executor(thread_pool_.get_executor(), [&](const auto& ec) {
-           if(ec)
-               return;
-           elog( "AMQP start consume timeout" );
-           on_error("AMQP start consume timeout");
-       }));
+      timer_.async_wait(boost::asio::bind_executor(thread_pool_.get_executor(), [&](const auto& ec) {
+          if(ec)
+              return;
+          elog( "AMQP start consume timeout" );
+          on_error("AMQP start consume timeout");
+      }));
 
        init_consume(recover);
    }
 
    void schedule_retry_consume(bool recover) {
        boost::system::error_code ec;
-       consume_start_timer_.expires_from_now(retry_timeout_, ec);
+       consume_start_timer_.expires_from_now(retry_interval_, ec);
 
        // what to do if ec?
 
@@ -453,6 +456,7 @@ private:
    boost::asio::steady_timer consume_start_timer_;
    boost::asio::steady_timer next_retry_timer_;
    const std::chrono::microseconds retry_timeout_;
+   const std::chrono::microseconds retry_interval_;
    single_channel_retrying_amqp_connection amqp_connection_;
    AMQP::Channel* channel_ = nullptr; // null when not connected
    on_error_t on_error_;
