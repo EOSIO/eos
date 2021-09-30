@@ -948,4 +948,44 @@ BOOST_FIXTURE_TEST_CASE(reset_chain_tests, wasm_config_tester) {
    produce_block();
 }
 
+BOOST_FIXTURE_TEST_CASE(get_wasm_parameters_test, wasm_config_tester) {
+   produce_block();
+
+   wasm_config original_params = {
+         .max_mutable_global_bytes = 1024,
+         .max_table_elements       = 1024,
+         .max_section_elements     = 8192,
+         .max_linear_memory_init   = 65536,
+         .max_func_local_bytes     = 8192,
+         .max_nested_structures    = 1024,
+         .max_symbol_bytes         = 8192,
+         .max_module_bytes         = 20971520,
+         .max_code_bytes           = 20971520,
+         .max_pages                = 528,
+         .max_call_depth           = 251
+   };
+
+   set_wasm_params(original_params);
+
+   produce_block();
+
+   auto check_wasm_params = [&](const wasm_config& params){
+      signed_transaction trx;
+      trx.actions.emplace_back(vector<permission_level>{{"eosio"_n,config::active_name}}, "eosio"_n, "getwparams"_n,
+                               bios_abi_ser.variant_to_binary("getwparams", fc::mutable_variant_object()("cfg", params),
+                                                              abi_serializer::create_yield_function( abi_serializer_max_time )));
+      trx.actions[0].authorization = vector<permission_level>{{"eosio"_n,config::active_name}};
+      set_transaction_headers(trx);
+      trx.sign(get_private_key("eosio"_n, "active"), control->get_chain_id());
+      push_transaction(trx);
+   };
+
+   check_wasm_params(original_params);
+
+   produce_block();
+
+   memset(&original_params, 0 ,sizeof(original_params));
+   BOOST_CHECK_THROW(check_wasm_params(original_params), fc::exception);
+}
+
 BOOST_AUTO_TEST_SUITE_END()
