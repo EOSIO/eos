@@ -79,7 +79,7 @@ RUN curl -LO https://boostorg.jfrog.io/artifactory/main/release/1.71.0/source/bo
 RUN python3 -m pip install requests
 
 # install nvm
-RUN curl -L0 https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.0/install.sh && \
+RUN curl -LO https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.0/install.sh && \
     bash install.sh
 
 # setup Postgress
