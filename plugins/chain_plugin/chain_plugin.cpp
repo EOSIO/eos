@@ -3364,15 +3364,34 @@ read_only::get_all_accounts( const get_all_accounts_params& params ) const
    using acct_obj_idx_type = chainbase::get_index_type<chain::account_object>::type;
    const auto& accts = db.db().get_index<acct_obj_idx_type >().indices().get<chain::by_name>();
 
-   uint32_t i = 0;
+   auto cur_time = fc::time_point::now();
+   auto end_time = cur_time + fc::microseconds(1000 * 10); /// 10ms max time
    uint32_t start_idx = params.page * params.page_size;
-   for (auto& a : accts) {
-      if (i >= start_idx)
-         result.accounts.push_back({a.name, a.creation_date});
-      i++;
-      if (result.accounts.size() >= params.page_size)
-         break;
+   
+   
+   auto end_itr = accts.end();
+   auto itr = accts.begin();
+   auto d = std::distance(end_itr, itr);
+   if (start_idx < d) {
+      std::advance(itr, start_idx);
    }
+   else {  
+      result.more = false;
+      return result;
+   }
+
+   while(cur_time <= end_time
+         && result.accounts.size() < params.page_size
+         && itr != end_itr)
+   { 
+      auto a = *itr;
+      result.accounts.push_back({a.name, a.creation_date});
+      itr++;
+      
+      cur_time = fc::time_point::now();
+   }   
+
+   result.more = (itr != end_itr && result.accounts.size() < params.page_size);
 
    return result;
 }
