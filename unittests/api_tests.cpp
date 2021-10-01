@@ -528,9 +528,6 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(action_tests, TESTER_T, backing_store_ts) { try {
    // test test_current_receiver
    CALL_TEST_FUNCTION( t, "test_action", "test_current_receiver", fc::raw::pack("testapi"_n));
 
-   // test send_action_sender
-   CALL_TEST_FUNCTION( t, "test_transaction", "send_action_sender", fc::raw::pack("testapi"_n));
-
    t.produce_block();
 
    // test_publication_time
