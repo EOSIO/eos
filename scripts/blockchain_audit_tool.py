@@ -54,8 +54,7 @@ for accts in all_accts:
         req_body = '{ "account_name": "' + nm + '" }'
         metadata = getJSONResp(conn, "/v1/chain/get_account", req_body)
 
-        e['privileged'] = metadata['privileged']
-        e['permissions'] = metadata['permissions']
+        e['metadata'] = metadata
 
         # get code hash of account
         code_hash = getJSONResp(conn, "/v1/chain/get_code_hash", req_body)
@@ -115,16 +114,22 @@ try:
     print(f"     Head Block End: {server_info_end['head_block_num']}")
     print()
     print("     ======  ACCOUNTS CODE ======")
-    print("Name            Priv    Code Hash")
+    print("Name            Priv    Created                Last Code Update            Code Hash                     ")
     print("---------------------------------------------------------------------------------------------------------")
     for a in accts_lst:
-        print(f"{a['name']:13} | {a['privileged']:5} | {a['code_hash']}")
+        m = a['metadata']
+        cr = m['created']
+        cr = cr[0:21]
+        lcu = m['last_code_update']
+        lcu = lcu[0:21]
+        print(f"{a['name']:13} | {m['privileged']:4} | {cr:21} | {lcu:21} | {a['code_hash']} ")
 
     print("\n\n     ======  ACCOUNT PERMISSIONS ======")
     print("Accoount        Perm Name       Parent         Auth Threshold / [(Key, Weight)..] / Accounts / Waits                    ")
     print("---------------------------------------------------------------------------------------------------------")
     for a in accts_lst:
-        for p in a['permissions']:
+        m = a['metadata']
+        for p in m['permissions']:
             print(f"{a['name']:13} | {p['perm_name']:13} | {p['parent']:13} | ", end="")
             auth = p['required_auth']
             print(f"{auth['threshold']}", end=" / [")
