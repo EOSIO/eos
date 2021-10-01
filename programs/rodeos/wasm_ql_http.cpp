@@ -44,6 +44,7 @@ using tcp       = boost::asio::ip::tcp; // from <boost/asio/ip/tcp.hpp>
 using unixs     = boost::asio::local::stream_protocol; // from <boost/asio/local/stream_protocol.hpp>
 
 using namespace std::literals;
+using std::chrono::steady_clock; // To create explicit timer
 
 struct error_info {
    int64_t          code    = {};
@@ -433,6 +434,7 @@ class http_session {
    // The parser is stored in an optional container so we can
    // construct it from scratch it at the beginning of each new message.
    boost::optional<http::request_parser<http::vector_body<char>>> parser;
+   steady_clock::time_point session_begin;
 
  public:
    // Take ownership of the socket
@@ -459,6 +461,10 @@ class http_session {
       // todo: make configurable
       parser->body_limit(http_config->max_request_size);
 
+      // Set the timeout.
+      session_begin = steady_clock::now();
+      //derived_session().stream.expires_after(std::chrono::milliseconds(http_config->idle_timeout_ms));
+
       // Read a request using the parser-oriented interface
       http::async_read(derived_session().stream, buffer, *parser, beast::bind_front_handler(&http_session::on_read, derived_session().shared_from_this()));
    }
@@ -470,7 +476,11 @@ class http_session {
       if (ec == http::error::end_of_stream)
          return do_close();
 
-      if (ec) {
+      auto session_time = steady_clock::now() - session_begin;
+      auto session_time_ms = std::chrono::duration_cast<std::chrono::milliseconds>( session_time ).count();
+      elog("${session_time_ms}: ${idle_timeout_ms}", ("session_time_ms", session_time_ms)("idle_timeout_ms", http_config->idle_timeout_ms.count()));
+      if (session_time_ms > http_config->idle_timeout_ms.count()){
+         ec = beast::error::timeout;
          fail( ec, "read" );
          return do_close();
       }
