@@ -918,6 +918,7 @@ public:
       };
 
       std::vector<account_result> accounts;
+      bool more;
    };
 
    struct get_all_accounts_params {

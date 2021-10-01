@@ -194,6 +194,7 @@ BOOST_FIXTURE_TEST_CASE( get_all_accounts, TESTER ) try {
    chain_apis::read_only::get_all_accounts_params p{0, 6};
    chain_apis::read_only::get_all_accounts_result result = plugin.read_only::get_all_accounts(p);
 
+   BOOST_REQUIRE_EQUAL(false, result.more);
    BOOST_REQUIRE_EQUAL(6u, result.accounts.size());
    if (result.accounts.size() >= 6) {
       BOOST_REQUIRE_EQUAL(name("alice"_n), result.accounts[0].name);
@@ -208,6 +209,7 @@ BOOST_FIXTURE_TEST_CASE( get_all_accounts, TESTER ) try {
    p.page_size = 12;
    result = plugin.read_only::get_all_accounts(p);
 
+   BOOST_REQUIRE_EQUAL(false, result.more);
    BOOST_REQUIRE_EQUAL(6u, result.accounts.size());
    if (result.accounts.size() >= 6) {
       BOOST_REQUIRE_EQUAL(name("alice"_n), result.accounts[0].name);
@@ -222,6 +224,7 @@ BOOST_FIXTURE_TEST_CASE( get_all_accounts, TESTER ) try {
    p.page = 0;
    p.page_size = 2;
    result = plugin.read_only::get_all_accounts(p);
+   BOOST_REQUIRE_EQUAL(true, result.more);
    BOOST_REQUIRE_EQUAL(2u, result.accounts.size());
    if (result.accounts.size() >= 2) {
       BOOST_REQUIRE_EQUAL(name("alice"_n), result.accounts[0].name);
@@ -230,6 +233,7 @@ BOOST_FIXTURE_TEST_CASE( get_all_accounts, TESTER ) try {
    p.page = 1;
    p.page_size = 2;
    result = plugin.read_only::get_all_accounts(p);
+   BOOST_REQUIRE_EQUAL(true, result.more);
    BOOST_REQUIRE_EQUAL(2u, result.accounts.size());
    if (result.accounts.size() >= 2) {
       BOOST_REQUIRE_EQUAL(name("cindy"_n), result.accounts[0].name);
@@ -239,6 +243,7 @@ BOOST_FIXTURE_TEST_CASE( get_all_accounts, TESTER ) try {
    p.page = 2;
    p.page_size = 2;
    result = plugin.read_only::get_all_accounts(p);
+   BOOST_REQUIRE_EQUAL(false, result.more);
    BOOST_REQUIRE_EQUAL(2u, result.accounts.size());
    if (result.accounts.size() >= 2) {
       BOOST_REQUIRE_EQUAL(name("eosio.null"_n), result.accounts[0].name);
@@ -255,6 +260,7 @@ BOOST_FIXTURE_TEST_CASE( get_all_accounts, TESTER ) try {
    p.page = 0;
    p.page_size = 3;
    result = plugin.read_only::get_all_accounts(p);
+   BOOST_REQUIRE_EQUAL(true, result.more);
    BOOST_REQUIRE_EQUAL(3u, result.accounts.size());
    if (result.accounts.size() >= 3) {
       BOOST_REQUIRE_EQUAL(name("alice"_n), result.accounts[0].name);
@@ -265,6 +271,7 @@ BOOST_FIXTURE_TEST_CASE( get_all_accounts, TESTER ) try {
    p.page = 1;
    p.page_size = 3;
    result = plugin.read_only::get_all_accounts(p);
+   BOOST_REQUIRE_EQUAL(true, result.more);
    BOOST_REQUIRE_EQUAL(3u, result.accounts.size());
    if (result.accounts.size() >= 3) {
       BOOST_REQUIRE_EQUAL(name("eosio"_n), result.accounts[0].name);
@@ -275,6 +282,7 @@ BOOST_FIXTURE_TEST_CASE( get_all_accounts, TESTER ) try {
    p.page = 2;
    p.page_size = 3;
    result = plugin.read_only::get_all_accounts(p);
+   BOOST_REQUIRE_EQUAL(false, result.more);
    BOOST_REQUIRE_EQUAL(1u, result.accounts.size());
    if (result.accounts.size() >= 1) {
       BOOST_REQUIRE_EQUAL(name("gwen"_n), result.accounts[0].name);
