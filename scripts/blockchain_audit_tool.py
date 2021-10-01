@@ -79,6 +79,7 @@ for a in accts_lst:
         req_body = '{' + f'"json":true, "code":"{nm}", "scope":"{sc}", "table":"{tbl}", "lower_bound":"",\
 "upper_bound":"", "limit": {table_row_limit},"table_key": "",  "key_type": "", "index_position": "",\
 "encode_type": "bytes", "reverse": false, "show_payer": false' + '}'
+
         table_rows = getJSONResp(conn, "/v1/chain/get_table_rows", req_body)
         a['tables'][sc + ":" + tbl] = table_rows
 
@@ -87,7 +88,15 @@ for a in accts_lst:
     abi = getJSONResp(conn, "/v1/chain/get_abi", req_body)
     if 'abi' in abi:
         kv_tables = abi['abi']['kv_tables']
-        # TODO: get kv_tables for account
+        for tbl_name, tbl_def in kv_tables.items():
+            tbl_idx_nm = tbl_def['primary_index']['name']
+
+            req_body = '{' + f'"json": true,  "code": "{nm}",  "table": "{tbl_name}",\
+  "index_name": "{tbl_idx_nm}", "index_value": "", "lower_bound": "", "upper_bound": "",\
+  "limit": {table_row_limit},  "encode_type": "bytes",  "reverse": false,  "show_payer": false' + '}'
+
+            table_rows = getJSONResp(conn, "/v1/chain/get_kv_table_rows", req_body)
+            a['kv_tables'][tbl_name + ":" + tbl_idx_nm] = table_rows
 
 data = {'accounts' : accts_lst}
 
@@ -108,10 +117,10 @@ data['server_info_end'] = server_info_end
 # print out results
 try:
     print("                          EOSIO BLOCKCHAIN AUDIT RESULTS\n")
-    print(f"     Server Version: {server_info_begin['server_full_version_string']}")
-    print(f"           Chain ID: {server_info_begin['chain_id']}")
-    print(f"   Head Block Start: {server_info_begin['head_block_num']}")
-    print(f"     Head Block End: {server_info_end['head_block_num']}")
+    print(f"             Server Version: {server_info_begin['server_full_version_string']}")
+    print(f"                   Chain ID: {server_info_begin['chain_id']}")
+    print(f"    Start Head Block / Time: {server_info_begin['head_block_num']} / {server_info_begin['head_block_time']}")
+    print(f"      End Head Block / Time: {server_info_end['head_block_num']} / {server_info_end['head_block_time']}")
     print()
     print("     ======  ACCOUNTS CODE ======")
     print("Name            Priv    Created                Last Code Update            Code Hash                     ")
@@ -175,7 +184,7 @@ try:
         for feat in prot_feats:
             print(feat)
 
-    print("\n\n     ====== CONTRACT TABLES (MI) ======")
+    print("\n\n     ====== MULTI-INDEX TABLES ======")
     print("Account        Scope:Table                  Values")
     print("---------------------------------------------------------------------------------------------------------")
     atLeastOne = False
@@ -197,7 +206,26 @@ try:
     if not atLeastOne:
         print("(None)")       
    
-    # TODO: print kv_tables here
+    print("\n\n     ====== KV TABLES ======")
+    print("Account        Table:Primary Index                Values")
+    print("---------------------------------------------------------------------------------------------------------")
+    atLeastOne = False
+    for a in accts_lst:
+        if 'kv_tables' not in a:
+            continue
+        kv_tables = a['kv_tables']
+        for tbl_nm_idx, kv_tbl in kv_tables.items():
+            print(f"{a['name']:13} | {tbl_nm_idx:27} | [", end="")
+            for v in kv_tbl['rows']:
+                print(v, end= ", ")
+            if kv_tbl['more']:
+                print("(truncated)", end="")
+            print(']')
+            atLeastOne = True
+        if kv_tables['more']:
+            print(f"{a['name']:13} | (truncated)")
+    if not atLeastOne:
+        print("(None)")
 
     print("\nFULL SERVER INFO:\n")
     for k, v in server_info_end.items():
