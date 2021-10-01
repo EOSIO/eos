@@ -3539,7 +3539,7 @@ read_only::get_all_accounts( const get_all_accounts_params& params ) const
    
    auto end_itr = accts.end();
    auto itr = accts.begin();
-   auto d = std::distance(end_itr, itr);
+   auto d = std::distance(itr, end_itr);
    if (start_idx < d) {
       std::advance(itr, start_idx);
    }
