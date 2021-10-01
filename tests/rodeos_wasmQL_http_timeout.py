@@ -4,7 +4,6 @@ from testUtils import Utils
 from TestHelper import TestHelper
 from rodeos_utils import RodeosCluster
 from TestHelper import AppArgs
-import requests
 import time
 import os
 
