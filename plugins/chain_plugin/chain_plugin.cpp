@@ -3528,38 +3528,50 @@ read_only::get_all_accounts_result
 read_only::get_all_accounts( const get_all_accounts_params& params ) const
 {
    get_all_accounts_result result;
+   result.more.reset();
 
    using acct_obj_idx_type = chainbase::get_index_type<chain::account_object>::type;
    const auto& accts = db.db().get_index<acct_obj_idx_type >().indices().get<chain::by_name>();
 
    auto cur_time = fc::time_point::now();
    auto end_time = cur_time + fc::microseconds(1000 * 10); /// 10ms max time
-   uint32_t start_idx = params.page * params.page_size;
    
-   
-   auto end_itr = accts.end();
-   auto itr = accts.begin();
-   auto d = std::distance(itr, end_itr);
-   if (start_idx < d) {
-      std::advance(itr, start_idx);
-   }
-   else {  
-      result.more = false;
+   auto begin_itr = params.lower_bound? accts.lower_bound(*params.lower_bound) : accts.begin();
+   auto end_itr = params.upper_bound? accts.upper_bound(*params.upper_bound) : accts.end();
+
+   if( std::distance(begin_itr, end_itr) < 0 )
       return result;
-   }
+
+   auto itr = params.reverse? end_itr : begin_itr;
+   // since end_itr coudl potentially be past end of array, subtract one position
+   if (params.reverse)
+      itr--;
+
+   // this flag will be set to true when we are reversing and we end on the begin iterator
+   // if this is the case, 'more' will be set to false so client knows there is no more data
+   bool reverseEndBegin = false;
 
    while(cur_time <= end_time
-         && result.accounts.size() < params.page_size
+         && result.accounts.size() < params.limit
          && itr != end_itr)
-   { 
+   {
       auto a = *itr;
       result.accounts.push_back({a.name, a.creation_date});
-      itr++;
-      
-      cur_time = fc::time_point::now();
-   }   
 
-   result.more = (itr != end_itr && result.accounts.size() < params.page_size);
+      cur_time = fc::time_point::now();
+      if (params.reverse && itr == begin_itr) {
+         reverseEndBegin = true;
+         break;
+      }
+      params.reverse? itr-- : itr++;
+   }
+
+   if (params.reverse && !reverseEndBegin) {
+      result.more = itr->name;
+   }
+   else if (!params.reverse && itr != end_itr) {
+      result.more = itr->name;
+   }
 
    return result;
 }
