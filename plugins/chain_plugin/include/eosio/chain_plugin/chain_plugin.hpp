@@ -933,12 +933,15 @@ public:
       };
 
       std::vector<account_result> accounts;
-      bool more;
+
+      std::optional<chain::name> more;
    };
 
    struct get_all_accounts_params {
-      uint16_t page;
-      uint16_t page_size;
+      uint32_t                    limit = 10;
+      std::optional<chain::name>  lower_bound;
+      std::optional<chain::name>  upper_bound;
+      bool                        reverse = false;
    };
 
    get_all_accounts_result get_all_accounts( const get_all_accounts_params& params)  const;
@@ -1165,8 +1168,6 @@ FC_REFLECT( eosio::chain_apis::read_only::abi_bin_to_json_params, (code)(action)
 FC_REFLECT( eosio::chain_apis::read_only::abi_bin_to_json_result, (args) )
 FC_REFLECT( eosio::chain_apis::read_only::get_required_keys_params, (transaction)(available_keys) )
 FC_REFLECT( eosio::chain_apis::read_only::get_required_keys_result, (required_keys) )
-FC_REFLECT( eosio::chain_apis::read_only::send_ro_transaction_params_v1, (return_failure_traces)(transaction) )
-FC_REFLECT( eosio::chain_apis::read_only::send_ro_transaction_results, (head_block_num)(head_block_id)(last_irreversible_block_num)(last_irreversible_block_id)(code_hash)(pending_transactions)(result) ),
-FC_REFLECT( eosio::chain_apis::read_only::get_all_accounts_params, (page)(page_size))
+FC_REFLECT( eosio::chain_apis::read_only::get_all_accounts_params, (limit)(lower_bound)(upper_bound)(reverse) )
 FC_REFLECT( eosio::chain_apis::read_only::get_all_accounts_result::account_result, (name)(creation_date))
-FC_REFLECT( eosio::chain_apis::read_only::get_all_accounts_result, (accounts))
+FC_REFLECT( eosio::chain_apis::read_only::get_all_accounts_result, (accounts)(more))

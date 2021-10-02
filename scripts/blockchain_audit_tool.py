@@ -30,16 +30,18 @@ conn = http.client.HTTPConnection(rpc_endpt)
 server_info_begin = getJSONResp(conn, "/v1/chain/get_info")
 
 # get all accounts on the chain
-page = 0
-isResp = True
+limit = 2
+moreAccounts = True
 all_accts = []
-while isResp:
-    req_body = '{"page":' + str(page) + ', "page_size":' + str(page_size) + '}'
+req_body = '{"limit":' + str(limit) + '}'
+while moreAccounts:
     accts = getJSONResp(conn, "/v1/chain/get_all_accounts", req_body)
-    
-    page += 1
     all_accts.append(accts['accounts'])
-    isResp = len(accts['accounts']) > 0
+
+    moreAccounts = 'more' in accts
+    if moreAccounts:
+        nextAcct = accts['more']
+        req_body = '{"limit":' + str(limit) + f', "lower_bound":"{nextAcct}"' + '}'
 
 if len(all_accts) == 0:
     print("Error, no accounts returned from get_all_accounts!")
