@@ -32,11 +32,9 @@ Print=Utils.Print
 
 extraArgs=AppArgs()
 extraArgs.add_bool("--eos-vm-oc-enable", "Use OC for rodeos")
-extraArgs.add_bool("--load-test-enable", "Enable load test")
 
 args=TestHelper.parse_args({"--dump-error-details","--keep-logs","-v","--leave-running","--clean-run"}, extraArgs)
 enableOC=args.eos_vm_oc_enable
-enableLoadTest=args.load_test_enable
 Utils.Debug=args.v
 
 TestHelper.printSystemInfo("BEGIN")
