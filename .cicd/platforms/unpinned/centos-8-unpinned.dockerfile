@@ -13,6 +13,10 @@ RUN yum update -y && \
 RUN dnf install -y  https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm && \
     dnf group install -y  "Development Tools" && \
     dnf --enablerepo=powertools install -y doxygen ocaml
+# upgrade pip installation
+RUN pip3 install --upgrade pip
+# install request and requests_requests_unixsocket for rodeos http timeout test
+RUN pip3 install requests && pip3 install requests_unixsocket
 # install erlang and rabbitmq
 RUN curl -s https://packagecloud.io/install/repositories/rabbitmq/erlang/script.rpm.sh | bash && \
     yum install -y erlang
