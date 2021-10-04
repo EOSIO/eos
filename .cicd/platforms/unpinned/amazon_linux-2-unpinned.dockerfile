@@ -7,6 +7,10 @@ RUN yum update -y && \
     libusbx-devel python3 python3-devel python-devel libedit-devel doxygen \
     graphviz clang patch llvm-devel llvm-static vim-common jq && \
     yum clean all && rm -rf /var/cache/yum
+# upgrade pip installation
+RUN pip3 install --upgrade pip
+# install request and requests_requests_unixsocket for rodeos http timeout test
+RUN pip3 install requests && pip3 install requests_unixsocket
 # install erlang and rabbitmq
 RUN curl -s https://packagecloud.io/install/repositories/rabbitmq/erlang/script.rpm.sh | bash && \
     yum install -y erlang
