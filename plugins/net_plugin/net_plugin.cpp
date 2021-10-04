@@ -3200,7 +3200,9 @@ namespace eosio {
                fc_dlog( logger, "dup check ${c}, ${l} =? ${r}",
                         ("c", check->connected())("l", check->last_handshake_recv.p2p_address)("r", msg.p2p_address) );
                if(check->connected() && check->last_handshake_recv.p2p_address == msg.p2p_address) {
+                  fc_dlog( logger, "equal p2p_address");
                   if (net_version < dup_goaway_resolution || msg.network_version < dup_goaway_resolution) {
+                     fc_dlog( logger, "net_version < dup_goaway_resolution");
                      // It's possible that both peers could arrive here at relatively the same time, so
                      // we need to avoid the case where they would both tell a different connection to go away.
                      // Using the sum of the initial handshake times of the two connections, we will
@@ -3211,6 +3213,8 @@ namespace eosio {
                      if (msg.time + c_time <= check_time)
                         continue;
                   } else if (my_impl->p2p_address < msg.p2p_address) {
+                     fc_dlog( logger, "my_impl->p2p_address '${lhs}' < msg.p2p_address '${rhs}'",
+                              ("lhs", my_impl->p2p_address)("rhs", msg.p2p_address) );
                      // only the connection from lower p2p_address to higher p2p_address will be considered as a duplicate, 
                      // so there is no chance for both connections to be closed
                      continue; 
@@ -3223,6 +3227,8 @@ namespace eosio {
                   enqueue(gam);
                   no_retry = duplicate;
                   return;
+               } else {
+                  fc_dlog( logger, "not equal");
                }
             }
          } else {
