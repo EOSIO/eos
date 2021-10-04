@@ -19,6 +19,8 @@ RUN curl -s https://packagecloud.io/install/repositories/rabbitmq/rabbitmq-serve
 # upgrade pip installation
 RUN . /opt/rh/rh-python36/enable && \
     pip install --upgrade pip
+# install request and requests_requests_unixsocket for rodeos http timeout test
+RUN pip install requests && pip install requests_unixsocket
 # build cmake
 RUN curl -LO https://github.com/Kitware/CMake/releases/download/v3.16.2/cmake-3.16.2.tar.gz && \
     tar -xzf cmake-3.16.2.tar.gz && \
