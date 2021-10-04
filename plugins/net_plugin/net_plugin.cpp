@@ -2932,6 +2932,10 @@ namespace eosio {
       peer_dlog( this, "received handshake gen ${g}, lib ${lib}, head ${head}",
                  ("g", msg.generation)("lib", msg.last_irreversible_block_num)("head", msg.head_num) );
 
+      std::unique_lock<std::mutex> g_conn( conn_mtx );
+      last_handshake_recv = msg;
+      g_conn.unlock();
+
       connecting = false;
       if (msg.generation == 1) {
          if( msg.node_id == my_impl->node_id) {
@@ -3053,9 +3057,6 @@ namespace eosio {
          }
       }
 
-      std::unique_lock<std::mutex> g_conn( conn_mtx );
-      last_handshake_recv = msg;
-      g_conn.unlock();
       my_impl->sync_master->recv_handshake( shared_from_this(), msg );
    }
 
