@@ -2960,8 +2960,8 @@ namespace eosio {
                if(check.get() == this)
                   continue;
                std::unique_lock<std::mutex> g_check_conn( check->conn_mtx );
-               fc_dlog( logger, "dup check ${l} =? ${r}",
-                        ("l", check->last_handshake_recv.p2p_address)("r", msg.p2p_address) );
+               fc_dlog( logger, "dup check ${c}, ${l} =? ${r}",
+                        ("c", check->connected())("l", check->last_handshake_recv.p2p_address)("r", msg.p2p_address) );
                if(check->connected() && check->last_handshake_recv.p2p_address == msg.p2p_address) {
                   if (net_version < dup_goaway_resolution || msg.network_version < dup_goaway_resolution) {
                      // It's possible that both peers could arrive here at relatively the same time, so
