@@ -948,7 +948,16 @@ BOOST_FIXTURE_TEST_CASE(reset_chain_tests, wasm_config_tester) {
    produce_block();
 }
 
-BOOST_FIXTURE_TEST_CASE(get_wasm_parameters_test, wasm_config_tester) {
+BOOST_FIXTURE_TEST_CASE(get_wasm_parameters_test, old_wasm_tester) {
+   produce_block();
+
+   preactivate_builtin_protocol_features({builtin_protocol_feature_t::configurable_wasm_limits});
+   produce_block();
+
+   set_abi(config::system_account_name, contracts::wasm_config_bios_abi().data());
+   set_code(config::system_account_name, contracts::wasm_config_bios_wasm());
+   auto bios_abi_ser = *get_resolver()(config::system_account_name);
+
    produce_block();
 
    wasm_config original_params = {
@@ -963,6 +972,17 @@ BOOST_FIXTURE_TEST_CASE(get_wasm_parameters_test, wasm_config_tester) {
          .max_code_bytes           = 20971520,
          .max_pages                = 528,
          .max_call_depth           = 251
+   };
+
+   auto set_wasm_params = [&](const wasm_config &params){
+      signed_transaction trx;
+      trx.actions.emplace_back(vector<permission_level>{{"eosio"_n,config::active_name}}, "eosio"_n, "setwparams"_n,
+                               bios_abi_ser.variant_to_binary("setwparams", fc::mutable_variant_object()("cfg", params),
+                                                              abi_serializer::create_yield_function( abi_serializer_max_time )));
+      trx.actions[0].authorization = vector<permission_level>{{"eosio"_n,config::active_name}};
+      set_transaction_headers(trx);
+      trx.sign(get_private_key("eosio"_n, "active"), control->get_chain_id());
+      push_transaction(trx);
    };
 
    set_wasm_params(original_params);
@@ -980,12 +1000,27 @@ BOOST_FIXTURE_TEST_CASE(get_wasm_parameters_test, wasm_config_tester) {
       push_transaction(trx);
    };
 
-   check_wasm_params(original_params);
+   BOOST_CHECK_THROW(check_wasm_params(original_params), fc::exception);
 
    produce_block();
 
-   memset(&original_params, 0 ,sizeof(original_params));
-   BOOST_CHECK_THROW(check_wasm_params(original_params), fc::exception);
+   set_code( config::system_account_name, contracts::before_producer_authority_eosio_bios_wasm() );
+   set_abi( config::system_account_name, contracts::before_producer_authority_eosio_bios_abi().data() );
+
+   produce_block();
+
+   preactivate_builtin_protocol_features({builtin_protocol_feature_t::get_wasm_parameters_packed_fix});
+   produce_block();
+
+   set_abi(config::system_account_name, contracts::wasm_config_bios_abi().data());
+   set_code(config::system_account_name, contracts::wasm_config_bios_wasm());
+   produce_block();
+
+   check_wasm_params(original_params);
+
+   wasm_config other_config;
+   memset(&other_config, 0 ,sizeof(other_config));
+   BOOST_CHECK_THROW(check_wasm_params(other_config), fc::exception);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
