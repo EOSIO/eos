@@ -11,6 +11,10 @@ RUN yum update -y && \
     libcurl-devel patch vim-common jq llvm-toolset-7.0-llvm-devel llvm-toolset-7.0-llvm-static \
     glibc-locale-source glibc-langpack-en && \
     yum clean all && rm -rf /var/cache/yum
+# upgrade pip installation
+RUN pip install --upgrade pip
+# install request and requests_requests_unixsocket for rodeos http timeout test
+RUN pip install requests && pip install requests_unixsocket
 # install erlang and rabbitmq
 RUN curl -s https://packagecloud.io/install/repositories/rabbitmq/erlang/script.rpm.sh | bash && \
     yum install -y erlang
