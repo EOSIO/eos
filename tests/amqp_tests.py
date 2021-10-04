@@ -58,7 +58,6 @@ try:
     cluster.setWalletMgr(walletMgr)
     Print("SERVER: %s" % (server))
     Print("PORT: %d" % (port))
-    cluster.createAMQPQueue("trx")
     if localTest and not dontLaunch:
         cluster.killall(allInstances=killAll)
         cluster.cleanup()
@@ -82,6 +81,11 @@ try:
         if walletMgr.launch() is False:
             cmdError("%s" % (WalletdName))
             errorExit("Failed to stand up eos walletd.")
+
+    Print("Waiting to create queue to force consume retries")
+    time.sleep(5)
+    Print("Creating trx queue")
+    cluster.createAMQPQueue("trx")
 
     Print("Validating system accounts after bootstrap")
     cluster.validateAccounts(None)
