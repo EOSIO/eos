@@ -15,6 +15,8 @@ RUN curl -s https://packagecloud.io/install/repositories/rabbitmq/rabbitmq-serve
     yum install -y rabbitmq-server
 # upgrade pip installation
 RUN pip3 install --upgrade pip
+# install request and requests_requests_unixsocket for rodeos http timeout test
+RUN pip3 install requests && pip3 install requests_unixsocket
 # build cmake
 RUN curl -LO https://github.com/Kitware/CMake/releases/download/v3.16.2/cmake-3.16.2.tar.gz && \
     tar -xzf cmake-3.16.2.tar.gz && \
