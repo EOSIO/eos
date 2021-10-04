@@ -3528,7 +3528,6 @@ read_only::get_all_accounts_result
 read_only::get_all_accounts( const get_all_accounts_params& params ) const
 {
    get_all_accounts_result result;
-   result.more.reset();
 
    using acct_obj_idx_type = chainbase::get_index_type<chain::account_object>::type;
    const auto& accts = db.db().get_index<acct_obj_idx_type >().indices().get<chain::by_name>();
@@ -3543,30 +3542,30 @@ read_only::get_all_accounts( const get_all_accounts_params& params ) const
       return result;
 
    auto itr = params.reverse? end_itr : begin_itr;
-   // since end_itr coudl potentially be past end of array, subtract one position
+   // since end_itr could potentially be past end of array, subtract one position
    if (params.reverse)
-      itr--;
+      --itr;
 
    // this flag will be set to true when we are reversing and we end on the begin iterator
-   // if this is the case, 'more' will be set to false so client knows there is no more data
-   bool reverseEndBegin = false;
+   // if this is the case, 'more' field will remain null, and will nto be in JSON response
+   bool reverse_end_begin = false;
 
    while(cur_time <= end_time
          && result.accounts.size() < params.limit
          && itr != end_itr)
    {
-      auto a = *itr;
+      const auto &a = *itr;
       result.accounts.push_back({a.name, a.creation_date});
 
       cur_time = fc::time_point::now();
       if (params.reverse && itr == begin_itr) {
-         reverseEndBegin = true;
+         reverse_end_begin = true;
          break;
       }
-      params.reverse? itr-- : itr++;
+      params.reverse? --itr : ++itr;
    }
 
-   if (params.reverse && !reverseEndBegin) {
+   if (params.reverse && !reverse_end_begin) {
       result.more = itr->name;
    }
    else if (!params.reverse && itr != end_itr) {
