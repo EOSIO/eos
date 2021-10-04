@@ -245,7 +245,7 @@ class RodeosCluster(object):
     def getInfo(self, rodeosId=0):
         assert(rodeosId >= 0 and rodeosId < self.numRodeos)
         if self.unix_socket_option:
-            return Utils.runCmdArrReturnJson(['curl', '-H', 'Accept: application/json', '--unix-socket ', './var/lib/rodeos{}/rodeos{}.sock'.format(rodeosId, rodeosId), 'http://localhost/v1/chain/get_info'])
+            return Utils.runCmdArrReturnJson(['curl', '-H', 'Accept: application/json', '--unix-socket', './var/lib/rodeos{}/rodeos{}.sock'.format(rodeosId, rodeosId), 'http://localhost/v1/chain/get_info'])
         return Utils.runCmdArrReturnJson(['curl', '-H', 'Accept: application/json', self.wqlEndPoints[rodeosId] + 'v1/chain/get_info'])
 
     def produceBlocks(self, numBlocks):
