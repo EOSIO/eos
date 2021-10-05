@@ -8,8 +8,6 @@ RUN apt-get update && \
     python2.7 python2.7-dev python3 python3-dev autoconf libtool curl zlib1g-dev \
     sudo ruby libusb-1.0-0-dev libcurl4-gnutls-dev pkg-config apt-transport-https vim-common jq rabbitmq-server \
     libtasn1-dev libnss3-dev iproute2 expect gawk socat python3-pip python-pip python-requests libseccomp-dev uuid-dev
-# upgrade pip installation
-RUN pip install --upgrade pip
 # install request and requests_requests_unixsocket for rodeos http timeout test
 RUN pip install requests && pip install requests_unixsocket
 # build cmake
