@@ -10,9 +10,12 @@ RUN yum update -y && \
     python python-devel rh-python36 python-pip file libusbx-devel \
     libcurl-devel patch vim-common jq llvm-toolset-7.0-llvm-devel llvm-toolset-7.0-llvm-static \
     glibc-locale-source glibc-langpack-en && \
-    yum clean all && rm -rf /var/cache/yum
-# install request and requests_requests_unixsocket for rodeos http timeout test
-RUN pip install requests && pip install requests_unixsocket
+    yum clean all && rm -rf /var/cache/yum && \
+    yum install -y python3 python3-pip
+# upgrade pip3 
+RUN pip3 install --upgrade pip
+# install request and requests_unixsocket for rodeos http timeout test
+RUN pip3 install requests && pip3 install requests_unixsocket
 # upgrade pip installation
 RUN . /opt/rh/rh-python36/enable && \
     pip install --upgrade pip
