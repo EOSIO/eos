@@ -20,7 +20,7 @@ HELP_INFO = "\
         Activated protocol features\n\
         Preview of MI and KV tables on each account\n"
 
-def getJSONResp(conn, rpc, req_body=""):
+def getJSONResp(conn, rpc, req_body="", exitOnError=True):
     conn.request("POST", rpc, body=req_body)
     resp = conn.getresponse()
     json_resp = resp.read()
@@ -29,7 +29,8 @@ def getJSONResp(conn, rpc, req_body=""):
         print(f"ERROR calling '{rpc}'")
         print(f"body= {req_body}")
         print(f"json_resp= {json_resp}")
-        exit(1)
+        if exitOnError:
+            exit(1)
 
     return json_data
 
@@ -115,7 +116,7 @@ if __name__ == "__main__":
     "upper_bound":"", "limit": {table_row_limit},"table_key": "",  "key_type": "", "index_position": "",\
     "encode_type": "bytes", "reverse": false, "show_payer": false' + '}'
 
-            table_rows = getJSONResp(conn, "/v1/chain/get_table_rows", req_body)
+            table_rows = getJSONResp(conn, "/v1/chain/get_table_rows", req_body, exitOnError=False)
             a['tables'][sc + ":" + tbl] = table_rows
 
         # get abi so we can determine kv_tables
@@ -130,7 +131,7 @@ if __name__ == "__main__":
     "index_name": "{tbl_idx_nm}", "index_value": "", "lower_bound": "", "upper_bound": "",\
     "limit": {table_row_limit},  "encode_type": "bytes",  "reverse": false,  "show_payer": false' + '}'
 
-                table_rows = getJSONResp(conn, "/v1/chain/get_kv_table_rows", req_body)
+                table_rows = getJSONResp(conn, "/v1/chain/get_kv_table_rows", req_body, exitOnError=False)
                 a['kv_tables'][tbl_name + ":" + tbl_idx_nm] = table_rows
 
     data = {'accounts' : accts_lst}
@@ -229,12 +230,15 @@ if __name__ == "__main__":
                 scope_table = s['scope'] + ":" + s['table']
                 print(f"{s['code']:13} | {scope_table:27}", end=" ")
                 tbl = a['tables'][scope_table]
-                print('[', end="")
-                for v in tbl['rows']:
-                    print(v, end= ", ")
-                if tbl['more']:
-                    print("(truncated)", end="")
-                print(']')
+                if 'rows' in tbl:
+                    print('[', end="")
+                    for v in tbl['rows']:
+                        print(v, end= ", ")
+                    if tbl['more']:
+                        print("(truncated)", end="")
+                    print(']')
+                else:
+                    print("(no data)")
                 atLeastOne = True
             if scopes['more']:
                 print(f"{a['name']:13} | (truncated)")
