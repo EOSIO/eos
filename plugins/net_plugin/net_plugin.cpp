@@ -426,7 +426,7 @@ namespace eosio {
    constexpr uint16_t proto_block_id_notify = 2;     // reserved. feature was removed. next net_version should be 3
    constexpr uint16_t proto_pruned_types = 3;        // supports new signed_block & packed_transaction types
    constexpr uint16_t heartbeat_interval = 4;        // supports configurable heartbeat interval
-   constexpr uint16_t dup_goaway_resolution = 5;     // support peer address based duplicate connection resolution
+   constexpr uint16_t dup_goaway_resolution = 5;     // support node_id based duplicate connection resolution
 
    constexpr uint16_t net_version = dup_goaway_resolution;
 
@@ -2960,12 +2960,10 @@ namespace eosio {
                if(check.get() == this)
                   continue;
                std::unique_lock<std::mutex> g_check_conn( check->conn_mtx );
-               fc_dlog( logger, "dup check ${c}, ${l} =? ${r}",
+               fc_dlog( logger, "dup check: connected ${c}, ${l} =? ${r}",
                         ("c", check->connected())("l", check->last_handshake_recv.node_id)("r", msg.node_id) );
                if(check->connected() && check->last_handshake_recv.node_id == msg.node_id) {
-                  fc_dlog( logger, "equal node_id");
                   if (net_version < dup_goaway_resolution || msg.network_version < dup_goaway_resolution) {
-                     fc_dlog( logger, "net_version < dup_goaway_resolution");
                      // It's possible that both peers could arrive here at relatively the same time, so
                      // we need to avoid the case where they would both tell a different connection to go away.
                      // Using the sum of the initial handshake times of the two connections, we will
@@ -2976,7 +2974,7 @@ namespace eosio {
                      if (msg.time + c_time <= check_time)
                         continue;
                   } else if (my_impl->node_id < msg.node_id) {
-                     fc_dlog( logger, "my_impl->node_id '${lhs}' < msg.node_id '${rhs}'",
+                     fc_dlog( logger, "not duplicate, my_impl->node_id '${lhs}' < msg.node_id '${rhs}'",
                               ("lhs", my_impl->node_id)("rhs", msg.node_id) );
                      // only the connection from lower p2p_address to higher p2p_address will be considered as a duplicate, 
                      // so there is no chance for both connections to be closed
