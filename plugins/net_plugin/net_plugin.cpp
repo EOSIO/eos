@@ -2945,9 +2945,9 @@ namespace eosio {
                   continue;
                std::unique_lock<std::mutex> g_check_conn( check->conn_mtx );
                fc_dlog( logger, "dup check ${c}, ${l} =? ${r}",
-                        ("c", check->connected())("l", check->last_handshake_recv.p2p_address)("r", msg.p2p_address) );
-               if(check->connected() && check->last_handshake_recv.p2p_address == msg.p2p_address) {
-                  fc_dlog( logger, "equal p2p_address");
+                        ("c", check->connected())("l", check->last_handshake_recv.node_id)("r", msg.node_id) );
+               if(check->connected() && check->last_handshake_recv.node_id == msg.node_id) {
+                  fc_dlog( logger, "equal node_id");
                   if (net_version < dup_goaway_resolution || msg.network_version < dup_goaway_resolution) {
                      fc_dlog( logger, "net_version < dup_goaway_resolution");
                      // It's possible that both peers could arrive here at relatively the same time, so
@@ -2959,9 +2959,9 @@ namespace eosio {
                      g_check_conn.unlock();
                      if (msg.time + c_time <= check_time)
                         continue;
-                  } else if (my_impl->p2p_address < msg.p2p_address) {
-                     fc_dlog( logger, "my_impl->p2p_address '${lhs}' < msg.p2p_address '${rhs}'",
-                              ("lhs", my_impl->p2p_address)("rhs", msg.p2p_address) );
+                  } else if (my_impl->node_id < msg.node_id) {
+                     fc_dlog( logger, "my_impl->node_id '${lhs}' < msg.node_id '${rhs}'",
+                              ("lhs", my_impl->node_id)("rhs", msg.node_id) );
                      // only the connection from lower p2p_address to higher p2p_address will be considered as a duplicate, 
                      // so there is no chance for both connections to be closed
                      continue; 
