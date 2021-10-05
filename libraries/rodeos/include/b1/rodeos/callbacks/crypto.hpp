@@ -85,22 +85,22 @@ struct crypto_callbacks {
 
    void assert_sha256(legacy_span<const char> data, legacy_ptr<const fc::sha256> hash_val) { 
       auto result = fc::sha256::hash( data.data(), data.size() );
-      EOS_ASSERT( result == *hash_val, crypto_api_exception, "hash mismatch" );
+      EOS_ASSERT( result == *hash_val, eosio::chain::crypto_api_exception, "hash mismatch" );
    }
 
    void assert_sha1(legacy_span<const char> data, legacy_ptr<const fc::sha1> hash_val) { 
       auto result = fc::sha1::hash( data.data(), data.size() );
-      EOS_ASSERT( result == *hash_val, crypto_api_exception, "hash mismatch" );
+      EOS_ASSERT( result == *hash_val, eosio::chain::crypto_api_exception, "hash mismatch" );
    }
 
    void assert_sha512(legacy_span<const char> data, legacy_ptr<const fc::sha512> hash_val) { 
       auto result = fc::sha512::hash( data.data(), data.size() );
-      EOS_ASSERT( result == *hash_val, crypto_api_exception, "hash mismatch" );
+      EOS_ASSERT( result == *hash_val, eosio::chain::crypto_api_exception, "hash mismatch" );
    }
 
    void assert_ripemd160(legacy_span<const char> data, legacy_ptr<const fc::ripemd160> hash_val) { 
       auto result = fc::ripemd160::hash( data.data(), data.size() );
-      EOS_ASSERT( result == *hash_val, crypto_api_exception, "hash mismatch" );
+      EOS_ASSERT( result == *hash_val, eosio::chain::crypto_api_exception, "hash mismatch" );
    }
 
    void sha1(eosio::vm::span<const char> data, legacy_ptr<fc::sha1> hash_val) {
