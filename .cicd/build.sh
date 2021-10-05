@@ -21,6 +21,8 @@ if [[ "$(uname)" == 'Darwin' && "$FORCE_LINUX" != 'true' ]]; then
     echo "$ $MAKE_COMMAND"
     eval $MAKE_COMMAND
     cd ..
+    brew install brew-pip
+    pip install requests && pip install requests_unixsocket
 else # Linux
     ARGS=${ARGS:-"--rm --init -v \"\$(pwd):$MOUNTED_DIR\""}
     PRE_COMMANDS="cd \"$MOUNTED_DIR/build\""
