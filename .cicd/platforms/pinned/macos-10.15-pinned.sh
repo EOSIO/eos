@@ -4,6 +4,8 @@ VERSION=1
 export SDKROOT="$(xcrun --sdk macosx --show-sdk-path)"
 brew update
 brew install git cmake python libtool libusb graphviz automake wget gmp pkgconfig doxygen openssl jq rabbitmq postgres || :
+# install request and requests_requests_unixsocket for rodeos http timeout test
+pip3 install requests && pip3 install requests_unixsocket
 # install clang from source
 git clone --single-branch --branch llvmorg-10.0.0 https://github.com/llvm/llvm-project clang10
 mkdir clang10/build
@@ -21,18 +23,12 @@ cd boost_1_72_0
 sudo -E ./b2 --with-iostreams --with-date_time --with-filesystem --with-system --with-program_options --with-chrono --with-test -q -j$(getconf _NPROCESSORS_ONLN) install
 cd ..
 sudo rm -rf boost_1_72_0.tar.bz2 boost_1_72_0
-# install request and requests_requests_unixsocket for rodeos http timeout test
-pip install requests && pip install requests_unixsocket
 # install libpqxx from source
 curl -L https://github.com/jtv/libpqxx/archive/7.2.1.tar.gz | tar zxvf - 
 cd  libpqxx-7.2.1  
 cmake -DCMAKE_INSTALL_PREFIX=/usr/local -DPostgreSQL_ROOT=/usr/local/opt/libpq  -DSKIP_BUILD_TEST=ON -DCMAKE_BUILD_TYPE=Release -S . -B build 
 cmake --build build && cmake --install build 
 cd .. && rm -rf libpqxx-7.2.1
-# install pip, request and requests_requests_unixsocket for rodeos http timeout test
-curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
-python get-pip.py
-pip install requests && pip install requests_unixsocket
 # install nvm for ship_test
 cd ~ && brew install nvm && mkdir -p ~/.nvm && echo "export NVM_DIR=$HOME/.nvm" >> ~/.bash_profile && echo 'source $(brew --prefix nvm)/nvm.sh' >> ~/.bash_profile && cat ~/.bash_profile && source ~/.bash_profile && echo $NVM_DIR && nvm install --lts=dubnium
 # add sbin to path from rabbitmq-server
