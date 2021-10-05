@@ -13,6 +13,9 @@ RUN yum update -y && \
     yum clean all && rm -rf /var/cache/yum
 # install request and requests_requests_unixsocket for rodeos http timeout test
 RUN pip install requests && pip install requests_unixsocket
+# upgrade pip installation
+RUN . /opt/rh/rh-python36/enable && \
+    pip install --upgrade pip
 # install erlang and rabbitmq
 RUN curl -s https://packagecloud.io/install/repositories/rabbitmq/erlang/script.rpm.sh | bash && \
     yum install -y erlang
