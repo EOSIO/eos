@@ -3,7 +3,7 @@ set -eo pipefail
 VERSION=1
 export SDKROOT="$(xcrun --sdk macosx --show-sdk-path)"
 brew update
-brew install git cmake python brew-pip libtool libusb graphviz automake wget gmp pkgconfig doxygen openssl jq rabbitmq postgres || :
+brew install git cmake python libtool libusb graphviz automake wget gmp pkgconfig doxygen openssl jq rabbitmq postgres || :
 # install clang from source
 git clone --single-branch --branch llvmorg-10.0.0 https://github.com/llvm/llvm-project clang10
 mkdir clang10/build
@@ -29,7 +29,10 @@ cd  libpqxx-7.2.1
 cmake -DCMAKE_INSTALL_PREFIX=/usr/local -DPostgreSQL_ROOT=/usr/local/opt/libpq  -DSKIP_BUILD_TEST=ON -DCMAKE_BUILD_TYPE=Release -S . -B build 
 cmake --build build && cmake --install build 
 cd .. && rm -rf libpqxx-7.2.1
-
+# install pip, request and requests_requests_unixsocket for rodeos http timeout test
+curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
+python get-pip.py
+pip install requests && pip install requests_unixsocket
 # install nvm for ship_test
 cd ~ && brew install nvm && mkdir -p ~/.nvm && echo "export NVM_DIR=$HOME/.nvm" >> ~/.bash_profile && echo 'source $(brew --prefix nvm)/nvm.sh' >> ~/.bash_profile && cat ~/.bash_profile && source ~/.bash_profile && echo $NVM_DIR && nvm install --lts=dubnium
 # add sbin to path from rabbitmq-server
