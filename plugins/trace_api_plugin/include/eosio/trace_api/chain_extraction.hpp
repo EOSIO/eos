@@ -108,7 +108,7 @@ private:
 
          // tt entry acts as a placeholder in a trx id slice if this block has no transaction
          tt.block_num = bt.number;
-         store.append_trx_ids( tt );
+         store.append_trx_ids( std::move(tt) );
 
          store.append( std::move( bt ) );
       } catch( ... ) {

@@ -83,6 +83,7 @@ try:
             #that means we are in multiversion mode
             for i in range( int(pnodes / 2) ):
                 associatedNodeLabels[str(i)] = "alt_ver"
+                specificExtraNodeosArgs[i] = " --plugin eosio::history_api_plugin "
 
         if cluster.launch(totalNodes=pnodes,
                           pnodes=pnodes,
@@ -91,7 +92,7 @@ try:
                           specificExtraNodeosArgs=specificExtraNodeosArgs,
                           alternateVersionLabelsFile=alternateVersionLabelsFile,
                           associatedNodeLabels=associatedNodeLabels,
-                          extraNodeosArgs=" --plugin eosio::history_api_plugin ",
+                          extraNodeosArgs=" --plugin eosio::trace_api_plugin --trace-no-abis",
                           printInfo=True) is False:
             cmdError("launcher")
             errorExit("Failed to stand up eos cluster.")

@@ -89,7 +89,7 @@ namespace {
       }
 
       void append_trx_ids(block_trxs_entry tt){
-         store->append_trx_ids(tt);
+         store->append_trx_ids(std::move(tt));
       }
 
       std::shared_ptr<Store> store;
