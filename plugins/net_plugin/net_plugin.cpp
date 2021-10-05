@@ -2972,8 +2972,6 @@ namespace eosio {
                   enqueue(gam);
                   no_retry = duplicate;
                   return;
-               } else {
-                  fc_dlog( logger, "not equal");
                }
             }
          } else {
