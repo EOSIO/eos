@@ -5,6 +5,8 @@ set -eo pipefail
 # tests
 if [[ $(uname) == 'Darwin' ]]; then # macOS
     set +e # defer error handling to end
+    brew install brew-pip
+    pip install requests && pip install requests_unixsocket
     [[ "$CI" == 'true' ]] && source ~/.bash_profile
     TEST_COMMAND="\"./$1\" ${@: 2}"
     echo "$ $TEST_COMMAND"
