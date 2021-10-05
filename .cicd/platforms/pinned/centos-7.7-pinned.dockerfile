@@ -10,14 +10,17 @@ RUN yum update -y && \
     python python-devel rh-python36 python-pip file libusbx-devel \
     libcurl-devel patch vim-common jq glibc-locale-source glibc-langpack-en \
     libuuid-devel libtasn1-devel expect socat libseccomp-devel iproute && \
-    yum clean all && rm -rf /var/cache/yum
-# install erlang and rabbitmq
+    yum clean all && rm -rf /var/cache/yum && \
+    yum install -y python3 python3-pip
+    # install erlang and rabbitmq
 RUN curl -s https://packagecloud.io/install/repositories/rabbitmq/erlang/script.rpm.sh | bash && \
     yum install -y erlang
 RUN curl -s https://packagecloud.io/install/repositories/rabbitmq/rabbitmq-server/script.rpm.sh | bash && \
     yum install -y rabbitmq-server
-# install request and requests_requests_unixsocket for rodeos http timeout test
-RUN pip install requests && pip install requests_unixsocket
+# upgrade pip installation
+RUN pip3 install --upgrade pip
+# install request and requests_unixsocket for rodeos http timeout test
+RUN pip3 install requests && pip3 install requests_unixsocket
 # upgrade pip installation
 RUN . /opt/rh/rh-python36/enable && \
     pip install --upgrade pip
