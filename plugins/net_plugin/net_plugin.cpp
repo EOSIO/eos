@@ -2976,7 +2976,7 @@ namespace eosio {
                   } else if (my_impl->node_id < msg.node_id) {
                      fc_dlog( logger, "not duplicate, my_impl->node_id '${lhs}' < msg.node_id '${rhs}'",
                               ("lhs", my_impl->node_id)("rhs", msg.node_id) );
-                     // only the connection from lower p2p_address to higher p2p_address will be considered as a duplicate, 
+                     // only the connection from lower node_id to higher node_id will be considered as a duplicate,
                      // so there is no chance for both connections to be closed
                      continue; 
                   }
