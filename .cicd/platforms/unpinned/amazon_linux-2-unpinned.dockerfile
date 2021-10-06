@@ -4,7 +4,7 @@ ENV VERSION 1
 RUN yum update -y && \
     yum install -y which git sudo procps-ng util-linux autoconf automake \
     libtool make bzip2 bzip2-devel openssl-devel gmp-devel libstdc++ libcurl-devel \
-    libusbx-devel python3 python3-devel python-devel libedit-devel doxygen \
+    libusbx-devel python3 python3-devel python-devel python3-pip libedit-devel doxygen \
     graphviz clang patch llvm-devel llvm-static vim-common jq && \
     yum clean all && rm -rf /var/cache/yum
 # install erlang and rabbitmq
