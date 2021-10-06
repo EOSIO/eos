@@ -429,8 +429,9 @@ namespace eosio {
    constexpr uint16_t proto_pruned_types = 3;        // supports new signed_block & packed_transaction types
    constexpr uint16_t heartbeat_interval = 4;        // supports configurable heartbeat interval
    constexpr uint16_t dup_goaway_resolution = 5;     // support peer address based duplicate connection resolution
+   constexpr uint16_t dup_node_id_goaway = 6;        // support peer node_id based duplicate connection resolution
 
-   constexpr uint16_t net_version = dup_goaway_resolution;
+   constexpr uint16_t net_version = dup_node_id_goaway;
 
    /**
     * Index by start_block_num
@@ -2916,6 +2917,10 @@ namespace eosio {
       peer_dlog( this, "received handshake gen ${g}, lib ${lib}, head ${head}",
                  ("g", msg.generation)("lib", msg.last_irreversible_block_num)("head", msg.head_num) );
 
+      std::unique_lock<std::mutex> g_conn( conn_mtx );
+      last_handshake_recv = msg;
+      g_conn.unlock();
+
       connecting = false;
       if (msg.generation == 1) {
          if( msg.node_id == my_impl->node_id) {
@@ -2940,9 +2945,9 @@ namespace eosio {
                if(check.get() == this)
                   continue;
                std::unique_lock<std::mutex> g_check_conn( check->conn_mtx );
-               fc_dlog( logger, "dup check ${l} =? ${r}",
-                        ("l", check->last_handshake_recv.p2p_address)("r", msg.p2p_address) );
-               if(check->connected() && check->last_handshake_recv.p2p_address == msg.p2p_address) {
+               fc_dlog( logger, "dup check: connected ${c}, ${l} =? ${r}",
+                        ("c", check->connected())("l", check->last_handshake_recv.node_id)("r", msg.node_id) );
+               if(check->connected() && check->last_handshake_recv.node_id == msg.node_id) {
                   if (net_version < dup_goaway_resolution || msg.network_version < dup_goaway_resolution) {
                      // It's possible that both peers could arrive here at relatively the same time, so
                      // we need to avoid the case where they would both tell a different connection to go away.
@@ -2953,8 +2958,18 @@ namespace eosio {
                      g_check_conn.unlock();
                      if (msg.time + c_time <= check_time)
                         continue;
-                  } else if (my_impl->p2p_address < msg.p2p_address) {
-                     // only the connection from lower p2p_address to higher p2p_address will be considered as a duplicate, 
+                  } else if (net_version < dup_node_id_goaway || msg.network_version < dup_node_id_goaway) {
+                     if (my_impl->p2p_address < msg.p2p_address) {
+                        fc_dlog( logger, "my_impl->p2p_address '${lhs}' < msg.p2p_address '${rhs}'",
+                                 ("lhs", my_impl->p2p_address)( "rhs", msg.p2p_address ) );
+                        // only the connection from lower p2p_address to higher p2p_address will be considered as a duplicate,
+                        // so there is no chance for both connections to be closed
+                        continue;
+                     }
+                  } else if (my_impl->node_id < msg.node_id) {
+                     fc_dlog( logger, "not duplicate, my_impl->node_id '${lhs}' < msg.node_id '${rhs}'",
+                              ("lhs", my_impl->node_id)("rhs", msg.node_id) );
+                     // only the connection from lower node_id to higher node_id will be considered as a duplicate,
                      // so there is no chance for both connections to be closed
                      continue; 
                   }
@@ -3037,9 +3052,6 @@ namespace eosio {
          }
       }
 
-      std::unique_lock<std::mutex> g_conn( conn_mtx );
-      last_handshake_recv = msg;
-      g_conn.unlock();
       my_impl->sync_master->recv_handshake( shared_from_this(), msg );
    }
 
