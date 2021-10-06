@@ -10,6 +10,8 @@ RUN apt-get update && \
     libcurl4-gnutls-dev pkg-config patch llvm-7-dev clang-7 vim-common jq rabbitmq-server && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
+# install request and requests_unixsocket module
+RUN pip3 install requests && pip3 install requests_unixsocket
 # build cmake
 RUN curl -LO https://github.com/Kitware/CMake/releases/download/v3.16.2/cmake-3.16.2.tar.gz && \
     tar -xzf cmake-3.16.2.tar.gz && \
