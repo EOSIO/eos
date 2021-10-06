@@ -428,9 +428,10 @@ namespace eosio {
    constexpr uint16_t proto_block_id_notify = 2;     // reserved. feature was removed. next net_version should be 3
    constexpr uint16_t proto_pruned_types = 3;        // supports new signed_block & packed_transaction types
    constexpr uint16_t heartbeat_interval = 4;        // supports configurable heartbeat interval
-   constexpr uint16_t dup_goaway_resolution = 5;     // support node_id based duplicate connection resolution
+   constexpr uint16_t dup_goaway_resolution = 5;     // support peer address based duplicate connection resolution
+   constexpr uint16_t dup_node_id_goaway = 6;        // support peer node_id based duplicate connection resolution
 
-   constexpr uint16_t net_version = dup_goaway_resolution;
+   constexpr uint16_t net_version = dup_node_id_goaway;
 
    /**
     * Index by start_block_num
@@ -2957,6 +2958,14 @@ namespace eosio {
                      g_check_conn.unlock();
                      if (msg.time + c_time <= check_time)
                         continue;
+                  } else if (net_version < dup_node_id_goaway || msg.network_version < dup_node_id_goaway) {
+                     if (my_impl->p2p_address < msg.p2p_address) {
+                        fc_dlog( logger, "my_impl->p2p_address '${lhs}' < msg.p2p_address '${rhs}'",
+                                 ("lhs", my_impl->p2p_address)( "rhs", msg.p2p_address ) );
+                        // only the connection from lower p2p_address to higher p2p_address will be considered as a duplicate,
+                        // so there is no chance for both connections to be closed
+                        continue;
+                     }
                   } else if (my_impl->node_id < msg.node_id) {
                      fc_dlog( logger, "not duplicate, my_impl->node_id '${lhs}' < msg.node_id '${rhs}'",
                               ("lhs", my_impl->node_id)("rhs", msg.node_id) );
