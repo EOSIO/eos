@@ -4,7 +4,7 @@ ENV VERSION 1
 RUN yum update -y && \
     yum install -y which git sudo procps-ng util-linux autoconf automake \
     libtool make bzip2 bzip2-devel openssl-devel gmp-devel libstdc++ libcurl-devel \
-    libusbx-devel python3 python3-devel python-devel python3-pip libedit-devel doxygen \
+    libusbx-devel python3 python3-devel python-devel libedit-devel doxygen \
     graphviz patch gcc gcc-c++ vim-common jq net-tools \
     libuuid-devel libtasn1-devel expect socat libseccomp-devel && \
     yum clean all && rm -rf /var/cache/yum
@@ -15,8 +15,6 @@ RUN curl -s https://packagecloud.io/install/repositories/rabbitmq/rabbitmq-serve
     yum install -y rabbitmq-server
 # upgrade pip installation
 RUN pip3 install --upgrade pip
-# install request and requests_requests_unixsocket for rodeos http timeout test
-RUN pip3 install requests && pip3 install requests_unixsocket
 # build cmake
 RUN curl -LO https://github.com/Kitware/CMake/releases/download/v3.16.2/cmake-3.16.2.tar.gz && \
     tar -xzf cmake-3.16.2.tar.gz && \
