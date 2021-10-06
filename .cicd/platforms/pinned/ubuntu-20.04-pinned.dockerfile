@@ -6,7 +6,7 @@ RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y git make \
     bzip2 automake libbz2-dev libssl-dev doxygen graphviz libgmp3-dev \
     autotools-dev python2.7 python2.7-dev python3 \
-    python3-dev python-configparser python3-pip \
+    python3-dev python-configparser \
     autoconf libtool g++ gcc curl zlib1g-dev sudo ruby libusb-1.0-0-dev \
     libcurl4-gnutls-dev pkg-config patch vim-common jq gnupg rabbitmq-server && \
     apt-get clean && \
