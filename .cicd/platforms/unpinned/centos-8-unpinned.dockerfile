@@ -18,6 +18,8 @@ RUN curl -s https://packagecloud.io/install/repositories/rabbitmq/erlang/script.
     yum install -y erlang
 RUN curl -s https://packagecloud.io/install/repositories/rabbitmq/rabbitmq-server/script.rpm.sh | bash && \
     yum install -y rabbitmq-server
+# install request and requests_unixsocket module
+RUN pip3 install requests && pip3 install requests_unixsocket
 # cmake3.18.0
 RUN curl -LO https://github.com/Kitware/CMake/releases/download/v3.18.0/cmake-3.18.0.tar.gz && \
     tar -xzf cmake-3.18.0.tar.gz && \
