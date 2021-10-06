@@ -7,7 +7,7 @@ RUN yum update -y && \
     yum --enablerepo=extras install -y  graphviz bzip2-devel openssl-devel gmp-devel && \
     yum --enablerepo=extras install -y  file libusbx-devel && \
     yum --enablerepo=extras install -y libcurl-devel patch vim-common jq && \
-    yum install -y python3 glibc-locale-source glibc-langpack-en && \
+    yum install -y python3 python3-pip glibc-locale-source glibc-langpack-en && \
     yum clean all && rm -rf /var/cache/yum
 RUN dnf install -y  https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm && \
     dnf group install -y  "Development Tools"  && \
