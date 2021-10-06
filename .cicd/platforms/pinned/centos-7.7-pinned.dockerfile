@@ -11,7 +11,7 @@ RUN yum update -y && \
     libcurl-devel patch vim-common jq glibc-locale-source glibc-langpack-en \
     libuuid-devel libtasn1-devel expect socat libseccomp-devel iproute && \
     yum clean all && rm -rf /var/cache/yum && \
-    yum install -y python3 python3-pip
+    yum install -y python3
     # install erlang and rabbitmq
 RUN curl -s https://packagecloud.io/install/repositories/rabbitmq/erlang/script.rpm.sh | bash && \
     yum install -y erlang
