@@ -139,4 +139,4 @@ for label, artifact_url in artifact_urls.items():
         else:
             sys.exit('Unable to get artifact download url for {}'.format(label))
     else:
-        sys.exit('Something went wrong getting artifact data for {}'.format(label))
+        sys.exit("Something went wrong getting artifact data for '{}' url='{}' status_code={} response='{}'".format(label, artifact_url, r.status_code, r.text))
