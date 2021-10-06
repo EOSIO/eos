@@ -10,17 +10,17 @@ RUN yum update -y && \
     python python-devel rh-python36 file libusbx-devel \
     libcurl-devel patch vim-common jq glibc-locale-source glibc-langpack-en \
     libuuid-devel libtasn1-devel expect socat libseccomp-devel iproute && \
-    yum clean all && rm -rf /var/cache/yum && \
-    yum install -y python3
+    yum clean all && rm -rf /var/cache/yum
     # install erlang and rabbitmq
 RUN curl -s https://packagecloud.io/install/repositories/rabbitmq/erlang/script.rpm.sh | bash && \
     yum install -y erlang
 RUN curl -s https://packagecloud.io/install/repositories/rabbitmq/rabbitmq-server/script.rpm.sh | bash && \
     yum install -y rabbitmq-server
 # upgrade pip installation
-RUN . /opt/rh/rh-python36/enable && \
-    pip install --upgrade pip
-# build cmake
+RUN source /opt/rh/rh-python36/enable && \
+    pip install --upgrade pip &&  && python -m pip install requests && \
+     && python -m pip install requests_unixsocket
+    # build cmake
 RUN curl -LO https://github.com/Kitware/CMake/releases/download/v3.16.2/cmake-3.16.2.tar.gz && \
     tar -xzf cmake-3.16.2.tar.gz && \
     cd cmake-3.16.2 && \
