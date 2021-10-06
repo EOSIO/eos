@@ -143,12 +143,22 @@ if __name__ == "__main__":
     prot_feats = prot_feats['activated_protocol_features']
     data['activated_protocol_features'] = prot_feats
 
+    # get deferred transactions
+    limit = 100
+    req_body = '{' + f'"limit" : {limit}' + '}'
+    trx = getJSONResp(conn, "/v1/chain/get_scheduled_transactions", req_body, exitOnError=False)
+    deferred_trx = []
+    while 'more' in trx and len(trx['more']) > 0:
+        deferred_trx.append(trx['transactions'])
+        req_body = '{' + f'"limit" : {limit}, "more" : {trx["more"]}' + '}'
+
+        trx = getJSONResp(conn, "/v1/chain/get_scheduled_transactions", req_body, exitOnError=False)
+
     # get the server info again
     server_info_end = getJSONResp(conn, "/v1/chain/get_info")
 
     data['server_info_begin'] = server_info_begin
     data['server_info_end'] = server_info_end
-
 
     # print out results
     try:
@@ -265,6 +275,14 @@ if __name__ == "__main__":
                 print(f"{a['name']:13} | (truncated)")
         if not atLeastOne:
             print("(None)")
+
+        print("\n\n     ====== DEFERRED TRANSACTIONS ======")
+        print("---------------------------------------------------------------------------------------------------------")
+        if len(deferred_trx) == 0:
+            print("(None)")
+        else:
+            for trx in deferred_trx:
+                print(trx)
 
         print("\nFULL SERVER INFO:\n")
         for k, v in server_info_end.items():
