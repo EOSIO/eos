@@ -7,7 +7,7 @@ RUN yum update -y && \
     yum --enablerepo=extras install -y devtoolset-8 && \
     yum --enablerepo=extras install -y which git autoconf automake libtool make bzip2 doxygen \
     graphviz bzip2-devel openssl-devel gmp-devel ocaml \
-    python python-devel rh-python36 python-pip file libusbx-devel \
+    python python-devel rh-python36 file libusbx-devel \
     libcurl-devel patch vim-common jq glibc-locale-source glibc-langpack-en \
     libuuid-devel libtasn1-devel expect socat libseccomp-devel iproute && \
     yum clean all && rm -rf /var/cache/yum && \
@@ -17,10 +17,6 @@ RUN curl -s https://packagecloud.io/install/repositories/rabbitmq/erlang/script.
     yum install -y erlang
 RUN curl -s https://packagecloud.io/install/repositories/rabbitmq/rabbitmq-server/script.rpm.sh | bash && \
     yum install -y rabbitmq-server
-# upgrade pip installation
-RUN pip3 install --upgrade pip
-# install request and requests_unixsocket for rodeos http timeout test
-RUN pip3 install requests && pip3 install requests_unixsocket
 # upgrade pip installation
 RUN . /opt/rh/rh-python36/enable && \
     pip install --upgrade pip
