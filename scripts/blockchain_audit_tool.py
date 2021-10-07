@@ -20,9 +20,11 @@ HELP_INFO = "\
         Activated protocol features\n\
         Preview of MI and KV tables on each account\n"
 
+
 def getJSONResp(conn, rpc, req_body="", exitOnError=True):
     conn.request("POST", rpc, body=req_body)
     resp = conn.getresponse()
+
     json_resp = resp.read()
     json_data = json.loads(json_resp)
     if 'code' in json_data:
@@ -34,11 +36,12 @@ def getJSONResp(conn, rpc, req_body="", exitOnError=True):
 
     return json_data
 
+
 if __name__ == "__main__":
     rpc_endpt = "127.0.0.1:8888"
     nArg = len(sys.argv)
-    if nArg > 2:
-        print(f"ERROR At most one argument expected, got {nArg}")
+    if nArg > 5:
+        print(f"ERROR At most four arguments expected, got {nArg}")
         print(USAGE)
         exit(1)
     if nArg > 1:
@@ -58,13 +61,19 @@ if __name__ == "__main__":
     page_size = 1024
     if len(sys.argv) > 2:
         page_size = int(sys.argv[2])
+    scope_limit = 10
+    if len(sys.argv) > 3:
+        scope_limit = int(sys.argv[3])
+    table_row_limit = 10
+    if len(sys.argv) > 4:
+        table_row_limit = int(sys.argv[4])
 
     # get the server info
     conn = http.client.HTTPConnection(rpc_endpt)
     server_info_begin = getJSONResp(conn, "/v1/chain/get_info")
 
     # get all accounts on the chain
-    limit = 2
+    limit = page_size
     moreAccounts = True
     all_accts = []
     req_body = '{"limit":' + str(limit) + '}'
@@ -98,8 +107,6 @@ if __name__ == "__main__":
 
             accts_lst.append(e)
 
-    scope_limit = 10
-    table_row_limit = 10
     for a in accts_lst:
         # get scopes and tables
         nm = a['name']
@@ -134,7 +141,7 @@ if __name__ == "__main__":
                 table_rows = getJSONResp(conn, "/v1/chain/get_kv_table_rows", req_body, exitOnError=False)
                 a['kv_tables'][tbl_name + ":" + tbl_idx_nm] = table_rows
 
-    data = {'accounts' : accts_lst}
+    data = {'accounts' : accts_lst, 'scope_limit' : scope_limit, 'table_row_limit' : table_row_limit }
 
     prod_sched = getJSONResp(conn, "/v1/chain/get_producer_schedule")
     data['producer_schedule'] = prod_sched
@@ -144,15 +151,19 @@ if __name__ == "__main__":
     data['activated_protocol_features'] = prot_feats
 
     # get deferred transactions
-    limit = 100
-    req_body = '{' + f'"limit" : {limit}' + '}'
+    limit = page_size
+    req_body = '{ "json":true, ' + f'"limit":{limit}' + '}'
     trx = getJSONResp(conn, "/v1/chain/get_scheduled_transactions", req_body, exitOnError=False)
     deferred_trx = []
+    deferred_trx.extend(trx['transactions'])
     while 'more' in trx and len(trx['more']) > 0:
-        deferred_trx.append(trx['transactions'])
-        req_body = '{' + f'"limit" : {limit}, "more" : {trx["more"]}' + '}'
+        deferred_trx.extend(trx['transactions'])
+        more_trx = trx["more"]
+        req_body = '{"json":true, ' + f'"limit":{limit}, "more":"{more_trx}"' + '}'
 
         trx = getJSONResp(conn, "/v1/chain/get_scheduled_transactions", req_body, exitOnError=False)
+
+    data['deferred_transactions'] = deferred_trx
 
     # get the server info again
     server_info_end = getJSONResp(conn, "/v1/chain/get_info")
@@ -243,7 +254,7 @@ if __name__ == "__main__":
                 if 'rows' in tbl:
                     print('[', end="")
                     for v in tbl['rows']:
-                        print(v, end= ", ")
+                        print(v, end=", ")
                     if tbl['more']:
                         print("(truncated)", end="")
                     print(']')
@@ -253,8 +264,8 @@ if __name__ == "__main__":
             if scopes['more']:
                 print(f"{a['name']:13} | (truncated)")
         if not atLeastOne:
-            print("(None)")       
-    
+            print("(None)")
+
         print("\n\n     ====== KV TABLES ======")
         print("Account        Table:Primary Index                Values")
         print("---------------------------------------------------------------------------------------------------------")
@@ -266,7 +277,7 @@ if __name__ == "__main__":
             for tbl_nm_idx, kv_tbl in kv_tables.items():
                 print(f"{a['name']:13} | {tbl_nm_idx:27} | [", end="")
                 for v in kv_tbl['rows']:
-                    print(v, end= ", ")
+                    print(v, end=", ")
                 if kv_tbl['more']:
                     print("(truncated)", end="")
                 print(']')
