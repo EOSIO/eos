@@ -3118,6 +3118,16 @@ int main( int argc, char** argv ) {
       std::cout << fc::json::to_pretty_string(call(get_transaction_trace_func, arg)) << std::endl;
    });
 
+   // get block_trace
+   string blockNum;
+   auto getBlockTrace = get->add_subcommand("block_trace", localized("Retrieve a block from trace logs"));
+   getBlockTrace->add_option("block", blockNum, localized("The number of the block to retrieve"))->required();
+
+   getBlockTrace->callback([&] {
+      auto arg= fc::mutable_variant_object( "block_num", blockNum);
+      std::cout << fc::json::to_pretty_string(call(get_block_trace_func, arg)) << std::endl;
+   });
+
    // get actions
    string account_name;
    string skip_seq_str;

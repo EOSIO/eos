@@ -281,7 +281,7 @@ struct trace_api_rpc_plugin_impl : public std::enable_shared_from_this<trace_api
             const auto deadline = that->calc_deadline( max_response_time );
             auto resp = that->req_handler->get_block_trace(*block_number, [deadline]() { FC_CHECK_DEADLINE(deadline); });
             if (resp.is_null()) {
-               error_results results{404, "Block trace missing"};
+               error_results results{404, "Trace API: block trace missing"};
                cb( 404, fc::variant( results ));
             } else {
                cb( 200, std::move(resp) );
@@ -326,12 +326,12 @@ struct trace_api_rpc_plugin_impl : public std::enable_shared_from_this<trace_api
             // search for the block that contains the transaction
             get_block_n blk_num = common->store->get_trx_block_number(*trx_id, common->minimum_irreversible_history_blocks, [deadline]() { FC_CHECK_DEADLINE(deadline); });
             if (!blk_num.has_value()){
-               error_results results{404, "block number not found in the transaction id log files"};
+               error_results results{404, "Trace API: transaction id missing in the transaction id log files"};
                cb( 404, fc::variant( results ));
             } else {
                auto resp = that->req_handler->get_transaction_trace(*trx_id, *blk_num, [deadline]() { FC_CHECK_DEADLINE(deadline); });
                if (resp.is_null()) {
-                  error_results results{404, "Transaction trace missing"};
+                  error_results results{404, "Trace API: transaction trace missing"};
                   cb( 404, fc::variant( results ));
                } else {
                   cb( 200, std::move(resp) );
