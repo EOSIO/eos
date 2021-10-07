@@ -28,9 +28,9 @@ def getJSONResp(conn, rpc, req_body="", exitOnError=True):
     json_resp = resp.read()
     json_data = json.loads(json_resp)
     if 'code' in json_data:
-        print(f"ERROR calling '{rpc}'")
-        print(f"body= {req_body}")
-        print(f"json_resp= {json_resp}")
+        print(f"ERROR calling '{rpc}'", file=sys.stderr)
+        print(f"body= {req_body}", file=sys.stderr)
+        print(f"json_resp= {json_resp}", file=sys.stderr)
         if exitOnError:
             exit(1)
 
@@ -77,25 +77,36 @@ if __name__ == "__main__":
     moreAccounts = True
     all_accts = []
     req_body = '{"limit":' + str(limit) + '}'
+    numAccounts = 0
+    print('fetching accounts...', end="", file=sys.stderr)
+    print(f'{numAccounts:8}', end="", file=sys.stderr)
     while moreAccounts:
         accts = getJSONResp(conn, "/v1/chain/get_all_accounts", req_body)
         all_accts.append(accts['accounts'])
-
+        numAccounts += len(accts['accounts'])
+        print("\b"*8, end="", file=sys.stderr)
+        print(f'{numAccounts:8}', end="", file=sys.stderr)
         moreAccounts = 'more' in accts
         if moreAccounts:
             nextAcct = accts['more']
             req_body = '{"limit":' + str(limit) + f', "lower_bound":"{nextAcct}"' + '}'
 
     if len(all_accts) == 0:
-        print("Error, no accounts returned from get_all_accounts!")
+        print("Error, no accounts returned from get_all_accounts!", file=sys.stderr)
         exit(1)
 
+    print('\nfetching account metadata and code hashes... ', end="", file=sys.stderr)
     accts_lst = []
+    i = 0
+    print(f"############# {i:8}/{numAccounts:8}", end="", file=sys.stderr)
     for accts in all_accts:
         for a in accts:
+            i += 1
             nm = a['name']
-            e = { 'name' : nm }
+            print("\b"*31, end="", file=sys.stderr)
+            print(f"{nm:13} {i:8}/{numAccounts:8}", end="", file=sys.stderr)
 
+            e = { 'name' : nm }
             req_body = '{ "account_name": "' + nm + '" }'
             metadata = getJSONResp(conn, "/v1/chain/get_account", req_body)
 
@@ -107,9 +118,16 @@ if __name__ == "__main__":
 
             accts_lst.append(e)
 
+    print("\nfetching scopes and tables... ", end="", file=sys.stderr)
+    print(f"############# {i:8}/{numAccounts:8}", end="", file=sys.stderr)
+    i = 0
     for a in accts_lst:
         # get scopes and tables
         nm = a['name']
+        print("\b"*31, end="", file=sys.stderr)
+        print(f"{nm:13} {i:8}/{numAccounts:8}", end="", file=sys.stderr)
+        i += 1
+
         req_body = '{' + f'"code":"{nm}", "table":"", "lower_bound":"", "upper_bound":"", "limit":{scope_limit}, "reverse":false' + '}'
         scopes = getJSONResp(conn, "/v1/chain/get_table_by_scope", req_body)
         scope_rows = scopes["rows"]
