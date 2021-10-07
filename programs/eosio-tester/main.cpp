@@ -503,7 +503,7 @@ FC_REFLECT(push_trx_args, (transaction)(context_free_data)(signatures)(keys))
 struct callbacks {
    ::state& state;
 
-   void check_bounds(void* data, size_t size) {
+   void check_bounds(const void* data, size_t size) {
       volatile auto check = *((const char*)data + size - 1);
       eosio::vm::ignore_unused_variable_warning(check);
    }
@@ -1035,6 +1035,30 @@ struct callbacks {
       return data.size();
    }
 
+   void assert_sha1(span<const char> data, const void* hash_val) {
+      auto hash = fc::sha1::hash(data.data(), data.size());
+      check_bounds(hash_val, hash.data_size());
+      EOS_ASSERT(std::memcmp(hash_val, hash.data(), hash.data_size()) == 0, eosio::chain::crypto_api_exception, "hash mismatch" );
+   }
+
+   void assert_sha256(span<const char> data, const void* hash_val) {
+      auto hash = fc::sha256::hash(data.data(), data.size());
+      check_bounds(hash_val, hash.data_size());
+      EOS_ASSERT(std::memcmp(hash_val, hash.data(), hash.data_size()) == 0, eosio::chain::crypto_api_exception, "hash mismatch" );
+   }
+
+   void assert_sha512(span<const char> data, const void* hash_val) {
+      auto hash = fc::sha512::hash(data.data(), data.size());
+      check_bounds(hash_val, hash.data_size());
+      EOS_ASSERT(std::memcmp(hash_val, hash.data(), hash.data_size()) == 0, eosio::chain::crypto_api_exception, "hash mismatch" );
+   }
+
+   void assert_ripemd160(span<const char> data, const void* hash_val) {
+      auto hash = fc::ripemd160::hash(data.data(), data.size());
+      check_bounds(hash_val, hash.data_size());
+      EOS_ASSERT(std::memcmp(hash_val, hash.data(), hash.data_size()) == 0, eosio::chain::crypto_api_exception, "hash mismatch" );
+   }
+
    void sha1(span<const char> data, void* hash_val) {
       auto hash = fc::sha1::hash(data.data(), data.size());
       check_bounds(hash_val, hash.data_size());
@@ -1176,6 +1200,12 @@ void register_callbacks() {
    rhf_t::add<&callbacks::kv_it_key>("env", "kv_it_key");
    rhf_t::add<&callbacks::kv_it_value>("env", "kv_it_value");
    rhf_t::add<&callbacks::sign>("env", "sign");
+
+   rhf_t::add<&callbacks::assert_sha1>("env", "assert_sha1");
+   rhf_t::add<&callbacks::assert_sha256>("env", "assert_sha256");
+   rhf_t::add<&callbacks::assert_sha512>("env", "assert_sha512");
+   rhf_t::add<&callbacks::assert_ripemd160>("env", "assert_ripemd160");
+
    rhf_t::add<&callbacks::sha1>("env", "sha1");
    rhf_t::add<&callbacks::sha256>("env", "sha256");
    rhf_t::add<&callbacks::sha512>("env", "sha512");
