@@ -354,7 +354,8 @@ EOF
                  [[ "$TEST_NAME" != 'rodeos_multi_ship_kill_restart_eos_vm_oc_idle_test' ]] && \
                  [[ "$TEST_NAME" != 'rodeos_multi_ship_kill_restart_eos_vm_oc_load_test' ]] && \
                  [[ "$TEST_NAME" != 'rodeos_idle_restart_ship_unix-socket_eos-vm-oc_test' ]] && \
-                 [[ "$TEST_NAME" != 'rodeos_idle_restart_rodeos_unix-socket_eos-vm-oc_test' ]]
+                 [[ "$TEST_NAME" != 'rodeos_idle_restart_rodeos_unix-socket_eos-vm-oc_test' ]] && \
+                 [[ "$TEST_NAME" != 'rodeos_wasmQL_http_timeout_eos_vm_oc' ]]
                  then
                 cat <<EOF
   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - $TEST_NAME"
