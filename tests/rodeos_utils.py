@@ -20,6 +20,7 @@ import signal
 import time
 import sys
 
+
 ###############################################################
 # rodeos_utils
 # 
@@ -29,8 +30,8 @@ import sys
 #
 ###############################################################
 class RodeosCluster(object):
-    def __init__(self, dump_error_details, keep_logs, leave_running, clean_run, unix_socket_option, filterName, filterWasm, enableOC=False, numRodeos=1, numShip=1):
-        Utils.Print("Standing up RodeosCluster -- unix_socket_option {}, enableOC {}, numRodeos {}, numShip {}".format(unix_socket_option, enableOC, numRodeos, numShip))
+    def __init__(self, dump_error_details, keep_logs, leave_running, clean_run, unix_socket_option, filterName, filterWasm, enableOC=False, numRodeos=1, numShip=1, timeout=30000):
+        Utils.Print("Standing up RodeosCluster -- unix_socket_option {}, enableOC {}, numRodeos {}, numShip {}, timeout {}".format(unix_socket_option, enableOC, numRodeos, numShip, timeout))
 
         self.cluster=Cluster(walletd=True)
         self.dumpErrorDetails=dump_error_details
@@ -78,6 +79,7 @@ class RodeosCluster(object):
         self.filterName = filterName
         self.filterWasm = filterWasm
         self.OCArg=["--eos-vm-oc-enable"] if enableOC else []
+        self.timeout=timeout
 
     def __enter__(self):
         self.cluster.setWalletMgr(self.walletMgr)
@@ -208,13 +210,14 @@ class RodeosCluster(object):
             Utils.Print("starting rodeos with unix_socket {}".format(socket_path))
             self.rodeos[rodeosId]=subprocess.Popen(['./programs/rodeos/rodeos', '--rdb-database', os.path.join(self.rodeosDir[rodeosId],'rocksdb'),
                                 '--data-dir', self.rodeosDir[rodeosId], '--clone-unix-connect-to', socket_path, '--wql-listen', self.wqlHostPort[rodeosId],
-                                '--wql-threads', '8', '--filter-name', self.filterName , '--filter-wasm', self.filterWasm ] + self.OCArg,
+                                '--wql-unix-listen', './var/lib/rodeos{}/rodeos{}.sock'.format(rodeosId, rodeosId),'--wql-threads', '8', '--wql-idle-timeout', str(self.timeout),
+                                '--filter-name', self.filterName , '--filter-wasm', self.filterWasm ] + self.OCArg,
                                 stdout=self.rodeosStdout[rodeosId], stderr=self.rodeosStderr[rodeosId])
         else: # else means TCP/IP
             Utils.Print("starting rodeos with TCP {}".format(self.shipNodeIdPortsNodes[shipNodeId][0]))
             self.rodeos[rodeosId]=subprocess.Popen(['./programs/rodeos/rodeos', '--rdb-database', os.path.join(self.rodeosDir[rodeosId],'rocksdb'),
                                 '--data-dir', self.rodeosDir[rodeosId], '--clone-connect-to', self.shipNodeIdPortsNodes[shipNodeId][0], '--wql-listen'
-                                , self.wqlHostPort[rodeosId], '--wql-threads', '8', '--filter-name', self.filterName , '--filter-wasm', self.filterWasm ] + self.OCArg,
+                                , self.wqlHostPort[rodeosId], '--wql-threads', '8', '--wql-idle-timeout', str(self.timeout), '--filter-name', self.filterName , '--filter-wasm', self.filterWasm ] + self.OCArg,
                                 stdout=self.rodeosStdout[rodeosId], stderr=self.rodeosStderr[rodeosId])
 
     # SIGINT to simulate CTRL-C
@@ -227,15 +230,22 @@ class RodeosCluster(object):
 
     def waitRodeosReady(self, rodeosId=0):
         assert(rodeosId >= 0 and rodeosId < self.numRodeos)
+        if self.unix_socket_option:
+            return Utils.waitForTruth(lambda:  Utils.runCmdArrReturnStr(['curl', '-H', 'Accept: application/json', '--unix-socket', './var/lib/rodeos{}/rodeos{}.sock'.format(rodeosId, rodeosId), 'http://localhost/v1/chain/get_info'], silentErrors=True) != "" , timeout=30)
         return Utils.waitForTruth(lambda:  Utils.runCmdArrReturnStr(['curl', '-H', 'Accept: application/json', self.wqlEndPoints[rodeosId] + 'v1/chain/get_info'], silentErrors=True) != "" , timeout=30)
 
     def getBlock(self, blockNum, rodeosId=0):
         assert(rodeosId >= 0 and rodeosId < self.numRodeos)
         request_body = { "block_num_or_id": blockNum }
+        if self.unix_socket_option:
+            return Utils.runCmdArrReturnJson(['curl', '-X', 'POST', '-H', 'Content-Type: application/json', '-H', \
+                'Accept: application/json', '--unix-socket', './var/lib/rodeos{}/rodeos{}.sock'.format(rodeosId, rodeosId) , 'http://localhost/v1/chain/get_block', '--data', json.dumps(request_body)])
         return Utils.runCmdArrReturnJson(['curl', '-X', 'POST', '-H', 'Content-Type: application/json', '-H', 'Accept: application/json', self.wqlEndPoints[rodeosId] + 'v1/chain/get_block', '--data', json.dumps(request_body)])
         
     def getInfo(self, rodeosId=0):
         assert(rodeosId >= 0 and rodeosId < self.numRodeos)
+        if self.unix_socket_option:
+            return Utils.runCmdArrReturnJson(['curl', '-H', 'Accept: application/json', '--unix-socket', './var/lib/rodeos{}/rodeos{}.sock'.format(rodeosId, rodeosId), 'http://localhost/v1/chain/get_info'])
         return Utils.runCmdArrReturnJson(['curl', '-H', 'Accept: application/json', self.wqlEndPoints[rodeosId] + 'v1/chain/get_info'])
 
     def produceBlocks(self, numBlocks):
