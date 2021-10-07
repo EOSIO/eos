@@ -397,8 +397,8 @@ const std::vector<char>& query_get_block(wasm_ql::thread_state&   thread_state,
 
    if (info) {
       auto&    obj = std::get<block_info_v0>(info->second);
-      uint32_t ref_block_prefix;
-      memcpy(&ref_block_prefix, obj.id.value.begin() + 8, sizeof(ref_block_prefix));
+      const uint32_t ref_block_prefix =
+            fc::sha256{ reinterpret_cast<const char*>(obj.id.extract_as_byte_array().data()), 32 }._hash[1];
 
       std::string result = "{";
       result += "\"block_num\":" + eosio::convert_to_json(obj.num);
