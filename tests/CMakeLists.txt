@@ -67,6 +67,7 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/blockvault_tests.py ${CMAKE_CURRENT_B
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/large-lib-test.py ${CMAKE_CURRENT_BINARY_DIR}/large-lib-test.py COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/rodeos_multi_ship_test.py ${CMAKE_CURRENT_BINARY_DIR}/rodeos_multi_ship_test.py COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/rodeos_multi_ship_kill_restart.py ${CMAKE_CURRENT_BINARY_DIR}/rodeos_multi_ship_kill_restart.py COPYONLY)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/rodeos_wasmQL_http_timeout.py ${CMAKE_CURRENT_BINARY_DIR}/rodeos_wasmQL_http_timeout.py COPYONLY)
 
 
 #To run plugin_test with all log from blockchain displayed, put --verbose after --, i.e. plugin_test -- --verbose
@@ -256,6 +257,9 @@ set_property(TEST rodeos_multi_ship_kill_clean_restart_idle_test PROPERTY LABELS
 add_test(NAME rodeos_multi_ship_kill_clean_restart_load_test COMMAND tests/rodeos_multi_ship_kill_restart.py -v --clean-run --dump-error-detail --clean-restart --load-test-enable WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 set_property(TEST rodeos_multi_ship_kill_clean_restart_load_test PROPERTY LABELS nonparallelizable_tests)
 
+add_test(NAME rodeos_wasmQL_http_timeout COMMAND tests/rodeos_wasmQL_http_timeout.py -v --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_property(TEST rodeos_wasmQL_http_timeout PROPERTY LABELS nonparallelizable_tests)
+
 if("eos-vm-oc" IN_LIST EOSIO_WASM_RUNTIMES)
 
   add_test(NAME rodeos_multi_ship_eos_vm_oc_idle_test COMMAND tests/rodeos_multi_ship_test.py -v --clean-run --dump-error-detail --eos-vm-oc-enable WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
@@ -275,6 +279,9 @@ if("eos-vm-oc" IN_LIST EOSIO_WASM_RUNTIMES)
 
   add_test(NAME rodeos_multi_ship_kill_restart_eos_vm_oc_load_test COMMAND tests/rodeos_multi_ship_kill_restart.py -v --clean-run --dump-error-detail --eos-vm-oc-enable --load-test-enable WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
   set_property(TEST rodeos_multi_ship_kill_restart_eos_vm_oc_load_test PROPERTY LABELS nonparallelizable_tests)
+
+  add_test(NAME rodeos_wasmQL_http_timeout_eos_vm_oc COMMAND tests/rodeos_wasmQL_http_timeout.py -v --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_property(TEST rodeos_wasmQL_http_timeout_eos_vm_oc PROPERTY LABELS nonparallelizable_tests)
 
 endif()
 
