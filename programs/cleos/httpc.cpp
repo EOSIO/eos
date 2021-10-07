@@ -282,7 +282,7 @@ namespace eosio { namespace client { namespace http {
          } else if (url.path.compare(0, net_func_base.size(), net_func_base) == 0) {
             throw chain::missing_net_api_plugin_exception(FC_LOG_MESSAGE(error, "Net API plugin is not enabled"));
          } else if (url.path.compare(0, trace_api_func_base.size(), trace_api_func_base) == 0) {
-            if ( fc::json::to_pretty_string(response_result).find("Trace API:") == string::npos ) {
+            if ( !re.find("Trace API:") ) {
                throw chain::missing_trace_api_plugin_exception(FC_LOG_MESSAGE(error, "Trace API plugin is not enabled"));
             }
          }
