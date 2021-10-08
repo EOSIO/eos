@@ -338,6 +338,9 @@ class [[eosio::contract("kv_test")]] kvtest : public eosio::contract {
             case 3: {
                auto it2 = kv_it_create(contract.value, prefix.data(), prefix.size());
                kv_it_compare(it2, it); // abort
+               return;
+            }
+            case 4: {
                kv_it_compare(it, it); // abort
                return;
             }
