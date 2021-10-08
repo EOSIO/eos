@@ -4,7 +4,11 @@ set -eo pipefail
 . ./.cicd/helpers/general.sh
 mkdir -p "$BUILD_DIR"
 [[ -z "$DCMAKE_BUILD_TYPE" ]] && export DCMAKE_BUILD_TYPE='Release'
-CMAKE_EXTRAS="-DCMAKE_BUILD_TYPE=\"$DCMAKE_BUILD_TYPE\" -DENABLE_RODEOS=ON -DENABLE_TESTER=ON -DENABLE_MULTIVERSION_PROTOCOL_TEST=\"true\" -DAMQP_CONN_STR=\"amqp://guest:guest@localhost:5672\""
+if [[ $RUN_ONLY_ON_UBUNTU18 == true ]] then;
+    CMAKE_EXTRAS="-DCMAKE_BUILD_TYPE=\"$DCMAKE_BUILD_TYPE\" -DEOSIO_COMPILE_TEST_CONTRACTS=true -DENABLE_RODEOS=ON -DENABLE_TESTER=ON -DENABLE_MULTIVERSION_PROTOCOL_TEST=\"true\" -DAMQP_CONN_STR=\"amqp://guest:guest@localhost:5672\""
+else
+    CMAKE_EXTRAS="-DCMAKE_BUILD_TYPE=\"$DCMAKE_BUILD_TYPE\" -DENABLE_RODEOS=ON -DENABLE_TESTER=ON -DENABLE_MULTIVERSION_PROTOCOL_TEST=\"true\" -DAMQP_CONN_STR=\"amqp://guest:guest@localhost:5672\""
+fi
 if [[ "$(uname)" == 'Darwin' && "$FORCE_LINUX" != 'true' ]]; then
     # You can't use chained commands in execute
     if [[ "$GITHUB_ACTIONS" == 'true' ]]; then
@@ -55,6 +59,11 @@ else # Linux
         COMMANDS="$BUILD_COMMANDS"
     else
         COMMANDS="$BUILD_COMMANDS"
+    fi
+    if [[ $RUN_ONLY_ON_UBUNTU18 == true ]] then;
+        if [[ "$IMAGE_TAG" == 'ubuntu-18.04-unpinned' ]] || [["$IMAGE_TAG" == 'ubuntu-18.04-pinned' ]] then;
+            FULL_TAG='eosio/eosio.cdt:develop'
+        fi
     fi
     . "$HELPERS_DIR/file-hash.sh" "$CICD_DIR/platforms/$PLATFORM_TYPE/$IMAGE_TAG.dockerfile"
     COMMANDS="$PRE_COMMANDS && $COMMANDS"
