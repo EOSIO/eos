@@ -5,20 +5,25 @@ import sys
 import json
 
 USAGE = "\
-Usage: (1) blockchain_audit_tool.py [<RPC ENDPOINT>]\n\
-       (2) blockchain_audit_tool.py --help\n\
-"
+Usage: (1) blockchain_audit_tool.py [<rpc_endpoint> [<page_size> [<scope_limit> [<table_row_limit>]]]]\n\
+       (2) blockchain_audit_tool.py --help"
 
 HELP_INFO = "\
-    Retrieve info from EOSIO blockchain. If <RPC_ENDPOINT> is not given, it assumed to be 'localhost:8888'\n\
+    Retrieve info from EOSIO blockchain.\n\
+    <rpc_endpoint> RPC endpoint URI of nodeos with chain_api_plugin enabled. Defaults to 'localhost:8888'\n\
+      <page_size>  Integer > 0. The 'limit' field in RPC queries for accounts and.  Default 1024\n\
+    <scope_limit>  Integer > 0. The 'limit' field when calling /v1/chain/get_table_by_scope.  Defualts 10 \n\
+<table_row_limit>  Integer > 0. The 'limit' field when calling /v1/chain/get_table_rows and.  Defaults 10 \n\
     Outputs to stdout in a human readable format, and write to JSON file blockcahin_audit_data.json:\n\
+    Status and error info is written to stderr.\n\
     Information currently includes:\n\
         Full server info\n\
         All accounts, creation dates, code hashes\n\
         Account permissions\n\
         Producer schedules\n\
         Activated protocol features\n\
-        Preview of MI and KV tables on each account\n"
+        Preview of MI and KV tables on each account\n\
+        Deferred transactions"
 
 
 def getJSONResp(conn, rpc, req_body="", exitOnError=True):
@@ -49,7 +54,7 @@ if __name__ == "__main__":
         if arg.startswith('-'):
             if arg == '--help':
                 print(USAGE)
-                print(HELP_INFO)
+                print("\n" + HELP_INFO)
                 exit(0)
             else:
                 print(f"ERORR: Unknown option '{arg}'")
@@ -61,12 +66,21 @@ if __name__ == "__main__":
     page_size = 1024
     if len(sys.argv) > 2:
         page_size = int(sys.argv[2])
+        if page_size < 1:
+            print("ERROR: page_size must be > 0")
+            exit(1)
     scope_limit = 10
     if len(sys.argv) > 3:
         scope_limit = int(sys.argv[3])
+        if scope_limit < 1:
+            print("ERROR: scope_limit must be > 0")
+            exit(1)
     table_row_limit = 10
     if len(sys.argv) > 4:
         table_row_limit = int(sys.argv[4])
+        if table_row_limit < 1:
+            print("ERROR: table_row_limit must be > 0")
+            exit(1)
 
     # get the server info
     conn = http.client.HTTPConnection(rpc_endpt)
