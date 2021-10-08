@@ -203,11 +203,12 @@ try:
 
     extraProducerAccounts = Cluster.createAccountKeys(1)
     vltproducerAccount = extraProducerAccounts[0]
+    traceNodeosArgs=" --plugin eosio::trace_api_plugin --trace-no-abis "
 
     Print("Stand up cluster")
     if cluster.launch(onlyBios=False, pnodes=1, totalNodes=totalNodes,
                     useBiosBootFile=False, onlySetProds=False,
-                    extraNodeosArgs=" --blocks-log-stride 20 --max-retained-block-files 3 --logconf %s" % loggingFile,
+                    extraNodeosArgs=" --blocks-log-stride 20 --max-retained-block-files 3 --logconf %s" % loggingFile + traceNodeosArgs,
                     specificExtraNodeosArgs={
                         1:"--plugin eosio::blockvault_client_plugin --block-vault-backend postgresql://postgres:password@localhost"},
                     manualProducerNodeConf={ 1: { 'key': vltproducerAccount, 'names': ['vltproducera']}}) is False:

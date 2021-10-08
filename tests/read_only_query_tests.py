@@ -80,7 +80,8 @@ try:
                (pnodes, total_nodes-pnodes, topo, delay))
 
         Print("Stand up cluster")
-        if cluster.launch(pnodes=pnodes, totalNodes=total_nodes, topo=topo, delay=delay) is False:
+        traceNodeosArgs=" --plugin eosio::trace_api_plugin --trace-no-abis "
+        if cluster.launch(pnodes=pnodes, totalNodes=total_nodes, topo=topo, delay=delay, extraNodeosArgs=traceNodeosArgs) is False:
             errorExit("Failed to stand up eos cluster.")
 
         Print ("Wait for Cluster stabilization")

@@ -162,6 +162,7 @@ try:
     cluster.killall(allInstances=killAll)
     cluster.cleanup()
 
+    traceNodeosArgs = " --plugin eosio::trace_api_plugin --trace-no-abis "
     assert cluster.launch(
         pnodes=1,
         prodCount=1,
@@ -170,6 +171,7 @@ try:
         useBiosBootFile=False,
         loadSystemContract=False,
         pfSetupPolicy=PFSetupPolicy.NONE,
+        extraNodeosArgs=traceNodeosArgs,
         specificExtraNodeosArgs={
             0: ("--plugin eosio::state_history_plugin --trace-history --chain-state-history --disable-replay-opts "
                 "--state-history-stride {0} " 

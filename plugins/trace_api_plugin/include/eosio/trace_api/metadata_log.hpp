@@ -17,7 +17,8 @@ namespace eosio { namespace trace_api {
 
    using metadata_log_entry = std::variant<
       block_entry_v0,
-      lib_entry_v0
+      lib_entry_v0,
+      block_trxs_entry
    >;
 
 }}
