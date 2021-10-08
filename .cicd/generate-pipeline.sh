@@ -2,7 +2,7 @@
 set -eo pipefail
 # environment
 . ./.cicd/helpers/general.sh
-RUN_ONLY_ON_UBUNTU18 = true
+RUN_ONLY_ON_UBUNTU18=true
 export PLATFORMS_JSON_ARRAY='[]'
 [[ -z "$ROUNDS" ]] && export ROUNDS='1'
 [[ -z "$ROUND_SIZE" ]] && export ROUND_SIZE='1'
