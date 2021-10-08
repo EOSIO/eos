@@ -3524,6 +3524,57 @@ eosio::chain::backing_store_type read_only::get_backing_store() const {
    return kv_database.get_backing_store();
 }
 
+read_only::get_all_accounts_result
+read_only::get_all_accounts( const get_all_accounts_params& params ) const
+{
+   get_all_accounts_result result;
+
+   using acct_obj_idx_type = chainbase::get_index_type<chain::account_object>::type;
+   const auto& accts = db.db().get_index<acct_obj_idx_type >().indices().get<chain::by_name>();
+
+   auto cur_time = fc::time_point::now();
+   auto end_time = cur_time + fc::microseconds(1000 * 10); /// 10ms max time
+   
+   auto begin_itr = params.lower_bound? accts.lower_bound(*params.lower_bound) : accts.begin();
+   auto end_itr = params.upper_bound? accts.upper_bound(*params.upper_bound) : accts.end();
+
+   if( std::distance(begin_itr, end_itr) < 0 )
+      return result;
+
+   auto itr = params.reverse? end_itr : begin_itr;
+   // since end_itr could potentially be past end of array, subtract one position
+   if (params.reverse)
+      --itr;
+
+   // this flag will be set to true when we are reversing and we end on the begin iterator
+   // if this is the case, 'more' field will remain null, and will nto be in JSON response
+   bool reverse_end_begin = false;
+
+   while(cur_time <= end_time
+         && result.accounts.size() < params.limit
+         && itr != end_itr)
+   {
+      const auto &a = *itr;
+      result.accounts.push_back({a.name, a.creation_date});
+
+      cur_time = fc::time_point::now();
+      if (params.reverse && itr == begin_itr) {
+         reverse_end_begin = true;
+         break;
+      }
+      params.reverse? --itr : ++itr;
+   }
+
+   if (params.reverse && !reverse_end_begin) {
+      result.more = itr->name;
+   }
+   else if (!params.reverse && itr != end_itr) {
+      result.more = itr->name;
+   }
+
+   return result;
+}
+
 } // namespace chain_apis
 } // namespace eosio
 
