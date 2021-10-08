@@ -68,18 +68,21 @@ if __name__ == "__main__":
         page_size = int(sys.argv[2])
         if page_size < 1:
             print("ERROR: page_size must be > 0")
+            print(USAGE)
             exit(1)
     scope_limit = 10
     if len(sys.argv) > 3:
         scope_limit = int(sys.argv[3])
         if scope_limit < 1:
             print("ERROR: scope_limit must be > 0")
+            print(USAGE)
             exit(1)
     table_row_limit = 10
     if len(sys.argv) > 4:
         table_row_limit = int(sys.argv[4])
         if table_row_limit < 1:
             print("ERROR: table_row_limit must be > 0")
+            print(USAGE)
             exit(1)
 
     # get the server info
@@ -212,7 +215,7 @@ if __name__ == "__main__":
         print(f"      End Head Block / Time: {server_info_end['head_block_num']} / {server_info_end['head_block_time']}")
         print()
         print("     ======  ACCOUNTS CODE ======")
-        print("Name            Priv    Created                Last Code Update            Code Hash                     ")
+        print("Name            Privilege    Created                Last Code Update            Code Hash                     ")
         print("---------------------------------------------------------------------------------------------------------")
         for a in accts_lst:
             m = a['metadata']
@@ -220,7 +223,7 @@ if __name__ == "__main__":
             cr = cr[0:21]
             lcu = m['last_code_update']
             lcu = lcu[0:21]
-            print(f"{a['name']:13} | {m['privileged']:4} | {cr:21} | {lcu:21} | {a['code_hash']} ")
+            print(f"{a['name']:13} | {m['privileged']:9} | {cr:21} | {lcu:21} | {a['code_hash']} ")
 
         print("\n\n     ======  ACCOUNT PERMISSIONS ======")
         print("Accoount        Perm Name       Parent         Auth Threshold / [(Key, Weight)..] / Accounts / Waits                    ")
