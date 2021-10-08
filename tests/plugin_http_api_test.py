@@ -47,7 +47,7 @@ class PluginHttpTest(unittest.TestCase):
         self.createDataDir(self)
         self.keosd.launch()
         nodeos_plugins = (" --plugin %s --plugin %s --plugin %s --plugin %s --plugin %s --plugin %s --plugin %s --plugin %s "
-                          " --plugin %s --plugin %s ") % ( "eosio::trace_api_plugin",
+                          " --plugin %s --plugin %s --plugin %s --plugin %s ") % ( "eosio::trace_api_plugin",
                                                                                    "eosio::test_control_api_plugin",
                                                                                    "eosio::test_control_plugin",
                                                                                    "eosio::net_plugin",
@@ -56,7 +56,9 @@ class PluginHttpTest(unittest.TestCase):
                                                                                    "eosio::producer_api_plugin",
                                                                                    "eosio::chain_api_plugin",
                                                                                    "eosio::http_plugin",
-                                                                                   "eosio::db_size_api_plugin")
+                                                                                   "eosio::db_size_api_plugin",
+                                                                                   "eosio::history_plugin",
+                                                                                   "eosio::history_api_plugin")
         nodeos_flags = (" --data-dir=%s --trace-dir=%s --trace-no-abis --filter-on=%s --access-control-allow-origin=%s "
                         "--contracts-console --http-validate-host=%s --verbose-http-errors "
                         "--p2p-peer-address localhost:9011 ") % (self.data_dir, self.data_dir, "\"*\"", "\'*\'", "false")
@@ -778,6 +780,92 @@ class PluginHttpTest(unittest.TestCase):
         ret_json = Utils.runCmdReturnJson(valid_cmd)
         self.assertEqual(ret_json["code"], 500)
 
+    # test all history api
+    def test_HistoryApi(self) :
+        cmd_base = self.base_node_cmd_str + "history/"
+
+        # get_actions with empty parameter
+        default_cmd = cmd_base + "get_actions"
+        ret_json = Utils.runCmdReturnJson(default_cmd)
+        self.assertEqual(ret_json["code"], 400)
+        self.assertEqual(ret_json["error"]["code"], 3200006)
+        # get_actions with empty content parameter
+        empty_content_cmd = default_cmd + self.http_post_str + self.empty_content_str
+        ret_json = Utils.runCmdReturnJson(empty_content_cmd)
+        self.assertEqual(ret_json["code"], 400)
+        self.assertEqual(ret_json["error"]["code"], 3200006)
+        # get_actions with invalid parameter
+        invalid_cmd = default_cmd + self.http_post_str + self.http_post_invalid_param
+        ret_json = Utils.runCmdReturnJson(invalid_cmd)
+        self.assertEqual(ret_json["code"], 400)
+        self.assertEqual(ret_json["error"]["code"], 3200006)
+        # get_actions with valid parameter
+        valid_cmd = default_cmd + self.http_post_str + ("'{\"account_name\":\"test\", \"pos\":-1, \"offset\":2}'")
+        ret_json = Utils.runCmdReturnJson(valid_cmd)
+        self.assertIn("last_irreversible_block", ret_json)
+
+        # get_transaction with empty parameter
+        default_cmd = cmd_base + "get_transaction"
+        ret_json = Utils.runCmdReturnJson(default_cmd)
+        self.assertEqual(ret_json["code"], 400)
+        self.assertEqual(ret_json["error"]["code"], 3200006)
+        # get_transaction with empty content parameter
+        empty_content_cmd = default_cmd + self.http_post_str + self.empty_content_str
+        ret_json = Utils.runCmdReturnJson(empty_content_cmd)
+        self.assertEqual(ret_json["code"], 400)
+        self.assertEqual(ret_json["error"]["code"], 3200006)
+        # get_transaction with invalid parameter
+        invalid_cmd = default_cmd + self.http_post_str + self.http_post_invalid_param
+        ret_json = Utils.runCmdReturnJson(invalid_cmd)
+        self.assertEqual(ret_json["code"], 400)
+        self.assertEqual(ret_json["error"]["code"], 3200006)
+        # get_transaction with valid parameter
+        valid_cmd = default_cmd + self.http_post_str + ("'{\"id\":\"test\", \"block_num_hint\":1}'")
+        ret_json = Utils.runCmdReturnJson(valid_cmd)
+        # no transaction, so 500 error being sent back instead
+        self.assertEqual(ret_json["code"], 500)
+        self.assertEqual(ret_json["error"]["code"], 3010009)
+
+        # get_key_accounts with empty parameter
+        default_cmd = cmd_base + "get_key_accounts"
+        ret_json = Utils.runCmdReturnJson(default_cmd)
+        self.assertEqual(ret_json["code"], 400)
+        self.assertEqual(ret_json["error"]["code"], 3200006)
+        # get_key_accounts with empty content parameter
+        empty_content_cmd = default_cmd + self.http_post_str + self.empty_content_str
+        ret_json = Utils.runCmdReturnJson(empty_content_cmd)
+        self.assertEqual(ret_json["code"], 400)
+        self.assertEqual(ret_json["error"]["code"], 3200006)
+        # get_key_accounts with invalid parameter
+        invalid_cmd = default_cmd + self.http_post_str + self.http_post_invalid_param
+        ret_json = Utils.runCmdReturnJson(invalid_cmd)
+        self.assertEqual(ret_json["code"], 400)
+        self.assertEqual(ret_json["error"]["code"], 3200006)
+        # get_key_accounts with valid parameter
+        valid_cmd = default_cmd + self.http_post_str + ("'{\"public_key\":\"EOS6FxXbikY5ZUN9qEdeLbEYLKZzJwRYRr2PuC3rqfSu67LvhPARi\"}'")
+        ret_json = Utils.runCmdReturnJson(valid_cmd)
+        self.assertIn("account_names", ret_json)
+
+        # get_controlled_accounts with empty parameter
+        default_cmd = cmd_base + "get_controlled_accounts"
+        ret_json = Utils.runCmdReturnJson(default_cmd)
+        self.assertEqual(ret_json["code"], 400)
+        self.assertEqual(ret_json["error"]["code"], 3200006)
+        # get_controlled_accounts with empty content parameter
+        empty_content_cmd = default_cmd + self.http_post_str + self.empty_content_str
+        ret_json = Utils.runCmdReturnJson(empty_content_cmd)
+        self.assertEqual(ret_json["code"], 400)
+        self.assertEqual(ret_json["error"]["code"], 3200006)
+        # get_controlled_accounts with invalid parameter
+        invalid_cmd = default_cmd + self.http_post_str + self.http_post_invalid_param
+        ret_json = Utils.runCmdReturnJson(invalid_cmd)
+        self.assertEqual(ret_json["code"], 400)
+        self.assertEqual(ret_json["error"]["code"], 3200006)
+        # get_controlled_accounts with valid parameter
+        valid_cmd = default_cmd + self.http_post_str + ("'{\"controlling_account\":\"test\"}'")
+        ret_json = Utils.runCmdReturnJson(valid_cmd)
+        self.assertIn("controlled_accounts", ret_json)
+
     # test all net api
     def test_NetApi(self) :
         cmd_base = self.base_node_cmd_str + "net/"
@@ -1455,24 +1543,6 @@ class PluginHttpTest(unittest.TestCase):
         self.assertEqual(ret_json["code"], 400)
         # get_block with valid parameter
         valid_cmd = default_cmd + self.http_post_str + ("'{\"block_num\":1}'")
-        ret_json = Utils.runCmdReturnJson(valid_cmd)
-        self.assertEqual(ret_json["code"], 404)
-        self.assertEqual(ret_json["error"]["code"], 0)
-
-        # get_transaction_trace with empty parameter
-        default_cmd = cmd_base + "get_transaction_trace"
-        ret_json = Utils.runCmdReturnJson(default_cmd)
-        self.assertEqual(ret_json["code"], 400)
-        # get_transaction_trace with empty content parameter
-        empty_content_cmd = default_cmd + self.http_post_str + self.empty_content_str
-        ret_json = Utils.runCmdReturnJson(empty_content_cmd)
-        self.assertEqual(ret_json["code"], 400)
-        # get_transaction_trace with invalid parameter
-        invalid_cmd = default_cmd + self.http_post_str + self.http_post_invalid_param
-        ret_json = Utils.runCmdReturnJson(invalid_cmd)
-        self.assertEqual(ret_json["code"], 400)
-        # get_transaction_trace with valid parameter, a valid id length [8, 64]
-        valid_cmd = default_cmd + self.http_post_str + ("'{\"id\":\"12345678\"}'")
         ret_json = Utils.runCmdReturnJson(valid_cmd)
         self.assertEqual(ret_json["code"], 404)
         self.assertEqual(ret_json["error"]["code"], 0)

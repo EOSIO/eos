@@ -79,13 +79,13 @@ try:
     # version 1.7 did not provide a default value for "--last-block-time-offset-us" so this is needed to
     # avoid dropping late blocks
     assert cluster.launch(pnodes=4, totalNodes=4, prodCount=1, totalProducers=4,
-                          extraNodeosArgs=" --plugin eosio::producer_api_plugin --plugin eosio::trace_api_plugin --trace-no-abis",
+                          extraNodeosArgs=" --plugin eosio::producer_api_plugin ",
                           useBiosBootFile=False,
                           specificExtraNodeosArgs={
                              0:"--http-max-response-time-ms 990000",
                              1:"--http-max-response-time-ms 990000",
                              2:"--http-max-response-time-ms 990000",
-                             3:"--last-block-time-offset-us -200000 --plugin eosio::history_api_plugin"},
+                             3:"--last-block-time-offset-us -200000"},
                           onlySetProds=True,
                           pfSetupPolicy=PFSetupPolicy.NONE,
                           alternateVersionLabelsFile=alternateVersionLabelsFile,

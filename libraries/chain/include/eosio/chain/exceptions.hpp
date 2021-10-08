@@ -453,8 +453,7 @@ namespace eosio { namespace chain {
                                     3110005, "Missing Chain Plugin" )
       FC_DECLARE_DERIVED_EXCEPTION( plugin_config_exception,               plugin_exception,
                                     3110006, "Incorrect plugin configuration" )
-      FC_DECLARE_DERIVED_EXCEPTION( missing_trace_api_plugin_exception,           plugin_exception,
-                                    3110007, "Missing Trace API Plugin" )
+
 
    FC_DECLARE_DERIVED_EXCEPTION( wallet_exception, chain_exception,
                                  3120000, "Wallet exception" )

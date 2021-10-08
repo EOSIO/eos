@@ -67,9 +67,6 @@ try:
         cluster.cleanup()
         Print("Stand up cluster")
 
-        abs_path = os.path.abspath(os.getcwd() + '/../unittests/contracts/eosio.token/eosio.token.abi')
-        traceNodeosArgs=" --plugin eosio::trace_api_plugin --trace-rpc-abi eosio.token=" + abs_path
-
         if not amqpAddr:
             specificExtraNodeosArgs={ 0 : " --backing-store=chainbase",
                                       1 : " --backing-store=rocksdb" }
@@ -77,7 +74,7 @@ try:
             cluster.createAMQPQueue("trx")
             specificExtraNodeosArgs={ 0: "--backing-store=chainbase --plugin eosio::amqp_trx_plugin --amqp-trx-address %s" % (amqpAddr),
                                       1 : " --backing-store=rocksdb" }
-        if cluster.launch(totalNodes=3, prodCount=prodCount, onlyBios=onlyBios, dontBootstrap=dontBootstrap, specificExtraNodeosArgs=specificExtraNodeosArgs, extraNodeosArgs=traceNodeosArgs) is False:
+        if cluster.launch(totalNodes=3, prodCount=prodCount, onlyBios=onlyBios, dontBootstrap=dontBootstrap, specificExtraNodeosArgs=specificExtraNodeosArgs) is False:
             cmdError("launcher")
             errorExit("Failed to stand up eos cluster.")
     else:
@@ -291,6 +288,14 @@ try:
         cmdError("FAILURE - transfer failed")
         errorExit("Transfer verification failed. Excepted %s, actual: %s" % (expectedAmount, actualAmount))
 
+    Print("Validate last action for account %s" % (testeraAccount.name))
+    actions=node.getActions(testeraAccount, -1, -1, exitOnError=True)
+    try:
+        assert (actions["actions"][0]["action_trace"]["act"]["name"] == "transfer")
+    except (AssertionError, TypeError, KeyError) as _:
+        Print("Action validation failed. Actions: %s" % (actions))
+        raise
+
     node.waitForTransInBlock(transId)
 
     transaction=node.getTransaction(transId, exitOnError=True, delayedRetry=False)
@@ -299,10 +304,10 @@ try:
     amountVal=None
     key=""
     try:
-        key = "[actions][0][action]"
-        typeVal = transaction["actions"][0]["action"]
-        key = "[actions][0][params][quantity]"
-        amountVal = transaction["actions"][0]["params"]["quantity"]
+        key = "[traces][0][act][name]"
+        typeVal = transaction["traces"][0]["act"]["name"]
+        key = "[traces][0][act][data][quantity]"
+        amountVal = transaction["traces"][0]["act"]["data"]["quantity"]
         amountVal = int(decimal.Decimal(amountVal.split()[0]) * 10000)
     except (TypeError, KeyError) as e:
         Print("transaction%s not found. Transaction: %s" % (key, transaction))
