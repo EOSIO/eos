@@ -54,13 +54,11 @@ try:
     specificExtraNodeosArgs = { 0 : "--enable-stale-production",
                                 1 : "--enable-stale-production",
                                 3 : "--read-mode irreversible --plugin eosio::net_api_plugin" }
-    traceNodeosArgs=" --plugin eosio::trace_api_plugin --trace-no-abis "
     if not cluster.launch(pnodes=pnodes, 
                           totalNodes=totalNodes,
                           specificExtraNodeosArgs=specificExtraNodeosArgs,
                           configSecurityGroup=True,
-                          printInfo=True,
-                          extraNodeosArgs=traceNodeosArgs):
+                          printInfo=True):
         Utils.cmdError("launcher")
         Utils.errorExit("Failed to stand up eos cluster.")
     

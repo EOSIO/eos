@@ -50,9 +50,8 @@ try:
     Utils.Print("topo: {}".format(json.dumps(topo, indent=4, sort_keys=True)))
 
     extraNodeosArgs=" --plugin eosio::net_api_plugin "
-    traceNodeosArgs=" --plugin eosio::trace_api_plugin --trace-no-abis "
 
-    if not cluster.launch(pnodes=pnodes, totalNodes=totalNodes, unstartedNodes=unstartedNodes, configSecurityGroup=True, extraNodeosArgs=extraNodeosArgs + traceNodeosArgs, topo=topo, printInfo=True):
+    if not cluster.launch(pnodes=pnodes, totalNodes=totalNodes, unstartedNodes=unstartedNodes, configSecurityGroup=True, extraNodeosArgs=extraNodeosArgs, topo=topo, printInfo=True):
         Utils.cmdError("launcher")
         Utils.errorExit("Failed to stand up eos cluster.")
     

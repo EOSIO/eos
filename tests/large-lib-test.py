@@ -68,15 +68,13 @@ try:
     specificExtraNodeosArgs[2]="--read-mode speculative "
 
     Print("Stand up cluster")
-    traceNodeosArgs=" --plugin eosio::trace_api_plugin --trace-no-abis "
     if cluster.launch(
             pnodes=pnodes,
             totalNodes=total_nodes,
             totalProducers=1,
             useBiosBootFile=False,
             topo="mesh",
-            specificExtraNodeosArgs=specificExtraNodeosArgs,
-            extraNodeosArgs=traceNodeosArgs) is False:
+            specificExtraNodeosArgs=specificExtraNodeosArgs) is False:
         errorExit("Failed to stand up eos cluster.")
 
     producingNode=cluster.getNode(0)
