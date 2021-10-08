@@ -156,6 +156,7 @@ try:
         2 : "--read-mode speculative --terminate-at-block=200",
         3 : "--read-mode head --terminate-at-block=250",
     }
+    traceNodeosArgs = " --plugin eosio::trace_api_plugin --trace-no-abis "
 
     # Kill any existing instances and launch cluster
     TestHelper.printSystemInfo("BEGIN")
@@ -169,7 +170,8 @@ try:
         pnodes=1,
         useBiosBootFile=False,
         topo="mesh",
-        specificExtraNodeosArgs=specificNodeosArgs
+        specificExtraNodeosArgs=specificNodeosArgs,
+        extraNodeosArgs=traceNodeosArgs
     )
 
     producingNodeId = 0
