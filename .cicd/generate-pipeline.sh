@@ -77,8 +77,8 @@ for FILE in $(ls "$CICD_DIR/platforms/$PLATFORM_TYPE"); do
     [[ $FILE_NAME =~ 'centos' ]] && export ICON=':centos:'
     [[ $FILE_NAME =~ 'macos' ]] && export ICON=':darwin:'
     . "$HELPERS_DIR/file-hash.sh" "$CICD_DIR/platforms/$PLATFORM_TYPE/$FILE" # returns HASHED_IMAGE_TAG, etc
-    if [[ $RUN_ONLY_ON_UBUNTU18 == true ]] then;
-      if [[ "${PLATFORM_NAME_UPCASE}_${VERSION_MAJOR}${VERSION_MINOR}" != "UBUNTU_1804" ]] then;
+    if [[ $RUN_ONLY_ON_UBUNTU18 == true ]]; then
+      if [[ "${PLATFORM_NAME_UPCASE}_${VERSION_MAJOR}${VERSION_MINOR}" != "UBUNTU_1804" ]]; then
         export PLATFORM_SKIP_VAR = true
       else
         export PLATFORM_SKIP_VAR = false
