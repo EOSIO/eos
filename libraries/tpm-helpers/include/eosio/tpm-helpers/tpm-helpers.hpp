@@ -34,8 +34,8 @@ struct attested_key {
 };
 
 boost::container::flat_set<fc::crypto::public_key> get_all_persistent_keys(const std::string& tcti);
-fc::crypto::public_key create_key(const std::string& tcti, const std::vector<unsigned>& pcrs);
-attested_key create_key_attested(const std::string& tcti, const std::vector<unsigned>& pcrs, uint32_t certifying_key_handle);
+fc::crypto::public_key create_key(const std::string& tcti, const std::vector<unsigned>& pcrs, const uint32_t at = 0);
+attested_key create_key_attested(const std::string& tcti, const std::vector<unsigned>& pcrs, const uint32_t certifying_key_handle, const uint32_t at = 0);
 fc::crypto::public_key verify_attestation(const attested_key& ak, const std::map<unsigned, fc::sha256>& pcr_policy = std::map<unsigned, fc::sha256>());
 
 class nv_data {
