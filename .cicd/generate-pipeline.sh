@@ -79,11 +79,11 @@ for FILE in $(ls "$CICD_DIR/platforms/$PLATFORM_TYPE"); do
     . "$HELPERS_DIR/file-hash.sh" "$CICD_DIR/platforms/$PLATFORM_TYPE/$FILE" # returns HASHED_IMAGE_TAG, etc
     if [[ $RUN_ONLY_ON_UBUNTU18 == true ]]; then
       if [[ "${PLATFORM_NAME_UPCASE}_${VERSION_MAJOR}${VERSION_MINOR}" != "UBUNTU_1804" ]]; then
-        SKIP_${PLATFORM_NAME_UPCASE}_${VERSION_MAJOR}${VERSION_MINOR}=true
+        declare SKIP_${PLATFORM_NAME_UPCASE}_${VERSION_MAJOR}${VERSION_MINOR}=true
         export PLATFORM_SKIP_VAR=true
         echo $PLATFORM_SKIP_VAR
       else
-        SKIP_${PLATFORM_NAME_UPCASE}_${VERSION_MAJOR}${VERSION_MINOR}=true
+        declare SKIP_${PLATFORM_NAME_UPCASE}_${VERSION_MAJOR}${VERSION_MINOR}=true
         echo $PLATFORM_SKIP_VAR
         export PLATFORM_SKIP_VAR=false
       fi
