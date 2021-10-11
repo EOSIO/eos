@@ -192,8 +192,6 @@ try:
 
             lastIrreversibleBlockNum = node.getIrreversibleBlockNum()
             blockNum = Node.getTransBlockNum(trans)
-            if blockNum is None:
-                blockNum = node.getBlockNumByTransId(transId)
             assert blockNum is not None, Print("ERROR: could not retrieve block num from transId: %s, trans: %s" % (transId, json.dumps(trans, indent=2)))
             block = node.getBlock(blockNum)
             if block is not None:
@@ -347,8 +345,6 @@ try:
                 if newestBlockNum > lastBlockNum:
                     missingTransactions[-1]["highest_block_seen"] = newestBlockNum
             blockNum = Node.getTransBlockNum(trans)
-            if blockNum is None:
-                blockNum = node.getBlockNumByTransId(transId)
             assert blockNum is not None, Print("ERROR: could not retrieve block num from transId: %s, trans: %s" % (transId, json.dumps(trans, indent=2)))
         else:
             block = transToBlock[transId]
