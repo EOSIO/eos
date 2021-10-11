@@ -161,7 +161,7 @@ class Node(object):
             cntxt.index(0)
             return cntxt.add("block_num")
 
-        # or what the history plugin returns
+        # or what the trace api plugin returns
         return cntxt.add("block_num")
 
 
