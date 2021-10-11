@@ -54,6 +54,7 @@ namespace eosio { namespace trace_api {
 
   struct transaction_trace_v3: transaction_trace_v2 {
      std::vector<chain::name>                   bill_to_accounts = {};
+     uint32_t                                   block_num = {};
   };
 
   struct block_trace_v0 {
@@ -102,7 +103,7 @@ FC_REFLECT_DERIVED(eosio::trace_api::action_trace_v1, (eosio::trace_api::action_
 FC_REFLECT(eosio::trace_api::transaction_trace_v0, (id)(actions))
 FC_REFLECT_DERIVED(eosio::trace_api::transaction_trace_v1, (eosio::trace_api::transaction_trace_v0), (status)(cpu_usage_us)(net_usage_words)(signatures)(trx_header))
 FC_REFLECT(eosio::trace_api::transaction_trace_v2, (id)(actions)(status)(cpu_usage_us)(net_usage_words)(signatures)(trx_header))
-FC_REFLECT_DERIVED(eosio::trace_api::transaction_trace_v3, (eosio::trace_api::transaction_trace_v2), (bill_to_accounts))
+FC_REFLECT_DERIVED(eosio::trace_api::transaction_trace_v3, (eosio::trace_api::transaction_trace_v2), (bill_to_accounts)(block_num))
 FC_REFLECT(eosio::trace_api::block_trace_v0, (id)(number)(previous_id)(timestamp)(producer)(transactions))
 FC_REFLECT_DERIVED(eosio::trace_api::block_trace_v1, (eosio::trace_api::block_trace_v0), (transaction_mroot)(action_mroot)(schedule_version)(transactions_v1))
 FC_REFLECT(eosio::trace_api::block_trace_v2, (id)(number)(previous_id)(timestamp)(producer)(transaction_mroot)(action_mroot)(schedule_version)(transactions))
