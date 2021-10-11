@@ -161,7 +161,9 @@ class Node(object):
             cntxt.index(0)
             return cntxt.add("block_num")
 
-        return None
+        # or what the history plugin returns
+        return cntxt.add("block_num")
+
 
     @staticmethod
     def stdinAndCheckOutput(cmd, subcommand):
@@ -1400,8 +1402,6 @@ class Node(object):
         if Utils.Debug and reportStatus:
             status=Node.getTransStatus(trans)
             blockNum=Node.getTransBlockNum(trans)
-            if blockNum is None:
-                blockNum = Node.getBlockNumByTransId(transId)
             Utils.Print("  cmd returned transaction id: %s, status: %s, (possible) block num: %s %s" % (transId, status, blockNum, replaceMsg))
         elif Utils.Debug:
             Utils.Print("  cmd returned transaction id: %s %s" % (transId, replaceMsg))
