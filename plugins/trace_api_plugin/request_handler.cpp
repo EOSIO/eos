@@ -117,6 +117,8 @@ namespace {
                   fc::mutable_variant_object()
                      ("id", t.id.str())
                      ("block_num", t.block_num)
+                     ("block_time", t.block_time)
+                     ("producer_block_id", t.producer_block_id)
                      ("actions", process_actions<action_trace_v1>(std::get<std::vector<action_trace_v1>>(t.actions), data_handler, yield))
                      (std::move(common_mvo))
                      ("bill_to_accounts", t.bill_to_accounts));
