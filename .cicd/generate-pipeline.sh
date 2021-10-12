@@ -39,61 +39,63 @@ if [[ $PINNED == false ]]; then
 else
     export PLATFORM_TYPE="pinned"
 fi
-FILES=$(basename $(ls "$CICD_DIR/platforms/$PLATFORM_TYPE/ubuntu-18*"))
-for FILE in $FILES; do
-    # use pinned or unpinned, not both sets of platform files
-    if [[ $PINNED == false ]]; then
-        export SKIP_CONTRACT_BUILDER=${SKIP_CONTRACT_BUILDER:-true}
-        export SKIP_PACKAGE_BUILDER=${SKIP_PACKAGE_BUILDER:-true}
-        FILE=
-    fi
-    export FILE_NAME="$(echo "$FILE" | awk '{split($0,a,/\.(d|s)/); print a[1] }')"
-    export PLATFORM_NAME="$(echo $FILE_NAME | cut -d- -f1 | sed 's/os/OS/g')"
-    # macOS
-    # ubuntu
-    export PLATFORM_NAME_UPCASE="$(echo $PLATFORM_NAME | tr a-z A-Z)"
-    # MACOS
-    # UBUNTU
-    export VERSION_MAJOR="$(echo $FILE_NAME | cut -d- -f2 | cut -d. -f1)"
-    # 10
-    # 16
-    [[ "$(echo $FILE_NAME | cut -d- -f2)" =~ '.' ]] && export VERSION_MINOR="_$(echo $FILE_NAME | cut -d- -f2 | cut -d. -f2)" || export VERSION_MINOR=''
-    # _14
-    # _04
-    export VERSION_FULL="$(echo $FILE_NAME | cut -d- -f2)"
-    # 10.14
-    # 16.04
-    OLDIFS=$IFS
-    IFS='_'
-    set $PLATFORM_NAME
-    IFS=$OLDIFS
-    export PLATFORM_NAME_FULL="$(capitalize $1)$( [[ ! -z $2 ]] && echo "_$(capitalize $2)" || true ) $VERSION_FULL"
-    [[ $FILE_NAME =~ 'amazon' ]] && export ICON=':aws:'
-    [[ $FILE_NAME =~ 'ubuntu' ]] && export ICON=':ubuntu:'
-    [[ $FILE_NAME =~ 'centos' ]] && export ICON=':centos:'
-    [[ $FILE_NAME =~ 'macos' ]] && export ICON=':darwin:'
-    . "$HELPERS_DIR/file-hash.sh" "$CICD_DIR/platforms/$PLATFORM_TYPE/$FILE" # returns HASHED_IMAGE_TAG, etc
-    export PLATFORM_SKIP_VAR="SKIP_${PLATFORM_NAME_UPCASE}_${VERSION_MAJOR}${VERSION_MINOR}"
+#FILES=$(basename $(ls "$CICD_DIR/platforms/$PLATFORM_TYPE/ubuntu-18*"))
+#for FILE in $FILES; do
+# use pinned or unpinned, not both sets of platform files
+if [[ $PINNED == false ]]; then
+    export SKIP_CONTRACT_BUILDER=${SKIP_CONTRACT_BUILDER:-true}
+    export SKIP_PACKAGE_BUILDER=${SKIP_PACKAGE_BUILDER:-true}
+    FILE="ubuntu-18.04-unpinned.dockerfile"
+else
+    FILE="ubuntu-18.04-pinned.dockerfile"
+fi
+export FILE_NAME="$(echo "$FILE" | awk '{split($0,a,/\.(d|s)/); print a[1] }')"
+export PLATFORM_NAME="$(echo $FILE_NAME | cut -d- -f1 | sed 's/os/OS/g')"
+# macOS
+# ubuntu
+export PLATFORM_NAME_UPCASE="$(echo $PLATFORM_NAME | tr a-z A-Z)"
+# MACOS
+# UBUNTU
+export VERSION_MAJOR="$(echo $FILE_NAME | cut -d- -f2 | cut -d. -f1)"
+# 10
+# 16
+[[ "$(echo $FILE_NAME | cut -d- -f2)" =~ '.' ]] && export VERSION_MINOR="_$(echo $FILE_NAME | cut -d- -f2 | cut -d. -f2)" || export VERSION_MINOR=''
+# _14
+# _04
+export VERSION_FULL="$(echo $FILE_NAME | cut -d- -f2)"
+# 10.14
+# 16.04
+OLDIFS=$IFS
+IFS='_'
+set $PLATFORM_NAME
+IFS=$OLDIFS
+export PLATFORM_NAME_FULL="$(capitalize $1)$( [[ ! -z $2 ]] && echo "_$(capitalize $2)" || true ) $VERSION_FULL"
+[[ $FILE_NAME =~ 'amazon' ]] && export ICON=':aws:'
+[[ $FILE_NAME =~ 'ubuntu' ]] && export ICON=':ubuntu:'
+[[ $FILE_NAME =~ 'centos' ]] && export ICON=':centos:'
+[[ $FILE_NAME =~ 'macos' ]] && export ICON=':darwin:'
+. "$HELPERS_DIR/file-hash.sh" "$CICD_DIR/platforms/$PLATFORM_TYPE/$FILE" # returns HASHED_IMAGE_TAG, etc
+export PLATFORM_SKIP_VAR="SKIP_${PLATFORM_NAME_UPCASE}_${VERSION_MAJOR}${VERSION_MINOR}"
 
-    export ANKA_TAG_BASE=''
-    export ANKA_TEMPLATE_NAME=''
+export ANKA_TAG_BASE=''
+export ANKA_TEMPLATE_NAME=''
 
-    export PLATFORMS_JSON_ARRAY=$(echo $PLATFORMS_JSON_ARRAY | jq -c '. += [{
-        "FILE_NAME": env.FILE_NAME,
-        "PLATFORM_NAME": env.PLATFORM_NAME,
-        "PLATFORM_SKIP_VAR": env.PLATFORM_SKIP_VAR,
-        "PLATFORM_NAME_UPCASE": env.PLATFORM_NAME_UPCASE,
-        "VERSION_MAJOR": env.VERSION_MAJOR,
-        "VERSION_MINOR": env.VERSION_MINOR,
-        "VERSION_FULL": env.VERSION_FULL,
-        "PLATFORM_NAME_FULL": env.PLATFORM_NAME_FULL,
-        "DOCKERHUB_FULL_TAG": env.FULL_TAG,
-        "HASHED_IMAGE_TAG": env.HASHED_IMAGE_TAG,
-        "ICON": env.ICON,
-        "ANKA_TAG_BASE": env.ANKA_TAG_BASE,
-        "ANKA_TEMPLATE_NAME": env.ANKA_TEMPLATE_NAME
-        }]')
-done
+export PLATFORMS_JSON_ARRAY=$(echo $PLATFORMS_JSON_ARRAY | jq -c '. += [{
+    "FILE_NAME": env.FILE_NAME,
+    "PLATFORM_NAME": env.PLATFORM_NAME,
+    "PLATFORM_SKIP_VAR": env.PLATFORM_SKIP_VAR,
+    "PLATFORM_NAME_UPCASE": env.PLATFORM_NAME_UPCASE,
+    "VERSION_MAJOR": env.VERSION_MAJOR,
+    "VERSION_MINOR": env.VERSION_MINOR,
+    "VERSION_FULL": env.VERSION_FULL,
+    "PLATFORM_NAME_FULL": env.PLATFORM_NAME_FULL,
+    "DOCKERHUB_FULL_TAG": env.FULL_TAG,
+    "HASHED_IMAGE_TAG": env.HASHED_IMAGE_TAG,
+    "ICON": env.ICON,
+    "ANKA_TAG_BASE": env.ANKA_TAG_BASE,
+    "ANKA_TEMPLATE_NAME": env.ANKA_TEMPLATE_NAME
+    }]')
+#done
 
 # set build_source whether triggered or not
 if [[ ! -z ${BUILDKITE_TRIGGERED_FROM_BUILD_ID} ]]; then
