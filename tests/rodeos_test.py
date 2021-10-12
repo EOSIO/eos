@@ -101,6 +101,19 @@ testSuccessful = False
 with open(loggingFile, "w") as textFile:
         print(logging,file=textFile)
 
+def verify_nodeos_rodeos_get_block_responses(nodoes_response, rodeos_response):
+    assert nodeos_response["block_num"] == rodeos_response["block_num"], "block_num do not match"
+    assert nodeos_response["timestamp"] == rodeos_response["timestamp"], "timestamps do not match"
+    assert nodeos_response["producer"] == response["producer"], "producer do not match"
+    assert nodeos_response["producer_signature"] == response["producer_signature"], "producer_signature do not match"
+    assert nodeos_response["ref_block_prefix"] == response["ref_block_prefix"], "ref_block_prefix do not match"
+    assert nodeos_response["confirmed"] == response["confirmed"], "confirmed do not match"
+    assert nodeos_response["id"].upper() == response["id"], "id do not match"
+    assert nodeos_response["previous"].upper() == response["previous"], "previous do not match"
+    assert nodeos_response["transaction_mroot"].upper() == response["transaction_mroot"], "transaction_mroot do not match"
+    assert nodeos_response["action_mroot"].upper() == response["action_mroot"], "action_mroot do not match"
+    assert nodeos_response["schedule_version"] == response["schedule_version"], "schedule_version do not match"
+
 class Rodeos:
     def __init__(self, stateHistoryEndpoint, filterName, filterWasm, enableOC=False):
         self.rodeosDir = os.path.join(os.getcwd(), 'var/lib/rodeos')
@@ -232,6 +245,9 @@ try:
         
         response = rodeos.get_block(cfTrxBlockNum)
         assert response["block_num"] == cfTrxBlockNum, "Rodeos responds with wrong block"
+        nodeos_response = producerNode.getBlock(cfTrxBlockNum)
+        verify_nodeos_rodeos_get_block_responses(nodeos_response, response)
+
         # Verify no skipped blocks
         first_block_num = 0
         for i in range(1,cfTrxBlockNum+1):
