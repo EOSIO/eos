@@ -39,12 +39,13 @@ if [[ $PINNED == false ]]; then
 else
     export PLATFORM_TYPE="pinned"
 fi
-
-for FILE in basename $(ls "$CICD_DIR/platforms/$PLATFORM_TYPE/ubuntu-18*"); do
+FILES=$(basename $(ls "$CICD_DIR/platforms/$PLATFORM_TYPE/ubuntu-18*")
+for FILE in $FILES; do
     # use pinned or unpinned, not both sets of platform files
     if [[ $PINNED == false ]]; then
         export SKIP_CONTRACT_BUILDER=${SKIP_CONTRACT_BUILDER:-true}
         export SKIP_PACKAGE_BUILDER=${SKIP_PACKAGE_BUILDER:-true}
+        FILE=
     fi
     export FILE_NAME="$(echo "$FILE" | awk '{split($0,a,/\.(d|s)/); print a[1] }')"
     export PLATFORM_NAME="$(echo $FILE_NAME | cut -d- -f1 | sed 's/os/OS/g')"
@@ -272,5 +273,5 @@ EOF
             done
             IFS=$nIFS
         done
-        IFS=$oIFS        
+IFS=$oIFS
 
