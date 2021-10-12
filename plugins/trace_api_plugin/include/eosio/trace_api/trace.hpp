@@ -88,6 +88,11 @@ namespace eosio { namespace trace_api {
       chain::packed_transaction_ptr       trx;
   };
 
+  struct block_trxs_entry {
+      std::vector<chain::transaction_id_type> ids;
+      uint32_t                                block_num = 0;
+  };
+
 } }
 
 FC_REFLECT(eosio::trace_api::authorization_trace_v0, (account)(permission))
