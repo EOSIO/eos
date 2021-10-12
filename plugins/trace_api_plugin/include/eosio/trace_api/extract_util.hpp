@@ -48,6 +48,8 @@ inline TransactionTrace to_transaction_trace( const cache_trace& t ) {
       r.trx_header = static_cast<const chain::transaction_header&>( t.trx->get_transaction() );
 
       r.block_num = t.trace->block_num;
+      r.block_time = t.trace->block_time;
+      r.producer_block_id = t.trace->producer_block_id;
    }
 
    if constexpr(std::is_same_v<TransactionTrace, transaction_trace_v3>){
