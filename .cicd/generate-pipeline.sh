@@ -275,5 +275,6 @@ EOF
             done
             IFS=$nIFS
         done
+      done
 IFS=$oIFS
 
