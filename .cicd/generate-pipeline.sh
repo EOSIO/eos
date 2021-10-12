@@ -39,7 +39,7 @@ if [[ $PINNED == false ]]; then
 else
     export PLATFORM_TYPE="pinned"
 fi
-FILES=$(basename $(ls "$CICD_DIR/platforms/$PLATFORM_TYPE/ubuntu-18*")
+FILES=$(basename $(ls "$CICD_DIR/platforms/$PLATFORM_TYPE/ubuntu-18*"))
 for FILE in $FILES; do
     # use pinned or unpinned, not both sets of platform files
     if [[ $PINNED == false ]]; then
