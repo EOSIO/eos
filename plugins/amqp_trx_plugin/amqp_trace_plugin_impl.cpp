@@ -1,5 +1,5 @@
-#include <eosio/amqp_trace_plugin/amqp_trace_types.hpp>
-#include <eosio/amqp_trace_plugin/amqp_trace_plugin_impl.hpp>
+#include <eosio/amqp_trx_plugin/amqp_trace_types.hpp>
+#include <eosio/amqp_trx_plugin/amqp_trace_plugin_impl.hpp>
 #include <eosio/state_history/type_convert.hpp>
 #include <eosio/for_each_field.hpp>
 #include <eosio/to_bin.hpp>

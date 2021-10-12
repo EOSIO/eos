@@ -403,6 +403,12 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
                   EOS_ASSERT(false, plugin_exception, "");
                }
          }), "Number of threads to use for EOS VM OC tier-up")
+         ("eos-vm-oc-code-cache-map-mode", bpo::value<chainbase::pinnable_mapped_file::map_mode>()->default_value(chain::eosvmoc::config().map_mode),
+          "Map mode for EOS VM OC code cache (\"mapped\", \"heap\", or \"locked\").\n"
+          "In \"mapped\" mode code cache is memory mapped as a file.\n"
+          "In \"heap\" mode code cache is preloaded in to swappable memory and will use huge pages if available.\n"
+          "In \"locked\" mode code cache is preloaded, locked in to memory, and will use huge pages if available.\n"
+         )
          ("eos-vm-oc-enable", bpo::bool_switch(), "Enable EOS VM OC tier-up runtime")
 #endif
          ("enable-account-queries", bpo::value<bool>()->default_value(false), "enable queries to find accounts by various metadata.")
@@ -1208,6 +1214,8 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          my->chain_config->eosvmoc_config.cache_size = options.at( "eos-vm-oc-cache-size-mb" ).as<uint64_t>() * 1024u * 1024u;
       if( options.count("eos-vm-oc-compile-threads") )
          my->chain_config->eosvmoc_config.threads = options.at("eos-vm-oc-compile-threads").as<uint64_t>();
+      if( options.count("eos-vm-oc-code-cache-map-mode") )
+         my->chain_config->eosvmoc_config.map_mode = options.at("eos-vm-oc-code-cache-map-mode").as<chainbase::pinnable_mapped_file::map_mode>();
       if( options["eos-vm-oc-enable"].as<bool>() )
          my->chain_config->eosvmoc_tierup = true;
 #endif
@@ -3514,6 +3522,57 @@ fc::variant read_only::get_primary_key(name code, name scope, name table, uint64
 eosio::chain::backing_store_type read_only::get_backing_store() const {
    const auto& kv_database = db.kv_db();
    return kv_database.get_backing_store();
+}
+
+read_only::get_all_accounts_result
+read_only::get_all_accounts( const get_all_accounts_params& params ) const
+{
+   get_all_accounts_result result;
+
+   using acct_obj_idx_type = chainbase::get_index_type<chain::account_object>::type;
+   const auto& accts = db.db().get_index<acct_obj_idx_type >().indices().get<chain::by_name>();
+
+   auto cur_time = fc::time_point::now();
+   auto end_time = cur_time + fc::microseconds(1000 * 10); /// 10ms max time
+   
+   auto begin_itr = params.lower_bound? accts.lower_bound(*params.lower_bound) : accts.begin();
+   auto end_itr = params.upper_bound? accts.upper_bound(*params.upper_bound) : accts.end();
+
+   if( std::distance(begin_itr, end_itr) < 0 )
+      return result;
+
+   auto itr = params.reverse? end_itr : begin_itr;
+   // since end_itr could potentially be past end of array, subtract one position
+   if (params.reverse)
+      --itr;
+
+   // this flag will be set to true when we are reversing and we end on the begin iterator
+   // if this is the case, 'more' field will remain null, and will nto be in JSON response
+   bool reverse_end_begin = false;
+
+   while(cur_time <= end_time
+         && result.accounts.size() < params.limit
+         && itr != end_itr)
+   {
+      const auto &a = *itr;
+      result.accounts.push_back({a.name, a.creation_date});
+
+      cur_time = fc::time_point::now();
+      if (params.reverse && itr == begin_itr) {
+         reverse_end_begin = true;
+         break;
+      }
+      params.reverse? --itr : ++itr;
+   }
+
+   if (params.reverse && !reverse_end_begin) {
+      result.more = itr->name;
+   }
+   else if (!params.reverse && itr != end_itr) {
+      result.more = itr->name;
+   }
+
+   return result;
 }
 
 } // namespace chain_apis

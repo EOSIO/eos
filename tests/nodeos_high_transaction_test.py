@@ -90,7 +90,7 @@ try:
         launched = cluster.launch(pnodes=totalProducerNodes,
                                   totalNodes=totalNodes, totalProducers=totalProducers,
                                   useBiosBootFile=False, topo="ring",
-                                  extraNodeosArgs=" --plugin eosio::amqp_trx_plugin --amqp-trx-address %s --amqp-trx-speculative-execution --amqp-trx-ack-mode=executed --plugin eosio::amqp_trace_plugin --amqp-trace-address %s" % (amqpAddr, amqpAddr))
+                                  extraNodeosArgs=" --plugin eosio::amqp_trx_plugin --amqp-trx-address %s --amqp-trx-speculative-execution --amqp-trx-ack-mode=executed" % amqpAddr)
     if launched is False:
         Utils.cmdError("launcher")
         Utils.errorExit("Failed to stand up eos cluster.")

@@ -74,7 +74,7 @@ try:
                                       1 : " --backing-store=rocksdb" }
         else:
             cluster.createAMQPQueue("trx")
-            specificExtraNodeosArgs={ 0: "--backing-store=chainbase --plugin eosio::amqp_trx_plugin --amqp-trx-address %s --plugin eosio::amqp_trace_plugin --amqp-trace-address %s" % (amqpAddr, amqpAddr),
+            specificExtraNodeosArgs={ 0: "--backing-store=chainbase --plugin eosio::amqp_trx_plugin --amqp-trx-address %s" % (amqpAddr),
                                       1 : " --backing-store=rocksdb" }
         if cluster.launch(totalNodes=3, prodCount=prodCount, onlyBios=onlyBios, dontBootstrap=dontBootstrap, specificExtraNodeosArgs=specificExtraNodeosArgs) is False:
             cmdError("launcher")

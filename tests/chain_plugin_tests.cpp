@@ -181,4 +181,248 @@ BOOST_FIXTURE_TEST_CASE( get_info, TESTER ) try {
    BOOST_TEST(*info.last_irreversible_block_time == control->last_irreversible_block_time());
 } FC_LOG_AND_RETHROW() //get_info
 
+BOOST_FIXTURE_TEST_CASE( get_all_accounts, TESTER ) try {
+   produce_blocks(2);
+
+   std::vector<account_name> accs{{ "alice"_n, "bob"_n, "cindy"_n}};
+   create_accounts(accs);
+
+   produce_block();
+
+   chain_apis::read_only plugin(*(this->control), {}, fc::microseconds::maximum());
+
+   chain_apis::read_only::get_all_accounts_params p;
+   p.limit = 6;
+   chain_apis::read_only::get_all_accounts_result result = plugin.read_only::get_all_accounts(p);
+
+   //BOOST_REQUIRE(!result.more.has_value());
+   BOOST_REQUIRE_EQUAL(6u, result.accounts.size());
+   if (result.accounts.size() >= 6) {
+      BOOST_REQUIRE_EQUAL(name("alice"_n), result.accounts[0].name);
+      BOOST_REQUIRE_EQUAL(name("bob"_n), result.accounts[1].name);
+      BOOST_REQUIRE_EQUAL(name("cindy"_n), result.accounts[2].name);
+      BOOST_REQUIRE_EQUAL(name("eosio"_n), result.accounts[3].name);
+      BOOST_REQUIRE_EQUAL(name("eosio.null"_n), result.accounts[4].name);
+      BOOST_REQUIRE_EQUAL(name("eosio.prods"_n), result.accounts[5].name);
+   }
+
+   // limit bigger than result
+   p.limit = 12;
+   result = plugin.read_only::get_all_accounts(p);
+
+   BOOST_REQUIRE(!result.more.has_value());
+   BOOST_REQUIRE_EQUAL(6u, result.accounts.size());
+   if (result.accounts.size() >= 6) {
+      BOOST_REQUIRE_EQUAL(name("alice"_n), result.accounts[0].name);
+      BOOST_REQUIRE_EQUAL(name("bob"_n), result.accounts[1].name);
+      BOOST_REQUIRE_EQUAL(name("cindy"_n), result.accounts[2].name);
+      BOOST_REQUIRE_EQUAL(name("eosio"_n), result.accounts[3].name);
+      BOOST_REQUIRE_EQUAL(name("eosio.null"_n), result.accounts[4].name);
+      BOOST_REQUIRE_EQUAL(name("eosio.prods"_n), result.accounts[5].name);
+   }
+
+   // reverse
+   p.reverse = true;
+   result = plugin.read_only::get_all_accounts(p);
+   BOOST_REQUIRE_EQUAL(6u, result.accounts.size());
+   if (result.accounts.size() >= 6) {
+      BOOST_REQUIRE_EQUAL(name("eosio.prods"_n), result.accounts[0].name);
+      BOOST_REQUIRE_EQUAL(name("eosio.null"_n), result.accounts[1].name);
+      BOOST_REQUIRE_EQUAL(name("eosio"_n), result.accounts[2].name);
+      BOOST_REQUIRE_EQUAL(name("cindy"_n), result.accounts[3].name);
+      BOOST_REQUIRE_EQUAL(name("bob"_n), result.accounts[4].name);
+      BOOST_REQUIRE_EQUAL(name("alice"_n), result.accounts[5].name);
+   }
+
+   // reverse limit bigger than result
+   p.limit = 12;
+   result = plugin.read_only::get_all_accounts(p);
+
+   BOOST_REQUIRE(!result.more.has_value());
+   BOOST_REQUIRE_EQUAL(6u, result.accounts.size());
+   if (result.accounts.size() >= 6) {
+      BOOST_REQUIRE_EQUAL(name("eosio.prods"_n), result.accounts[0].name);
+      BOOST_REQUIRE_EQUAL(name("eosio.null"_n), result.accounts[1].name);
+      BOOST_REQUIRE_EQUAL(name("eosio"_n), result.accounts[2].name);
+      BOOST_REQUIRE_EQUAL(name("cindy"_n), result.accounts[3].name);
+      BOOST_REQUIRE_EQUAL(name("bob"_n), result.accounts[4].name);
+      BOOST_REQUIRE_EQUAL(name("alice"_n), result.accounts[5].name);
+   }
+
+   // pagination
+   p.limit = 2;
+   p.reverse = false;
+   result = plugin.read_only::get_all_accounts(p);
+   BOOST_REQUIRE(result.more.has_value());
+   if (result.more.has_value())
+      BOOST_REQUIRE_EQUAL("cindy"_n, *result.more);
+   BOOST_REQUIRE_EQUAL(2u, result.accounts.size());
+   if (result.accounts.size() >= 2) {
+      BOOST_REQUIRE_EQUAL(name("alice"_n), result.accounts[0].name);
+      BOOST_REQUIRE_EQUAL(name("bob"_n), result.accounts[1].name);
+   }
+
+   p.lower_bound = *result.more;
+   result = plugin.read_only::get_all_accounts(p);
+   BOOST_REQUIRE(result.more.has_value());
+   if (result.more.has_value())
+      BOOST_REQUIRE_EQUAL("eosio.null"_n, *result.more);
+   BOOST_REQUIRE_EQUAL(2u, result.accounts.size());
+   if (result.accounts.size() >= 2) {
+      BOOST_REQUIRE_EQUAL(name("cindy"_n), result.accounts[0].name);
+      BOOST_REQUIRE_EQUAL(name("eosio"_n), result.accounts[1].name);
+   }
+
+   p.lower_bound = *result.more;
+   result = plugin.read_only::get_all_accounts(p);
+   BOOST_REQUIRE(!result.more.has_value());
+   BOOST_REQUIRE_EQUAL(2u, result.accounts.size());
+   if (result.accounts.size() >= 2) {
+      BOOST_REQUIRE_EQUAL(name("eosio.null"_n), result.accounts[0].name);
+      BOOST_REQUIRE_EQUAL(name("eosio.prods"_n), result.accounts[1].name);
+   }
+
+   // reverse pagination
+   p.reverse = true;
+   p.lower_bound.reset();
+   result = plugin.read_only::get_all_accounts(p);
+   BOOST_REQUIRE(result.more.has_value());
+   if (result.more.has_value())
+      BOOST_REQUIRE_EQUAL("eosio"_n, *result.more);
+   BOOST_REQUIRE_EQUAL(2u, result.accounts.size());
+   if (result.accounts.size() >= 2) {
+      BOOST_REQUIRE_EQUAL(name("eosio.prods"_n), result.accounts[0].name);
+      BOOST_REQUIRE_EQUAL(name("eosio.null"_n), result.accounts[1].name);
+   }
+
+   p.upper_bound = *result.more;
+   result = plugin.read_only::get_all_accounts(p);
+   BOOST_REQUIRE(result.more.has_value());
+   if (result.more.has_value())
+      BOOST_REQUIRE_EQUAL("bob"_n, *result.more);
+   BOOST_REQUIRE_EQUAL(2u, result.accounts.size());
+   if (result.accounts.size() >= 2) {
+      BOOST_REQUIRE_EQUAL(name("eosio"_n), result.accounts[0].name);
+      BOOST_REQUIRE_EQUAL(name("cindy"_n), result.accounts[1].name);
+   }
+
+   p.upper_bound = *result.more;
+   result = plugin.read_only::get_all_accounts(p);
+   BOOST_REQUIRE(!result.more.has_value());
+   BOOST_REQUIRE_EQUAL(2u, result.accounts.size());
+   if (result.accounts.size() >= 2) {
+      BOOST_REQUIRE_EQUAL(name("bob"_n), result.accounts[0].name);
+      BOOST_REQUIRE_EQUAL(name("alice"_n), result.accounts[1].name);
+   }
+
+   // pagination with prime # of accounts
+   accs.clear();
+   accs.push_back("gwen"_n);
+   create_accounts(accs);
+
+   produce_block();
+
+   p.reverse = false;
+   p.lower_bound.reset();
+   p.upper_bound.reset();
+   p.limit = 3;
+   result = plugin.read_only::get_all_accounts(p);
+   BOOST_REQUIRE(result.more.has_value());
+   if (result.more.has_value())
+      BOOST_REQUIRE_EQUAL("eosio"_n, *result.more);
+   BOOST_REQUIRE_EQUAL(3u, result.accounts.size());
+   if (result.accounts.size() >= 3) {
+      BOOST_REQUIRE_EQUAL(name("alice"_n), result.accounts[0].name);
+      BOOST_REQUIRE_EQUAL(name("bob"_n), result.accounts[1].name);
+      BOOST_REQUIRE_EQUAL(name("cindy"_n), result.accounts[2].name);
+   }
+
+   p.lower_bound = *result.more;
+   result = plugin.read_only::get_all_accounts(p);
+   BOOST_REQUIRE(result.more.has_value());
+   if (result.more.has_value())
+      BOOST_REQUIRE_EQUAL("gwen"_n, *result.more);
+   BOOST_REQUIRE_EQUAL(3u, result.accounts.size());
+   if (result.accounts.size() >= 3) {
+      BOOST_REQUIRE_EQUAL(name("eosio"_n), result.accounts[0].name);
+      BOOST_REQUIRE_EQUAL(name("eosio.null"_n), result.accounts[1].name);
+      BOOST_REQUIRE_EQUAL(name("eosio.prods"_n), result.accounts[2].name);
+   }
+
+   p.lower_bound = *result.more;
+   result = plugin.read_only::get_all_accounts(p);
+   BOOST_REQUIRE(!result.more.has_value());
+   BOOST_REQUIRE_EQUAL(1u, result.accounts.size());
+   if (result.accounts.size() >= 1) {
+      BOOST_REQUIRE_EQUAL(name("gwen"_n), result.accounts[0].name);
+   }
+
+   // reverse pagination, prime # of accounts
+   p.reverse = true;
+   p.lower_bound.reset();
+   p.upper_bound.reset();
+   p.limit = 3;
+   result = plugin.read_only::get_all_accounts(p);
+   BOOST_REQUIRE(result.more.has_value());
+   if (result.more.has_value())
+      BOOST_REQUIRE_EQUAL("eosio"_n, *result.more);
+   BOOST_REQUIRE_EQUAL(3u, result.accounts.size());
+   if (result.accounts.size() >= 3) {
+      BOOST_REQUIRE_EQUAL(name("gwen"_n), result.accounts[0].name);
+      BOOST_REQUIRE_EQUAL(name("eosio.prods"_n), result.accounts[1].name);
+      BOOST_REQUIRE_EQUAL(name("eosio.null"_n), result.accounts[2].name);
+   }
+
+   p.upper_bound = *result.more;
+   result = plugin.read_only::get_all_accounts(p);
+   BOOST_REQUIRE(result.more.has_value());
+   if (result.more.has_value())
+      BOOST_REQUIRE_EQUAL("alice"_n, *result.more);
+   BOOST_REQUIRE_EQUAL(3u, result.accounts.size());
+   if (result.accounts.size() >= 3) {
+      BOOST_REQUIRE_EQUAL(name("eosio"_n), result.accounts[0].name);
+      BOOST_REQUIRE_EQUAL(name("cindy"_n), result.accounts[1].name);
+      BOOST_REQUIRE_EQUAL(name("bob"_n), result.accounts[2].name);
+   }
+
+   p.upper_bound = *result.more;
+   result = plugin.read_only::get_all_accounts(p);
+   BOOST_REQUIRE(!result.more.has_value());
+   BOOST_REQUIRE_EQUAL(1u, result.accounts.size());
+   if (result.accounts.size() >= 1) {
+      BOOST_REQUIRE_EQUAL(name("alice"_n), result.accounts[0].name);
+   }
+
+   // lower and upper bound
+   p.limit = 10;
+   p.lower_bound = "b"_n;
+   p.upper_bound = "g"_n;
+   p.reverse = false;
+   result = plugin.read_only::get_all_accounts(p);
+   BOOST_REQUIRE(!result.more.has_value());
+   BOOST_REQUIRE_EQUAL(5u, result.accounts.size());
+   if (result.accounts.size() >= 1) {
+      BOOST_REQUIRE_EQUAL(name("bob"_n), result.accounts[0].name);
+      BOOST_REQUIRE_EQUAL(name("cindy"_n), result.accounts[1].name);
+      BOOST_REQUIRE_EQUAL(name("eosio"_n), result.accounts[2].name);
+      BOOST_REQUIRE_EQUAL(name("eosio.null"_n), result.accounts[3].name);
+      BOOST_REQUIRE_EQUAL(name("eosio.prods"_n), result.accounts[4].name);
+   }
+
+   // lower and upper bound, reverse
+   p.reverse = true;
+   result = plugin.read_only::get_all_accounts(p);
+   BOOST_REQUIRE(!result.more.has_value());
+   BOOST_REQUIRE_EQUAL(5u, result.accounts.size());
+   if (result.accounts.size() >= 1) {
+      BOOST_REQUIRE_EQUAL(name("eosio.prods"_n), result.accounts[0].name);
+      BOOST_REQUIRE_EQUAL(name("eosio.null"_n), result.accounts[1].name);
+      BOOST_REQUIRE_EQUAL(name("eosio"_n), result.accounts[2].name);
+      BOOST_REQUIRE_EQUAL(name("cindy"_n), result.accounts[3].name);
+      BOOST_REQUIRE_EQUAL(name("bob"_n), result.accounts[4].name);
+   }
+
+} FC_LOG_AND_RETHROW() //get_all_accounts
+
+
 BOOST_AUTO_TEST_SUITE_END()
