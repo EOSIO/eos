@@ -29,7 +29,8 @@ class TraceApiPluginTest(unittest.TestCase):
     # start keosd and nodeos
     def startEnv(self) :
         account_names = ["alice", "bob", "charlie"]
-        traceNodeosArgs = " --plugin eosio::trace_api_plugin --trace-no-abis --trace-dir=."
+        abs_path = os.path.abspath(os.getcwd() + '/../unittests/contracts/eosio.token/eosio.token.abi')
+        traceNodeosArgs = " --plugin eosio::trace_api_plugin --trace-rpc-abi eosio.token=" + abs_path
         self.cluster.launch(totalNodes=1, extraNodeosArgs=traceNodeosArgs)
         self.walletMgr.launch()
         testWalletName="testwallet"
