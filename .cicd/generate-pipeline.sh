@@ -242,5 +242,32 @@ EOF
                 fi
             done
           done
+                  # long-running tests
+        echo '    # long-running tests'
+        [[ -z "$TEST" ]] && echo $PLATFORMS_JSON_ARRAY | jq -cr '.[]' | while read -r PLATFORM_JSON; do
+            IFS=$oIFS
+            LR_TESTS="$(cat tests/CMakeLists.txt | grep long_running_tests | grep -v "^#" | awk -F" " '{ print $2 }' | sort | uniq)"
+            for TEST_NAME in $LR_TESTS; do
+                if [[ ! "$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)" =~ 'macos' ]]; then
+                    cat <<EOF
+  - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - $TEST_NAME"
+    command:
+      - "buildkite-agent artifact download build.tar.gz . --step '$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build' ${BUILD_SOURCE} && tar -xzf build.tar.gz"
+      - "./.cicd/test.sh scripts/long-running-test.sh $TEST_NAME"
+    env:
+      IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
+      PLATFORM_TYPE: $PLATFORM_TYPE
+    agents:
+      queue: "$BUILDKITE_TEST_AGENT_QUEUE"
+    retry:
+      manual:
+        permit_on_passed: true
+    timeout: ${TIMEOUT:-180}
+    skip: $(echo "$PLATFORM_JSON" | jq -r '.PLATFORM_SKIP_VAR | env[.] // empty')${SKIP_LONG_RUNNING_TESTS:-true}
+
+EOF
+                fi
+              done
+            done
       done
 fi
