@@ -36,6 +36,7 @@ else
 fi
 
 FULL_TAG='eosio/eosio.cdt:develop'
+export CMAKE_FRAMEWORK_PATH="$MOUNTED_DIR/build:${CMAKE_FRAMEWORK_PATH}"
 
 . "$HELPERS_DIR/file-hash.sh" "$CICD_DIR/platforms/$PLATFORM_TYPE/$IMAGE_TAG.dockerfile"
 COMMANDS="$PRE_COMMANDS && $COMMANDS"
