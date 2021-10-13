@@ -159,6 +159,10 @@ done
     skip: ${SKIP_INSTALL}${SKIP_LINUX}${SKIP_DOCKER}${SKIP_CONTRACT_BUILDER}
 
 EOF
+cat <<EOF
+  - wait
+
+EOF
 # tests
 IFS=$oIFS
 if [[ "$DCMAKE_BUILD_TYPE" != 'Debug' ]]; then
