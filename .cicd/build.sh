@@ -15,9 +15,10 @@ if [[ "$IMAGE_TAG" == 'ubuntu-18.04-unpinned' ]]; then
     CMAKE_EXTRAS="$CMAKE_EXTRAS -DCMAKE_CXX_COMPILER=\"clang++-7\" -DCMAKE_C_COMPILER=\"clang-7\" -DLLVM_DIR=\"/usr/lib/llvm-7/lib/cmake/llvm\""
 fi
 
+CDT_INSTALL_COMMAND="apt-get update && apt-get install -y /eosio.cdt/*.deb"
 CMAKE_COMMAND="cmake \$CMAKE_EXTRAS .."
 MAKE_COMMAND="make -j $JOBS"
-BUILD_COMMANDS="echo \"+++ :hammer_and_wrench: Building EOSIO\" && echo \"$ $CMAKE_COMMAND\" && eval $CMAKE_COMMAND && echo \"$ $MAKE_COMMAND\" && eval $MAKE_COMMAND"
+BUILD_COMMANDS="echo \"+++ :hammer_and_wrench: Building EOSIO\" && echo \"$CDT_INSTALL_COMMAND\" && eval $CDT_INSTALL_COMMAND && echo \"$ $CMAKE_COMMAND\" && eval $CMAKE_COMMAND && echo \"$ $MAKE_COMMAND\" && eval $MAKE_COMMAND"
 # Docker Commands
 if [[ "$BUILDKITE" == 'true' ]]; then
     # Generate Base Images
