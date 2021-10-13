@@ -924,7 +924,6 @@ public:
    get_accounts_by_authorizers_result get_accounts_by_authorizers( const get_accounts_by_authorizers_params& args) const;
 
    chain::symbol extract_core_symbol()const;
-   friend struct resolver_factory<read_only>;
 
    struct get_all_accounts_result {
       struct account_result {
