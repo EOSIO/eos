@@ -35,12 +35,11 @@ else
     COMMANDS="$BUILD_COMMANDS"
 fi
 
-FULL_TAG='eosio/eosio.cdt:develop'
-export CMAKE_PREFIX_PATH="$MOUNTED_DIR/build:${CMAKE_PREFIX_PATH}"
+_TAG='eosio/eosio.cdt:develop'
 
 . "$HELPERS_DIR/file-hash.sh" "$CICD_DIR/platforms/$PLATFORM_TYPE/$IMAGE_TAG.dockerfile"
 COMMANDS="$PRE_COMMANDS && $COMMANDS"
-DOCKER_RUN="docker run $ARGS $(buildkite-intrinsics) --env CMAKE_EXTRAS='$CMAKE_EXTRAS' '$FULL_TAG' bash -c '$COMMANDS'"
+DOCKER_RUN="docker run $ARGS $(buildkite-intrinsics) --env CMAKE_EXTRAS='$CMAKE_EXTRAS' '$_TAG' bash -c '$COMMANDS'"
 echo "$ $DOCKER_RUN"
 eval $DOCKER_RUN
 
