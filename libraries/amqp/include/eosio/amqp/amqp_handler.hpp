@@ -234,7 +234,7 @@ public:
                stop_promise.set_value();
             }
          } );
-         future.wait();
+         future.wait_for(std::chrono::seconds( 10 ));
 
          thread_pool_.stop();
       }
