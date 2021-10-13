@@ -71,7 +71,8 @@ try:
     # adjust prodCount to ensure that lib trails more than 1 block behind head
     prodCount = 1 if pnodes > 1 else 2
 
-    if cluster.launch(pnodes=pnodes, totalNodes=totalNodes, prodCount=prodCount, onlyBios=False, configSecurityGroup=True, printInfo=True) is False:
+    traceNodeosArgs=" --plugin eosio::trace_api_plugin --trace-no-abis "
+    if cluster.launch(pnodes=pnodes, totalNodes=totalNodes, prodCount=prodCount, onlyBios=False, configSecurityGroup=True, printInfo=True, extraNodeosArgs=traceNodeosArgs) is False:
         cmdError("launcher")
         errorExit("Failed to stand up eos cluster.")
 

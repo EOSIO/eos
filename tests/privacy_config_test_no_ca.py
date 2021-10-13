@@ -44,6 +44,7 @@ try:
     specificExtraNodeosArgs = {}
     specificExtraNodeosArgs[-1] = Cluster.getPrivacyArguments("privacy", totalNodes)
     specificExtraNodeosArgs[0]  = makeNoCAArgs(0)
+    traceNodeosArgs=" --plugin eosio::trace_api_plugin --trace-no-abis "
 
     # configSecurityGroup is False because of we need castom setup and provide it via specificExtraNodeosArgs
     if not cluster.launch(pnodes=pnodes, 
@@ -53,7 +54,8 @@ try:
                           onlyBios=True,
                           loadSystemContract=False, 
                           specificExtraNodeosArgs=specificExtraNodeosArgs, 
-                          printInfo=True):
+                          printInfo=True,
+                          extraNodeosArgs=traceNodeosArgs):
         Utils.cmdError("launcher")
         Utils.errorExit("Failed to stand up eos cluster.")
     

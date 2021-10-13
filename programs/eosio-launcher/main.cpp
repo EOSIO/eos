@@ -471,6 +471,7 @@ struct launcher_def {
    void roll (const string& host_names);
    void start_all (string &gts, launch_modes mode);
    void ignite ();
+   string find_and_remove_arg(string str, string substr);
 };
 
 void
@@ -1111,8 +1112,7 @@ launcher_def::write_config_file (tn_node_def &node) {
     cfg << "plugin = eosio::producer_plugin\n";
   }
   cfg << "plugin = eosio::net_plugin\n";
-  cfg << "plugin = eosio::chain_api_plugin\n"
-      << "plugin = eosio::history_api_plugin\n";
+  cfg << "plugin = eosio::chain_api_plugin\n";
   cfg.close();
 }
 
@@ -1493,6 +1493,26 @@ launcher_def::prep_remote_config_dir (eosd_def &node, host_def *host) {
   }
 }
 
+string
+launcher_def::find_and_remove_arg(string args, string arg ){
+   if (args.empty() || arg.empty())
+      return args;
+
+   string left, middle, right;
+   size_t found = args.find(arg);
+   if (found != std::string::npos){
+      left = args.substr(0, found);
+      middle = args.substr(found + 2); //skip --
+      found = middle.find("--");
+      if (found != std::string::npos){
+         right = middle.substr(found);
+      }
+      return left + right;
+   } else {
+      return args;
+   }
+}
+
 void
 launcher_def::launch (eosd_def &instance, string &gts) {
   bfs::path dd = instance.data_dir_name;
@@ -1541,6 +1561,13 @@ launcher_def::launch (eosd_def &instance, string &gts) {
   eosdcmd += " --genesis-json " + instance.config_dir_name + "/genesis.json";
   if (gts.length()) {
     eosdcmd += " --genesis-timestamp " + gts;
+  }
+
+  if (eosdcmd.find("eosio::history_api_plugin") != string::npos && eosdcmd.find("eosio::trace_api_plugin") != string::npos){
+    // remove trace_api_plugin from old version nodes in multiversion test
+    eosdcmd = find_and_remove_arg(eosdcmd, "--plugin eosio::trace_api_plugin");
+    eosdcmd = find_and_remove_arg(eosdcmd, "--trace-no-abis");
+    eosdcmd = find_and_remove_arg(eosdcmd, "--trace-rpc-abi");
   }
 
   if (!host->is_local()) {

@@ -71,9 +71,10 @@ try:
     txnGenNodeNum=pnodes  # next node after producer nodes
     for nodeNum in range(txnGenNodeNum, txnGenNodeNum+startedNonProdNodes):
         specificExtraNodeosArgs[nodeNum]="--plugin eosio::txn_test_gen_plugin --txn-test-gen-account-prefix txntestacct"
+    traceNodeosArgs = " --plugin eosio::trace_api_plugin --trace-no-abis "
     Print("Stand up cluster")
     if cluster.launch(prodCount=prodCount, onlyBios=False, pnodes=pnodes, totalNodes=totalNodes, totalProducers=pnodes*prodCount,
-                      useBiosBootFile=False, specificExtraNodeosArgs=specificExtraNodeosArgs, unstartedNodes=catchupCount, loadSystemContract=False) is False:
+                      useBiosBootFile=False, specificExtraNodeosArgs=specificExtraNodeosArgs, unstartedNodes=catchupCount, loadSystemContract=False, extraNodeosArgs=traceNodeosArgs) is False:
         Utils.errorExit("Failed to stand up eos cluster.")
 
     Print("Validating system accounts after bootstrap")
