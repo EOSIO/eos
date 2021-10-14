@@ -441,14 +441,14 @@ BOOST_AUTO_TEST_CASE(test_specific_location) try {
 
    fc::crypto::public_key created_key = create_key(tpm.tcti(), {}, 0x8100BEEF);
    //create at same location, should be error
-   BOOST_CHECK_THROW(create_key(tpm.tcti(), {}, 0x8100BEEF), fc::exception);
+   BOOST_CHECK_THROW(create_key(tpm.tcti(), {}, 0x8100BEEF), tpm_key_exists);
    //pick first available index, should still work
    fc::crypto::public_key second_created_key = create_key(tpm.tcti(), {});
 
    //try attesting keys persisted to a specific location; attests with "created_key" a new key at 0x8100DEAD
    attested_key another_key = create_key_attested(tpm.tcti(), {}, 0x8100BEEF, 0x8100DEAD);
    //doing it again, should fail
-   BOOST_CHECK_THROW(create_key_attested(tpm.tcti(), {}, 0x8100BEEF, 0x8100DEAD), fc::exception);
+   BOOST_CHECK_THROW(create_key_attested(tpm.tcti(), {}, 0x8100BEEF, 0x8100DEAD), tpm_key_exists);
 
    BOOST_CHECK(get_all_persistent_keys(tpm.tcti()).size() == 3);
 } FC_LOG_AND_RETHROW();
