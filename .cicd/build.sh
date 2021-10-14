@@ -15,7 +15,7 @@ if [[ "$IMAGE_TAG" == 'ubuntu-18.04-unpinned' ]]; then
     CMAKE_EXTRAS="$CMAKE_EXTRAS -DCMAKE_CXX_COMPILER=\"clang++-7\" -DCMAKE_C_COMPILER=\"clang-7\" -DLLVM_DIR=\"/usr/lib/llvm-7/lib/cmake/llvm\""
 fi
 
-CDT_INSTALL_COMMAND="wget https://github.com/EOSIO/eosio.cdt/releases/download/v1.8.1/eosio.cdt_1.8.1-ubuntu-18.04_amd64.deb && apt install ./eosio.cdt_1.8.1-ubuntu-18.04_amd64.deb"
+CDT_INSTALL_COMMAND="wget https://github.com/eosio/eosio.cdt/releases/download/v1.8.0/eosio.cdt_1.8.0-1-ubuntu-18.04_amd64.deb && apt install ./eosio.cdt_1.8.1-ubuntu-18.04_amd64.deb"
 CMAKE_COMMAND="cmake \$CMAKE_EXTRAS .."
 MAKE_COMMAND="make -j $JOBS"
 BUILD_COMMANDS="echo \"+++ :hammer_and_wrench: Building EOSIO\" && echo \"$CDT_INSTALL_COMMAND\" && eval $CDT_INSTALL_COMMAND && echo \"$ $CMAKE_COMMAND\" && eval $CMAKE_COMMAND && echo \"$ $MAKE_COMMAND\" && eval $MAKE_COMMAND"
