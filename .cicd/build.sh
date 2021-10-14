@@ -1,5 +1,26 @@
 #!/bin/bash
 set -eo pipefail
+[[ "$RAW_PIPELINE_CONFIG" == '' ]] && export RAW_PIPELINE_CONFIG="$1"
+[[ "$RAW_PIPELINE_CONFIG" == '' ]] && export RAW_PIPELINE_CONFIG='pipeline.jsonc'
+[[ "$PIPELINE_CONFIG" == '' ]] && export PIPELINE_CONFIG='pipeline.json'
+# read dependency file
+if [[ -f "$RAW_PIPELINE_CONFIG" ]]; then
+    echo 'Reading pipeline configuration file...'
+    cat "$RAW_PIPELINE_CONFIG" | grep -Po '^[^"/]*("((?<=\\).|[^"])*"[^"/]*)*' | jq -c .\"eosio\" > "$PIPELINE_CONFIG"
+    CDT_VERSION=$(cat "$PIPELINE_CONFIG" | jq -r '.dependencies."eosio.cdt"')
+else
+    echo 'ERROR: No pipeline configuration file or dependencies file found!'
+    exit 1
+fi
+
+if [[ "$BUILDKITE" == 'true' ]]; then
+    CDT_COMMIT=$((curl -s https://api.github.com/repos/EOSIO/eosio.cdt/git/refs/tags/$CDT_VERSION && curl -s https://api.github.com/repos/EOSIO/eosio.cdt/git/refs/heads/$CDT_VERSION) | jq '.object.sha' | sed "s/null//g" | sed "/^$/d" | tr -d '"' | sed -n '1p')
+    test -z "$CDT_COMMIT" && CDT_COMMIT=$(echo $CDT_VERSION | tr -d '"' | tr -d "''" | cut -d ' ' -f 1) # if both searches returned nothing, the version is probably specified by commit hash already
+fi
+
+echo "Using cdt ${CDT_COMMIT} from \"$CDT_VERSION\"..."
+export CDT_URL="https://eos-public-oss-binaries.s3-us-west-2.amazonaws.com/${CDT_COMMIT:0:7}-eosio.cdt-ubuntu-18.04_amd64.deb"
+
 [[ "$ENABLE_INSTALL" == 'true' ]] || echo '--- :evergreen_tree: Configuring Environment'
 . ./.cicd/helpers/general.sh
 mkdir -p "$BUILD_DIR"
@@ -16,12 +37,6 @@ if [[ "$IMAGE_TAG" == 'ubuntu-18.04-unpinned' ]]; then
     CMAKE_EXTRAS="$CMAKE_EXTRAS -DCMAKE_CXX_COMPILER=\"clang++-7\" -DCMAKE_C_COMPILER=\"clang-7\" -DLLVM_DIR=\"/usr/lib/llvm-7/lib/cmake/llvm\""
 fi
 
-if [[ "$BUILDKITE" == 'true' ]]; then
-    buildkite-agent meta-data set cdt-url "$CDT_URL"
-    buildkite-agent meta-data set cdt-version "$CDT_VERSION"
-fi
-
-. "$HELPERS_DIR/file-hash.sh" "$CICD_DIR/platforms/$PLATFORM_TYPE/$IMAGE_TAG.dockerfile"
 CDT_COMMAND="curl -sSf $CDT_URL --output eosio.cdt.deb && apt install ./eosio.cdt.deb"
 CMAKE_COMMAND="cmake \$CMAKE_EXTRAS .."
 MAKE_COMMAND="make -j $JOBS"
@@ -42,7 +57,7 @@ else
     COMMANDS="$BUILD_COMMANDS"
 fi
 
-
+. "$HELPERS_DIR/file-hash.sh" "$CICD_DIR/platforms/$PLATFORM_TYPE/$IMAGE_TAG.dockerfile"
 COMMANDS="$PRE_COMMANDS && $COMMANDS"
 DOCKER_RUN="docker run $ARGS $(buildkite-intrinsics) --env CMAKE_EXTRAS='$CMAKE_EXTRAS' '$FULL_TAG' bash -c '$COMMANDS'"
 echo "$ $DOCKER_RUN"
