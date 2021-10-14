@@ -4,13 +4,14 @@ set -eo pipefail
 . ./.cicd/helpers/general.sh
 mkdir -p "$BUILD_DIR"
 [[ -z "$DCMAKE_BUILD_TYPE" ]] && export DCMAKE_BUILD_TYPE='Release'
-CMAKE_EXTRAS="-DCMAKE_BUILD_TYPE=\"$DCMAKE_BUILD_TYPE\" -DEOSIO_COMPILE_TEST_CONTRACTS=true -DENABLE_RODEOS=ON -DENABLE_TESTER=ON -DAMQP_CONN_STR=\"amqp://guest:guest@localhost:5672\""
+CMAKE_EXTRAS="-DCMAKE_BUILD_TYPE=\"$DCMAKE_BUILD_TYPE\" -DEOSIO_COMPILE_TEST_CONTRACTS=true -DENABLE_RODEOS=ON -DENABLE_TESTER=ON -DENABLE_MULTIVERSION_PROTOCOL_TEST=\"true\" -DAMQP_CONN_STR=\"amqp://guest:guest@localhost:5672\""
 
 
 ARGS=${ARGS:-"--rm --init -v \"\$(pwd):$MOUNTED_DIR\""}
 PRE_COMMANDS="cd \"$MOUNTED_DIR/build\""
 # PRE_COMMANDS: Executed pre-cmake
 # CMAKE_EXTRAS: Executed within and right before the cmake path (cmake CMAKE_EXTRAS ..)
+[[ ! "$IMAGE_TAG" =~ 'unpinned' ]] && CMAKE_EXTRAS="$CMAKE_EXTRAS -DTPM2TSS_STATIC=\"On\" -DCMAKE_TOOLCHAIN_FILE=\"$MOUNTED_DIR/.cicd/helpers/clang.make\""
 if [[ "$IMAGE_TAG" == 'ubuntu-18.04-unpinned' ]]; then
     CMAKE_EXTRAS="$CMAKE_EXTRAS -DCMAKE_CXX_COMPILER=\"clang++-7\" -DCMAKE_C_COMPILER=\"clang-7\" -DLLVM_DIR=\"/usr/lib/llvm-7/lib/cmake/llvm\""
 fi
