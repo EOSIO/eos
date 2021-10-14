@@ -45,6 +45,7 @@ plugin = eosio::producer_plugin
 plugin = eosio::chain_api_plugin
 plugin = eosio::net_plugin
 plugin = eosio::trace_api_plugin
+trace-no-abis = true
 http-server-address = 127.0.0.1:8888
 blocks-dir = blocks
 p2p-listen-endpoint = 0.0.0.0:9876

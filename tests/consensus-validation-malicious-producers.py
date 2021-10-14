@@ -103,7 +103,8 @@ private-key = ["EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV","5KQwrPbw
 producer-name = initu
 plugin = eosio::producer_plugin
 plugin = eosio::chain_api_plugin
-plugin = eosio::trace_api_plugin"""
+plugin = eosio::trace_api_plugin
+trace-no-abis = true"""
 
 
 config01="""genesis-json = ./genesis.json
@@ -122,7 +123,8 @@ private-key = ["EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV","5KQwrPbw
 producer-name = defproducerb
 plugin = eosio::producer_plugin
 plugin = eosio::chain_api_plugin
-plugin = eosio::trace_api_plugin"""
+plugin = eosio::trace_api_plugin
+trace-no-abis = true"""
 
 
 producers="""producer-name = defproducerd
@@ -322,10 +324,9 @@ def myTest(transWillEnterBlock):
 
             Print("Get details for transaction %s" % (transId))
             transaction=node2.getTransaction(transId, exitOnError=True)
-            signature=transaction["transaction"]["signatures"][0]
+            signature=transaction["signatures"][0]
 
-            blockNum=int(transaction["transaction"]["ref_block_num"])
-            blockNum += 1
+            blockNum=int(transaction["block_num"])
             Print("Our transaction is in block %d" % (blockNum))
 
             block=node2.getBlock(blockNum, exitOnError=True)
