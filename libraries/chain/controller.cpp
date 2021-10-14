@@ -653,7 +653,7 @@ struct controller_impl {
 
       if (auto dm_logger = get_deep_mind_logger()) {
          // FIXME: We should probably feed that from CMake directly somehow ...
-         fc_dlog(*dm_logger, "DEEP_MIND_VERSION 13 0");
+         fc_dlog(*dm_logger, "DEEP_MIND_VERSION 14 0");
 
          fc_dlog(*dm_logger, "ABIDUMP START ${block_num} ${global_sequence_num}",
             ("block_num", head->block_num)
