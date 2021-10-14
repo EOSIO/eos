@@ -451,6 +451,8 @@ attested_key create_key_attested(const std::string& tcti, const std::vector<unsi
    ESYS_TR persistent_handle;
    rc = Esys_EvictControl(esys_ctx.ctx(), ESYS_TR_RH_OWNER, created_handle, ESYS_TR_PASSWORD, ESYS_TR_NONE, ESYS_TR_NONE,
                           persistent_handle_id, &persistent_handle);
+   if(rc == TPM2_RC_NV_DEFINED)
+      FC_THROW_EXCEPTION(tpm_key_exists, "Given TPM handle already contains a key");
    FC_ASSERT(!rc, "Failed to persist TPM key: ${m}", ("m", Tss2_RC_Decode(rc)));
    Esys_TR_Close(esys_ctx.ctx(), &persistent_handle);
 

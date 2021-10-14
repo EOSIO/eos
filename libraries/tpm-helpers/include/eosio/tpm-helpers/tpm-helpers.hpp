@@ -3,12 +3,15 @@
 #include <fc/crypto/public_key.hpp>
 #include <fc/crypto/signature.hpp>
 #include <fc/crypto/sha256.hpp>
+#include <fc/exception/exception.hpp>
 
 #include <boost/container/flat_set.hpp>
 
 #include <set>
 
 namespace eosio::tpm {
+
+FC_DECLARE_EXCEPTION(tpm_key_exists, 9100000, "TPM key already exists");
 
 class tpm_key {
 public:
