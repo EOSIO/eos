@@ -6,7 +6,7 @@ set -eo pipefail
 # read dependency file
 if [[ -f "$RAW_PIPELINE_CONFIG" ]]; then
     echo 'Reading pipeline configuration file...'
-    cat "$RAW_PIPELINE_CONFIG" | grep -Po '^[^"/]*("((?<=\\).|[^"])*"[^"/]*)*' | jq -c .\"eosio\" > "$PIPELINE_CONFIG"
+    cat "$RAW_PIPELINE_CONFIG" | grep -Po '^[^"/]*("((?<=\\).|[^"])*"[^"/]*)*' | jq -c .\"eosio-contract-build\" > "$PIPELINE_CONFIG"
     CDT_VERSION=$(cat "$PIPELINE_CONFIG" | jq -r '.dependencies."eosio.cdt"')
 else
     echo 'ERROR: No pipeline configuration file or dependencies file found!'
