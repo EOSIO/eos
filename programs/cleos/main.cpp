@@ -2859,7 +2859,7 @@ int main( int argc, char** argv ) {
 
          wasm = string(wasm_v.begin(), wasm_v.end());
          if(!code_as_wasm && wasm_v.size())
-            wast = wasm_to_wast((const uint8_t*)wasm_v.data(), wasm_v.size(), false);
+            wast = wasm_to_wast((const uint8_t*)wasm_v.data(), wasm_v.size(), false, false);
 
          abi_def abi_d;
          if(abi_serializer::to_abi(abi_v, abi_d))

@@ -8,6 +8,7 @@
 #include <sstream>
 #include <iomanip>
 #include <fc/exception/exception.hpp>
+#include <fc/scoped_exit.hpp>
 #include <eosio/chain/exceptions.hpp>
 
 namespace eosio { namespace chain {
@@ -62,8 +63,13 @@ namespace eosio { namespace chain {
       return wasm_to_wast( wasm.data(), wasm.size(), strip_names );
    } /// wasm_to_wast
 
-   std::string     wasm_to_wast( const uint8_t* data, uint64_t size, bool strip_names ) 
-   { try {
+   std::string     wasm_to_wast( const uint8_t* data, uint64_t size, bool strip_names, bool check_limits )
+   {
+     try {
+       auto reset_check_limits = fc::make_scoped_exit([old_value=WASM::check_limits](){
+          WASM::check_limits = old_value;
+       });
+       WASM::check_limits = check_limits;
        IR::Module module;
        Serialization::MemoryInputStream stream((const U8*)data,size);
        WASM::serialize(stream,module);
@@ -71,7 +77,11 @@ namespace eosio { namespace chain {
           module.userSections.clear();
         // Print the module to WAST.
        return WAST::print(module);
-   } FC_CAPTURE_AND_RETHROW() } /// wasm_to_wast
-
+     } catch(const Serialization::FatalSerializationException& e) {
+        EOS_ASSERT( false, wasm_exception, "error converting to wast: ${msg}", ("msg",e.message) );
+     } catch(const IR::ValidationException& e) {
+        EOS_ASSERT( false, wasm_exception, "error converting to wast: ${msg}", ("msg",e.message) );
+     } FC_CAPTURE_AND_RETHROW()
+   }
 
 } } // eosio::chain
