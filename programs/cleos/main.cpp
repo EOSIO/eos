@@ -82,7 +82,6 @@ Options:
 
 #include <eosio/chain/name.hpp>
 #include <eosio/chain/config.hpp>
-#include <eosio/chain/wast_to_wasm.hpp>
 #include <eosio/chain/trace.hpp>
 #include <eosio/chain_plugin/chain_plugin.hpp>
 #include <eosio/chain/contract_types.hpp>
@@ -2839,14 +2838,14 @@ int main( int argc, char** argv ) {
    // get code
    string codeFilename;
    string abiFilename;
-   bool code_as_wasm = false;
+   bool code_as_wasm = true;
    auto getCode = get->add_subcommand("code", localized("Retrieve the code and ABI for an account"));
    getCode->add_option("name", accountName, localized("The name of the account whose code should be retrieved"))->required();
-   getCode->add_option("-c,--code",codeFilename, localized("The name of the file to save the contract .wast/wasm to") );
+   getCode->add_option("-c,--code",codeFilename, localized("The name of the file to save the contract wasm to") );
    getCode->add_option("-a,--abi",abiFilename, localized("The name of the file to save the contract .abi to") );
-   getCode->add_flag("--wasm", code_as_wasm, localized("Save contract as wasm"));
+   getCode->add_flag("--wasm", code_as_wasm, localized("Save contract as wasm (ignored, default)"));
    getCode->callback([&] {
-      string code_hash, wasm, wast, abi;
+      string code_hash, wasm, abi;
       try {
          const auto result = call(get_raw_code_and_abi_func, fc::mutable_variant_object("account_name", accountName));
          const std::vector<char> wasm_v = result["wasm"].as_blob().data;
@@ -2858,8 +2857,6 @@ int main( int argc, char** argv ) {
          code_hash = (string)hash;
 
          wasm = string(wasm_v.begin(), wasm_v.end());
-         if(!code_as_wasm && wasm_v.size())
-            wast = wasm_to_wast((const uint8_t*)wasm_v.data(), wasm_v.size(), false, false);
 
          abi_def abi_d;
          if(abi_serializer::to_abi(abi_v, abi_d))
@@ -2869,25 +2866,18 @@ int main( int argc, char** argv ) {
          //see if this is an old nodeos that doesn't support get_raw_code_and_abi
          const auto old_result = call(get_code_func, fc::mutable_variant_object("account_name", accountName)("code_as_wasm",code_as_wasm));
          code_hash = old_result["code_hash"].as_string();
-         if(code_as_wasm) {
-            wasm = old_result["wasm"].as_string();
-            std::cout << localized("Warning: communicating to older ${n} which returns malformed binary wasm", ("n", node_executable_name)) << std::endl;
-         }
-         else
-            wast = old_result["wast"].as_string();
+         wasm = old_result["wasm"].as_string();
+         std::cout << localized("Warning: communicating to older ${n} which returns malformed binary wasm", ("n", node_executable_name)) << std::endl;
          abi = fc::json::to_pretty_string(old_result["abi"]);
       }
 
       std::cout << localized("code hash: ${code_hash}", ("code_hash", code_hash)) << std::endl;
 
       if( codeFilename.size() ){
-         std::cout << localized("saving ${type} to ${codeFilename}", ("type", (code_as_wasm ? "wasm" : "wast"))("codeFilename", codeFilename)) << std::endl;
+         std::cout << localized("saving wasm to ${codeFilename}", ("codeFilename", codeFilename)) << std::endl;
 
          std::ofstream out( codeFilename.c_str() );
-         if(code_as_wasm)
-            out << wasm;
-         else
-            out << wast;
+         out << wasm;
       }
       if( abiFilename.size() ) {
          std::cout << localized("saving abi to ${abiFilename}", ("abiFilename", abiFilename)) << std::endl;
