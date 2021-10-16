@@ -1665,15 +1665,16 @@ BOOST_FIXTURE_TEST_CASE( fuzz, TESTER ) try {
       vector<uint8_t> wasm(g80k_deep_loop_with_voidData, g80k_deep_loop_with_voidData + g80k_deep_loop_with_voidSize);
       BOOST_CHECK_THROW(set_code("fuzzy"_n, wasm), wasm_exception);
    }
+   {
+      vector<uint8_t> wasm(ggetcode_deepindentData, ggetcode_deepindentData + ggetcode_deepindentSize);
+      set_code( "fuzzy"_n, wasm );
+   }
+   {
+      vector<uint8_t> wasm(gindent_mismatchData, gindent_mismatchData + gindent_mismatchSize);
+      set_code( "fuzzy"_n, wasm );
+   }
 
    produce_blocks(1);
-} FC_LOG_AND_RETHROW()
-
-BOOST_FIXTURE_TEST_CASE( getcode_checks, TESTER ) try {
-   vector<uint8_t> wasm(ggetcode_deepindentData, ggetcode_deepindentData + ggetcode_deepindentSize);
-   wasm_to_wast( wasm.data(), wasm.size(), true );
-   vector<uint8_t> wasmx(gindent_mismatchData, gindent_mismatchData + gindent_mismatchSize);
-   wasm_to_wast( wasmx.data(), wasmx.size(), true );
 } FC_LOG_AND_RETHROW()
 
 BOOST_FIXTURE_TEST_CASE( big_maligned_host_ptr, TESTER ) try {
