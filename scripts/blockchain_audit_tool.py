@@ -158,7 +158,7 @@ def getAllAccounts(limit):
         if moreAccounts:
             nextAcct = accts['more']
             req_body = '{"limit":' + str(limit) + f', "lower_bound":"{nextAcct}"' + '}'
-    return all_accts
+    return all_accts, numAccounts
 
 
 def compareAccountNames(ref, cmp):
@@ -286,8 +286,8 @@ if __name__ == "__main__":
     # parse options
     optionsMap, otherArgLst = parseArgs(sys.argv, optionsMap, 0, 1)
     if optionsMap['help']:
-        print(USAGE)
-        print(HELP_INFO)
+        print(USAGE, file=sys.stderr)
+        print(HELP_INFO, file=sys.stderr)
         exit(0)
 
     if len(otherArgLst) > 0:
@@ -302,7 +302,7 @@ if __name__ == "__main__":
 
     if comp_filepath != "":
         if ref_filepath == "":
-            print("'--comp 'option must be used in combination with '--ref' option")
+            print("'--comp 'option must be used in combination with '--ref' option", file=sys.stderr)
             exit(1)
         fComp = open(comp_filepath, "r")
         s = fComp.read()
@@ -322,8 +322,7 @@ if __name__ == "__main__":
     server_info_begin = getJSONResp(conn, "/v1/chain/get_info")
 
     # get all accounts on the chain
-    all_accts = getAllAccounts(page_size)
-    numAccounts = len(all_accts)
+    all_accts, numAccounts = getAllAccounts(page_size)
     if numAccounts == 0:
         print("Error, no accounts returned from get_all_accounts!", file=sys.stderr)
         exit(1)
@@ -337,7 +336,7 @@ if __name__ == "__main__":
             i += 1
             nm = a['name']
             print("\b"*31, end="", file=sys.stderr)
-            print(f"{nm:13} {i:8}/{numAccounts:8}", end="", file=sys.stderr)
+            print(f"{nm:13} {i:8}/{numAccounts:8}", end="", file=sys.stderr, flush=True)
 
             e = { 'name' : nm }
             req_body = '{ "account_name": "' + nm + '" }'
@@ -358,7 +357,7 @@ if __name__ == "__main__":
         # get scopes and tables
         nm = a['name']
         print("\b"*31, end="", file=sys.stderr)
-        print(f"{nm:13} {i:8}/{numAccounts:8}", end="", file=sys.stderr)
+        print(f"{nm:13} {i:8}/{numAccounts:8}", end="", file=sys.stderr, flush=True)
         i += 1
 
         req_body = '{' + f'"code":"{nm}", "table":"", "lower_bound":"", "upper_bound":"", "limit":{scope_limit}, "reverse":false' + '}'
@@ -394,6 +393,7 @@ if __name__ == "__main__":
                 a['kv_tables'][tbl_name + ":" + tbl_idx_nm] = table_rows
 
     data = {'accounts' : accts_lst, 'scope_limit' : scope_limit, 'table_row_limit' : table_row_limit }
+    print(file=sys.stderr)
 
     prod_sched = getJSONResp(conn, "/v1/chain/get_producer_schedule")
     data['producer_schedule'] = prod_sched
@@ -424,12 +424,11 @@ if __name__ == "__main__":
     data['server_info_end'] = server_info_end
 
     # get all accounts again
-    all_accts_end = getAllAccounts(page_size)
-    numAccounts_end = len(all_accts_end)
+    all_accts_end, numAccounts_end = getAllAccounts(page_size)
+    print(file=sys.stderr)
     if numAccounts != numAccounts_end:
         msg = f"ERROR: Accounts added during audit. begin= {numAccounts} end= {numAccounts_end}"
         print(msg, file=sys.stderr)
-        exit(1)
     
     if server_info_begin['head_block_num'] != server_info_end['head_block_num']:
         print("WARNING: Audit data was collected from different blocks.  Data may be inconssitent.", file=sys.stderr)
@@ -534,9 +533,9 @@ if __name__ == "__main__":
         print("---------------------------------------------------------------------------------------------------------")
         atLeastOne = False
         for a in accts_lst:
-            if 'kv_tables' not in a:
-                continue
             kv_tables = a['kv_tables']
+            if len(kv_tables) == 0:
+                continue
             for tbl_nm_idx, kv_tbl in kv_tables.items():
                 print(f"{a['name']:13} | {tbl_nm_idx:27} | [", end="")
                 for v in kv_tbl['rows']:
