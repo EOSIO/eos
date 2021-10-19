@@ -164,6 +164,8 @@ string wallet_url; //to be set to default_wallet_url in main
 string amqp_address;
 string amqp_reply_to;
 string amqp_queue_name = "trx";
+string abi_path_override;
+
 bool no_verify = false;
 vector<string> headers;
 
@@ -348,14 +350,18 @@ auto abi_serializer_resolver = [](const name& account) -> std::optional<abi_seri
   static unordered_map<account_name, std::optional<abi_serializer> > abi_cache;
   auto it = abi_cache.find( account );
   if ( it == abi_cache.end() ) {
-    const auto raw_abi_result = call(get_raw_abi_func, fc::mutable_variant_object("account_name", account));
-    const auto raw_abi_blob = raw_abi_result["abi"].as_blob().data;
 
     std::optional<abi_serializer> abis;
-    if (raw_abi_blob.size() != 0) {
-      abis.emplace(fc::raw::unpack<abi_def>(raw_abi_blob), abi_serializer::create_yield_function( abi_serializer_max_time ));
+    if (abi_path_override.length()) {
+      abis.emplace( fc::json::from_file(abi_path_override).as<abi_def>(), abi_serializer::create_yield_function( abi_serializer_max_time ));
     } else {
-      std::cerr << "ABI for contract " << account.to_string() << " not found. Action data will be shown in hex only." << std::endl;
+      const auto raw_abi_result = call(get_raw_abi_func, fc::mutable_variant_object("account_name", account));
+      const auto raw_abi_blob = raw_abi_result["abi"].as_blob().data;
+      if (raw_abi_blob.size() != 0) {
+        abis.emplace(fc::raw::unpack<abi_def>(raw_abi_blob), abi_serializer::create_yield_function( abi_serializer_max_time ));
+      } else {
+        std::cerr << "ABI for contract " << account.to_string() << " not found. Action data will be shown in hex only." << std::endl;
+      }
     }
     abi_cache.emplace( account, abis );
 
@@ -2525,6 +2531,8 @@ int main( int argc, char** argv ) {
 
    app.add_option( "-u,--url", default_url, localized( "The http/https URL where ${n} is running", ("n", node_executable_name)), true );
    app.add_option( "--wallet-url", wallet_url, localized("The http/https URL where ${k} is running", ("k", key_store_executable_name)), true );
+
+   app.add_option( "--abi-file", abi_path_override, localized("Use a local abi file for serialization and deserialization instead of getting the abi data from the blockchain"), false );
    app.add_option( "--amqp", amqp_address, localized("The ampq URL where AMQP is running amqp://USER:PASSWORD@ADDRESS:PORT"), false );
    app.add_option( "--amqp-queue-name", amqp_queue_name, localized("The ampq queue to send transaction to"), true );
    app.add_option( "--amqp-reply-to", amqp_reply_to, localized("The ampq reply to string"), false );
