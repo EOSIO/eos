@@ -178,8 +178,17 @@ class kv_tester : public tester {
 
    void itstaterased(const char* error, name contract, const char* prefix, const char* k, const char* v,
                      int test_id, bool insert, bool reinsert) {
-      BOOST_REQUIRE_EQUAL(error, push_action("itstaterased"_n, mvo()("contract", contract)("prefix", prefix)(
-                                                                    "k", k)("v", v)("test_id", test_id)("insert", insert)("reinsert", reinsert)));
+      BOOST_REQUIRE_MESSAGE(
+          error == push_action("itstaterased"_n, mvo()("contract", contract)("prefix", prefix)("k", k)("v", v)(
+                                                     "test_id", test_id)("insert", insert)("reinsert", reinsert)),
+          error << "!= push_action(\"itstaterased\"_n, mvo()(\"contract\", " << contract 
+                << ")(\"prefix\","<< prefix 
+                << ")(\"k\"," << k  
+                << ")(\"v\"," << v 
+                << ")(\"test_id\"," << test_id 
+                << ")(\"insert\"," << insert 
+                << ")(\"reinsert\"," << reinsert << "))"
+                );
    }
 
    uint64_t get_usage(name account="kvtest"_n) {
@@ -418,7 +427,7 @@ class kv_tester : public tester {
          // pre-inserted
          for(bool insert : {false, true}) {
             for(int i = 0; i < 8; ++i) {
-               setmany("", "kvtest"_n, { kv{ { 0x22 }, { 0x12 } } });
+               setmany("", "kvtest"_n, {kv{{0x22}, {0x12}}});
                produce_block();
                itstaterased("Iterator to erased element", "kvtest"_n, "", "22", "12", i, insert, reinsert );
             }
