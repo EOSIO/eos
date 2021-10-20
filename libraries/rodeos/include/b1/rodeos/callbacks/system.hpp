@@ -25,6 +25,7 @@ struct system_callbacks {
       auto block_info = load_block_info();
       return std::visit(
             [](auto& b) { //
+               elog( "bn: ${bn}, time: ${t}", ("bn", b.num)("t", b.timestamp.to_time_point().time_since_epoch().count()));
                return b.timestamp.to_time_point().time_since_epoch().count();
             },
             block_info);
