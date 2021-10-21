@@ -15,6 +15,7 @@ int main(int argc, char** argv) {
    std::string tcti;
    std::vector<unsigned> pcrs;
    uint32_t attest_handle = 0;
+   uint32_t create_at_handle = 0;
 
    cli.add_options()
       ("help,h", bpo::bool_switch(&help)->default_value(false), "Print this help message and exit.")
@@ -30,6 +31,10 @@ int main(int argc, char** argv) {
          attest_handle = strtol(a.c_str(), NULL, 0);
          FC_ASSERT(attest_handle, "Attest handle argument is not an integer");
       }), "Certify creation of the new key via key with given TPM handle")
+      ("handle", bpo::value<std::string>()->notifier([&](const std::string& a) {
+         create_at_handle = strtol(a.c_str(), NULL, 0);
+         FC_ASSERT(create_at_handle, "Creation handle argument is not an integer");
+      }), "Persist key at given TPM handle (by default, find first available owner handle). Returns error code 100 if key already exists.")
       ;
    bpo::variables_map varmap;
    try {
@@ -55,15 +60,19 @@ int main(int argc, char** argv) {
 
    try {
       if(create && !attest_handle)
-         std::cout << eosio::tpm::create_key(tcti, pcrs).to_string() << std::endl;
+         std::cout << eosio::tpm::create_key(tcti, pcrs, create_at_handle).to_string() << std::endl;
       else if(create)
-         std::cout << fc::json::to_pretty_string(eosio::tpm::create_key_attested(tcti, pcrs, attest_handle)) << std::endl;
+         std::cout << fc::json::to_pretty_string(eosio::tpm::create_key_attested(tcti, pcrs, attest_handle, create_at_handle)) << std::endl;
 
       if(list)
          for(const auto& k : eosio::tpm::get_all_persistent_keys(tcti))
             std::cout << k.to_string() << std::endl;
 
       return 0;
+   }
+   catch(eosio::tpm::tpm_key_exists&) {
+      std::cerr << "Key already exists at given handle" << std::endl;
+      return 100;
    } FC_LOG_AND_DROP();
 
    return 1;

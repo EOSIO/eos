@@ -371,13 +371,14 @@ void amqp_trx_plugin::plugin_shutdown() {
          my->amqp_trx->stop();
       }
 
+      dlog( "stopping fifo queue" );
       if( my->trx_queue_ptr ) {
          my->trx_queue_ptr->stop();
       }
 
       dlog( "exit amqp_trx_plugin" );
    }
-   FC_CAPTURE_AND_RETHROW()
+   FC_LOG_AND_DROP()
 }
 
 void amqp_trx_plugin::handle_sighup() {

@@ -3128,8 +3128,8 @@ void controller::validate_tapos( const transaction& trx )const { try {
 
    //Verify TaPoS block summary has correct ID prefix, and that this block's time is not past the expiration
    EOS_ASSERT(trx.verify_reference_block(tapos_block_summary.block_id), invalid_ref_block_exception,
-              "Transaction's reference block did not match. Is this transaction from a different fork?",
-              ("tapos_summary", tapos_block_summary));
+              "Transaction's reference block #${bn} ${tr} did not match ${sr}. Is this transaction from a different fork?",
+              ("bn", trx.ref_block_num)("tr", trx.ref_block_prefix)("sr", tapos_block_summary.block_id._hash[1]));
 } FC_CAPTURE_AND_RETHROW() }
 
 void controller::validate_db_available_size() const {
