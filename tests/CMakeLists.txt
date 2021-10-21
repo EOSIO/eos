@@ -60,7 +60,6 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/eosio_blocklog_prune_test.py ${CMAKE_
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/cli_test.py ${CMAKE_CURRENT_BINARY_DIR}/cli_test.py COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/plugin_http_api_test.py ${CMAKE_CURRENT_BINARY_DIR}/plugin_http_api_test.py COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/resource_monitor_plugin_test.py ${CMAKE_CURRENT_BINARY_DIR}/resource_monitor_plugin_test.py COPYONLY)
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/rodeos_test.py ${CMAKE_CURRENT_BINARY_DIR}/rodeos_test.py COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/test_filter.wasm ${CMAKE_CURRENT_BINARY_DIR}/test_filter.wasm COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/trace_plugin_test.py ${CMAKE_CURRENT_BINARY_DIR}/trace_plugin_test.py COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/nodeos_contrl_c_test.py ${CMAKE_CURRENT_BINARY_DIR}/nodeos_contrl_c_test.py COPYONLY)
@@ -193,15 +192,6 @@ add_test(NAME nested_container_kv_test COMMAND tests/nested_container_kv_test.py
 set_property(TEST nested_container_kv_test PROPERTY LABELS nonparallelizable_tests)
 add_test(NAME nested_container_multi_index_test COMMAND tests/nested_container_multi_index_test.py WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 set_property(TEST nested_container_multi_index_test PROPERTY LABELS nonparallelizable_tests)
-
-if (ENABLE_RODEOS)
-  add_test(NAME rodeos_test COMMAND tests/rodeos_test.py -v --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
-  set_property(TEST rodeos_test PROPERTY LABELS nonparallelizable_tests)
-  if("eos-vm-oc" IN_LIST EOSIO_WASM_RUNTIMES)
-    add_test(NAME rodeos_test_eosvmoc COMMAND tests/rodeos_test.py -v --clean-run --dump-error-detail --eos-vm-oc-enable WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
-    set_property(TEST rodeos_test_eosvmoc PROPERTY LABELS nonparallelizable_tests)
-  endif()
-endif()
 
 # Long running tests
 add_test(NAME nodeos_sanity_lr_test COMMAND tests/nodeos_run_test.py -v --sanity-test --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
