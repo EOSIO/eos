@@ -163,6 +163,8 @@ string wallet_url; //to be set to default_wallet_url in main
 string amqp_address;
 string amqp_reply_to;
 string amqp_queue_name = "trx";
+std::map<name, std::string>  abi_files_override;
+
 bool no_verify = false;
 vector<string> headers;
 
@@ -347,14 +349,18 @@ auto abi_serializer_resolver = [](const name& account) -> std::optional<abi_seri
   static unordered_map<account_name, std::optional<abi_serializer> > abi_cache;
   auto it = abi_cache.find( account );
   if ( it == abi_cache.end() ) {
-    const auto raw_abi_result = call(get_raw_abi_func, fc::mutable_variant_object("account_name", account));
-    const auto raw_abi_blob = raw_abi_result["abi"].as_blob().data;
 
     std::optional<abi_serializer> abis;
-    if (raw_abi_blob.size() != 0) {
-      abis.emplace(fc::raw::unpack<abi_def>(raw_abi_blob), abi_serializer::create_yield_function( abi_serializer_max_time ));
+    if (abi_files_override.find(account) != abi_files_override.end()) {
+      abis.emplace( fc::json::from_file(abi_files_override[account]).as<abi_def>(), abi_serializer::create_yield_function( abi_serializer_max_time ));
     } else {
-      std::cerr << "ABI for contract " << account.to_string() << " not found. Action data will be shown in hex only." << std::endl;
+      const auto raw_abi_result = call(get_raw_abi_func, fc::mutable_variant_object("account_name", account));
+      const auto raw_abi_blob = raw_abi_result["abi"].as_blob().data;
+      if (raw_abi_blob.size() != 0) {
+        abis.emplace(fc::raw::unpack<abi_def>(raw_abi_blob), abi_serializer::create_yield_function( abi_serializer_max_time ));
+      } else {
+        std::cerr << "ABI for contract " << account.to_string() << " not found. Action data will be shown in hex only." << std::endl;
+      }
     }
     abi_cache.emplace( account, abis );
 
@@ -2507,6 +2513,22 @@ CLI::callback_t header_opt_callback = [](CLI::results_t res) {
    return true;
 };
 
+CLI::callback_t abi_files_overide_callback = [](CLI::results_t account_abis) {
+   for (vector<string>::iterator itr = account_abis.begin(); itr != account_abis.end(); ++itr) {
+      size_t delim = itr->find(":");
+      std::string acct_name, abi_path;
+      if (delim != std::string::npos) {
+         acct_name = itr->substr(0, delim);
+         abi_path = itr->substr(delim + 1);
+      }
+      if (acct_name.length() == 0 || abi_path.length() == 0) {
+         std::cerr << "please specify --abi-file in form of <contract name>:<abi file path>.";
+         return false;
+      }
+      abi_files_override[name(acct_name)] = abi_path;
+   }
+   return true;
+};
 
 int main( int argc, char** argv ) {
 
@@ -2524,6 +2546,8 @@ int main( int argc, char** argv ) {
 
    app.add_option( "-u,--url", default_url, localized( "The http/https URL where ${n} is running", ("n", node_executable_name)), true );
    app.add_option( "--wallet-url", wallet_url, localized("The http/https URL where ${k} is running", ("k", key_store_executable_name)), true );
+
+   app.add_option( "--abi-file", abi_files_overide_callback, localized("In form of <contract name>:<abi file path>, use a local abi file for serialization and deserialization instead of getting the abi data from the blockchain; repeat this option to pass multiple abi files for different contracts"))->type_size(0, 1000);
    app.add_option( "--amqp", amqp_address, localized("The ampq URL where AMQP is running amqp://USER:PASSWORD@ADDRESS:PORT"), false );
    app.add_option( "--amqp-queue-name", amqp_queue_name, localized("The ampq queue to send transaction to"), true );
    app.add_option( "--amqp-reply-to", amqp_reply_to, localized("The ampq reply to string"), false );
