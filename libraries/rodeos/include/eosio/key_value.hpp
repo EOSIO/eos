@@ -268,8 +268,8 @@ class kv_table {
 
       iterator(iterator&& other) :
          itr(std::exchange(other.itr, 0)),
-         itr_stat(std::move(other.itr_stat)),
-         index(std::move(other.index))
+         itr_stat(other.itr_stat),
+         index(other.index)
       {}
 
       ~iterator() {
@@ -283,8 +283,8 @@ class kv_table {
             index->tbl->environment.kv_it_destroy(itr);
          }
          itr = std::exchange(other.itr, 0);
-         itr_stat = std::move(other.itr_stat);
-         index = std::move(other.index);
+         itr_stat = other.itr_stat;
+         index = other.index;
          return *this;
       }
 
