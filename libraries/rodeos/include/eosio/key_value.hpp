@@ -268,7 +268,8 @@ class kv_table {
 
       iterator(iterator&& other) :
          itr(std::exchange(other.itr, 0)),
-         itr_stat(std::move(other.itr_stat))
+         itr_stat(other.itr_stat),
+         index(other.index)
       {}
 
       ~iterator() {
@@ -282,7 +283,8 @@ class kv_table {
             index->tbl->environment.kv_it_destroy(itr);
          }
          itr = std::exchange(other.itr, 0);
-         itr_stat = std::move(other.itr_stat);
+         itr_stat = other.itr_stat;
+         index = other.index;
          return *this;
       }
 
@@ -357,7 +359,8 @@ class kv_table {
 
       iterator& operator++() {
          eosio::check(itr_stat != status::iterator_end, "cannot increment end iterator");
-         itr_stat = static_cast<status>(index->tbl->environment.kv_it_next(itr));
+         uint32_t found_key_size, found_value_size;
+         itr_stat = static_cast<status>(index->tbl->environment.kv_it_next(itr, &found_key_size, &found_value_size));
          return *this;
       }
 
@@ -365,7 +368,8 @@ class kv_table {
          if (!itr) {
             itr = index->tbl->environment.kv_it_create(index->contract_name.value, index->prefix.data(), index->prefix.size());
          }
-         itr_stat = static_cast<status>(index->tbl->environment.kv_it_prev(itr));
+         uint32_t found_key_size, found_value_size;
+         itr_stat = static_cast<status>(index->tbl->environment.kv_it_prev(itr, &found_key_size, &found_value_size));
          eosio::check(itr_stat != status::iterator_end, "decremented past the beginning");
          return *this;
       }
