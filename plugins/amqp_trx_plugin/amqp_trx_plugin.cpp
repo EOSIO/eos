@@ -243,7 +243,7 @@ amqp_trx_plugin::~amqp_trx_plugin() {}
 
 void amqp_trx_plugin::set_program_options(options_description& cli, options_description& cfg) {
    auto op = cfg.add_options();
-   op("amqp-trx-address", bpo::value<std::string>(),
+   op("amqp-trx-address", bpo::value<std::string>()->default_value(std::getenv(EOSIO_AMQP_ADDRESS_ENV_VAR) ? std::getenv(EOSIO_AMQP_ADDRESS_ENV_VAR) : ""),
       "AMQP address: Format: amqp://USER:PASSWORD@ADDRESS:PORT\n"
       "Will consume from amqp-trx-queue-name (amqp-trx-queue-name) queue.");
    op("amqp-trx-queue-name", bpo::value<std::string>()->default_value("trx"),
