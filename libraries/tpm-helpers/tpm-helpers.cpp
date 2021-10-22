@@ -139,20 +139,6 @@ TPML_PCR_SELECTION pcr_selection_for_pcrs(const std::vector<unsigned>& pcrs) {
    return pcr_selection;
 }
 
-fc::sha256 current_pcr_hash_for_pcrs(esys_context& esys_ctx, const TPML_PCR_SELECTION& pcr_selection) {
-   UINT32 pcr_update_counter;
-   TPML_DIGEST* pcr_digests;
-
-   TSS2_RC rc = Esys_PCR_Read(esys_ctx.ctx(), ESYS_TR_NONE, ESYS_TR_NONE, ESYS_TR_NONE, &pcr_selection, &pcr_update_counter, NULL, &pcr_digests);
-   FC_ASSERT(!rc, "Failed to read current PCR digests: ${m}", ("m", Tss2_RC_Decode(rc)));
-   auto cleanup_pcr_digests = fc::make_scoped_exit([&]() {free(pcr_digests);});
-
-   fc::sha256::encoder enc;
-   for(unsigned i = 0; i < pcr_digests->count; ++i)
-      enc.write((const char*)pcr_digests->digests[i].buffer, pcr_digests->digests[i].size);
-   return enc.result();
-}
-
 class session_with_pcr_policy {
 public:
    session_with_pcr_policy(esys_context& esys_ctx, const std::vector<unsigned>& pcrs, bool trial = false) : esys_ctx(esys_ctx) {
@@ -164,10 +150,8 @@ public:
       FC_ASSERT(!rc, "Failed to create TPM auth session: ${m}", ("m", Tss2_RC_Decode(rc)));
       auto cleanup_auth_session = fc::make_scoped_exit([&]() {Esys_FlushContext(esys_ctx.ctx(), session_handle);});
 
-      TPM2B_DIGEST pcr_digest = {sizeof(fc::sha256)};
+      TPM2B_DIGEST pcr_digest = {};
       TPML_PCR_SELECTION pcr_selection = pcr_selection_for_pcrs(pcrs);
-      fc::sha256 read_pcr_digest = current_pcr_hash_for_pcrs(esys_ctx, pcr_selection);
-      memcpy(pcr_digest.buffer, read_pcr_digest.data(), sizeof(fc::sha256));
 
       rc = Esys_PolicyPCR(esys_ctx.ctx(), session_handle, ESYS_TR_NONE, ESYS_TR_NONE, ESYS_TR_NONE, &pcr_digest, &pcr_selection);
       FC_ASSERT(!rc, "Failed to set PCR policy on session: ${m}", ("m", Tss2_RC_Decode(rc)));
