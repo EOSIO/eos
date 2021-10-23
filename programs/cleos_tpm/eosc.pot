@@ -1,0 +1,513 @@
+# Localization template for eosc
+# see LICENSE.txt
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: EOSIO 1.0\n"
+"Report-Msgid-Bugs-To: https://github.com/EOSIO/eos/issues"
+"POT-Creation-Date: 2017-09-28 11:40-0400\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=CHARSET\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgid "An error occurred while submitting the transaction for this command!"
+msgstr ""
+
+msgid ""
+"The transaction is a duplicate of one already pushed to the producers.  If this\n"
+"is an intentionally repeated transaction there are a few ways to resolve the\n"
+"issue:\n"
+"  - wait for the next block\n"
+"  - combine duplicate transactions into a single transaction\n"
+"  - adjust the expiration time using the `--expiration <milliseconds>` option\n"
+"  - use the `--force-unique` option to add additional nonce data\n"
+"    Please note, this will consume more bandwidth than the base transaction "
+msgstr ""
+
+msgid ""
+"The transaction requires permissions that were not granted by the transaction.\n"
+"Missing permission from:\n"
+"  - ${1}\n"
+"\n"
+"Please use the `-p,--permissions` option to add the missing accounts!\n"
+"Note: you will need an unlocked wallet that can authorized these permissions."
+msgstr ""
+
+msgid ""
+"The transaction requires permissions that could not be authorized by the wallet.\n"
+"Missing authrizations:\n"
+"  - ${1}@${2}\n"
+"\n"
+"Please make sure the proper keys are imported into an unlocked wallet and try again!"
+msgstr ""
+
+msgid ""
+"The transaction requires scopes that were not listed by the transaction.\n"
+"Missing scope(s):\n"
+"  - ${1}\n"
+"\n"
+"Please use the `-S,--scope` option to add the missing accounts!"
+msgstr ""
+
+msgid "The transaction references an account which does not exist."
+msgstr ""
+
+msgid ""
+"Unknown accounts:\n"
+"  - ${1}\n"
+"\n"
+"Please check the account names and try again!"
+msgstr ""
+
+msgid ""
+"The ABI for action \"${2}\" on code account \"${1}\" is unknown.\n"
+"The payload cannot be automatically serialized.\n"
+"\n"
+"You can push an arbitrary transaction using the 'push transaction' subcommand"
+msgstr ""
+
+msgid "Unable to find a wallet named \"${1}\", are you sure you typed the name correctly?"
+msgstr ""
+
+msgid "Invalid password for wallet named \"${1}\""
+msgstr ""
+
+msgid "The wallet named \"${1}\" is locked.  Please unlock it and try again."
+msgstr ""
+
+msgid "This key is already imported into the wallet named \"${1}\"."
+msgstr ""
+
+msgid ""
+"The ABI for the code on account \"${1}\" does not specify table \"${2}\".\n"
+"\n"
+"Please check the account and table name, and verify that the account has the expected code using:\n"
+"  eosc get code ${1}"
+msgstr ""
+
+msgid ""
+"The ABI for the code on account \"${1}\" does not specify kv_table \"${2}\".\n"
+"\n"
+"Please check the account and kv_table name, and verify that the account has the expected code using:\n"
+"  eosc get code ${1}"
+msgstr ""
+
+msgid "Error locating help text: ${code} ${what}"
+msgstr ""
+
+msgid "Error parsing WebAssembly text file:"
+msgstr ""
+
+msgid "Error serializing WebAssembly binary file:"
+msgstr ""
+
+msgid "set the time in milliseconds before a transaction expires, defaults to 0.1ms"
+msgstr ""
+
+msgid "force the transaction to be unique. this will consume extra bandwidth and remove any protections against accidently issuing the same transaction multiple times"
+msgstr ""
+
+msgid "set parameters dealing with account permissions"
+msgstr ""
+
+msgid "The account to set/delete a permission authority for"
+msgstr ""
+
+msgid "The permission name to set/delete an authority for"
+msgstr ""
+
+msgid "[delete] NULL, [create/update] JSON string or filename defining the authority"
+msgstr ""
+
+msgid "[create] The permission name of this parents permission (Defaults to: \"Active\")"
+msgstr ""
+
+msgid "Specify if unlocked wallet keys should be used to sign transaction"
+msgstr ""
+
+msgid "The account that owns the code for the action"
+msgstr ""
+
+msgid "the type of the action"
+msgstr ""
+
+msgid "[delete] NULL, [set/update] The permission name require for executing the given action"
+msgstr ""
+
+msgid "the host where eosd is running"
+msgstr ""
+
+msgid "the port where eosd is running"
+msgstr ""
+
+msgid "the host where eos-walletd is running"
+msgstr ""
+
+msgid "the port where eos-walletd is running"
+msgstr ""
+
+msgid "output verbose messages on error"
+msgstr ""
+
+msgid "Create various items, on and off the blockchain"
+msgstr ""
+
+msgid "Create a new keypair and print the public and private keys"
+msgstr ""
+
+msgid "Private key: ${key}"
+msgstr ""
+
+msgid "Public key: ${key}"
+msgstr ""
+
+msgid "Create a new account on the blockchain"
+msgstr ""
+
+msgid "The name of the account creating the new account"
+msgstr ""
+
+msgid "The name of the new account"
+msgstr ""
+
+msgid "The owner public key for the account"
+msgstr ""
+
+msgid "The active public key for the account"
+msgstr ""
+
+msgid "Specify that unlocked wallet keys should not be used to sign transaction"
+msgstr ""
+
+msgid "Create a new producer on the blockchain"
+msgstr ""
+
+msgid "The name of the new producer"
+msgstr ""
+
+msgid "The public key for the producer"
+msgstr ""
+
+msgid "An account and permission level to authorize, as in 'account@permission' (default user@active)"
+msgstr ""
+
+msgid "Retrieve various items and information from the blockchain"
+msgstr ""
+
+msgid "Get current blockchain information"
+msgstr ""
+
+msgid "Retrieve a full block from the blockchain"
+msgstr ""
+
+msgid "The number or ID of the block to retrieve"
+msgstr ""
+
+msgid "Retrieve an account from the blockchain"
+msgstr ""
+
+msgid "The name of the account to retrieve"
+msgstr ""
+
+msgid "Retrieve the code and ABI for an account"
+msgstr ""
+
+msgid "The name of the account whose code should be retrieved"
+msgstr ""
+
+msgid "The name of the file to save the contract .wast to"
+msgstr ""
+
+msgid "The name of the file to save the contract .abi to"
+msgstr ""
+
+msgid "code hash: ${code_hash}"
+msgstr ""
+
+msgid "saving wast to ${codeFilename}"
+msgstr ""
+
+msgid "saving abi to ${abiFilename}"
+msgstr ""
+
+msgid "Retrieve the contents of a database table"
+msgstr ""
+
+msgid "The account scope where the table is found"
+msgstr ""
+
+msgid "The contract within scope who owns the table"
+msgstr ""
+
+msgid "The name of the table as specified by the contract abi"
+msgstr ""
+
+msgid "Return the value as BINARY rather than using abi to interpret as JSON"
+msgstr ""
+
+msgid "The maximum number of rows to return"
+msgstr ""
+
+msgid "The name of the key to index by as defined by the abi, defaults to primary key"
+msgstr ""
+
+msgid "JSON representation of lower bound value of key, defaults to first"
+msgstr ""
+
+msgid "JSON representation of upper bound value value of key, defaults to last"
+msgstr ""
+
+msgid "Retrieve accounts associated with a public key"
+msgstr ""
+
+msgid "The public key to retrieve accounts for"
+msgstr ""
+
+msgid "Retrieve accounts which are servants of a given account "
+msgstr ""
+
+msgid "The name of the controlling account"
+msgstr ""
+
+msgid "Retrieve a transaction from the blockchain"
+msgstr ""
+
+msgid "ID of the transaction to retrieve"
+msgstr ""
+
+msgid "Retrieve all transactions with specific account name referenced in their scope"
+msgstr ""
+
+msgid "name of account to query on"
+msgstr ""
+
+msgid "Number of most recent transactions to skip (0 would start at most recent transaction)"
+msgstr ""
+
+msgid "Number of transactions to return"
+msgstr ""
+
+msgid "Set or update blockchain state"
+msgstr ""
+
+msgid "Create or update the contract on an account"
+msgstr ""
+
+msgid "The account to publish a contract for"
+msgstr ""
+
+msgid "The file containing the contract WAST"
+msgstr ""
+
+msgid "The ABI for the contract"
+msgstr ""
+
+msgid "Reading WAST..."
+msgstr ""
+
+msgid "Assembling WASM..."
+msgstr ""
+
+msgid "Publishing contract..."
+msgstr ""
+
+msgid "Approve/unapprove producer"
+msgstr ""
+
+msgid "Approve producer"
+msgstr ""
+
+msgid "Unapprove producer"
+msgstr ""
+
+msgid "The name of the account approving"
+msgstr ""
+
+msgid "The name of the producer to approve"
+msgstr ""
+
+msgid "Set producer approval from ${name} for ${producer} to ${approve}"
+msgstr ""
+
+msgid "Set proxy account for voting"
+msgstr ""
+
+msgid "The name of the account to proxy from"
+msgstr ""
+
+msgid "The name of the account to proxy (unproxy if not provided)"
+msgstr ""
+
+msgid "Set proxy for ${name} to ${proxy}"
+msgstr ""
+
+msgid "set or update blockchain account state"
+msgstr ""
+
+msgid "set or update blockchain action state"
+msgstr ""
+
+msgid "Transfer tokens from account to account"
+msgstr ""
+
+msgid "The account sending tokens"
+msgstr ""
+
+msgid "The account receiving tokens"
+msgstr ""
+
+msgid "The amount of tokens to send"
+msgstr ""
+
+msgid "The memo for the transfer"
+msgstr ""
+
+msgid "Interact with local wallet"
+msgstr ""
+
+msgid "Create a new wallet locally"
+msgstr ""
+
+msgid "The name of the new wallet"
+msgstr ""
+
+msgid "Creating wallet: ${wallet_name}"
+msgstr ""
+
+msgid "Save password to use in the future to unlock this wallet."
+msgstr ""
+
+msgid "Without password imported keys will not be retrievable."
+msgstr ""
+
+msgid "Open an existing wallet"
+msgstr ""
+
+msgid "The name of the wallet to open"
+msgstr ""
+
+msgid "Opened: ${wallet_name}"
+msgstr ""
+
+msgid "Lock wallet"
+msgstr ""
+
+msgid "The name of the wallet to lock"
+msgstr ""
+
+msgid "Locked: ${wallet_name}"
+msgstr ""
+
+msgid "Lock all unlocked wallets"
+msgstr ""
+
+msgid "Locked All Wallets"
+msgstr ""
+
+msgid "Unlock wallet"
+msgstr ""
+
+msgid "The name of the wallet to unlock"
+msgstr ""
+
+msgid "The password returned by wallet create"
+msgstr ""
+
+msgid "password: "
+msgstr ""
+
+msgid "Unlocked: ${wallet_name}"
+msgstr ""
+
+msgid "Import private key into wallet"
+msgstr ""
+
+msgid "The name of the wallet to import key into"
+msgstr ""
+
+msgid "Private key in WIF format to import"
+msgstr ""
+
+msgid "imported private key for: ${pubkey}"
+msgstr ""
+
+msgid "List opened wallets, * = unlocked"
+msgstr ""
+
+msgid "Wallets:"
+msgstr ""
+
+msgid "List of private keys from all unlocked wallets in wif format."
+msgstr ""
+
+msgid "Configure and execute benchmarks"
+msgstr ""
+
+msgid "Configures initial condition for benchmark"
+msgstr ""
+
+msgid "the number of accounts in transfer among"
+msgstr ""
+
+msgid "Creating ${number_of_accounts} accounts with initial balances"
+msgstr ""
+
+msgid "executes random transfers among accounts"
+msgstr ""
+
+msgid "the number of transfers to execute"
+msgstr ""
+
+msgid "whether or not to loop for ever"
+msgstr ""
+
+msgid "Funding ${number_of_accounts} accounts from init"
+msgstr ""
+
+msgid "Generating random ${number_of_transfers} transfers among ${number_of_accounts}"
+msgstr ""
+
+msgid "Push arbitrary transactions to the blockchain"
+msgstr ""
+
+msgid "Push a transaction with a single message"
+msgstr ""
+
+msgid "The account providing the contract to execute"
+msgstr ""
+
+msgid "The action to execute on the contract"
+msgstr ""
+
+msgid "The arguments to the contract"
+msgstr ""
+
+msgid "An account and permission level to authorize, as in 'account@permission'"
+msgstr ""
+
+msgid "An comma separated list of accounts in scope for this operation"
+msgstr ""
+
+msgid "Push an arbitrary JSON transaction"
+msgstr ""
+
+msgid "The JSON of the transaction to push"
+msgstr ""
+
+msgid "Push an array of arbitrary JSON transactions"
+msgstr ""
+
+msgid "The JSON array of the transactions to push"
+msgstr ""
+
+msgid "Failed to connect to eosd at ${ip}:${port}; is eosd running?"
+msgstr ""
+
+msgid "Failed to connect to eos-walletd at ${ip}:${port}; is eos-walletd running?"
+msgstr ""
+
+msgid "Failed to connect"
+msgstr ""
