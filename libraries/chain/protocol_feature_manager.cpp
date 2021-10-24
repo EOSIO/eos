@@ -252,6 +252,18 @@ Allows a 3rd party account to pay (sponsor) for the resources on the transaction
 */
             {}
          } )
+         (builtin_protocol_feature_t::get_wasm_parameters_packed_fix, builtin_protocol_feature_spec{
+            "GET_WASM_PARAMETERS_PACKED_FIX",
+            fc::variant("2757d33e35117aac317c7c200394d28139a1d4f10e27fe87c1a8a23bda9e68f1").as<digest_type>(),
+            // SHA256 hash of the raw message below within the comment delimiters (do not modify message below).
+/*
+Builtin protocol feature: GET_WASM_PARAMETERS_PACKED_FIX
+
+Fix an issue with the host function get_wasm_parameters_packed, due to miscalculating the required size for
+the packed output data.
+*/
+            {}
+         } )
    ;
 
 

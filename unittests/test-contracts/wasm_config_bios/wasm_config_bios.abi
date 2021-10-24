@@ -1,8 +1,18 @@
 {
     "____comment": "This file was generated with eosio-abigen. DO NOT EDIT ",
-    "version": "eosio::abi/1.1",
+    "version": "eosio::abi/1.2",
     "types": [],
     "structs": [
+        {
+            "name": "getwparams",
+            "base": "",
+            "fields": [
+                {
+                    "name": "cfg",
+                    "type": "wasm_config"
+                }
+            ]
+        },
         {
             "name": "setwparams",
             "base": "",
@@ -66,12 +76,19 @@
     ],
     "actions": [
         {
+            "name": "getwparams",
+            "type": "getwparams",
+            "ricardian_contract": ""
+        },
+        {
             "name": "setwparams",
             "type": "setwparams",
             "ricardian_contract": ""
         }
     ],
     "tables": [],
+    "kv_tables": {},
     "ricardian_clauses": [],
-    "variants": []
+    "variants": [],
+    "action_results": []
 }
