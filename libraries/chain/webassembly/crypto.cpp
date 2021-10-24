@@ -2,6 +2,7 @@
 #include <eosio/chain/protocol_state_object.hpp>
 #include <eosio/chain/transaction_context.hpp>
 #include <eosio/chain/apply_context.hpp>
+#include <eosio/chain/webassembly/error_codes.hpp>
 
 namespace eosio { namespace chain { namespace webassembly {
 
@@ -63,6 +64,50 @@ namespace eosio { namespace chain { namespace webassembly {
          fc::raw::pack(out_ds, recovered);
          return out_ds.tellp();
       }
+   }
+
+   int32_t interface::recover_key_safe( legacy_ptr<const fc::sha256> digest,
+                                        legacy_span<const char> sig,
+                                        legacy_ptr<char> pub,
+                                        legacy_ptr<uint32_t> publen) const {
+      using error_code = eosio::chain::webassembly::error_codes::recover_key_safe;
+
+      try {
+         fc::crypto::signature s;
+         try {
+            datastream<const char*> ds( sig.data(), sig.size() );
+            fc::raw::unpack(ds, s);
+         } catch (...) {
+            return error_code::invalid_signature_format;
+         }
+
+         if( static_cast<unsigned>(s.which()) >= context.db.get<protocol_state_object>().num_supported_key_types ) {
+            return error_code::unactivated_key_type;
+         }
+
+         if(context.control.is_producing_block())
+            EOS_ASSERT(s.variable_size() <= context.control.configured_subjective_signature_length_limit(),
+                       sig_variable_size_limit_exception, "signature variable length component size greater than subjective maximum");
+
+         fc::crypto::public_key recovered;
+         try {
+            recovered = fc::crypto::public_key(s, *digest, false);
+         } catch (...) {
+            return error_code::invalid_signature_data;
+         }
+
+         auto packed_pubkey = fc::raw::pack(recovered);
+         if( *publen.get() < packed_pubkey.size() ) {
+            return error_code::insufficient_output_buffer;
+         }
+         std::memcpy(pub.get(), packed_pubkey.data(), packed_pubkey.size());
+         *publen.get() = packed_pubkey.size();
+      } catch( const eosio::chain::sig_variable_size_limit_exception& ) {
+         throw;
+      } catch (...) {
+         return error_code::undefined;
+      }
+      return error_code::none;
    }
 
    void interface::assert_sha256(legacy_span<const char> data, legacy_ptr<const fc::sha256> hash_val) const {

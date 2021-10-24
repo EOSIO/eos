@@ -339,6 +339,20 @@ namespace webassembly {
          int32_t recover_key(legacy_ptr<const fc::sha256> digest, legacy_span<const char> sig, legacy_span<char> pub) const;
 
          /**
+         * Calculates the public key used for a given signature on a given digest.
+         * Unlike @ref recover_key it returns an error code rather than throws an exception with invalid input.
+         *
+         * @ingroup crypto
+         * @param digest - digest of the message that was signed.
+         * @param sig - signature.
+         * @param[out] pub - pointer to output buffer for the public key result.
+         * @param[inout] publen - pointer to an integer initially set to the expected size of output, and overwritten by the written size
+         *
+         * @return 0 when success, or error code
+         */
+         int32_t recover_key_safe(legacy_ptr<const fc::sha256> digest, legacy_span<const char> sig, legacy_ptr<char> pub, legacy_ptr<uint32_t> publen) const;
+
+         /**
           * Tests if the sha256 hash generated from data matches the provided digest.
           *
           * @ingroup crypto

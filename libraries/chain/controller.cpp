@@ -269,6 +269,7 @@ struct controller_impl {
       set_activation_handler<builtin_protocol_feature_t::configurable_wasm_limits>();
       set_activation_handler<builtin_protocol_feature_t::blockchain_parameters>();
       set_activation_handler<builtin_protocol_feature_t::security_group>();
+      set_activation_handler<builtin_protocol_feature_t::recover_key_safe>();
 
       self.irreversible_block.connect([this](const block_state_ptr& bsp) {
          wasmif.current_lib(bsp->block_num);
@@ -3462,6 +3463,13 @@ void controller_impl::on_activation<builtin_protocol_feature_t::security_group>(
       add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "remove_security_group_participants" );
       add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "in_active_security_group" );
       add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "get_active_security_group" );
+   } );
+}
+
+template<>
+void controller_impl::on_activation<builtin_protocol_feature_t::recover_key_safe>() {
+   db.modify( db.get<protocol_state_object>(), [&]( auto& ps ) {
+      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "recover_key_safe" );
    } );
 }
 

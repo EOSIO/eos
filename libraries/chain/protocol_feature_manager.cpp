@@ -264,6 +264,17 @@ the packed output data.
 */
             {}
          } )
+         (builtin_protocol_feature_t::recover_key_safe, builtin_protocol_feature_spec{
+            "RECOVER_KEY_SAFE",
+            fc::variant("80f1baa2605aec0a7a797b386cdea5c4b612a51d406de9ab098c9b0b5f70843d").as<digest_type>(),
+            // SHA256 hash of the raw message below within the comment delimiters (do not modify message below).
+/*
+Builtin protocol feature: RECOVER_KEY_SAFE
+
+Adds an alternative intrinsic for recover_key that doesn't throw an exception with invalid input.
+*/
+            {}
+         } )
    ;
 
 
