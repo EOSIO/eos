@@ -452,9 +452,9 @@ if __name__ == "__main__":
             lcu = lcu[0:21]
             print(f"{a['name']:13} | {m['privileged']:9} | {cr:21} | {lcu:21} | {a['code_hash']} ")
 
-        print("\n\n     ======  ACCOUNT PERMISSIONS ======")
-        print("Accoount        Perm Name       Parent         Auth Threshold / [(Key, Weight)..] / Accounts / Waits                    ")
-        print("---------------------------------------------------------------------------------------------------------")
+        print("\n\n     ======  ACCOUNT PERMISSIONS AND PERMISSION LINKS ======")
+        print("Accoount        Perm Name       Parent         Auth Threshold / [(Key, Weight)..] / Accounts / Waits               ")
+        print("-------------------------------------------------------------------------------------------------------------------")
         for a in accts_lst:
             m = a['metadata']
             for p in m['permissions']:
@@ -470,6 +470,17 @@ if __name__ == "__main__":
                 for auth_w in auth['waits']:
                     print(f"{auth_w}", end=",")
                 print("]")
+
+                print("     Linked Actions: ", end="")
+                if 'linked_actions' in p:
+                    linked_acts = p['linked_actions']
+                    if len(linked_acts) == 0:
+                        print("(None)", end="")
+                    for l_act in linked_acts:
+                        print(f'{l_act["account"]}::{l_act["action"]}', end="")
+                    print()                                                
+                else:
+                    print('(Unkonwn)')
 
         for s in ('active', 'pending', 'proposed'):
             sched = prod_sched[s]
