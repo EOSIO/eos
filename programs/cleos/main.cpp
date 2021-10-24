@@ -2258,9 +2258,26 @@ void get_account( const string& accountName, const string& coresym, bool json_fo
          // looks a little crazy, but should be efficient
          cache.insert( std::make_pair(name, std::move(perm)) );
       }
-      std::function<void (account_name, int)> dfs_print = [&]( account_name name, int depth ) -> void {
+      
+      using dfs_fn_t = std::function<void (const eosio::chain_apis::permission&, int)>;
+      std::function<void (account_name, int, dfs_fn_t&)> dfs_exec = [&]( account_name name, int depth, dfs_fn_t& f ) -> void {
          auto& p = cache.at(name);
-         std::cout << indent << std::string(depth*3, ' ') << name << ' ' << std::setw(5) << p.required_auth.threshold << ":    ";
+
+         f(p, depth);
+         auto it = tree.find( name );
+         if (it != tree.end()) {
+            auto& children = it->second;
+            sort( children.begin(), children.end() );
+            for ( auto& n : children ) {
+               // we have a tree, not a graph, so no need to check for already visited nodes
+               dfs_exec( n, depth+1, f );
+            }
+         } // else it's a leaf node
+      };
+
+      dfs_fn_t print_auth = [&]( const eosio::chain_apis::permission& p, int depth ) -> void {
+         std::cout << indent << std::string(depth*3, ' ') << p.perm_name << ' ' << std::setw(5) << p.required_auth.threshold << ":    ";
+
          const char *sep = "";
          for ( auto it = p.required_auth.keys.begin(); it != p.required_auth.keys.end(); ++it ) {
             std::cout << sep << it->weight << ' ' << it->key.to_string();
@@ -2271,19 +2288,38 @@ void get_account( const string& accountName, const string& coresym, bool json_fo
             sep = ", ";
          }
          std::cout << std::endl;
-         auto it = tree.find( name );
-         if (it != tree.end()) {
-            auto& children = it->second;
-            sort( children.begin(), children.end() );
-            for ( auto& n : children ) {
-               // we have a tree, not a graph, so no need to check for already visited nodes
-               dfs_print( n, depth+1 );
-            }
-         } // else it's a leaf node
       };
       std::sort(roots.begin(), roots.end());
       for ( auto r : roots ) {
-         dfs_print( r, 0 );
+         dfs_exec( r, 0, print_auth );
+      }
+      std::cout << std::endl;
+
+      bool header_printed = false;
+      dfs_fn_t print_links = [&](const eosio::chain_apis::permission& p, int) -> void {
+         if (p.linked_actions) {
+
+            if (!header_printed) {
+               std::cout << "permission links: " << std::endl;
+               header_printed = true;
+            }
+
+            if (!p.linked_actions->empty()) {
+               std::cout << indent << p.perm_name.to_string() + ":" << std::endl;
+               for ( auto it = p.linked_actions->begin(); it != p.linked_actions->end(); ++it ) {
+                  auto action_value = it->action ? it->action->to_string() : std::string("*");
+                  std::cout << indent << indent << it->account << "::" << action_value << std::endl;
+               }
+            }
+         }
+      };
+
+      for ( auto r : roots ) {
+         dfs_exec( r, 0, print_links);
+      }
+
+      if (header_printed) {
+         std::cout << std::endl;
       }
 
       auto to_pretty_net = []( int64_t nbytes, uint8_t width_for_units = 5 ) {
