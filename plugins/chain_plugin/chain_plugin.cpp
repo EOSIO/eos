@@ -15,6 +15,7 @@
 #include <eosio/chain/snapshot.hpp>
 #include <eosio/chain/combined_database.hpp>
 #include <eosio/chain/backing_store/kv_context.hpp>
+#include <eosio/chain/permission_link_object.hpp>
 #include <eosio/to_key.hpp>
 
 #include <eosio/chain/eosio_contract.hpp>
@@ -3356,6 +3357,20 @@ read_only::get_account_results read_only::get_account( const get_account_params&
    }
    result.ram_usage = rm.get_account_ram_usage( result.account_name );
 
+   const auto linked_action_map = ([&](){
+      const auto& links = d.get_index<permission_link_index,by_permission_name>();
+      auto iter = links.lower_bound( boost::make_tuple( params.account_name ) );
+
+      std::multimap<name, linked_action> result;
+      while (iter != links.end() && iter->account == params.account_name ) {
+         auto action = iter->message_type.empty() ? std::optional<name>() : std::optional<name>(iter->message_type);
+         result.emplace(std::make_pair(iter->required_permission, linked_action{iter->code, std::move(action)}));
+         ++iter;
+      }
+
+      return result;
+   })();
+
    const auto& permissions = d.get_index<permission_index,by_owner>();
    auto perm = permissions.lower_bound( boost::make_tuple( params.account_name ) );
    while( perm != permissions.end() && perm->owner == params.account_name ) {
@@ -3371,7 +3386,14 @@ read_only::get_account_results read_only::get_account( const get_account_params&
          }
       }
 
-      result.permissions.push_back( permission{ perm->name, parent, perm->auth.to_authority() } );
+      auto link_bounds = linked_action_map.equal_range(perm->name);
+      auto linked_actions = std::vector<linked_action>();
+      linked_actions.reserve(linked_action_map.count(perm->name));
+      for (auto link = link_bounds.first; link != link_bounds.second; ++link) {
+         linked_actions.push_back(link->second);
+      }
+
+      result.permissions.push_back( permission{ perm->name, parent, perm->auth.to_authority(), std::move(linked_actions)} );
       ++perm;
    }
 
