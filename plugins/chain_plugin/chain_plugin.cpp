@@ -2385,14 +2385,15 @@ struct kv_iterator_ex {
    /// @pre ! is_end()
    fc::variant get_value_and_maybe_payer_var() const {
       fc::variant result = get_value_var();
+      if (context.p.table.empty()) {
+         return fc::mutable_variant_object("data", std::move(result))("key", get_key_hex_string());
+      }
       if (context.p.show_payer) {
          auto maybe_payer = base->kv_it_payer();
          std::string payer = maybe_payer.has_value() ? maybe_payer.value().to_string() : "";
          return fc::mutable_variant_object("data", std::move(result))("payer", payer);
       }
-      else if (context.p.table.empty()) {
-         return fc::mutable_variant_object("data", std::move(result))("key", get_key_hex_string());
-      }
+      
       return result;
    }
 
