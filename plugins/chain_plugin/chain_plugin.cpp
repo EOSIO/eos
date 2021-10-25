@@ -2295,11 +2295,11 @@ struct kv_table_rows_context {
                   ("t", p.table)("i", p.index_name));
 
          index_type = kv_tbl_def.get_index_type(p.index_name.to_string());
+         abis.set_abi(abi, yield_function);
       }
       else {
          is_primary_idx = true;
-      }
-      abis.set_abi(abi, yield_function);
+      } 
    }
 
    bool point_query() const { return p.index_value.size(); }
