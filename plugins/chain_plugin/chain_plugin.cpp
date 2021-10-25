@@ -2280,21 +2280,26 @@ struct kv_table_rows_context {
        , shorten_abi_errors(shorten_error) {
 
       EOS_ASSERT(p.limit > 0, chain::contract_table_query_exception, "invalid limit : ${n}", ("n", p.limit));
-      string tbl_name = p.table.to_string();
+      EOS_ASSERT(p.table.good() || !p.json, chain::contract_table_query_exception, "JSON value is not supported when the table is empty");
+      if (p.table.good()) {
+         string tbl_name = p.table.to_string();
+         // Check valid table name
+         const auto table_it = abi.kv_tables.value.find(p.table);
+         if (table_it == abi.kv_tables.value.end()) {
+            EOS_ASSERT(false, chain::contract_table_query_exception, "Unknown kv_table: ${t}", ("t", tbl_name));
+         }
+         const auto& kv_tbl_def = table_it->second;
+         // Check valid index_name
+         is_primary_idx  = (p.index_name == kv_tbl_def.primary_index.name);
+         bool is_sec_idx = (kv_tbl_def.secondary_indices.find(p.index_name) != kv_tbl_def.secondary_indices.end());
+         EOS_ASSERT(is_primary_idx || is_sec_idx, chain::contract_table_query_exception, "Unknown kv index: ${t} ${i}",
+                  ("t", p.table)("i", p.index_name));
 
-      // Check valid table name
-      const auto table_it = abi.kv_tables.value.find(p.table);
-      if (table_it == abi.kv_tables.value.end()) {
-         EOS_ASSERT(false, chain::contract_table_query_exception, "Unknown kv_table: ${t}", ("t", tbl_name));
+         index_type = kv_tbl_def.get_index_type(p.index_name.to_string());
       }
-      const auto& kv_tbl_def = table_it->second;
-      // Check valid index_name
-      is_primary_idx  = (p.index_name == kv_tbl_def.primary_index.name);
-      bool is_sec_idx = (kv_tbl_def.secondary_indices.find(p.index_name) != kv_tbl_def.secondary_indices.end());
-      EOS_ASSERT(is_primary_idx || is_sec_idx, chain::contract_table_query_exception, "Unknown kv index: ${t} ${i}",
-                 ("t", p.table)("i", p.index_name));
-
-      index_type = kv_tbl_def.get_index_type(p.index_name.to_string());
+      else {
+         is_primary_idx = true;
+      }
       abis.set_abi(abi, yield_function);
    }
 
@@ -2302,8 +2307,10 @@ struct kv_table_rows_context {
 
    void write_prefix(fixed_buf_stream& strm) const {
       strm.write('\1');
-      to_key(p.table.to_uint64_t(), strm);
-      to_key(p.index_name.to_uint64_t(), strm);
+      if (p.table.good()) {
+         to_key(p.table.to_uint64_t(), strm);
+         to_key(p.index_name.to_uint64_t(), strm);
+      }
    }
 
    std::vector<char> get_full_key(string key) const {
@@ -2329,7 +2336,7 @@ struct kv_iterator_ex {
 
    kv_iterator_ex(const kv_table_rows_context& ctx, const std::vector<char>& full_key)
        : context(ctx) {
-      base   = context.kv_context->kv_it_create(context.p.code.to_uint64_t(), full_key.data(), prefix_size);
+      base   = context.kv_context->kv_it_create(context.p.code.to_uint64_t(), full_key.data(), std::min<uint32_t>(prefix_size, full_key.size()));
       status = base->kv_it_lower_bound(full_key.data(), full_key.size(), &key_size, &value_size);
       EOS_ASSERT(status != chain::kv_it_stat::iterator_erased, chain::contract_table_query_exception,
                  "Invalid iterator in ${t} ${i}", ("t", context.p.table)("i", context.p.index_name));
@@ -2379,11 +2386,16 @@ struct kv_iterator_ex {
    /// @pre ! is_end()
    fc::variant get_value_and_maybe_payer_var() const {
       fc::variant result = get_value_var();
-      if (context.p.show_payer) {
+      if (context.p.show_payer || context.p.table.empty()) {
+         auto r = fc::mutable_variant_object("data", std::move(result));
          auto maybe_payer = base->kv_it_payer();
-         std::string payer = maybe_payer.has_value() ? maybe_payer.value().to_string() : "";
-         return fc::mutable_variant_object("data", std::move(result))("payer", payer);
+         if (maybe_payer.has_value())
+            r.set("payer", maybe_payer.value().to_string());
+         if (context.p.table.empty()) 
+            r.set("key", get_key_hex_string());
+         return r;
       }
+      
       return result;
    }
 

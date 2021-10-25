@@ -104,6 +104,24 @@ BOOST_FIXTURE_TEST_CASE( get_kv_table_addr_test, TESTER ) try {
 
    eosio::chain_apis::read_only plugin(*(this->control), {}, fc::microseconds::maximum());
    eosio::chain_apis::read_only::get_kv_table_rows_params p;
+
+   p.code = "kvaddrbook"_n;
+   p.table = ""_n;
+   p.index_name = ""_n;
+   p.index_value = "";
+   p.encode_type = "bytes";
+   p.lower_bound = "";
+   p.upper_bound = "";
+   p.json = false;
+   p.reverse = false;
+   p.limit = 30;
+   result = plugin.read_only::get_kv_table_rows(p);
+   BOOST_REQUIRE_EQUAL(24u, result.rows.size()); // 4 records, each with 6 indices
+   for (const auto& v: result.rows) {
+     BOOST_REQUIRE(v.get_object().contains("data"));
+     BOOST_REQUIRE(v.get_object().contains("key"));
+   }
+
    p.code = "kvaddrbook"_n;
    p.table = "kvaddrbook"_n;
    p.index_name = "accname"_n;
