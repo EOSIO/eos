@@ -15,6 +15,10 @@ else
     export CONTRACT_REGISTRIES=("$DOCKERHUB_CONTRACTS_REGISTRY" "$MIRROR_REGISTRY")
 fi
 
+if [[ "$BUILDKITE_PIPELINE_SLUG" == "eosio-contract-build" ]]; then
+    export EOS_CONTRACT_BUILD=true
+fi
+
 # capitalize each word in a string
 function capitalize()
 {
