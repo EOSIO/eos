@@ -6,10 +6,13 @@ export SPREFIX="${PREFIX}"
 export SUBPREFIX="opt/${PROJECT}/${VERSION}"
 export SSUBPREFIX="opt\/${PROJECT}\/${VERSION}"
 RELEASE="${VERSION_SUFFIX}"
+DPKG_VERSION_VIC=${VERSION_NO_SUFFIX}
 
 # default release to "1" if there is no suffix
 if [[ -z "$RELEASE" ]]; then
     RELEASE='1'
+else
+    DPKG_VERSION_VIC=${DPKG_VERSION_VIC}-${RELEASE}
 fi
 
 NAME="${PROJECT}_${VERSION_NO_SUFFIX}-${RELEASE}_amd64"
@@ -38,7 +41,7 @@ mkdir -p "${PROJECT}/DEBIAN"
 chmod 0755 "${PROJECT}/DEBIAN"
 echo "Writing control file to '${PROJECT}/DEBIAN/control'."
 echo "Package: ${PROJECT}
-Version: ${VERSION_NO_SUFFIX}-${RELEASE}
+Version: ${DPKG_VERSION_VIC}
 Section: devel
 Priority: optional
 Depends: libc6, libgcc1, ${RELEASE_SPECIFIC_DEPS}, libstdc++6, libtinfo5, zlib1g, libusb-1.0-0, libcurl3-gnutls, libpq5
