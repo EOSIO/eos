@@ -1,206 +1,38 @@
 #!/usr/bin/env python3
 
-import testUtils
+from testUtils import Utils
+from Cluster import Cluster
+from Node import Node
+from WalletMgr import WalletMgr
+from TestHelper import TestHelper
+from core_symbol import CORE_SYMBOL
 
 import argparse
 import signal
-from collections import namedtuple
-import os
-import shutil
+
 
 ###############################################################
 # Test for validating consensus based block production. We introduce malicious producers which
 #  reject all transactions.
 # We have three test scenarios:
-#  - No malicious producers. Transactions should be incorporated into the chain.
+#  - No malicious producers. Transactions should be incorporated into the chain.#
 #  - Minority malicious producers (less than a third producer count). Transactions will get incorporated
-# into the chain as majority appoves the transactions.
+#    into the chain as majority appoves the transactions.
 #  - Majority malicious producer count (greater than a third producer count). Transactions won't get
 # incorporated into the chain as majority rejects the transactions.
 ###############################################################
 
 
-Print=testUtils.Utils.Print
-errorExit=Utils.errorExit
-
-StagedNodeInfo=namedtuple("StagedNodeInfo", "config logging")
-
-
-logging00="""{
-  "includes": [],
-  "appenders": [{
-      "name": "stderr",
-      "type": "console",
-      "args": {
-        "stream": "std_error",
-        "level_colors": [{
-            "level": "debug",
-            "color": "green"
-          },{
-            "level": "warn",
-            "color": "brown"
-          },{
-            "level": "error",
-            "color": "red"
-          }
-        ]
-      },
-      "enabled": true
-    },{
-      "name": "stdout",
-      "type": "console",
-      "args": {
-        "stream": "std_out",
-        "level_colors": [{
-            "level": "debug",
-            "color": "green"
-          },{
-            "level": "warn",
-            "color": "brown"
-          },{
-            "level": "error",
-            "color": "red"
-          }
-        ]
-      },
-      "enabled": true
-    },{
-      "name": "net",
-      "type": "gelf",
-      "args": {
-        "endpoint": "10.160.11.21:12201",
-        "host": "testnet_00"
-      },
-      "enabled": true
-    }
-  ],
-  "loggers": [{
-      "name": "default",
-      "level": "debug",
-      "enabled": true,
-      "additivity": false,
-      "appenders": [
-        "stderr",
-        "net"
-      ]
-    }
-  ]
-}"""
-
-config00="""genesis-json = ./genesis.json
-block-log-dir = blocks
-readonly = 0
-send-whole-blocks = true
-shared-file-dir = blockchain
-shared-file-size = 8192
-http-server-address = 127.0.0.1:8888
-p2p-listen-endpoint = 0.0.0.0:9876
-p2p-server-address = localhost:9876
-allowed-connection = any
-p2p-peer-address = localhost:9877
-required-participation = true
-private-key = ["EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV","5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3"]
-producer-name = initu
-plugin = eosio::producer_plugin
-plugin = eosio::chain_api_plugin
-plugin = eosio::trace_api_plugin
-trace-no-abis = true"""
-
-
-config01="""genesis-json = ./genesis.json
-block-log-dir = blocks
-readonly = 0
-send-whole-blocks = true
-shared-file-dir = blockchain
-shared-file-size = 8192
-http-server-address = 127.0.0.1:8889
-p2p-listen-endpoint = 0.0.0.0:9877
-p2p-server-address = localhost:9877
-allowed-connection = any
-p2p-peer-address = localhost:9876
-required-participation = true
-private-key = ["EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV","5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3"]
-producer-name = defproducerb
-plugin = eosio::producer_plugin
-plugin = eosio::chain_api_plugin
-plugin = eosio::trace_api_plugin
-trace-no-abis = true"""
-
-
-producers="""producer-name = defproducerd
-producer-name = defproducerf
-producer-name = defproducerh
-producer-name = defproducerj
-producer-name = defproducerl
-producer-name = defproducern
-producer-name = defproducerp
-producer-name = defproducerr
-producer-name = defproducert
-producer-name = defproducera
-producer-name = defproducerc
-producer-name = defproducere
-producer-name = defproducerg
-producer-name = defproduceri
-producer-name = defproducerk
-producer-name = defproducerm
-producer-name = defproducero
-producer-name = defproducerq
-producer-name = defproducers"""
-
-zeroExecTime="trans-execution-time = 0"
-
-def getNoMaliciousStagedNodesInfo():
-    stagedNodesInfo=[]
-    myConfig00=config00
-    stagedNodesInfo.append(StagedNodeInfo(myConfig00, logging00))
-    myConfig01=config01+"\n"+producers
-    stagedNodesInfo.append(StagedNodeInfo(myConfig01, logging00))
-    return stagedNodesInfo
-
-def getMinorityMaliciousProducerStagedNodesInfo():
-    stagedNodesInfo=[]
-    myConfig00=config00+"\n"+producers
-    stagedNodesInfo.append(StagedNodeInfo(myConfig00, logging00))
-    myConfig01=config01+"\n"+zeroExecTime
-    stagedNodesInfo.append(StagedNodeInfo(myConfig01, logging00))
-    return stagedNodesInfo
-
-def getMajorityMaliciousProducerStagedNodesInfo():
-    stagedNodesInfo=[]
-    myConfig00=config00
-    stagedNodesInfo.append(StagedNodeInfo(myConfig00, logging00))
-    myConfig01=config01+"\n"+producers+"\n"+zeroExecTime
-    stagedNodesInfo.append(StagedNodeInfo(myConfig01, logging00))
-    return stagedNodesInfo
-
-stagingDir="staging"
-def stageScenario(stagedNodeInfos):
-    assert(stagedNodeInfos != None)
-    assert(len(stagedNodeInfos) > 1)
-
-    os.makedirs(stagingDir)
-    count=0
-    for stagedNodeInfo in stagedNodeInfos:
-        configPath=os.path.join(stagingDir, "etc/eosio/node_%02d" % (count))
-        os.makedirs(configPath)
-        with open(os.path.join(configPath, "config.ini"), "w") as textFile:
-            print(stagedNodeInfo.config,file=textFile)
-        with open(os.path.join(configPath, "logging.json"), "w") as textFile:
-            print(stagedNodeInfo.logging,file=textFile)
-        count += 1
-    return
-
-def cleanStaging():
-    os.path.exists(stagingDir) and shutil.rmtree(stagingDir)
-
-def error(msg="", errorCode=1):
-    Print("ERROR:", msg)
+Print = Utils.Print
+cmdError = Utils.cmdError
+errorExit = Utils.errorExit
+ClientName = "cleos"
 
 parser = argparse.ArgumentParser()
-tests=[1,2,3]
+tests = [1, 2, 3]
 
 parser.add_argument("-t", "--tests", type=str, help="1|2|3 1=run no malicious producers test, 2=minority malicious, 3=majority malicious.", default=None)
-parser.add_argument("-w", type=int, help="system wait time", default=testUtils.Utils.systemWaitTimeout)
+parser.add_argument("-w", type=int, help="system wait time", default=Utils.systemWaitTimeout)
 parser.add_argument("-v", help="verbose logging", action='store_true')
 parser.add_argument("--dump-error-details",
                     help="Upon error print etc/eosio/node_*/config.ini and var/lib/node_*/stderr.log to stdout",
@@ -209,144 +41,188 @@ parser.add_argument("--keep-logs", help="Don't delete var/lib/node_* folders upo
                     action='store_true')
 parser.add_argument("--not-noon", help="This is not the Noon branch.", action='store_true')
 parser.add_argument("--dont-kill", help="Leave cluster running after test finishes", action='store_true')
+parser.add_argument("--clean-run", help="Kill all nodeos and kleos instances", action='store_true')
 
 args = parser.parse_args()
-testsArg=args.tests
-debug=args.v
-waitTimeout=args.w
-dumpErrorDetails=args.dump-error-details
-keepLogs=args.keep-logs
-amINoon=not args.not_noon
-killEosInstances= not args.dont-kill
-killWallet= not args.dont-kill
 
-testUtils.Utils.Debug=debug
+testsArg = args.tests
+debug = args.v
+waitTimeout = args.w
+dumpErrorDetails = args.dump_error_details
+keepLogs = args.keep_logs
+amINoon = not args.not_noon
+killEosInstances = not args.dont_kill
+killWallet = not args.dont_kill
+killAll = args.clean_run
+
+Utils.Debug = debug
+
+WalletdName = Utils.EosWalletName
 
 assert (testsArg is None or testsArg == "1" or testsArg == "2" or testsArg == "3")
 if testsArg is not None:
-    tests=[int(testsArg)]
+    tests = [int(testsArg)]
 
-testUtils.Utils.setSystemWaitTimeout(waitTimeout)
-testUtils.Utils.iAmNotNoon()
+Utils.setSystemWaitTimeout(waitTimeout)
 
-def myTest(transWillEnterBlock):
-    testSuccessful=False
+def myTest(testScenario):
+    testSuccessful = False
 
-    cluster=testUtils.Cluster(walletd=True, staging=True)
-    walletMgr=testUtils.WalletMgr(True)
+    cluster = Cluster(walletd=True)
+    walletMgr = WalletMgr(True)
+    cluster.setWalletMgr(walletMgr)
 
     try:
-        cluster.killall()
+        cluster.killall(allInstances=True)
         cluster.cleanup()
-        walletMgr.killall()
+        walletMgr.killall(allInstances=True)
         walletMgr.cleanup()
 
-        pnodes=2
-        total_nodes=pnodes
-        topo="mesh"
-        delay=0
+        pnodes = 2
+        total_nodes = pnodes
+        topo = "mesh"
+        delay = 0
         Print("Stand up cluster")
-        if cluster.launch(pnodes=pnodes, totalNodes=total_nodes, topo=topo, delay=delay) is False:
-            error("Failed to stand up eos cluster.")
-            return False
 
-        accounts=testUtils.Cluster.createAccountKeys(1)
+        traceNodeosArgs = " --plugin eosio::trace_api_plugin --trace-no-abis "
+        #if cluster.launch(prodCount=1, onlyBios=False, pnodes=pnodes, totalNodes=pnodes, totalProducers=pnodes*21, useBiosBootFile=False, extraNodeosArgs=traceNodeosArgs) is False:
+        if cluster.launch(prodCount=1, onlyBios=False, pnodes=total_nodes, totalNodes=total_nodes, totalProducers=total_nodes, useBiosBootFile=False, topo=topo, delay=delay, extraNodeosArgs=traceNodeosArgs) is False:
+            cmdError("launcher")
+            errorExit("Failed to stand up eos cluster.")
+
+        Print("Validating system accounts after bootstrap")
+        cluster.validateAccounts(None)
+
+        accounts = Cluster.createAccountKeys(2)
         if accounts is None:
-            error("FAILURE - create keys")
-            return False
-        currencyAccount=accounts[0]
-        currencyAccount.name="currency0000"
+            errorExit("FAILURE - create keys")
+
+        accounts[0].name="tester111111"
+        accounts[1].name="tester222222"
 
         testWalletName="test"
+
         Print("Creating wallet \"%s\"." % (testWalletName))
-        testWallet=walletMgr.create(testWalletName)
+        testWallet = walletMgr.create(testWalletName, [cluster.eosioAccount,accounts[0], accounts[1]])
 
+        for _, account in cluster.defProducerAccounts.items():
+            walletMgr.importKey(account, testWallet, ignoreDupKeyWarning=True)
+
+        Print("Wallet \"%s\" password=%s." % (testWalletName, testWallet.password.encode("utf-8")))
+
+        for i in range(0, total_nodes):
+            node = cluster.getNode(i)
+            node.producers = node.getProducers()
+            for prod in node.producers:
+                trans = node.regproducer(cluster.defProducerAccounts[prod], "http::/mysite.com", 0, waitForTransBlock=False, exitOnError=True)
+
+        node0 = cluster.getNode(0)
+        node1 = cluster.getNode(1)
+
+        node = node0
+        # create accounts via eosio as otherwise a bid is needed
         for account in accounts:
-            Print("Importing keys for account %s into wallet %s." % (account.name, testWallet.name))
-            if not walletMgr.importKey(account, testWallet):
-                error("Failed to import key for account %s" % (account.name))
-                return False
+            Print("Create new account %s via %s" % (account.name, cluster.eosioAccount.name))
+            trans = node.createInitializeAccount(account, cluster.eosioAccount, stakedDeposit=0, waitForTransBlock=False, stakeNet=1000, stakeCPU=1000, buyRAM=1000, exitOnError=True)
+            transferAmount = "100000000.0000 {0}".format(CORE_SYMBOL)
+            Print("Transfer funds %s from account %s to %s" % (transferAmount, cluster.eosioAccount.name, account.name))
+            node.transferFunds(cluster.eosioAccount, account, transferAmount, "test transfer")
+            trans = node.delegatebw(account, 20000000.0000, 20000000.0000, waitForTransBlock=True, exitOnError=True)
 
-        node=cluster.getNode(0)
-        node2=cluster.getNode(1)
+        #first account will vote for node0 producers, the other will vote for node1 producers
+        node = node0
+        for account in accounts:
+            trans = node.vote(account, node.producers, waitForTransBlock=True)
+            node = node1
 
-        defproduceraAccount=testUtils.Cluster.defproduceraAccount
+        currencyAccount=accounts[0]
 
-        Print("Importing keys for account %s into wallet %s." % (defproduceraAccount.name, testWallet.name))
-        if not walletMgr.importKey(defproduceraAccount, testWallet):
-            error("Failed to import key for account %s" % (defproduceraAccount.name))
-            return False
-
-        Print("Create new account %s via %s" % (currencyAccount.name, defproduceraAccount.name))
-        transId=node.createAccount(currencyAccount, defproduceraAccount, stakedDeposit=5000, waitForTransBlock=True)
-        if transId is None:
-            error("Failed to create account %s" % (currencyAccount.name))
-            return False
-
-        wasmFile="currency.wasm"
-        abiFile="currency.abi"
+        contractDir = "unittests/contracts/eosio.token"
+        wasmFile = "eosio.token.wasm"
+        abiFile = "eosio.token.abi"
         Print("Publish contract")
-        trans=node.publishContract(currencyAccount, wasmFile, abiFile, waitForTransBlock=True)
+        trans = node0.publishContract(currencyAccount, contractDir, wasmFile, abiFile, waitForTransBlock=True)
         if trans is None:
-            error("Failed to publish contract.")
-            return False
+            errorExit("Failed to publish contract.")
 
-        Print("push transfer action to currency0000 contract")
-        contract="currency0000"
-        action="transfer"
-        data="{\"from\":\"currency0000\",\"to\":\"defproducera\",\"quantity\":"
-        if amINoon:
-            data +="\"00.0050 CUR\",\"memo\":\"test\"}"
-        else:
-            data +="50}"
-        opts="--permission currency0000@active"
-        if not amINoon:
-            opts += " --scope currency0000,defproducera"
+        #
+        Print("push create action to tester111111 contract")
+        contract = "tester111111"
+        action = "create"
+        data = "{\"issuer\":\"tester111111\",\"maximum_supply\":\"100000.0000 SYS\",\"can_freeze\":\"0\",\"can_recall\":\"0\",\"can_whitelist\":\"0\"}"
+        opts = "--permission tester111111@active"
+        trans = node0.pushMessage(contract, action, data, opts)
+        try:
+            assert(trans)
+            assert(trans[0])
+        except (AssertionError, KeyError) as _:
+            Print("ERROR: Failed push create action to tester111111 contract assertion. %s" % (trans))
+            raise
 
-        trans=node.pushMessage(contract, action, data, opts, silentErrors=True)
-        transInBlock=False
+        Print("push issue action to tester111111 contract")
+        action = "issue"
+        data = "{\"to\":\"tester111111\",\"quantity\":\"100000.0000 SYS\",\"memo\":\"issue\"}"
+        opts = "--permission tester111111@active"
+        trans = node0.pushMessage(contract, action, data, opts)
+        try:
+            assert(trans)
+            assert(trans[0])
+        except (AssertionError, KeyError) as _:
+            Print("ERROR: Failed push issue action to tester111111 contract assertion. %s" % (trans))
+            raise
+
+        if testScenario == 2:
+            # make node1 reject transactions
+            node1.kill(signal.SIGTERM)
+            node1.relaunch(addSwapFlags={
+                "--max-transaction-time": "0",
+            })
+
+        Print("push transfer action to tester111111 contract")
+        contract = "tester111111"
+        action = "transfer"
+        #data = "{\"from\":\"tester111111\",\"to\":\"defproducera\",\"quantity\":"
+        data = "{\"from\":\"tester111111\",\"to\":\"tester222222\",\"quantity\":"
+        data += "\"50.0000 SYS\",\"memo\":\"test\"}"
+        opts = "--permission tester111111@active"
+        trans = node0.pushMessage(contract, action, data, opts, silentErrors=True)
+
+        transInBlock = False
         if not trans[0]:
-            # On slower systems e.g Travis the transaction rejection can happen immediately
-            #  We want to handle fast and slow failures.
-            if "allocated processing time was exceeded" in trans[1]:
-                Print("Push message transaction immediately failed.")
-            else:
-                error("Exception in push message. %s" % (trans[1]))
-                return False
-
+            errorExit("Exception in push message. %s" % (trans[1]))
         else:
-            transId=testUtils.Node.getTransId(trans[1])
+            transId = Node.getTransId(trans[1])
 
             Print("verify transaction exists")
-            if not node2.waitForTransInBlock(transId):
-                error("Transaction never made it to node2")
-                return False
+            if not node1.waitForTransInBlock(transId):
+                errorExit("Transaction never made it to node1")
 
             Print("Get details for transaction %s" % (transId))
-            transaction=node2.getTransaction(transId, exitOnError=True)
-            signature=transaction["signatures"][0]
+            transaction = node1.getTransaction(transId, exitOnError=True)
+            signature = transaction["signatures"][0]
 
-            blockNum=int(transaction["block_num"])
+            blockNum = int(transaction["block_num"])
             Print("Our transaction is in block %d" % (blockNum))
 
-            block=node2.getBlock(blockNum, exitOnError=True)
-            cycles=block["cycles"]
-            if len(cycles) > 0:
-                blockTransSignature=cycles[0][0]["user_input"][0]["signatures"][0]
-                # Print("Transaction signature: %s\nBlock transaction signature: %s" %
-                #       (signature, blockTransSignature))
-                transInBlock=(signature == blockTransSignature)
+            block = node1.getBlock(blockNum, exitOnError=True)
+            # cycles=block["cycles"]
+            # if len(cycles) > 0:
+            #     blockTransSignature=cycles[0][0]["user_input"][0]["signatures"][0]
+            #     # Print("Transaction signature: %s\nBlock transaction signature: %s" %
+            #     #       (signature, blockTransSignature))
+            #     transInBlock=(signature == blockTransSignature)
+            transactions = block["transactions"]
+            blockTransSignature = transactions[0]["trx"]["signatures"][0]
+            transInBlock = (signature == blockTransSignature)
 
-        if transWillEnterBlock:
+        if testScenario == 0 or testScenario == 1:
             if not transInBlock:
-                error("Transaction did not enter the chain.")
-                return False
+                errorExit("Transaction did not enter the chain.")
             else:
                 Print("SUCCESS: Transaction1 entered in the chain.")
-        elif not transWillEnterBlock:
+        else:
             if transInBlock:
-                error("Transaction entered the chain.")
-                return False
+                errorExit("Transaction entered the chain.")
             else:
                 Print("SUCCESS: Transaction2 did not enter the chain.")
 
@@ -369,29 +245,19 @@ def myTest(transWillEnterBlock):
     return True
 
 
-try:
-    if 1 in tests:
-        Print("Cluster with no malicious producers. All producers expected to approve transaction. Hence transaction is expected to enter the chain.")
-        cleanStaging()
-        stageScenario(getNoMaliciousStagedNodesInfo())
-        if not myTest(True):
-            exit(1)
+if 1 in tests:
+    Print("Cluster with no malicious producers. All producers expected to approve transaction. Hence transaction is expected to enter the chain.")
+    if not myTest(0):
+        exit(1)
 
-    if 2 in tests:
-        Print("\nCluster with minority(1) malicious nodes. Majority producers expected to approve transaction. Hence transaction is expected to enter the chain.")
-        cleanStaging()
-        stageScenario(getMinorityMaliciousProducerStagedNodesInfo())
-        if not myTest(True):
-            exit(1)
+if 2 in tests:
+    Print("\nCluster with minority(1) malicious nodes. Majority producers expected to approve transaction. Hence transaction is expected to enter the chain.")
+    if not myTest(1):
+        exit(1)
 
-    if 3 in tests:
-        Print("\nCluster with majority(20) malicious nodes. Majority producers expected to block transaction. Hence transaction is not expected to enter the chain.")
-        cleanStaging()
-        stageScenario(getMajorityMaliciousProducerStagedNodesInfo())
-        if not myTest(False):
-            exit(1)
-
-finally:
-    cleanStaging()
+# if 3 in tests:
+#     Print("\nCluster with majority(20) malicious nodes. Majority producers expected to block transaction. Hence transaction is not expected to enter the chain.")
+#     if not myTest(2):
+#         exit(1)
 
 exit(0)
