@@ -149,6 +149,7 @@ echo $PLATFORMS_JSON_ARRAY | jq -cr '.[]' | while read -r PLATFORM_JSON; do
       queue: "$BUILDKITE_BUILD_AGENT_QUEUE"
     timeout: ${TIMEOUT:-180}
     skip: $(echo "$PLATFORM_JSON" | jq -r '.PLATFORM_SKIP_VAR | env[.] // empty')${SKIP_BUILD}
+
 EOF
     else
         cat <<EOF
@@ -189,6 +190,7 @@ EOF
     timeout: ${TIMEOUT:-180}
     agents: "queue=mac-anka-large-node-fleet"
     skip: $(echo "$PLATFORM_JSON" | jq -r '.PLATFORM_SKIP_VAR | env[.] // empty')${SKIP_BUILD}
+
 EOF
     fi
 done
@@ -202,9 +204,11 @@ done
       queue: "$BUILDKITE_BUILD_AGENT_QUEUE"
     timeout: ${TIMEOUT:-180}
     skip: ${SKIP_INSTALL}${SKIP_LINUX}${SKIP_DOCKER}${SKIP_CONTRACT_BUILDER}
+
 EOF
 cat <<EOF
   - wait
+
 EOF
 # tests
 IFS=$oIFS
@@ -231,6 +235,7 @@ if [[ "$DCMAKE_BUILD_TYPE" != 'Debug' ]]; then
         permit_on_passed: true
     timeout: ${TIMEOUT:-30}
     skip: $(echo "$PLATFORM_JSON" | jq -r '.PLATFORM_SKIP_VAR | env[.] // empty')${SKIP_UNIT_TESTS}
+
 EOF
             else
                 cat <<EOF
@@ -264,6 +269,7 @@ EOF
         permit_on_passed: true
     timeout: ${TIMEOUT:-60}
     skip: $(echo "$PLATFORM_JSON" | jq -r '.PLATFORM_SKIP_VAR | env[.] // empty')${SKIP_UNIT_TESTS}
+
 EOF
             fi
         done
@@ -286,6 +292,7 @@ EOF
         permit_on_passed: true
     timeout: ${TIMEOUT:-30}
     skip: $(echo "$PLATFORM_JSON" | jq -r '.PLATFORM_SKIP_VAR | env[.] // empty')${SKIP_WASM_SPEC_TESTS}
+
 EOF
             else
                 cat <<EOF
@@ -316,6 +323,7 @@ EOF
         permit_on_passed: true
     timeout: ${TIMEOUT:-60}
     skip: $(echo "$PLATFORM_JSON" | jq -r '.PLATFORM_SKIP_VAR | env[.] // empty')${SKIP_WASM_SPEC_TESTS}
+
 EOF
             fi
         done
@@ -345,6 +353,7 @@ EOF
         permit_on_passed: true
     timeout: ${TIMEOUT:-20}
     skip: $(echo "$PLATFORM_JSON" | jq -r '.PLATFORM_SKIP_VAR | env[.] // empty')${SKIP_SERIAL_TESTS}
+
 EOF
             elif [[ "$TEST_NAME" != 'rodeos_test_eosvmoc' ]]; then
                 cat <<EOF
@@ -375,6 +384,7 @@ EOF
         permit_on_passed: true
     timeout: ${TIMEOUT:-60}
     skip: $(echo "$PLATFORM_JSON" | jq -r '.PLATFORM_SKIP_VAR | env[.] // empty')${SKIP_SERIAL_TESTS}
+
 EOF
                 fi
             done
@@ -402,6 +412,7 @@ EOF
         permit_on_passed: true
     timeout: ${TIMEOUT:-180}
     skip: $(echo "$PLATFORM_JSON" | jq -r '.PLATFORM_SKIP_VAR | env[.] // empty')${SKIP_LONG_RUNNING_TESTS:-true}
+
 EOF
                 else
                     cat <<EOF
@@ -432,6 +443,7 @@ EOF
         permit_on_passed: true
     timeout: ${TIMEOUT:-180}
     skip: $(echo "$PLATFORM_JSON" | jq -r '.PLATFORM_SKIP_VAR | env[.] // empty')${SKIP_LONG_RUNNING_TESTS:-true}
+
 EOF
                 fi
             done
@@ -451,6 +463,7 @@ EOF
       queue: "$BUILDKITE_TEST_AGENT_QUEUE"
     timeout: ${TIMEOUT:-30}
     skip: ${SKIP_LINUX}${SKIP_UBUNTU_18_04}${SKIP_MULTIVERSION_TEST}
+
   - label: ":chains: Docker-compose Based Multiversion Sync Test"
     command:
       - cd tests/docker-based/multiversion-sync && docker-compose up --exit-code-from bootstrap
@@ -460,6 +473,7 @@ EOF
       queue: "$BUILDKITE_BUILD_AGENT_QUEUE"
     skip: ${SKIP_INSTALL}${SKIP_LINUX}${SKIP_DOCKER}${SKIP_CONTRACT_BUILDER}${SKIP_MULTIVERSION_TEST}
     timeout: ${TIMEOUT:-180}
+
 EOF
         fi
         if [[ "$ROUND" != "$ROUNDS" ]]; then
@@ -487,6 +501,7 @@ EOF
         SKIP_BUILD: "true"
         SKIP_WASM_SPEC_TESTS: "true"
         PINNED: "${PINNED}"
+
 EOF
         fi
     fi
@@ -506,6 +521,7 @@ EOF
         SKIP_KYLIN: "${SKIP_KYLIN}"
         SKIP_MAIN: "${SKIP_MAIN}"
         TIMEOUT: "${TIMEOUT}"
+
 EOF
     fi
     # trigger eosio-resume-from-state for every build
@@ -524,6 +540,7 @@ EOF
         SKIP_KYLIN: "${SKIP_KYLIN}"
         SKIP_MAIN: "${SKIP_MAIN}"
         TIMEOUT: "${TIMEOUT}"
+
 EOF
     fi
 fi
@@ -531,6 +548,7 @@ fi
 cat <<EOF
   - wait: ~
     continue_on_failure: true
+
   - label: ":bar_chart: Test Metrics"
     command:
       - "ssh-keyscan -H github.com >> ~/.ssh/known_hosts"
@@ -547,9 +565,11 @@ cat <<EOF
       queue: "$BUILDKITE_TEST_AGENT_QUEUE"
     timeout: ${TIMEOUT:-10}
     soft_fail: true
+
 EOF
 [[ -z "$TEST" ]] && cat <<EOF
   - wait
+
     # packaging
   - label: ":centos: CentOS 7.7 - Package Builder"
     command:
@@ -565,6 +585,7 @@ EOF
     key: "centos7pb"
     timeout: ${TIMEOUT:-10}
     skip: ${SKIP_CENTOS_7_7}${SKIP_PACKAGE_BUILDER}${SKIP_LINUX}
+
   - label: ":centos: CentOS 7 - Test Package"
     command:
       - "buildkite-agent artifact download '*.rpm' . --step ':centos: CentOS 7.7 - Package Builder' --agent-access-token \$\$BUILDKITE_AGENT_ACCESS_TOKEN"
@@ -577,6 +598,7 @@ EOF
     allow_dependency_failure: false
     timeout: ${TIMEOUT:-10}
     skip: ${SKIP_CENTOS_7_7}${SKIP_PACKAGE_BUILDER}${SKIP_LINUX}
+
   - label: ":aws: Amazon Linux 2 - Test Package"
     command:
       - "buildkite-agent artifact download '*.rpm' . --step ':centos: CentOS 7.7 - Package Builder' --agent-access-token \$\$BUILDKITE_AGENT_ACCESS_TOKEN"
@@ -589,6 +611,7 @@ EOF
     allow_dependency_failure: false
     timeout: ${TIMEOUT:-10}
     skip: ${SKIP_CENTOS_7_7}${SKIP_PACKAGE_BUILDER}${SKIP_LINUX}
+
   - label: ":ubuntu: Ubuntu 18.04 - Package Builder"
     command:
       - "buildkite-agent artifact download build.tar.gz . --step ':ubuntu: Ubuntu 18.04 - Build' && tar -xzf build.tar.gz"
@@ -603,6 +626,7 @@ EOF
     key: "ubuntu1804pb"
     timeout: ${TIMEOUT:-10}
     skip: ${SKIP_UBUNTU_18_04}${SKIP_PACKAGE_BUILDER}${SKIP_LINUX}
+
   - label: ":ubuntu: Ubuntu 18.04 - Test Package"
     command:
       - "buildkite-agent artifact download '*.deb' . --step ':ubuntu: Ubuntu 18.04 - Package Builder' --agent-access-token \$\$BUILDKITE_AGENT_ACCESS_TOKEN"
@@ -615,6 +639,7 @@ EOF
     allow_dependency_failure: false
     timeout: ${TIMEOUT:-10}
     skip: ${SKIP_UBUNTU_18_04}${SKIP_PACKAGE_BUILDER}${SKIP_LINUX}
+
   - label: ":ubuntu: Ubuntu 20.04 - Package Builder"
     command:
       - "buildkite-agent artifact download build.tar.gz . --step ':ubuntu: Ubuntu 20.04 - Build' && tar -xzf build.tar.gz"
@@ -629,6 +654,7 @@ EOF
     key: "ubuntu2004pb"
     timeout: ${TIMEOUT:-20}
     skip: ${SKIP_UBUNTU_20_04}${SKIP_PACKAGE_BUILDER}${SKIP_LINUX}
+
   - label: ":ubuntu: Ubuntu 20.04 - Test Package"
     command:
       - "buildkite-agent artifact download '*.deb' . --step ':ubuntu: Ubuntu 20.04 - Package Builder' --agent-access-token \$\$BUILDKITE_AGENT_ACCESS_TOKEN"
@@ -641,6 +667,7 @@ EOF
     allow_dependency_failure: false
     timeout: ${TIMEOUT:-10}
     skip: ${SKIP_UBUNTU_20_04}${SKIP_PACKAGE_BUILDER}${SKIP_LINUX}
+
   - label: ":darwin: macOS 10.15 - Package Builder"
     command:
       - "git clone \$BUILDKITE_REPO eos && cd eos && $GIT_FETCH git checkout -f \$BUILDKITE_COMMIT"
@@ -667,6 +694,7 @@ EOF
     key: "macos1015pb"
     timeout: ${TIMEOUT:-30}
     skip: ${SKIP_MACOS_10_15}${SKIP_PACKAGE_BUILDER}${SKIP_MAC}
+
   - label: ":darwin: macOS 10.15 - Test Package"
     command:
       - "git clone \$BUILDKITE_REPO eos && cd eos && $GIT_FETCH git checkout -f \$BUILDKITE_COMMIT"
@@ -694,6 +722,7 @@ EOF
     allow_dependency_failure: false
     timeout: ${TIMEOUT:-10}
     skip: ${SKIP_MACOS_10_15}${SKIP_PACKAGE_BUILDER}${SKIP_MAC}
+
   - label: ":darwin: macOS 11 - Package Builder"
     command:
       - "git clone \$BUILDKITE_REPO eos && cd eos && $GIT_FETCH git checkout -f \$BUILDKITE_COMMIT"
@@ -720,6 +749,7 @@ EOF
     key: "macos11pb"
     timeout: ${TIMEOUT:-30}
     skip: ${SKIP_MACOS_11}${SKIP_PACKAGE_BUILDER}${SKIP_MAC}
+
   - label: ":darwin: macOS 11 - Test Package"
     command:
       - "git clone \$BUILDKITE_REPO eos && cd eos && $GIT_FETCH git checkout -f \$BUILDKITE_COMMIT"
@@ -747,6 +777,7 @@ EOF
     allow_dependency_failure: false
     timeout: ${TIMEOUT:-10}
     skip: ${SKIP_MACOS_11}${SKIP_PACKAGE_BUILDER}${SKIP_MAC}
+
   - label: ":docker: Docker - Label Container with Git Branch and Git Tag"
     command: .cicd/docker-tag.sh
     env:
@@ -756,12 +787,15 @@ EOF
       queue: "$BUILDKITE_BUILD_AGENT_QUEUE"
     timeout: ${TIMEOUT:-10}
     skip: ${SKIP_INSTALL}${SKIP_LINUX}${SKIP_DOCKER}${SKIP_CONTRACT_BUILDER}
+
   - wait
+
   - label: ":git: Git Submodule Regression Check"
     command: "./.cicd/submodule-regression-check.sh"
     agents:
       queue: "automation-basic-builder-fleet"
     timeout: ${TIMEOUT:-5}
+
   - label: ":beer: Brew Updater"
     command:
       - "buildkite-agent artifact download eosio.rb . --step ':darwin: macOS 10.15 - Package Builder'"
@@ -770,6 +804,7 @@ EOF
       queue: "automation-basic-builder-fleet"
     timeout: ${TIMEOUT:-5}
     skip: ${SKIP_PACKAGE_BUILDER}${SKIP_MAC}${SKIP_MACOS_10_15}
+
   - label: ":docker: :ubuntu: Docker - Build 18.04 Docker Image"
     command:  "./.cicd/create-docker-from-binary.sh"
     agents:
