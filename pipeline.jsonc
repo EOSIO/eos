@@ -46,7 +46,7 @@
     },
     "eosio-contract-build":
     {
-        "pipeline-branch": "eosio-build-contract",
+        "pipeline-branch": "develop",
         "dependencies": // dependencies to pull for a build of contracts, by branch, tag, or commit hash
         {
             "eosio.cdt": "develop"
