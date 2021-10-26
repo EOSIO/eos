@@ -11,6 +11,7 @@ DPKG_VERSION_VIC=${VERSION_NO_SUFFIX}
 # default release to "1" if there is no suffix
 if [[ -z "$RELEASE" ]]; then
     RELEASE='1'
+    DPKG_VERSION_VIC=${DPKG_VERSION_VIC}-9
 else
     DPKG_VERSION_VIC=${DPKG_VERSION_VIC}-${RELEASE}
 fi
