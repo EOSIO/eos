@@ -9,27 +9,33 @@ USAGE = "\
 Usage: blockchain_audit_tool.py [OPTIONS] [<rpc_endpoint>]\n"
 
 HELP_INFO = "\
-    Retrieve info from EOSIO blockchain.\n\
+    Audit EOSIO blockchain.\n\
     <rpc_endpoint> RPC endpoint URI of nodeos with chain_api_plugin enabled. Defaults to 'localhost:8888'\n\
     OPTIONS:\n\
                   --help  Print help info and exit\n\
        --comp <filepath>  Do not query nodeos.  Instead use <filepath> as basis for comparison combined with '--ref' option\n\
            -o <filepath>  Output to filepath instead of default 'blockchain_audit_data.json'\n\
-       --page_size <num>  Integer > 0, default 1024. The 'limit' field in RPC queries for accounts and.  Default 1024\n\
+       --page_size <num>  Integer > 0, default 1024. The 'limit' field in RPC queries for accounts and table data.  Default 1024\n\
         --ref <filepath>  Use <filepath> to comparefor non-transient data to use comparison\n\
-     --scope-limit <num>  Integer > 0, default 10. The 'limit' field when calling /v1/chain/get_table_by_scope. \n\
- --table-row-limit <num>  Integer > 0, default 10. The 'limit' field when calling /v1/chain/get_table_rows and. \n\
+     --scope-limit <num>  Integer >= 0, default 0. Max # of scopes to fetch. 0=no limit\n\
+ --table-row-limit <num>  Integer >= 0, default 0. Max # of rows of MI and KV tables to fetch. 0=no limit\n\
+       --keep-irrelevant  Flag.  Normally time and block number data will be removed from the JSON.  Setting this flag keeps that data.\n\
     Outputs to stdout in a human readable format, and write to JSON file specified by '-o' which defaults to:\n\
          'blockchain_audit_data.json'\n\
     Status and error info is written to stderr.\n\
     Information currently includes:\n\
-        Full server info\n\
+        Server info\n\
         All accounts, creation dates, code hashes\n\
         Account permissions\n\
         Producer schedules\n\
         Activated protocol features\n\
         Preview of MI and KV tables on each account\n\
         Deferred transactions"
+
+SERVER_INFO_TRANSIENT_FIELDS = [ "head_block_num", "last_irreversible_block_num",     
+    "last_irreversible_block_id", "head_block_id",  "head_block_time",
+    "fork_db_head_block_num", "fork_db_head_block_id", "server_full_version_string", 
+    "last_irreversible_block_time", "virtual_block_cpu_limit", "virtual_block_net_limit" ]
 
 class ArgumentParseError(Exception):
     def __init__(self, msg):
@@ -141,7 +147,7 @@ def getJSONResp(conn, rpc, req_body="", exitOnError=True):
     return json_data
 
 
-def getAllAccounts(limit):
+def getAllAccounts(conn, limit):
     moreAccounts = True
     all_accts = []
     req_body = '{"limit":' + str(limit) + '}'
@@ -160,6 +166,65 @@ def getAllAccounts(limit):
             req_body = '{"limit":' + str(limit) + f', "lower_bound":"{nextAcct}"' + '}'
     return all_accts, numAccounts
 
+def getScopes(conn, code_name, page_size, max_scopes):
+    next_scope = ""
+    i = 0
+    scope_rows_all = []
+    moreData = True
+    while moreData and (max_scopes == 0 or i < max_scopes):
+        req_body = '{' + f'"code":"{code_name}", "table":"", "lower_bound":"{next_scope}", "upper_bound":"", "limit":{page_size}, "reverse":false' + '}'
+        scopes = getJSONResp(conn, "/v1/chain/get_table_by_scope", req_body)
+        scope_rows_all.extend(scopes["rows"])
+        next_scope = scopes["more"] 
+        i += page_size
+        moreData = (next_scope != "")
+
+    return scope_rows_all
+
+def getTableRows(conn, code_name, scope_name, table_name, page_size, max_rows):
+    next_table = ""
+    i = 0
+    table_rows_all = []
+    moreData = True
+    while moreData and (i < max_rows or max_rows == 0):
+        req_body = '{' + f'"json":true, "code":"{code_name}", "scope":"{scope_name}", "table":"{table_name}", "lower_bound":"{next_table}",\
+    "upper_bound":"", "limit": {page_size},"table_key": "",  "key_type": "", "index_position": "",\
+    "encode_type": "bytes", "reverse": false, "show_payer": false' + '}'
+
+        resp = getJSONResp(conn, "/v1/chain/get_table_rows", req_body, exitOnError=False)
+        try:
+            table_rows_all.extend(resp["rows"])
+
+            next_table = resp["more"] 
+            moreData = (next_table != "")
+            i += page_size
+        except Exception as e:
+            break
+
+    return table_rows_all
+
+def getKVTableData(conn, code_name, page_size, max_rows):
+    next_key = ""
+    i = 0
+    kv_data_all = []
+    moreData = True
+    while moreData and (i < max_rows or max_rows == 0):
+        req_body = '{' + f'"json": false,  "code": "{code_name}",  "table": "{next_key}",\
+"index_name": "", "index_value": "", "lower_bound": "", "upper_bound": "",\
+"limit": {page_size},  "encode_type": "bytes",  "reverse": false,  "show_payer": false' + '}'
+
+        # print(f"getKVTableData: req_body={req_body}")
+        resp = getJSONResp(conn, "/v1/chain/get_kv_table_rows", req_body, exitOnError=False)
+        try:
+            kv_data_all.extend(resp["rows"])
+
+            moreData = resp['more']
+            next_key = resp["next_key"] 
+            i += page_size
+        except Exception as e:
+            break
+
+    return kv_data_all
 
 def compareAccountNames(ref, cmp):
     mismatch = []
@@ -271,6 +336,26 @@ def compareRefData(refData, cmpData):
         print("Reference comparison FAILURE - see errors above.", file=sys.stderr)
     return isSame
 
+def removeIrrelevant(data):
+    inf_begin = data["server_info_begin"]
+    inf_end = data["server_info_end"]
+    for fld in SERVER_INFO_TRANSIENT_FIELDS:
+        del inf_begin[fld]
+        del inf_end[fld]
+    accts = data["accounts"]
+    for a in accts:
+        md = a["metadata"]
+        del md["head_block_num"]
+        del md["head_block_time"]
+        del md["last_code_update"]
+        del md["created"]
+        del md["net_limit"]["last_usage_update_time"]
+        del md["cpu_limit"]["last_usage_update_time"]
+
+    for feat in data["activated_protocol_features"]:
+        del feat["activation_block_num"]
+
+
 if __name__ == "__main__":
     rpc_endpt = "127.0.0.1:8888"
     optionsMap = {
@@ -279,9 +364,10 @@ if __name__ == "__main__":
                    "-o" : ("output-filepath", "blockchain_audit_data.json"),
           "--page-size" : ("page-size", 1024), 
                 "--ref" : ("reference-filepath", ""),
-        "--scope-limit" : ("scope-limit", 10),
-    "--table-row-limit" : ("table-row-limit", 10)          
-                }
+        "--scope-limit" : ("scope-limit", 0),
+    "--table-row-limit" : ("table-row-limit", 0),
+    "--keep-irrelevant" : ("keep-irrelevant", None)
+                  }
 
     # parse options
     optionsMap, otherArgLst = parseArgs(sys.argv, optionsMap, 0, 1)
@@ -299,6 +385,15 @@ if __name__ == "__main__":
     output_filepath = optionsMap['output-filepath']
     ref_filepath = optionsMap['reference-filepath']
     comp_filepath = optionsMap['comp-filepath']
+    keep_irrelevant = optionsMap['keep-irrelevant']
+
+    if scope_limit < 0:
+        print("scope-limit must be >= 0")
+        print(USAGE)
+        exit(1)
+    if table_row_limit < 0:
+        print("scope-limit must be >= 0")
+        print(USAGE)
 
     if comp_filepath != "":
         if ref_filepath == "":
@@ -322,7 +417,7 @@ if __name__ == "__main__":
     server_info_begin = getJSONResp(conn, "/v1/chain/get_info")
 
     # get all accounts on the chain
-    all_accts, numAccounts = getAllAccounts(page_size)
+    all_accts, numAccounts = getAllAccounts(conn, page_size)
     if numAccounts == 0:
         print("Error, no accounts returned from get_all_accounts!", file=sys.stderr)
         exit(1)
@@ -360,37 +455,20 @@ if __name__ == "__main__":
         print(f"{nm:13} {i:8}/{numAccounts:8}", end="", file=sys.stderr, flush=True)
         i += 1
 
-        req_body = '{' + f'"code":"{nm}", "table":"", "lower_bound":"", "upper_bound":"", "limit":{scope_limit}, "reverse":false' + '}'
-        scopes = getJSONResp(conn, "/v1/chain/get_table_by_scope", req_body)
-        scope_rows = scopes["rows"]
+        scopes = getScopes(conn, nm, page_size, scope_limit)
+
         a['scopes'] = scopes
         a['tables'] = dict()
-        for scope in scope_rows:
+        for scope in scopes:
             sc = scope['scope']
             tbl = scope['table']
 
-            req_body = '{' + f'"json":true, "code":"{nm}", "scope":"{sc}", "table":"{tbl}", "lower_bound":"",\
-    "upper_bound":"", "limit": {table_row_limit},"table_key": "",  "key_type": "", "index_position": "",\
-    "encode_type": "bytes", "reverse": false, "show_payer": false' + '}'
+            table_rows = getTableRows(conn, nm, sc, tbl, page_size, table_row_limit)
 
-            table_rows = getJSONResp(conn, "/v1/chain/get_table_rows", req_body, exitOnError=False)
             a['tables'][sc + ":" + tbl] = table_rows
 
-        # get abi so we can determine kv_tables
-        req_body = '{' + f'"account_name": "{nm}"' + '}'
-        abi = getJSONResp(conn, "/v1/chain/get_abi", req_body)
-        a['kv_tables'] = dict()
-        if 'abi' in abi:
-            kv_tables = abi['abi']['kv_tables']
-            for tbl_name, tbl_def in kv_tables.items():
-                tbl_idx_nm = tbl_def['primary_index']['name']
-
-                req_body = '{' + f'"json": true,  "code": "{nm}",  "table": "{tbl_name}",\
-    "index_name": "{tbl_idx_nm}", "index_value": "", "lower_bound": "", "upper_bound": "",\
-    "limit": {table_row_limit},  "encode_type": "bytes",  "reverse": false,  "show_payer": false' + '}'
-
-                table_rows = getJSONResp(conn, "/v1/chain/get_kv_table_rows", req_body, exitOnError=False)
-                a['kv_tables'][tbl_name + ":" + tbl_idx_nm] = table_rows
+        kv_data = getKVTableData(conn, nm, page_size, table_row_limit)
+        a['kv_tables'] = kv_data
 
     data = {'accounts' : accts_lst, 'scope_limit' : scope_limit, 'table_row_limit' : table_row_limit }
     print(file=sys.stderr)
@@ -424,7 +502,7 @@ if __name__ == "__main__":
     data['server_info_end'] = server_info_end
 
     # get all accounts again
-    all_accts_end, numAccounts_end = getAllAccounts(page_size)
+    all_accts_end, numAccounts_end = getAllAccounts(conn, page_size)
     print(file=sys.stderr)
     if numAccounts != numAccounts_end:
         msg = f"ERROR: Accounts added during audit. begin= {numAccounts} end= {numAccounts_end}"
@@ -520,45 +598,29 @@ if __name__ == "__main__":
         atLeastOne = False
         for a in accts_lst:
             scopes = a['scopes']
-            for s in scopes['rows']:
+            for s in scopes:
                 scope_table = s['scope'] + ":" + s['table']
                 print(f"{s['code']:13} | {scope_table:27}", end=" ")
                 tbl = a['tables'][scope_table]
-                if 'rows' in tbl:
-                    print('[', end="")
-                    for v in tbl['rows']:
-                        print(v, end=", ")
-                    if tbl['more']:
-                        print("(truncated)", end="")
-                    print(']')
-                else:
-                    print("(no data)")
+                print('[', end="")
+                for v in tbl:
+                    print(v, end=", ")
+                print(']')
                 atLeastOne = True
-            if scopes['more']:
-                print(f"{a['name']:13} | (truncated)")
         if not atLeastOne:
             print("(None)")
 
         print("\n\n     ====== KV TABLES ======")
-        print("Account        Table:Primary Index                Values")
+        print("Account        Data")
         print("---------------------------------------------------------------------------------------------------------")
-        atLeastOne = False
         for a in accts_lst:
+            print(f"{a['name']:13}", end="")
             kv_tables = a['kv_tables']
-            if len(kv_tables) == 0:
-                continue
-            for tbl_nm_idx, kv_tbl in kv_tables.items():
-                print(f"{a['name']:13} | {tbl_nm_idx:27} | [", end="")
-                for v in kv_tbl['rows']:
-                    print(v, end=", ")
-                if kv_tbl['more']:
-                    print("(truncated)", end="")
-                print(']')
-                atLeastOne = True
-            if kv_tables['more']:
-                print(f"{a['name']:13} | (truncated)")
-        if not atLeastOne:
-            print("(None)")
+            print("[", end="")
+            for v in kv_tables:
+                print(v, end=", ")
+                
+            print(']')
 
         print("\n\n     ====== DEFERRED TRANSACTIONS ======")
         print("---------------------------------------------------------------------------------------------------------")
@@ -579,6 +641,9 @@ if __name__ == "__main__":
 
     # save results as json
     with open(output_filepath, "wt") as f:
+        if not keep_irrelevant:
+            removeIrrelevant(data)
+
         f.write(json.dumps(data))
 
     if ref_filepath != "":
