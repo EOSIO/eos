@@ -115,10 +115,10 @@ void streamer_plugin::plugin_initialize(const variables_map& options) {
          std::string split;
          while ((pos = env.find(delimiter)) != std::string::npos) {
             split = env.substr(0, pos);
-            splits.append(split);
+            if (!split.empty()) splits.append(split);
             env.erase(0, pos + delimiter.size());
          }
-         splits.append(env);
+         if (!split.empty()) splits.append(env);
       };
 
       std::vector<std::string> rabbits;
