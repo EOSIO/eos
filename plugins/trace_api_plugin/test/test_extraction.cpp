@@ -184,6 +184,12 @@ struct extraction_test_fixture {
          fixture.max_lib = std::max(fixture.max_lib, lib);
       }
 
+      void append_trx_ids(const block_trxs_entry& tt){
+         for (const auto& id : tt.ids) {
+             fixture.id_log[tt.block_num] = tt.ids;
+         }
+      }
+
       extraction_test_fixture& fixture;
    };
 
@@ -203,6 +209,8 @@ struct extraction_test_fixture {
    // fixture data and methods
    uint32_t max_lib = 0;
    std::vector<data_log_entry> data_log = {};
+   std::unordered_map<uint32_t, std::vector<chain::transaction_id_type>> id_log;
+
 
    chain_extraction_impl_type<mock_logfile_provider_type> extraction_impl;
 };
@@ -292,6 +300,7 @@ BOOST_AUTO_TEST_SUITE(block_extraction)
       BOOST_REQUIRE(data_log.size() == 1);
       BOOST_REQUIRE(std::holds_alternative<block_trace_v2>(data_log.at(0)));
       BOOST_REQUIRE_EQUAL(std::get<block_trace_v2>(data_log.at(0)), expected_block_trace);
+      BOOST_REQUIRE_EQUAL(id_log.at(bsp1->block_num).size(),  bsp1->block->transactions.size());
    }
 
    BOOST_FIXTURE_TEST_CASE(basic_multi_transaction_block, extraction_test_fixture) {

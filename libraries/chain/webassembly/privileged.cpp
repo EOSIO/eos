@@ -135,6 +135,11 @@ namespace eosio { namespace chain { namespace webassembly {
       uint32_t version = std::min( max_version, uint32_t(0) );
 
       auto s = fc::raw::pack_size( params );
+
+      if(context.control.is_builtin_activated( builtin_protocol_feature_t::get_wasm_parameters_packed_fix )) {
+         s += fc::raw::pack_size( version );
+      }
+
       if ( packed_parameters.size() == 0 )
          return s;
 
