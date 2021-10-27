@@ -5,13 +5,13 @@ echo '--- :evergreen_tree: Configuring Environment'
 export ENABLE_INSTALL='true'
 export SANITIZED_BRANCH=$(sanitize "$BUILDKITE_BRANCH")
 if [[ "$IMAGE_TAG" == 'ubuntu-20.04-unpinned' ]]; then
-    export BASE_UBUNTU_VERSION=base-ubuntu-20.04
+    export UBUNTU_VERSION=ubuntu-20.04
 else
-    export BASE_UBUNTU_VERSION=base-ubuntu-18.04
+    export UBUNTU_VERSION=ubuntu-18.04
 fi
 
 echo "Branch '$BUILDKITE_BRANCH' sanitized as '$SANITIZED_BRANCH'."
-export CONTRACTS_BUILDER_TAG="eosio/ci-contracts-builder:$BASE_UBUNTU_VERSION"
+export CONTRACTS_BUILDER_TAG="eosio/ci-contracts-builder:base-$UBUNTU_VERSION"
 export ARGS="--name ci-contracts-builder-$BUILDKITE_PIPELINE_SLUG-$BUILDKITE_BUILD_NUMBER --init -v \"\$(pwd):$MOUNTED_DIR\""
 BUILD_COMMAND="'$CICD_DIR/build.sh'"
 echo "$ $BUILD_COMMAND"
@@ -19,9 +19,9 @@ eval $BUILD_COMMAND
 echo '+++ :arrow_up: Pushing Container'
 for REGISTRY in "${CONTRACT_REGISTRIES[@]}"; do
     if [[ ! -z "$REGISTRY" ]]; then
-        COMMITS=("$REGISTRY:$BASE_UBUNTU_VERSION-$BUILDKITE_COMMIT" "$REGISTRY:$BASE_UBUNTU_VERSION-$BUILDKITE_COMMIT-$PLATFORM_TYPE" "$REGISTRY:$BASE_UBUNTU_VERSION-$SANITIZED_BRANCH-$BUILDKITE_COMMIT")
+        COMMITS=("$REGISTRY:base-$UBUNTU_VERSION-$BUILDKITE_COMMIT" "$REGISTRY:base-$UBUNTU_VERSION-$BUILDKITE_COMMIT-$PLATFORM_TYPE" "$REGISTRY:base-$UBUNTU_VERSION-$SANITIZED_BRANCH-$BUILDKITE_COMMIT")
         for COMMIT in "${COMMITS[@]}"; do
-            COMMIT_COMMAND="docker commit 'ci-contracts-builder-$BUILDKITE_PIPELINE_SLUG-$BUILDKITE_BUILD_NUMBER' '$COMMIT'"
+            COMMIT_COMMAND="docker commit 'ci-contracts-builder-$BUILDKITE_PIPELINE_SLUG-$BUILDKITE_BUILD_NUMBER-$UBUNTU_VERSION' '$COMMIT'"
             echo "$ $COMMIT_COMMAND"
             eval $COMMIT_COMMAND
             PUSH_COMMAND="docker push '$COMMIT'"
@@ -31,10 +31,10 @@ for REGISTRY in "${CONTRACT_REGISTRIES[@]}"; do
     fi
 done
 echo '--- :put_litter_in_its_place: Cleaning Up'
-DOCKER_STOP_COMMAND="docker stop 'ci-contracts-builder-$BUILDKITE_PIPELINE_SLUG-$BUILDKITE_BUILD_NUMBER'"
+DOCKER_STOP_COMMAND="docker stop 'ci-contracts-builder-$BUILDKITE_PIPELINE_SLUG-$BUILDKITE_BUILD_NUMBER-$UBUNTU_VERSION'"
 echo "$ $DOCKER_STOP_COMMAND"
 eval $DOCKER_STOP_COMMAND
-DOCKER_RM_COMMAND="docker rm 'ci-contracts-builder-$BUILDKITE_PIPELINE_SLUG-$BUILDKITE_BUILD_NUMBER'"
+DOCKER_RM_COMMAND="docker rm 'ci-contracts-builder-$BUILDKITE_PIPELINE_SLUG-$BUILDKITE_BUILD_NUMBER-$UBUNTU_VERSION'"
 echo "$ $DOCKER_RM_COMMAND"
 eval $DOCKER_RM_COMMAND
 echo '--- :white_check_mark: Done!'
