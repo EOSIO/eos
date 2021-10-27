@@ -3,6 +3,8 @@
 #include <eosio/producer_plugin/producer_plugin.hpp>
 #include <appbase/application.hpp>
 
+#define EOSIO_AMQP_ADDRESS_ENV_VAR "EOSIO_AMQP_ADDRESS"
+
 namespace eosio {
 
 // consume message types
