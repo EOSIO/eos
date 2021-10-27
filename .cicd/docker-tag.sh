@@ -2,7 +2,12 @@
 set -eo pipefail
 echo '--- :evergreen_tree: Configuring Environment'
 . ./.cicd/helpers/general.sh
-PREFIX='base-ubuntu-18.04'
+if [[ "$IMAGE_TAG" == 'ubuntu-20.04-unpinned' ]]; then
+    PREFIX='base-ubuntu-20.04'
+else
+    PREFIX='base-ubuntu-18.04'
+fi
+#PREFIX='base-ubuntu-18.04'
 SANITIZED_BRANCH="$(sanitize "$BUILDKITE_BRANCH")"
 echo "Branch '$BUILDKITE_BRANCH' sanitized as '$SANITIZED_BRANCH'."
 SANITIZED_TAG="$(sanitize "$BUILDKITE_TAG")"
