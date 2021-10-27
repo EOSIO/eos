@@ -195,7 +195,7 @@ EOF
     fi
 done
 [[ -z "$TEST" ]] && cat <<EOF
-  - label: ":docker: Docker - Build and Install on Ubuntu 20.04"
+  - label: ":docker: Docker - Build and Install on Ubuntu 18.04"
     command: "./.cicd/installation-build.sh"
     env:
       IMAGE_TAG: "ubuntu-18.04-unpinned"
