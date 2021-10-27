@@ -203,7 +203,16 @@ done
     agents:
       queue: "$BUILDKITE_BUILD_AGENT_QUEUE"
     timeout: ${TIMEOUT:-180}
-    skip: ${SKIP_INSTALL}${SKIP_LINUX}${SKIP_DOCKER}${SKIP_CONTRACT_BUILDER}
+    skip: ${SKIP_INSTALL}${SKIP_UBUNTU_18_04}${SKIP_LINUX}${SKIP_DOCKER}${SKIP_CONTRACT_BUILDER}
+  - label: ":docker: Docker - Build and Install"
+    command: "./.cicd/installation-build.sh"
+    env:
+      IMAGE_TAG: "ubuntu-20.04-unpinned"
+      PLATFORM_TYPE: "unpinned"
+    agents:
+      queue: "$BUILDKITE_BUILD_AGENT_QUEUE"
+    timeout: ${TIMEOUT:-180}
+    skip: ${SKIP_INSTALL}${SKIP_UBUNTU_20_04}${SKIP_LINUX}${SKIP_DOCKER}${SKIP_CONTRACT_BUILDER}
 
 EOF
 cat <<EOF
