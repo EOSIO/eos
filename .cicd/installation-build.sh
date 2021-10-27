@@ -4,8 +4,14 @@ echo '--- :evergreen_tree: Configuring Environment'
 . ./.cicd/helpers/general.sh
 export ENABLE_INSTALL='true'
 export SANITIZED_BRANCH=$(sanitize "$BUILDKITE_BRANCH")
+if [[ "$IMAGE_TAG" == 'ubuntu-20.04-unpinned' ]]; then
+    export BASE_UBUNTU_VERSION=base-ubuntu-20.04
+else
+    export BASE_UBUNTU_VERSION=base-ubuntu-18.04
+fi
+
 echo "Branch '$BUILDKITE_BRANCH' sanitized as '$SANITIZED_BRANCH'."
-export CONTRACTS_BUILDER_TAG="eosio/ci-contracts-builder:base-ubuntu-18.04"
+export CONTRACTS_BUILDER_TAG="eosio/ci-contracts-builder:$BASE_UBUNTU_VERSION"
 export ARGS="--name ci-contracts-builder-$BUILDKITE_PIPELINE_SLUG-$BUILDKITE_BUILD_NUMBER --init -v \"\$(pwd):$MOUNTED_DIR\""
 BUILD_COMMAND="'$CICD_DIR/build.sh'"
 echo "$ $BUILD_COMMAND"
@@ -13,7 +19,7 @@ eval $BUILD_COMMAND
 echo '+++ :arrow_up: Pushing Container'
 for REGISTRY in "${CONTRACT_REGISTRIES[@]}"; do
     if [[ ! -z "$REGISTRY" ]]; then
-        COMMITS=("$REGISTRY:base-ubuntu-18.04-$BUILDKITE_COMMIT" "$REGISTRY:base-ubuntu-18.04-$BUILDKITE_COMMIT-$PLATFORM_TYPE" "$REGISTRY:base-ubuntu-18.04-$SANITIZED_BRANCH-$BUILDKITE_COMMIT")
+        COMMITS=("$REGISTRY:$BASE_UBUNTU_VERSION-$BUILDKITE_COMMIT" "$REGISTRY:$BASE_UBUNTU_VERSION-$BUILDKITE_COMMIT-$PLATFORM_TYPE" "$REGISTRY:$BASE_UBUNTU_VERSION-$SANITIZED_BRANCH-$BUILDKITE_COMMIT")
         for COMMIT in "${COMMITS[@]}"; do
             COMMIT_COMMAND="docker commit 'ci-contracts-builder-$BUILDKITE_PIPELINE_SLUG-$BUILDKITE_BUILD_NUMBER' '$COMMIT'"
             echo "$ $COMMIT_COMMAND"
