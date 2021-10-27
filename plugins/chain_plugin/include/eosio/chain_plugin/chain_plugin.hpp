@@ -314,6 +314,8 @@ public:
 
    get_required_keys_result get_required_keys( const get_required_keys_params& params)const;
 
+   fc::variant get_entire_trx_trace(const std::variant<fc::exception_ptr, transaction_trace_ptr>& trace_ptr )const;
+
    using get_transaction_id_params = transaction;
    using get_transaction_id_result = transaction_id_type;
 
