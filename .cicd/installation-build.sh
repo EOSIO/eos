@@ -12,7 +12,7 @@ fi
 
 echo "Branch '$BUILDKITE_BRANCH' sanitized as '$SANITIZED_BRANCH'."
 export CONTRACTS_BUILDER_TAG="eosio/ci-contracts-builder:base-$UBUNTU_VERSION"
-export ARGS="--name ci-contracts-builder-$BUILDKITE_PIPELINE_SLUG-$BUILDKITE_BUILD_NUMBER --init -v \"\$(pwd):$MOUNTED_DIR\""
+export ARGS="--name ci-contracts-builder-$BUILDKITE_PIPELINE_SLUG-$BUILDKITE_BUILD_NUMBER-$UBUNTU_VERSION --init -v \"\$(pwd):$MOUNTED_DIR\""
 BUILD_COMMAND="'$CICD_DIR/build.sh'"
 echo "$ $BUILD_COMMAND"
 eval $BUILD_COMMAND
