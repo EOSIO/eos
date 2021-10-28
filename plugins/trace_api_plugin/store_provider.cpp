@@ -7,6 +7,7 @@ namespace {
       static constexpr uint32_t _current_version = 1;
       static constexpr const char* _trace_prefix = "trace_";
       static constexpr const char* _trace_index_prefix = "trace_index_";
+      static constexpr const char* _trace_trx_id_prefix = "trace_trx_id_";
       static constexpr const char* _trace_ext = ".log";
       static constexpr const char* _compressed_trace_ext = ".clog";
       static constexpr uint _max_filename_size = std::char_traits<char>::length(_trace_index_prefix) + 10 + 1 + 10 + std::char_traits<char>::length(_compressed_trace_ext) + 1; // "trace_index_" + 10-digits + '-' + 10-digits + ".clog" + null-char
@@ -30,7 +31,8 @@ namespace {
 
 namespace eosio::trace_api {
    namespace bfs = boost::filesystem;
-   store_provider::store_provider(const bfs::path& slice_dir, uint32_t stride_width, std::optional<uint32_t> minimum_irreversible_history_blocks, std::optional<uint32_t> minimum_uncompressed_irreversible_history_blocks, size_t compression_seek_point_stride)
+   store_provider::store_provider(const bfs::path& slice_dir, uint32_t stride_width, std::optional<uint32_t> minimum_irreversible_history_blocks,
+                                  std::optional<uint32_t> minimum_uncompressed_irreversible_history_blocks, size_t compression_seek_point_stride)
    : _slice_directory(slice_dir, stride_width, minimum_irreversible_history_blocks, minimum_uncompressed_irreversible_history_blocks, compression_seek_point_stride) {
    }
 
@@ -59,6 +61,14 @@ namespace eosio::trace_api {
       _slice_directory.set_lib(lib);
    }
 
+   void store_provider::append_trx_ids(block_trxs_entry tt){
+      fc::cfile trx_id_file;
+      const uint32_t slice_number = _slice_directory.slice_number(tt.block_num);
+      _slice_directory.find_or_create_trx_id_slice(slice_number, open_state::write, trx_id_file);
+      auto entry = metadata_log_entry { std::move(tt) };
+      append_store(entry, trx_id_file);
+   }
+
    get_block_t store_provider::get_block(uint32_t block_height, const yield_function& yield) {
       std::optional<uint64_t> trace_offset;
       bool irreversible = false;
@@ -85,6 +95,40 @@ namespace eosio::trace_api {
          return get_block_t{};
       }
       return std::make_tuple( entry.value(), irreversible );
+   }
+
+   get_block_n store_provider::get_trx_block_number(const chain::transaction_id_type& trx_id, std::optional<uint32_t> minimum_irreversible_history_blocks, const yield_function& yield) {
+      fc::cfile trx_id_file;
+      int32_t slice_number;
+      if (minimum_irreversible_history_blocks) {
+         slice_number = _slice_directory.slice_number(*minimum_irreversible_history_blocks);
+      } else {
+         slice_number = 0;
+      }
+
+      while (true){
+         const bool found = _slice_directory.find_trx_id_slice(slice_number, open_state::read, trx_id_file);
+         if( !found )
+            break; // traversed all slices
+
+         metadata_log_entry entry;
+         auto ds = trx_id_file.create_datastream();
+         const uint64_t end = file_size(trx_id_file.get_file_path());
+         uint64_t offset = trx_id_file.tellp();
+         while (offset < end) {
+            yield();
+            fc::raw::unpack(ds, entry);
+            FC_ASSERT( std::holds_alternative<block_trxs_entry>(entry) == true, "unpacked data should be a block trxs entry" );
+            const auto& trxs_entry = std::get<block_trxs_entry>(entry);
+            for (auto i = 0U; i < trxs_entry.ids.size(); ++i){
+               if (trxs_entry.ids[i] == trx_id)
+                  return trxs_entry.block_num;
+            }
+            offset = trx_id_file.tellp();
+         }
+         slice_number++;
+      }
+      return get_block_n{};
    }
 
    slice_directory::slice_directory(const bfs::path& slice_dir, uint32_t width, std::optional<uint32_t> minimum_irreversible_history_blocks, std::optional<uint32_t> minimum_uncompressed_irreversible_history_blocks, size_t compression_seek_point_stride)
@@ -206,6 +250,25 @@ namespace eosio::trace_api {
       }
    }
 
+   bool slice_directory::find_or_create_trx_id_slice(uint32_t slice_number, open_state state, fc::cfile& trx_id_file) const {
+       const bool found = find_trx_id_slice(slice_number, state, trx_id_file);
+       if( !found ) {
+           trx_id_file.open(fc::cfile::create_or_update_rw_mode);
+       }
+       return found;
+   }
+
+   bool slice_directory::find_trx_id_slice(uint32_t slice_number, open_state state, fc::cfile& trx_id_file, bool open_file) const {
+      const bool found = find_slice(_trace_trx_id_prefix, slice_number, trx_id_file, open_file);
+      if( !found || !open_file ) {
+         return found;
+      }
+      if( state == open_state::write ) {
+          trx_id_file.seek_end(0);
+      }
+      return true;
+   }
+
    void slice_directory::set_lib(uint32_t lib) {
       _best_known_lib = lib;
       _maintenance_condition.notify_one();
@@ -269,6 +332,7 @@ namespace eosio::trace_api {
          process_irreversible_slice_range(lib, *_minimum_irreversible_history_blocks, _last_cleaned_up_slice, [this, &log](uint32_t slice_to_clean){
             fc::cfile trace;
             fc::cfile index;
+            fc::cfile trx_id;
 
             log(std::string("Attempting Prune of slice: ") + std::to_string(slice_to_clean));
 
@@ -283,6 +347,11 @@ namespace eosio::trace_api {
             if (trace_found) {
                log(std::string("Removing: ") + trace.get_file_path().generic_string());
                bfs::remove(trace.get_file_path());
+            }
+            const bool trx_id_found = find_trx_id_slice(slice_to_clean, open_state::read, trx_id, dont_open_file);
+            if (trx_id_found) {
+               log(std::string("Removing: ") + trx_id.get_file_path().generic_string());
+               bfs::remove(trx_id.get_file_path());
             }
 
             auto ctrace = find_compressed_trace_slice(slice_to_clean, dont_open_file);

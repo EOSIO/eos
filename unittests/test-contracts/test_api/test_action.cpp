@@ -147,7 +147,8 @@ void test_action::test_cf_action() {
       eosio::send_deferred( "testapi"_n.value, "testapi"_n, "hello", 6, 0 );
       eosio_assert( false, "transaction_api should not be allowed" );
    } else if ( cfa.payload == 212 ) {
-      set_action_return_value("hi", 2);
+      char msg[] = "hi";
+      set_action_return_value(msg, 2);
       eosio_assert( false, "set_action_return_value should not be allowed" );
    }
 

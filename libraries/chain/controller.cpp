@@ -653,7 +653,7 @@ struct controller_impl {
 
       if (auto dm_logger = get_deep_mind_logger()) {
          // FIXME: We should probably feed that from CMake directly somehow ...
-         fc_dlog(*dm_logger, "DEEP_MIND_VERSION 13 0");
+         fc_dlog(*dm_logger, "DEEP_MIND_VERSION 14 0");
 
          fc_dlog(*dm_logger, "ABIDUMP START ${block_num} ${global_sequence_num}",
             ("block_num", head->block_num)
@@ -3131,8 +3131,8 @@ void controller::validate_tapos( const transaction& trx )const { try {
 
    //Verify TaPoS block summary has correct ID prefix, and that this block's time is not past the expiration
    EOS_ASSERT(trx.verify_reference_block(tapos_block_summary.block_id), invalid_ref_block_exception,
-              "Transaction's reference block did not match. Is this transaction from a different fork?",
-              ("tapos_summary", tapos_block_summary));
+              "Transaction's reference block #${bn} ${tr} did not match ${sr}. Is this transaction from a different fork?",
+              ("bn", trx.ref_block_num)("tr", trx.ref_block_prefix)("sr", tapos_block_summary.block_id._hash[1]));
 } FC_CAPTURE_AND_RETHROW() }
 
 void controller::validate_db_available_size() const {

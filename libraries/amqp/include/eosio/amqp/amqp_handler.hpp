@@ -234,7 +234,7 @@ public:
                stop_promise.set_value();
             }
          } );
-         future.wait();
+         future.wait_for(std::chrono::seconds( 10 ));
 
          thread_pool_.stop();
       }
@@ -350,7 +350,6 @@ private:
             elog("consume failed, queue ${q}, tag: ${t} error: ${e}, for ${a}",
                  ("q", queue_name_)("t", consumer_tag_)("e", message)("a", amqp_connection_.address()));
             consumer_tag_.clear();
-            on_error(message);
          });
          static_assert(std::is_same_v<on_consume_t, AMQP::MessageCallback>, "AMQP::MessageCallback interface changed");
          consumer.onReceived(on_consume_);

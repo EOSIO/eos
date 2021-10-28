@@ -67,8 +67,9 @@ try:
     cluster.killall(allInstances=killAll)
     cluster.cleanup()
     Print("Stand up cluster")
+    traceNodeosArgs=" --plugin eosio::trace_api_plugin --trace-no-abis "
 
-    if cluster.launch(pnodes=pnodes, totalNodes=totalNodes, prodCount=1, onlyBios=False, configSecurityGroup=True) is False:
+    if cluster.launch(pnodes=pnodes, totalNodes=totalNodes, prodCount=1, onlyBios=False, configSecurityGroup=True, extraNodeosArgs=traceNodeosArgs) is False:
         cmdError("launcher")
         errorExit("Failed to stand up eos cluster.")
 

@@ -30,6 +30,7 @@ class [[eosio::contract("kv_test")]] kvtest : public eosio::contract {
    using eosio::contract::contract;
 
    [[eosio::action]] void itlifetime() {
+      using namespace eosio::kv::internal_use_do_not_use;
       check(1 == kv_it_create(""_n.value, nullptr, 0), "itlifetime a");
       check(2 == kv_it_create(""_n.value, nullptr, 0), "itlifetime b");
       check(3 == kv_it_create(""_n.value, nullptr, 0), "itlifetime c");
@@ -55,6 +56,7 @@ class [[eosio::contract("kv_test")]] kvtest : public eosio::contract {
    }
 
    [[eosio::action]] void itlimit(std::vector<itparam> params) {
+      using namespace eosio::kv::internal_use_do_not_use;
       bool has_erase = false;
       for(auto& itop : params) {
          if(itop.erase) {
@@ -87,15 +89,18 @@ class [[eosio::contract("kv_test")]] kvtest : public eosio::contract {
    }
 
    [[eosio::action]] void erase(name contract, const std::vector<char>& k) {
+      using namespace eosio::kv::internal_use_do_not_use;
       kv_erase(contract.value, k.data(), k.size());
    }
 
    [[eosio::action]] void set(name contract, const std::vector<char>& k, const std::vector<char>& v, name payer) {
+      using namespace eosio::kv::internal_use_do_not_use;
       kv_set(contract.value, k.data(), k.size(), v.data(), v.size(), payer.value);
    }
 
    [[eosio::action]] void get(name contract, const std::vector<char>& k,
                               const std::optional<std::vector<char>>& v) {
+      using namespace eosio::kv::internal_use_do_not_use;                              
       if (v) {
          uint32_t value_size = 0xffff'ffff;
          check(kv_get(contract.value, k.data(), k.size(), value_size), "kv_get found nothing");
@@ -110,11 +115,13 @@ class [[eosio::contract("kv_test")]] kvtest : public eosio::contract {
    }
 
    [[eosio::action]] void setmany(name contract, const std::vector<kv_t>& kvs) {
+      using namespace eosio::kv::internal_use_do_not_use;
       for (auto& kv : kvs) //
          kv_set(contract.value, kv.k.data(), kv.k.size(), kv.v.data(), kv.v.size(), contract.value);
    }
 
    [[eosio::action]] void getdata() {
+      using namespace eosio::kv::internal_use_do_not_use;
       const std::vector<char> orig_buf(1024, '\xcc');
       std::vector<char> buf = orig_buf;
       // The buffer starts empty
@@ -170,6 +177,7 @@ class [[eosio::contract("kv_test")]] kvtest : public eosio::contract {
 
    [[eosio::action]] void scan(name contract, const std::vector<char>& prefix,
                                const std::optional<std::vector<char>>& lower, const std::vector<kv_t>& expected) {
+      using namespace eosio::kv::internal_use_do_not_use;
       auto itr = kv_it_create(contract.value, prefix.data(), prefix.size());
       int32_t stat;
       uint32_t key_size, value_size;
@@ -242,6 +250,7 @@ class [[eosio::contract("kv_test")]] kvtest : public eosio::contract {
 
    [[eosio::action]] void scanrev(name contract, const std::vector<char>& prefix,
                                   const std::optional<std::vector<char>>& lower, const std::vector<kv_t>& expected) {
+      using namespace eosio::kv::internal_use_do_not_use;
       auto itr = kv_it_create(contract.value, prefix.data(), prefix.size());
       uint32_t stat;
       uint32_t key_size = 0xffff'ffff, value_size = 0xffff'ffff;
@@ -300,6 +309,7 @@ class [[eosio::contract("kv_test")]] kvtest : public eosio::contract {
    [[eosio::action]] void itstaterased(name contract, const std::vector<char>& prefix,
                                        const std::vector<char>& k, const std::vector<char>& v,
                                        int test_id, bool insert, bool reinsert) {
+      using namespace eosio::kv::internal_use_do_not_use;
       if(insert) kv_set(contract.value, k.data(), k.size(), v.data(), v.size(), contract.value);
       auto it = kv_it_create(contract.value, prefix.data(), prefix.size());
       uint32_t key_size, value_size;
@@ -328,6 +338,9 @@ class [[eosio::contract("kv_test")]] kvtest : public eosio::contract {
             case 3: {
                auto it2 = kv_it_create(contract.value, prefix.data(), prefix.size());
                kv_it_compare(it2, it); // abort
+               return;
+            }
+            case 4: {
                kv_it_compare(it, it); // abort
                return;
             }
