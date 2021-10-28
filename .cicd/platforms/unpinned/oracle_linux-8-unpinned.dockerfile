@@ -32,6 +32,7 @@ RUN dnf update -y && \
         openssl \
         openssl-devel \
         patch \
+        postgresql \
         postgresql-devel \
         postgresql-server \
         python3-pip \
@@ -40,7 +41,7 @@ RUN dnf update -y && \
         which \
         xz && \
     dnf clean all && \
-    rm -rf /var/cache/dnf        
+    rm -rf /var/cache/dnf && rm -rf /var/cache/yum
 
 # build erlang from source (required for rabbitmq)
 RUN curl -LO https://github.com/erlang/otp/releases/download/OTP-23.3.4.7/otp_src_23.3.4.7.tar.gz && \
@@ -63,7 +64,8 @@ RUN curl -LO https://github.com/rabbitmq/rabbitmq-server/releases/download/v3.9.
 
 # install doxygen package
 RUN curl -LO https://yum.oracle.com/repo/OracleLinux/OL8/codeready/builder/x86_64/getPackage/doxygen-1.8.14-12.el8.x86_64.rpm && \
-    rpm -i doxygen-1.8.14-12.el8.x86_64.rpm
+    rpm -i doxygen-1.8.14-12.el8.x86_64.rpm && \
+    rm doxygen-1.8.14-12.el8.x86_64.rpm
 
 # build boost
 RUN curl -LO https://boostorg.jfrog.io/artifactory/main/release/1.71.0/source/boost_1_71_0.tar.bz2 && \
