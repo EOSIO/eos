@@ -105,10 +105,6 @@ RUN curl -LO https://boostorg.jfrog.io/artifactory/main/release/1.72.0/source/bo
 # requests module. used by tests
 RUN python3 -m pip install requests
 
-# install nvm
-RUN curl -LO https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.0/install.sh && \
-    bash install.sh
-
 # setup Postgress
 RUN localedef -c -f UTF-8 -i en_US en_US.UTF-8 && \
     su - postgres -c initdb
