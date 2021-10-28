@@ -22,7 +22,7 @@ if [[ $EOS_CONTRACT_BUILD ]]; then
     fi
 
     echo "Using cdt ${CDT_COMMIT} from \"$CDT_VERSION\"..."
-    export CDT_URL="https://eos-public-oss-binaries.s3-us-west-2.amazonaws.com/${CDT_COMMIT:0:7}-eosio.cdt-ubuntu-18.04_amd64.deb"
+    export CDT_URL="https://eos-public-oss-binaries.s3-us-west-2.amazonaws.com/${CDT_COMMIT:0:7}-eosio.cdt-ubuntu-20.04_amd64.deb"
     export DEOSIO_COMPILE_TEST_CONTRACTS=true
     CDT_COMMAND="curl -sSf $CDT_URL --output eosio.cdt.deb && apt install ./eosio.cdt.deb"
 fi
