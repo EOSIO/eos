@@ -170,10 +170,10 @@ namespace eosio { namespace chain {
          const int64_t resource_delta = erase_table_usage(resource_manager, kv->payer, key, kv->kv_key.size(), kv->kv_value.size());
 
          if (auto dm_logger = resource_manager._context->control.get_deep_mind_logger()) {
-            fc_dlog(*dm_logger, "KV_OP REM ${action_id} ${contract} ${payer} ${key} ${odata}",
+            fc_dlog(*dm_logger, "KV_OP REM ${action_id} ${contract} ${opayer} ${key} ${odata}",
                ("action_id", resource_manager._context->get_action_id())
                ("contract", name{ contract })
-               ("payer", kv->payer)
+               ("opayer", kv->payer)
                ("key", fc::to_hex(kv->kv_key.data(), kv->kv_key.size()))
                ("odata", fc::to_hex(kv->kv_value.data(), kv->kv_value.size()))
             );
@@ -196,10 +196,11 @@ namespace eosio { namespace chain {
             const auto resource_delta = update_table_usage(resource_manager, kv->payer, payer, key, key_size, kv->kv_value.size(), value_size);
 
             if (auto dm_logger = resource_manager._context->control.get_deep_mind_logger()) {
-               fc_dlog(*dm_logger, "KV_OP UPD ${action_id} ${contract} ${payer} ${key} ${odata}:${ndata}",
+               fc_dlog(*dm_logger, "KV_OP UPD ${action_id} ${contract} ${opayer}:${npayer} ${key} ${odata}:${ndata}",
                   ("action_id", resource_manager._context->get_action_id())
                   ("contract", name{ contract })
-                  ("payer", payer)
+                  ("opayer", kv->payer)
+                  ("npayer", payer)
                   ("key", fc::to_hex(kv->kv_key.data(), kv->kv_key.size()))
                   ("odata", fc::to_hex(kv->kv_value.data(), kv->kv_value.size()))
                   ("ndata", fc::to_hex(value, value_size))
@@ -221,10 +222,10 @@ namespace eosio { namespace chain {
             });
 
             if (auto dm_logger = resource_manager._context->control.get_deep_mind_logger()) {
-               fc_dlog(*dm_logger, "KV_OP INS ${action_id} ${contract} ${payer} ${key} ${ndata}",
+               fc_dlog(*dm_logger, "KV_OP INS ${action_id} ${contract} ${npayer} ${key} ${ndata}",
                   ("action_id", resource_manager._context->get_action_id())
                   ("contract", name{ contract })
-                  ("payer", payer)
+                  ("npayer", payer)
                   ("key", fc::to_hex(key, key_size))
                   ("ndata", fc::to_hex(value, value_size))
                );
