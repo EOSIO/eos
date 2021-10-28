@@ -32,9 +32,9 @@ HELP_INFO = "\
         Preview of MI and KV tables on each account\n\
         Deferred transactions"
 
-SERVER_INFO_TRANSIENT_FIELDS = [ "head_block_num", "last_irreversible_block_num",     
+SERVER_INFO_TRANSIENT_FIELDS = [ "head_block_num", "last_irreversible_block_num",
     "last_irreversible_block_id", "head_block_id",  "head_block_time",
-    "fork_db_head_block_num", "fork_db_head_block_id", "server_full_version_string", 
+    "fork_db_head_block_num", "fork_db_head_block_id", "server_full_version_string",
     "last_irreversible_block_time", "virtual_block_cpu_limit", "virtual_block_net_limit" ]
 
 class ArgumentParseError(Exception):
@@ -175,7 +175,7 @@ def getScopes(conn, code_name, page_size, max_scopes):
         req_body = '{' + f'"code":"{code_name}", "table":"", "lower_bound":"{next_scope}", "upper_bound":"", "limit":{page_size}, "reverse":false' + '}'
         scopes = getJSONResp(conn, "/v1/chain/get_table_by_scope", req_body)
         scope_rows_all.extend(scopes["rows"])
-        next_scope = scopes["more"] 
+        next_scope = scopes["more"]
         i += page_size
         moreData = (next_scope != "")
 
@@ -195,7 +195,7 @@ def getTableRows(conn, code_name, scope_name, table_name, page_size, max_rows):
         try:
             table_rows_all.extend(resp["rows"])
 
-            next_table = resp["more"] 
+            next_table = resp["more"]
             moreData = (next_table != "")
             i += page_size
         except Exception as e:
@@ -219,7 +219,7 @@ def getKVTableData(conn, code_name, page_size, max_rows):
             kv_data_all.extend(resp["rows"])
 
             moreData = resp['more']
-            next_key = resp["next_key"] 
+            next_key = resp["next_key"]
             i += page_size
         except Exception as e:
             break
@@ -318,7 +318,7 @@ def compareRefData(refData, cmpData):
     mismatches['accounts_tables'] = compareAccountsField(refAccts, cmpAccts, 'tables')
     mismatches['accounts_kv_tables'] = compareAccountsField(refAccts, cmpAccts, 'kv_tables')
     mismatches['accounts_permissions'] = compareAccountsField(refAccts, cmpAccts, 'metadata', 'permissions')
-    mismatches['producer_schedule'] = compareProduceSchedules(refData['producer_schedule'], cmpData['producer_schedule'])        
+    mismatches['producer_schedule'] = compareProduceSchedules(refData['producer_schedule'], cmpData['producer_schedule'])
     mismatches['deferred_trx'] = compareDeferredTrx(refData['deferred_transactions'], cmpData['deferred_transactions'])
     mismatches['server_info'] = compareServerInfo(refData['server_info_begin'], cmpData['server_info_begin'])
     mismatches['protocol_features'] = compareProtocolFeatures(refProtFeats, cmpProtFeats)
@@ -362,7 +362,7 @@ if __name__ == "__main__":
                "--comp" : ("comp-filepath", ""),
                "--help" : ("help", None),
                    "-o" : ("output-filepath", "blockchain_audit_data.json"),
-          "--page-size" : ("page-size", 1024), 
+          "--page-size" : ("page-size", 1024),
                 "--ref" : ("reference-filepath", ""),
         "--scope-limit" : ("scope-limit", 0),
     "--table-row-limit" : ("table-row-limit", 0),
@@ -507,7 +507,7 @@ if __name__ == "__main__":
     if numAccounts != numAccounts_end:
         msg = f"ERROR: Accounts added during audit. begin= {numAccounts} end= {numAccounts_end}"
         print(msg, file=sys.stderr)
-    
+
     if server_info_begin['head_block_num'] != server_info_end['head_block_num']:
         print("WARNING: Audit data was collected from different blocks.  Data may be inconssitent.", file=sys.stderr)
 
@@ -556,7 +556,7 @@ if __name__ == "__main__":
                         print("(None)", end="")
                     for l_act in linked_acts:
                         print(f'{l_act["account"]}::{l_act["action"]}', end="")
-                    print()                                                
+                    print()
                 else:
                     print('(Unkonwn)')
 
@@ -619,7 +619,7 @@ if __name__ == "__main__":
             print("[", end="")
             for v in kv_tables:
                 print(v, end=", ")
-                
+
             print(']')
 
         print("\n\n     ====== DEFERRED TRANSACTIONS ======")
@@ -644,11 +644,11 @@ if __name__ == "__main__":
         if not keep_irrelevant:
             removeIrrelevant(data)
 
-        f.write(json.dumps(data))
+        f.write(json.dumps(data, sort_keys=True, indent=2))
 
     if ref_filepath != "":
         with open(ref_filepath, "r") as f:
-            s = f.read()         
+            s = f.read()
             refData = json.loads(s)
             compSuccess = compareRefData(refData, data)
             if compSuccess:
