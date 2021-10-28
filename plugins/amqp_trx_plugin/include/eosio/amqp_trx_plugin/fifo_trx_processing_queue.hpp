@@ -181,7 +181,7 @@ public:
                q_item i;
                if( self->queue_.pop_and_pause(i) ) {
                   auto exception_handler = [&i, &prod_plugin=self->prod_plugin_](fc::exception_ptr ex) {
-                     prod_plugin->log_failed_transaction(i.trx->id(), ex->what());
+                     prod_plugin->log_failed_transaction(i.trx->id(), i.trx, ex->what());
                      i.next(ex);
                   };
                   chain::transaction_metadata_ptr trx_meta;
