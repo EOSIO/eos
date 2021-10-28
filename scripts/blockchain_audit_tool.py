@@ -555,7 +555,7 @@ if __name__ == "__main__":
                     if len(linked_acts) == 0:
                         print("(None)", end="")
                     for l_act in linked_acts:
-                        print(f'{l_act["account"]}::{l_act["action"]}', end="")
+                        print(f'{l_act["account"]}::{l_act["action"]}, ', end="")
                     print()
                 else:
                     print('(Unkonwn)')
