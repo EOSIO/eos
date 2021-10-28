@@ -68,22 +68,28 @@ postgres_backend::postgres_backend(const std::string& options)
    conn.prepare("has_block", "SELECT COUNT(*) FROM BlockData WHERE block_id = $1");
 } // namespace blockvault
 
+std::basic_string_view<std::byte> to_byte_string_view(std::string_view v) {
+   return std::basic_string_view<std::byte>(reinterpret_cast<const std::byte*>(v.data()), v.size());
+} 
+
+std::basic_string_view<std::byte> to_byte_string_view(const std::vector<char>& v) {
+   return std::basic_string_view<std::byte>(reinterpret_cast<const std::byte*>(v.data()), v.size());
+} 
+
 bool postgres_backend::propose_constructed_block(std::pair<uint32_t, uint32_t> watermark, uint32_t lib,
                                                  const std::vector<char>& block_content, std::string_view block_id,
                                                  std::string_view previous_block_id) {
    try {
       pqxx::work w(conn);
       w.exec_prepared0("serialize_transaction");
-      pqxx::largeobjectaccess obj(w);
+      auto id{pqxx::blob::create(w)};
       
-      obj.write(nullptr, 0);
-      pqxx::binarystring      block_id_blob(block_id.data(), block_id.size());
-      pqxx::binarystring      previous_block_id_blob(previous_block_id.data(), previous_block_id.size());
-      w.exec_prepared0("insert_constructed_block", watermark.first, watermark.second, lib, block_id_blob,
-                       previous_block_id_blob, obj.id(), block_content.size());
-      auto r = w.exec_prepared("get_block_insertion_result", obj.id());
+      w.exec_prepared0("insert_constructed_block", watermark.first, watermark.second, lib, to_byte_string_view(block_id),
+                       to_byte_string_view(previous_block_id), id, block_content.size());
+      auto r = w.exec_prepared("get_block_insertion_result", id);
       if (!r.empty()) {
-         obj.write(block_content.data(), block_content.size());
+         pqxx::blob b_w{pqxx::blob::open_w(w, id)};
+         b_w.write(to_byte_string_view(block_content));
          w.commit();
          return true;
       }
@@ -98,15 +104,13 @@ bool postgres_backend::append_external_block(uint32_t block_num, uint32_t lib, c
    try {
       pqxx::work w(conn);
       w.exec_prepared0("serialize_transaction");
-      pqxx::largeobjectaccess obj(w);
-      obj.write(nullptr, 0);
-      pqxx::binarystring      block_id_blob(block_id.data(), block_id.size());
-      pqxx::binarystring      previous_block_id_blob(previous_block_id.data(), previous_block_id.size());
-      w.exec_prepared0("insert_external_block", block_num, lib, block_id_blob, previous_block_id_blob, obj.id(),
+      auto id{pqxx::blob::create(w)};
+      w.exec_prepared0("insert_external_block", block_num, lib, to_byte_string_view(block_id), to_byte_string_view(previous_block_id), id,
                        block_content.size());
-      auto r = w.exec_prepared("get_block_insertion_result", obj.id());
+      auto r = w.exec_prepared("get_block_insertion_result", id);
       if (!r.empty()) {
-         obj.write(block_content.data(), block_content.size());
+         pqxx::blob b_w{pqxx::blob::open_w(w, id)};
+         b_w.write(to_byte_string_view(block_content));
          w.commit();
          return true;
       }
@@ -124,21 +128,20 @@ bool postgres_backend::propose_snapshot(std::pair<uint32_t, uint32_t> watermark,
 
       pqxx::work              w(conn);
       w.exec_prepared0("serialize_transaction");
-      pqxx::largeobjectaccess obj(w);
-      obj.write(nullptr, 0);
+      auto id{pqxx::blob::create(w)};
 
-      w.exec_prepared0("insert_snapshot", watermark.first, watermark.second, obj.id());
-      auto r = w.exec_prepared("get_snapshot_insertion_result", obj.id());
+      w.exec_prepared0("insert_snapshot", watermark.first, watermark.second, id);
+      auto r = w.exec_prepared("get_snapshot_insertion_result", id);
 
       if (!r.empty()) {
-
+         
          const int chunk_size = 4096;
          char      chunk[chunk_size];
-
+         pqxx::blob b_w{pqxx::blob::open_w(w, id)};
          auto sz = chunk_size;
          while (sz == chunk_size) {
             sz = infile.sgetn(chunk, chunk_size);
-            obj.write(chunk, sz);
+            b_w.write(std::basic_string_view<std::byte>(reinterpret_cast<const std::byte*>(chunk), sz));
          };
 
          w.exec_prepared("delete_outdated_block_lo", watermark.first, watermark.second);
@@ -157,15 +160,15 @@ bool postgres_backend::propose_snapshot(std::pair<uint32_t, uint32_t> watermark,
 }
 
 void retrieve_blocks(backend::sync_callback& callback, pqxx::work& trx, pqxx::result r) {
-   std::vector<char> block_data;
+   std::basic_string<std::byte> block_data;
 
    for (const auto& x : r) {
       pqxx::oid               block_oid  = x[0].as<pqxx::oid>();
       uint64_t                block_size = x[1].as<uint64_t>();
-      pqxx::largeobjectaccess obj(trx, block_oid, std::ios::in | std::ios::binary);
+      pqxx::blob b_r{pqxx::blob::open_r(trx, block_oid)};
       block_data.resize(block_size);
-      obj.read(block_data.data(), block_size);
-      callback.on_block(std::string_view{block_data.data(), block_data.size()});
+      b_r.read(block_data, block_size);
+      callback.on_block(std::string_view{reinterpret_cast<char*>(block_data.data()), block_data.size()});
    }
 
    trx.commit();
@@ -175,8 +178,8 @@ void postgres_backend::sync(std::string_view previous_block_id, backend::sync_ca
    pqxx::work trx(conn);
 
    if (previous_block_id.size()) {
-      pqxx::binarystring blob(previous_block_id.data(), previous_block_id.size());
-      auto               r = trx.exec_prepared("get_sync_watermark", blob);
+      auto bid = to_byte_string_view(previous_block_id);
+      auto r = trx.exec_prepared("get_sync_watermark", bid);
 
       if (!r.empty()) {
          retrieve_blocks(
@@ -185,7 +188,7 @@ void postgres_backend::sync(std::string_view previous_block_id, backend::sync_ca
          return;
       }
 
-      auto row = trx.exec_prepared1("has_block", blob);
+      auto row = trx.exec_prepared1("has_block", bid);
       if (row[0].as<int>() != 0)
          // in this case, the client is up-to-date, nothing to sync.  
          return;
@@ -194,12 +197,11 @@ void postgres_backend::sync(std::string_view previous_block_id, backend::sync_ca
    auto r = trx.exec_prepared("get_latest_snapshot");
 
    if (!r.empty()) {
-      pqxx::largeobject snapshot_obj(r[0][0].as<pqxx::oid>());
 
       fc::temp_file temp_file;
       std::string   fname = temp_file.path().string();
 
-      snapshot_obj.to_file(trx, fname.c_str());
+      pqxx::blob::to_file(trx, r[0][0].as<pqxx::oid>(),fname.c_str());
       callback.on_snapshot(fname.c_str());
    }
 
