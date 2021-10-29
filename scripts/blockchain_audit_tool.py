@@ -258,7 +258,13 @@ def compareServerInfo(ref, cmp):
               'server_full_version_string')
     mismatches = []
     for f in fields:
-        if ref[f] != cmp[f]:
+        if f in ref and f not in cmp:
+            mismatches.append((f, ref[f], None))
+        elif f in cmp and f not in ref:
+            mismatches.append((f, None, cmp[f]))
+        elif f not in ref and f not in cmp:
+            continue
+        elif ref[f] != cmp[f]:
             mismatches.append((f, ref[f], cmp[f]))
     return mismatches
 
@@ -289,7 +295,7 @@ def compareProduceSchedules(ref, cmp):
     mismatches = []
     for s in ('active', 'pending', 'proposed'):
         if ref[s] != cmp[s]:
-            mismatches.append(s, ref[s], cmp[s])
+            mismatches.append((s, ref[s], cmp[s]))
     return mismatches
 
 
@@ -329,7 +335,7 @@ def compareRefData(refData, cmpData):
             isSame = False
             print(f"ERROR: mismatch in '{k}'", file=sys.stderr)
             for i in v:
-                print(f"  ref: {i[0]}  comp: {i[1]}", file=sys.stderr)
+                print(f"  '{i[0]}' ref: {i[1]}  comp: {i[2]}", file=sys.stderr)
     if isSame:
         print("Reference comparison SUCCESS", file=sys.stderr)
     else:
