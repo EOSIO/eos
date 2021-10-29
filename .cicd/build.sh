@@ -2,9 +2,36 @@
 set -eo pipefail
 [[ "$ENABLE_INSTALL" == 'true' ]] || echo '--- :evergreen_tree: Configuring Environment'
 . ./.cicd/helpers/general.sh
+if [[ $EOS_CONTRACT_BUILD ]]; then
+    [[ "$RAW_PIPELINE_CONFIG" == '' ]] && export RAW_PIPELINE_CONFIG="$1"
+    [[ "$RAW_PIPELINE_CONFIG" == '' ]] && export RAW_PIPELINE_CONFIG='pipeline.jsonc'
+    [[ "$PIPELINE_CONFIG" == '' ]] && export PIPELINE_CONFIG='pipeline.json'
+    # read dependency file
+    if [[ -f "$RAW_PIPELINE_CONFIG" ]]; then
+        echo 'Reading pipeline configuration file...'
+        cat "$RAW_PIPELINE_CONFIG" | grep -Po '^[^"/]*("((?<=\\).|[^"])*"[^"/]*)*' | jq -c .\"eosio-contract-build\" > "$PIPELINE_CONFIG"
+        CDT_VERSION=$(cat "$PIPELINE_CONFIG" | jq -r '.dependencies."eosio.cdt"')
+    else
+        echo 'ERROR: No pipeline configuration file or dependencies file found!'
+        exit 1
+    fi
+
+    if [[ "$BUILDKITE" == 'true' ]]; then
+        CDT_COMMIT=$((curl -s https://api.github.com/repos/EOSIO/eosio.cdt/git/refs/tags/$CDT_VERSION && curl -s https://api.github.com/repos/EOSIO/eosio.cdt/git/refs/heads/$CDT_VERSION) | jq '.object.sha' | sed "s/null//g" | sed "/^$/d" | tr -d '"' | sed -n '1p')
+        test -z "$CDT_COMMIT" && CDT_COMMIT=$(echo $CDT_VERSION | tr -d '"' | tr -d "''" | cut -d ' ' -f 1) # if both searches returned nothing, the version is probably specified by commit hash already
+    fi
+    echo "Using cdt ${CDT_COMMIT} from \"$CDT_VERSION\"..."
+    export CDT_URL="https://eos-public-oss-binaries.s3-us-west-2.amazonaws.com/${CDT_COMMIT:0:7}-eosio.cdt-ubuntu-20.04_amd64.deb"
+    export DEOSIO_COMPILE_TEST_CONTRACTS=true
+    CDT_COMMAND="curl -sSf $CDT_URL --output eosio.cdt.deb && apt install ./eosio.cdt.deb"
+fi
+
 mkdir -p "$BUILD_DIR"
+
 [[ -z "$DCMAKE_BUILD_TYPE" ]] && export DCMAKE_BUILD_TYPE='Release'
-CMAKE_EXTRAS="-DCMAKE_BUILD_TYPE=\"$DCMAKE_BUILD_TYPE\" -DENABLE_MULTIVERSION_PROTOCOL_TEST=\"true\" -DAMQP_CONN_STR=\"amqp://guest:guest@localhost:5672\""
+[[ -z "$DEOSIO_COMPILE_TEST_CONTRACTS" ]] && export DEOSIO_COMPILE_TEST_CONTRACTS=false
+CMAKE_EXTRAS="-DCMAKE_BUILD_TYPE=\"$DCMAKE_BUILD_TYPE\" -DEOSIO_COMPILE_TEST_CONTRACTS=\"$DEOSIO_COMPILE_TEST_CONTRACTS\" -DENABLE_MULTIVERSION_PROTOCOL_TEST=\"true\" -DAMQP_CONN_STR=\"amqp://guest:guest@localhost:5672\""
+
 if [[ "$(uname)" == 'Darwin' && "$FORCE_LINUX" != 'true' ]]; then
     # You can't use chained commands in execute
     if [[ "$GITHUB_ACTIONS" == 'true' ]]; then
@@ -40,8 +67,11 @@ else # Linux
     fi
     CMAKE_COMMAND="cmake \$CMAKE_EXTRAS .."
     MAKE_COMMAND="make -j $JOBS"
-    BUILD_COMMANDS="echo \"+++ :hammer_and_wrench: Building EOSIO\" && echo \"$ $CMAKE_COMMAND\" && eval $CMAKE_COMMAND && echo \"$ $MAKE_COMMAND\" && eval $MAKE_COMMAND"
-    # Docker Commands
+    if [[ $EOS_CONTRACT_BUILD ]]; then
+        BUILD_COMMANDS="echo \"+++ :hammer_and_wrench: Building EOSIO\" && echo \"$CDT_COMMAND\" && eval $CDT_COMMAND && echo \"$ $CMAKE_COMMAND\" && eval $CMAKE_COMMAND && echo \"$ $MAKE_COMMAND\" && eval $MAKE_COMMAND"
+    else
+        BUILD_COMMANDS="echo \"+++ :hammer_and_wrench: Building EOSIO\" && echo \"$ $CMAKE_COMMAND\" && eval $CMAKE_COMMAND && echo \"$ $MAKE_COMMAND\" && eval $MAKE_COMMAND"
+    fi    # Docker Commands
     if [[ "$BUILDKITE" == 'true' ]]; then
         # Generate Base Images
         BASE_IMAGE_COMMAND="\"$CICD_DIR/generate-base-images.sh\""
