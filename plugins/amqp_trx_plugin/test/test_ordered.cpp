@@ -79,7 +79,7 @@ struct mock_producer_plugin {
       return true;
    }
 
-   void log_failed_transaction(const transaction_id_type& trx_id, const char* reason) const {}
+   void log_failed_transaction(const transaction_id_type& trx_id, const packed_transaction_ptr& packed_trx_ptr, const char* reason) const {}
 
    std::deque<std::pair<chain::transaction_metadata_ptr, producer_plugin::next_function<chain::transaction_trace_ptr>>> unapplied_trxs_;
    std::deque<chain::transaction_metadata_ptr> trxs_;
