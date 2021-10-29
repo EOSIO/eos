@@ -466,9 +466,9 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
                      next(ex);
 
                      fc_dlog(_trx_trace_failure_log, "[TRX_TRACE] Speculative execution is REJECTING tx: ${entire_trx}",
-                             ("entire_trx", self->chain_plug->get_entire_trx(trx->get_transaction())));
+                             ("entire_trx", self->chain_plug->get_log_trx(trx->get_transaction())));
                      fc_dlog(_trx_log, "[TRX_TRACE] Speculative execution is REJECTING tx: ${trx}",
-                             ("trx", self->chain_plug->get_entire_trx(trx->get_transaction())));
+                             ("trx", self->chain_plug->get_log_trx(trx->get_transaction())));
                   };
                   try {
                      auto result = future.get();
@@ -504,7 +504,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
                if (std::holds_alternative<fc::exception_ptr>(response)) {
                   return fc::variant{std::get<fc::exception_ptr>(response)};
                } else {
-                  return chain_plug->get_entire_trx_trace( std::get<transaction_trace_ptr>(response) );
+                  return chain_plug->get_log_trx_trace( std::get<transaction_trace_ptr>(response) );
                }
             };
 
@@ -518,7 +518,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
 
                   fc_dlog(_trx_log, "[TRX_TRACE] Block ${block_num} for producer ${prod} is REJECTING tx: ${trx}",
                           ("block_num", chain.head_block_num() + 1)("prod", get_pending_block_producer())
-                          ("trx", chain_plug->get_entire_trx(trx->packed_trx()->get_transaction())));
+                          ("trx", chain_plug->get_log_trx(trx->packed_trx()->get_transaction())));
                   fc_dlog(_trx_trace_failure_log, "[TRX_TRACE] Block ${block_num} for producer ${prod} is REJECTING tx: ${entire_trace}",
                           ("block_num", chain.head_block_num() + 1)("prod", get_pending_block_producer())
                           ("entire_trace", get_trace(response)));
@@ -529,7 +529,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
                           ("why",except_ptr->what()));
 
                   fc_dlog(_trx_log, "[TRX_TRACE] Speculative execution is REJECTING tx: ${trx} ",
-                          ("trx", chain_plug->get_entire_trx(trx->packed_trx()->get_transaction())));
+                          ("trx", chain_plug->get_log_trx(trx->packed_trx()->get_transaction())));
                   fc_dlog(_trx_trace_failure_log, "[TRX_TRACE] Speculative execution is REJECTING tx: ${entire_trace} ",
                           ("entire_trace", get_trace(response)));
                }
@@ -542,7 +542,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
 
                   fc_dlog(_trx_log, "[TRX_TRACE] Block ${block_num} for producer ${prod} is ACCEPTING tx: ${trx}",
                           ("block_num", chain.head_block_num() + 1)("prod", get_pending_block_producer())
-                          ("trx", chain_plug->get_entire_trx(trx->packed_trx()->get_transaction())));
+                          ("trx", chain_plug->get_log_trx(trx->packed_trx()->get_transaction())));
                   fc_dlog(_trx_trace_success_log, "[TRX_TRACE] Block ${block_num} for producer ${prod} is ACCEPTING tx: ${entire_trace}",
                           ("block_num", chain.head_block_num() + 1)("prod", get_pending_block_producer())
                           ("entire_trace", get_trace(response)));
@@ -552,7 +552,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
                           ("a", trx->packed_trx()->get_transaction().first_authorizer()));
 
                   fc_dlog(_trx_log, "[TRX_TRACE] Speculative execution is ACCEPTING tx: ${trx}",
-                          ("trx", chain_plug->get_entire_trx(trx->packed_trx()->get_transaction())));
+                          ("trx", chain_plug->get_log_trx(trx->packed_trx()->get_transaction())));
                   fc_dlog(_trx_trace_success_log, "[TRX_TRACE] Speculative execution is ACCEPTING tx: ${entire_trace}",
                           ("entire_trace", get_trace(response)));
                }
@@ -1777,18 +1777,18 @@ bool producer_plugin_impl::remove_expired_trxs( const fc::time_point& deadline )
                   fc_dlog(_trx_log, "[TRX_TRACE] Block ${block_num} for producer ${prod} is EXPIRING PERSISTED tx: ${trx}",
                           ("block_num", chain.head_block_num() + 1)
                           ("prod", chain.is_building_block() ? chain.pending_block_producer() : name())
-                          ("trx", chain_plug->get_entire_trx(packed_trx_ptr->get_transaction())));
+                          ("trx", chain_plug->get_log_trx(packed_trx_ptr->get_transaction())));
                   fc_dlog(_trx_trace_failure_log, "[TRX_TRACE] Block ${block_num} for producer ${prod} is EXPIRING PERSISTED tx: ${entire_trx}",
                           ("block_num", chain.head_block_num() + 1)
                           ("prod", chain.is_building_block() ? chain.pending_block_producer() : name())
-                          ("entire_trx", chain_plug->get_entire_trx(packed_trx_ptr->get_transaction())));
+                          ("entire_trx", chain_plug->get_log_trx(packed_trx_ptr->get_transaction())));
                } else {
                   fc_dlog(_trx_failed_trace_log, "[TRX_TRACE] Speculative execution is EXPIRING PERSISTED tx: ${txid}", ("txid", packed_trx_ptr->id()));
 
                   fc_dlog(_trx_log, "[TRX_TRACE] Speculative execution is EXPIRING PERSISTED tx: ${trx}",
-                          ("trx", chain_plug->get_entire_trx(packed_trx_ptr->get_transaction())));
+                          ("trx", chain_plug->get_log_trx(packed_trx_ptr->get_transaction())));
                   fc_dlog(_trx_trace_failure_log, "[TRX_TRACE] Speculative execution is EXPIRING PERSISTED tx: ${entire_trx}",
-                          ("entire_trx", chain_plug->get_entire_trx(packed_trx_ptr->get_transaction())));
+                          ("entire_trx", chain_plug->get_log_trx(packed_trx_ptr->get_transaction())));
                }
                ++num_expired_persistent;
             } else {
@@ -1798,9 +1798,9 @@ bool producer_plugin_impl::remove_expired_trxs( const fc::time_point& deadline )
                         ("txid", packed_trx_ptr->id()));
 
                   fc_dlog(_trx_log, "[TRX_TRACE] Node with producers configured is dropping an EXPIRED transaction that was PREVIOUSLY ACCEPTED: ${trx}",
-                          ("trx", chain_plug->get_entire_trx(packed_trx_ptr->get_transaction())));
+                          ("trx", chain_plug->get_log_trx(packed_trx_ptr->get_transaction())));
                   fc_dlog(_trx_trace_failure_log, "[TRX_TRACE] Node with producers configured is dropping an EXPIRED transaction that was PREVIOUSLY ACCEPTED: ${entire_trx}",
-                          ("entire_trx", chain_plug->get_entire_trx(packed_trx_ptr->get_transaction())));
+                          ("entire_trx", chain_plug->get_log_trx(packed_trx_ptr->get_transaction())));
                }
                ++num_expired_other;
             }
@@ -2450,9 +2450,9 @@ void producer_plugin::log_failed_transaction(const transaction_id_type& trx_id, 
            ("txid", trx_id)("why", reason));
 
    fc_dlog(_trx_log, "[TRX_TRACE] Speculative execution is REJECTING tx: ${trx}",
-           ("entire_trx", packed_trx_ptr ? my->chain_plug->get_entire_trx(packed_trx_ptr->get_transaction()) : fc::variant{trx_id}));
+           ("entire_trx", packed_trx_ptr ? my->chain_plug->get_log_trx(packed_trx_ptr->get_transaction()) : fc::variant{trx_id}));
    fc_dlog(_trx_trace_failure_log, "[TRX_TRACE] Speculative execution is REJECTING tx: ${entire_trx}",
-           ("entire_trx", packed_trx_ptr ? my->chain_plug->get_entire_trx(packed_trx_ptr->get_transaction()) : fc::variant{trx_id}));
+           ("entire_trx", packed_trx_ptr ? my->chain_plug->get_log_trx(packed_trx_ptr->get_transaction()) : fc::variant{trx_id}));
 }
 
 bool producer_plugin::execute_incoming_transaction(const chain::transaction_metadata_ptr& trx,
