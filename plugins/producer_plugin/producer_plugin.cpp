@@ -2432,7 +2432,7 @@ void producer_plugin::log_failed_transaction(const transaction_id_type& trx_id, 
            ("txid", trx_id)("why", reason));
 
    fc_dlog(_trx_trace_failure_log, "[TRX_TRACE] Speculative execution is REJECTING tx: ${entire_trx}",
-           ("entire_trx", my->chain_plug->get_entire_trx(packed_trx_ptr->get_transaction())));
+           ("entire_trx", packed_trx_ptr ? my->chain_plug->get_entire_trx(packed_trx_ptr->get_transaction()) : fc::variant{trx_id}));
 }
 
 bool producer_plugin::execute_incoming_transaction(const chain::transaction_metadata_ptr& trx,
