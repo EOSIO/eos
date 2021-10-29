@@ -195,7 +195,7 @@ EOF
     fi
 done
 [[ -z "$TEST" ]] && cat <<EOF
-  - label: ":docker: Docker - Build and Install"
+  - label: ":docker: Docker - Build and Install on Ubuntu 18.04"
     command: "./.cicd/installation-build.sh"
     env:
       IMAGE_TAG: "ubuntu-18.04-unpinned"
@@ -203,7 +203,16 @@ done
     agents:
       queue: "$BUILDKITE_BUILD_AGENT_QUEUE"
     timeout: ${TIMEOUT:-180}
-    skip: ${SKIP_INSTALL}${SKIP_LINUX}${SKIP_DOCKER}${SKIP_CONTRACT_BUILDER}
+    skip: ${SKIP_INSTALL}${SKIP_UBUNTU_18_04}${SKIP_LINUX}${SKIP_DOCKER}${SKIP_CONTRACT_BUILDER}
+  - label: ":docker: Docker - Build and Install on Ubuntu 20.04"
+    command: "./.cicd/installation-build.sh"
+    env:
+      IMAGE_TAG: "ubuntu-20.04-unpinned"
+      PLATFORM_TYPE: "unpinned"
+    agents:
+      queue: "$BUILDKITE_BUILD_AGENT_QUEUE"
+    timeout: ${TIMEOUT:-180}
+    skip: ${SKIP_INSTALL}${SKIP_UBUNTU_20_04}${SKIP_LINUX}${SKIP_DOCKER}${SKIP_CONTRACT_BUILDER}
 
 EOF
 cat <<EOF
@@ -778,7 +787,7 @@ EOF
     timeout: ${TIMEOUT:-10}
     skip: ${SKIP_MACOS_11}${SKIP_PACKAGE_BUILDER}${SKIP_MAC}
 
-  - label: ":docker: Docker - Label Container with Git Branch and Git Tag"
+  - label: ":docker: Docker - Label Container with Git Branch and Git Tag on Ubuntu 18.04"
     command: .cicd/docker-tag.sh
     env:
       IMAGE_TAG: "ubuntu-18.04-unpinned"
@@ -786,7 +795,17 @@ EOF
     agents:
       queue: "$BUILDKITE_BUILD_AGENT_QUEUE"
     timeout: ${TIMEOUT:-10}
-    skip: ${SKIP_INSTALL}${SKIP_LINUX}${SKIP_DOCKER}${SKIP_CONTRACT_BUILDER}
+    skip: ${SKIP_INSTALL}${SKIP_UBUNTU_18_04}${SKIP_LINUX}${SKIP_DOCKER}${SKIP_CONTRACT_BUILDER}
+
+  - label: ":docker: Docker - Label Container with Git Branch and Git Tag on Ubuntu 20.04"
+    command: .cicd/docker-tag.sh
+    env:
+      IMAGE_TAG: "ubuntu-20.04-unpinned"
+      PLATFORM_TYPE: "unpinned"
+    agents:
+      queue: "$BUILDKITE_BUILD_AGENT_QUEUE"
+    timeout: ${TIMEOUT:-10}
+    skip: ${SKIP_INSTALL}${SKIP_UBUNTU_20_04}${SKIP_LINUX}${SKIP_DOCKER}${SKIP_CONTRACT_BUILDER}
 
   - wait
 
@@ -809,7 +828,7 @@ EOF
     command:  "./.cicd/create-docker-from-binary.sh"
     agents:
       queue: "$BUILDKITE_BUILD_AGENT_QUEUE"
-    skip: ${SKIP_INSTALL}${SKIP_LINUX}${SKIP_DOCKER}${SKIP_PACKAGE_BUILDER}${SKIP_PUBLIC_DOCKER}
+    skip: ${SKIP_INSTALL}${SKIP_UBUNTU_18_04}${SKIP_LINUX}${SKIP_DOCKER}${SKIP_PACKAGE_BUILDER}${SKIP_PUBLIC_DOCKER}
     timeout: ${TIMEOUT:-10}
 EOF
 IFS=$oIFS
