@@ -281,13 +281,13 @@
                     "type": "pair_string_string"
                 },
                 "firstname": {
-                    "type": "non_unique<eosio::name, std::string>"
+                    "type": "tuple_name_string"
                 },
                 "lastname": {
-                    "type": "non_unique<eosio::name, std::string>"
+                    "type": "tuple_name_string"
                 },
                 "persid": {
-                    "type": "non_unique<eosio::name, std::string>"
+                    "type": "tuple_name_string"
                 },
                 "address": {
                     "type": "tuple_name_string_string_string_string"
