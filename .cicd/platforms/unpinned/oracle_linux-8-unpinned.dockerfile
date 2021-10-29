@@ -28,7 +28,6 @@ RUN dnf update -y && \
         llvm-toolset \
         make \
         ncurses-devel \
-        nodejs \
         openssl \
         openssl-devel \
         patch \
@@ -79,6 +78,12 @@ RUN curl -LO https://boostorg.jfrog.io/artifactory/main/release/1.71.0/source/bo
 
 # requests module. used by tests
 RUN python3 -m pip install requests
+
+# install node, needed for tests
+RUN dnf update -y && \
+    dnf module install -y nodejs:14 && \
+    dnf clean all && \
+    rm -rf /var/cache/dnf /var/cache/yum
 
 # setup Postgress
 RUN localedef -c -f UTF-8 -i en_US en_US.UTF-8 && \
