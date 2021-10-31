@@ -63,9 +63,6 @@ struct permission {
    std::optional<std::vector<linked_action>>  linked_actions;
 };
 
-template<typename>
-struct resolver_factory;
-
 // see specializations for uint64_t and double in source file
 template<typename Type>
 Type convert_to_type(const string& str, const string& desc) {
@@ -915,7 +912,6 @@ public:
    get_accounts_by_authorizers_result get_accounts_by_authorizers( const get_accounts_by_authorizers_params& args) const;
 
    chain::symbol extract_core_symbol()const;
-   friend struct resolver_factory<read_only>;
 
    struct get_all_accounts_result {
       struct account_result {
@@ -965,8 +961,6 @@ public:
    using send_transaction_params = push_transaction_params;
    using send_transaction_results = push_transaction_results;
    void send_transaction(const send_transaction_params& params, chain::plugin_interface::next_function<send_transaction_results> next);
-
-   friend resolver_factory<read_write>;
 };
 
  //support for --key_types [sha256,ripemd160] and --encoding [dec/hex]
@@ -1094,6 +1088,10 @@ public:
    static void handle_bad_alloc();
    
    bool account_queries_enabled() const;
+
+   fc::variant get_entire_trx_trace(const transaction_trace_ptr& trx_trace) const;
+   fc::variant get_entire_trx(const transaction& trx) const;
+
 private:
    static void log_guard_exception(const chain::guard_exception& e);
 

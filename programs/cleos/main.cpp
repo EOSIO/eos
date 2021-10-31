@@ -2584,7 +2584,8 @@ int main( int argc, char** argv ) {
    app.add_option( "--wallet-url", wallet_url, localized("The http/https URL where ${k} is running", ("k", key_store_executable_name)), true );
 
    app.add_option( "--abi-file", abi_files_overide_callback, localized("In form of <contract name>:<abi file path>, use a local abi file for serialization and deserialization instead of getting the abi data from the blockchain; repeat this option to pass multiple abi files for different contracts"))->type_size(0, 1000);
-   app.add_option( "--amqp", amqp_address, localized("The ampq URL where AMQP is running amqp://USER:PASSWORD@ADDRESS:PORT"), false );
+
+   app.add_option( "--amqp", amqp_address, localized("The ampq URL where AMQP is running amqp://USER:PASSWORD@ADDRESS:PORT"), false )->envname(EOSIO_AMQP_ADDRESS_ENV_VAR);
    app.add_option( "--amqp-queue-name", amqp_queue_name, localized("The ampq queue to send transaction to"), true );
    app.add_option( "--amqp-reply-to", amqp_reply_to, localized("The ampq reply to string"), false );
 
@@ -3796,7 +3797,7 @@ int main( int argc, char** argv ) {
       EOSC_ASSERT( str_private_key.empty() || str_public_key.empty(), "ERROR: Either -k/--private-key or --public-key or none of them can be set" );
       fc::variant trx_var = json_from_file_or_string(trx_json_to_sign);
 
-      // If transaction was packed, unpack it before signing 
+      // If transaction was packed, unpack it before signing
       bool was_packed_trx = false;
       if( trx_var.is_object() ) {
          fc::variant_object& vo = trx_var.get_object();
@@ -4459,7 +4460,7 @@ int main( int argc, char** argv ) {
    } catch (const fc::exception& e) {
      return handle_error(e);
    } catch (const std::exception& e) {
-      return handle_error(fc::std_exception_wrapper::from_current_exception(e)); 
+      return handle_error(fc::std_exception_wrapper::from_current_exception(e));
    }
 
    return 0;
