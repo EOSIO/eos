@@ -72,13 +72,13 @@ streamer_plugin::~streamer_plugin() {}
 void streamer_plugin::set_program_options(options_description& cli, options_description& cfg) {
    auto op = cfg.add_options();
    op("stream-rabbits", bpo::value<std::vector<string>>()->composing(),
-      "RabbitMQ Streams to queues if any; Format: amqp://USER:PASSWORD@ADDRESS:PORT/QUEUE[/STREAMING_ROUTE, ...]. Additional list of streams delimited by ::: can be specified in the environment variable "
+      "RabbitMQ Streams to queues if any; Additional list of streams delimited by ::: can be specified in the environment variable "
       EOSIO_STREAM_RABBITS_ENV_VAR
-      ".");
+      ". Format: amqp://USER:PASSWORD@ADDRESS:PORT/QUEUE[/STREAMING_ROUTE, ...].");
    op("stream-rabbits-exchange", bpo::value<std::vector<string>>()->composing(),
-      "RabbitMQ Streams to exchanges if any; Format: amqp://USER:PASSWORD@ADDRESS:PORT/EXCHANGE[::EXCHANGE_TYPE][/STREAMING_ROUTE, ...]. Additional list of streams delimited by ::: can be specified in the environment variable "
+      "RabbitMQ Streams to exchanges if any; Additional list of streams delimited by ::: can be specified in the environment variable "
       EOSIO_STREAM_RABBITS_EXCHANGE_ENV_VAR
-      ".");
+      ". Format: amqp://USER:PASSWORD@ADDRESS:PORT/EXCHANGE[::EXCHANGE_TYPE][/STREAMING_ROUTE, ...]");
    op("stream-rabbits-immediately", bpo::bool_switch(&my->publish_immediately)->default_value(false),
       "Stream to RabbitMQ immediately instead of batching per block. Disables reliable message delivery.");
    op("stream-loggers", bpo::value<std::vector<string>>()->composing(),
