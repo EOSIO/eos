@@ -158,7 +158,10 @@ namespace eosio {
       void sync_update_expected( const connection_ptr& c, const block_id_type& blk_id, uint32_t blk_num, bool blk_applied );
       void recv_handshake( const connection_ptr& c, const handshake_message& msg );
       void sync_recv_notice( const connection_ptr& c, const notice_message& msg );
-      inline void reset_last_requested_num() {
+      inline void reset_last_requested_num(bool lock = false) {
+         std::unique_lock<std::mutex> g( sync_mtx, std::defer_lock_t{} );
+         if (lock)
+            g.lock();
          sync_last_requested_num = 0;
       }
    };
@@ -2007,14 +2010,15 @@ namespace eosio {
    // called from connection strand
    void sync_manager::rejected_block( const connection_ptr& c, uint32_t blk_num ) {
       c->block_status_monitor_.rejected();
+      std::unique_lock<std::mutex> g( sync_mtx );
+      reset_last_requested_num();
       if( c->block_status_monitor_.max_events_violated()) {
          peer_wlog( c, "block ${bn} not accepted, closing connection", ("bn", blk_num) );
-         std::unique_lock<std::mutex> g( sync_mtx );
-         reset_last_requested_num();
          sync_source.reset();
          g.unlock();
          c->close();
       } else {
+         g.unlock();
          c->send_handshake();
       }
    }
@@ -2734,7 +2738,7 @@ namespace eosio {
             } else {
                peer_ilog( this, "received block ${n} less than lib ${lib}", ("n", blk_num)("lib", lib) );
                enqueue( (sync_request_message) {0, 0} );
-               my_impl->sync_master->reset_last_requested_num();
+               my_impl->sync_master->reset_last_requested_num(true);
                send_handshake();
                cancel_wait();
             }
