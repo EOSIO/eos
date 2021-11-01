@@ -15,7 +15,12 @@ endif()
 
 add_subdirectory( fc )
 add_subdirectory( builtins )
+
+# Suppress warnings on 3rdParty Library
+add_definitions( -w )
 add_subdirectory( softfloat )
+remove_definitions( -w )
+
 add_subdirectory( chainbase )
 add_subdirectory( wasm-jit )
 add_subdirectory( appbase )
@@ -24,7 +29,12 @@ add_subdirectory( testing )
 add_subdirectory( version )
 add_subdirectory( state_history )
 add_subdirectory( abieos )
+
+# Suppress warnings on 3rdParty Library
+add_definitions( -w )
 add_subdirectory( rocksdb )
+remove_definitions( -w )
+
 add_subdirectory( chain_kv )
 add_subdirectory( se-helpers )
 add_subdirectory( tpm-helpers )
