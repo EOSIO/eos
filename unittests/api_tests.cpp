@@ -979,8 +979,6 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(checktime_fail_tests, TESTER_T, backing_store_ts) 
    t.control->get_resource_limits_manager().get_account_limits( "testapi"_n, x, net, cpu );
    wdump((net)(cpu));
 
-#warning TODO call the contract before testing to cache it, and validate that it was cached
-
    BOOST_CHECK_EXCEPTION( call_test( t, test_api_action<TEST_METHOD("test_checktime", "checktime_failure")>{},
                                      5000, 200, fc::raw::pack(10000000000000000000ULL) ),
                           deadline_exception, is_deadline_exception );
@@ -1056,8 +1054,6 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(checktime_intrinsic, TESTER_T, backing_store_ts) {
                                           5000, 10 ),
                                deadline_exception, is_deadline_exception );
 
-#warning TODO validate that the contract was successfully cached
-
         //it will always call
         BOOST_CHECK_EXCEPTION( call_test( t, test_api_action<TEST_METHOD("doesn't matter", "doesn't matter")>{},
                                           5000, 10 ),
@@ -1094,8 +1090,6 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(checktime_grow_memory, TESTER_T, backing_store_ts)
                                           5000, 10 ),
                                deadline_exception, is_deadline_exception );
 
-#warning TODO validate that the contract was successfully cached
-
         //it will always call
         BOOST_CHECK_EXCEPTION( call_test( t, test_api_action<TEST_METHOD("doesn't matter", "doesn't matter")>{},
                                           5000, 10 ),
@@ -1114,8 +1108,6 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(checktime_hashing_fail, TESTER_T, backing_store_ts
         BOOST_CHECK_EXCEPTION( call_test( t, test_api_action<TEST_METHOD("test_checktime", "checktime_sha1_failure")>{},
                                           5000, 3 ),
                                deadline_exception, is_deadline_exception );
-
-#warning TODO validate that the contract was successfully cached
 
         //the contract should be cached, now we should get deadline_exception because of calls to checktime() from hashing function
         BOOST_CHECK_EXCEPTION( call_test( t, test_api_action<TEST_METHOD("test_checktime", "checktime_sha1_failure")>{},
@@ -2178,12 +2170,10 @@ BOOST_FIXTURE_TEST_CASE(db_notify_tests, TESTER) {
    BOOST_TEST_REQUIRE(push_action( action({}, "notifier"_n, name(), {}), "notifier"_n.to_uint64_t() ) == "");
 }
 
-#warning only testing chainbase till replay fix branch is merged, then remove "using backing_store_ts_only_cb..." and replace its use below with backing_store_ts (EPE-497)
-using backing_store_ts_only_cb = boost::mpl::list<TESTER>;
 /*************************************************************************************
  * multi_index_tests test case
  *************************************************************************************/
-BOOST_AUTO_TEST_CASE_TEMPLATE(multi_index_tests, TESTER_T, backing_store_ts_only_cb) { try {
+BOOST_AUTO_TEST_CASE_TEMPLATE(multi_index_tests, TESTER_T, backing_store_ts) { try {
    TESTER_T t;
    t.produce_blocks(1);
    t.create_account( "testapi"_n );
@@ -2630,7 +2620,6 @@ BOOST_FIXTURE_TEST_CASE(types_tests, TESTER) { try {
 /*************************************************************************************
  * permission_tests test case
  *************************************************************************************/
-#warning should test with rocksdb, but accesses chainbase directly
 BOOST_FIXTURE_TEST_CASE(permission_tests, TESTER) { try {
    produce_blocks(1);
    create_account( "testapi"_n );

@@ -691,8 +691,6 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_kv_snapshot, SNAPSHOT_SUITE, snapshot_suites)
             // produce block
             auto new_block = chain.produce_block();
 
-#warning TODO: adding verification of the kv_object content and storing more than one key so that snapshot looping is tested
-
             // undo the auto-pending from tester
             chain.control->abort_block();
 
