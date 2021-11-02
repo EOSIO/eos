@@ -260,6 +260,9 @@ set_property(TEST rodeos_multi_ship_kill_clean_restart_load_test PROPERTY LABELS
 add_test(NAME rodeos_wasmQL_http_timeout COMMAND tests/rodeos_wasmQL_http_timeout.py -v --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 set_property(TEST rodeos_wasmQL_http_timeout PROPERTY LABELS nonparallelizable_tests)
 
+add_test(NAME rodeos_wasmQL_http_timeout_unix_socket COMMAND tests/rodeos_wasmQL_http_timeout.py --unix-socket -v --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_property(TEST rodeos_wasmQL_http_timeout_unix_socket PROPERTY LABELS nonparallelizable_tests)
+
 if("eos-vm-oc" IN_LIST EOSIO_WASM_RUNTIMES)
 
   add_test(NAME rodeos_multi_ship_eos_vm_oc_idle_test COMMAND tests/rodeos_multi_ship_test.py -v --clean-run --dump-error-detail --eos-vm-oc-enable WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
@@ -281,7 +284,10 @@ if("eos-vm-oc" IN_LIST EOSIO_WASM_RUNTIMES)
   set_property(TEST rodeos_multi_ship_kill_restart_eos_vm_oc_load_test PROPERTY LABELS nonparallelizable_tests)
 
   add_test(NAME rodeos_wasmQL_http_timeout_eos_vm_oc COMMAND tests/rodeos_wasmQL_http_timeout.py -v --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
-set_property(TEST rodeos_wasmQL_http_timeout_eos_vm_oc PROPERTY LABELS nonparallelizable_tests)
+  set_property(TEST rodeos_wasmQL_http_timeout_eos_vm_oc PROPERTY LABELS nonparallelizable_tests)
+
+  add_test(NAME rodeos_wasmQL_http_timeout_unix_socket_eos_vm_oc COMMAND tests/rodeos_wasmQL_http_timeout.py --unix-socket -v --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+  set_property(TEST rodeos_wasmQL_http_timeout_unix_socket_eos_vm_oc PROPERTY LABELS nonparallelizable_tests)
 
 endif()
 
