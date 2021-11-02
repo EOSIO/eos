@@ -355,6 +355,7 @@ EOF
                  [[ "$TEST_NAME" != 'rodeos_multi_ship_kill_restart_eos_vm_oc_load_test' ]] && \
                  [[ "$TEST_NAME" != 'rodeos_idle_restart_ship_unix-socket_eos-vm-oc_test' ]] && \
                  [[ "$TEST_NAME" != 'rodeos_idle_restart_rodeos_unix-socket_eos-vm-oc_test' ]] && \
+                 [[ "$TEST_NAME" != 'rodeos_wasmQL_http_timeout_unix_socket_eos_vm_oc' ]] && \
                  [[ "$TEST_NAME" != 'rodeos_wasmQL_http_timeout_eos_vm_oc' ]]
                  then
                 cat <<EOF
