@@ -118,7 +118,7 @@ void wasm_ql_plugin::plugin_initialize(const variables_map& options) {
       shared_state->max_console_size = options.at("wql-console-size").as<uint32_t>();
       shared_state->wasm_cache_size  = options.at("wql-wasm-cache-size").as<uint32_t>();
       http_config->max_request_size  = options.at("wql-max-request-size").as<uint32_t>();
-      http_config->idle_timeout_ms   = std::chrono::milliseconds( options.at("wql-idle-timeout").as<uint32_t>() );
+      http_config->idle_timeout_ms   = std::chrono::milliseconds( options.at("wql-idle-timeout").as<uint64_t>() );
       shared_state->max_exec_time_ms = options.at("wql-exec-time").as<uint64_t>();
       shared_state->max_action_return_value_size = options.at("wql-max-action-return-value").as<uint32_t>();
       if (options.count("wql-contract-dir"))
