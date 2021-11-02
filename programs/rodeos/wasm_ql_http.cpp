@@ -447,7 +447,7 @@ class http_session {
          queue_(*this) {}
 
    // Start the session
-   void run() { s data
+   void run() {
       _timer.reset(new boost::asio::steady_timer(derived_session().stream.socket().get_executor()));
       session_begin = steady_clock::now();
       _timer->expires_after( http_config->idle_timeout_ms );
