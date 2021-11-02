@@ -545,8 +545,8 @@ class http_session {
       if (ec == http::error::end_of_stream)
          return do_close();
 
-      if (ec){
-         fail(ec, "read");
+      if (ec) {
+         fail( ec, "read" );
          return do_close();
       }
 
