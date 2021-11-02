@@ -11,7 +11,6 @@
 #include <fc/exception/exception.hpp>
 #include <fc/log/trace.hpp>
 #include <boost/filesystem/operations.hpp>
-#include <boost/filesystem/operations.hpp>
 #include <boost/algorithm/string/split.hpp>
 #include <boost/algorithm/string/classification.hpp>
 #include <memory>
