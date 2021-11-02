@@ -5,6 +5,7 @@
 #include <eosio/chain/thread_utils.hpp>
 #include <fc/log/logger.hpp>
 #include <fc/exception/exception.hpp>
+#include <fc/time.hpp>
 #include <amqpcpp.h>
 #include <condition_variable>
 
@@ -22,14 +23,22 @@ public:
    using delivery_tag_t = uint64_t;
    // called from amqp thread on consume of message
    using on_consume_t = std::function<void(const AMQP::Message& message, delivery_tag_t delivery_tag, bool redelivered)>;
+   // called from amqp thread on ack of cancel of consume
+   using on_cancel_t = std::function<void(const std::string& consumer_tag)>;
 
    /// Blocks until connection successful or error
    /// @param address AMQP address
+   /// @param retry_timeout time to wait for connection to be established before calling on_err
+   /// @param retry_interval time between retry of connection attempts to AMQP
    /// @param on_err callback for errors, called from amqp thread or caller thread, can be nullptr
-   amqp_handler( const std::string& address, on_error_t on_err )
+   amqp_handler( const std::string& address,
+                 const fc::microseconds& retry_timeout, const fc::microseconds& retry_interval,
+                 on_error_t on_err )
          : first_connect_()
          , thread_pool_( "ampq", 1 ) // amqp is not thread safe, use only one thread
-         , amqp_connection_(  thread_pool_.get_executor(), address,
+         , timer_( thread_pool_.get_executor() )
+         , retry_timeout_( retry_timeout.count() )
+         , amqp_connection_(  thread_pool_.get_executor(), address, retry_interval,
                               [this](AMQP::Channel* c){channel_ready(c);}, [this](){channel_failed();} )
          , on_error_( std::move( on_err ) )
    {
@@ -41,7 +50,7 @@ public:
    /// Declare a durable exchange, blocks until successful or error
    /// @param exchange_name AMQP exchange to declare
    /// @param exchange_type AMQP exchange type, empty (direct), "fanout", or "direct" anything else calls on_err
-   void declare_exchange(std::string exchange_name, const std::string& exchange_type) {
+   void declare_exchange(const std::string& exchange_name, const std::string& exchange_type) {
       auto type = AMQP::direct;
       if( !exchange_type.empty() ) {
          if (exchange_type == "fanout") {
@@ -85,7 +94,7 @@ public:
 
    /// Declare a durable queue, blocks until successful or error
    /// @param queue_name AMQP queue name to declare
-   void declare_queue(std::string queue_name) {
+   void declare_queue(const std::string& queue_name) {
       start_cond cond;
       boost::asio::post( thread_pool_.get_executor(), [this, &cond, qn=queue_name]() mutable {
           try {
@@ -123,7 +132,7 @@ public:
       stop();
    }
 
-   /// publish to AMQP, on_error() called if not connected
+   /// publish to AMQP, on_error() called if not connected at time of call
    void publish( std::string exchange, std::string queue_name, std::string correlation_id, std::string reply_to,
                  std::vector<char> buf ) {
       boost::asio::post( thread_pool_.get_executor(),
@@ -145,7 +154,7 @@ public:
    }
 
    /// publish to AMQP calling f() -> std::vector<char> on amqp thread
-   //  on_error() called if not connected
+   //  on_error() called if not connected at time of call
    template<typename Func>
    void publish( std::string exchange, std::string queue_name, std::string correlation_id, std::string reply_to, Func f ) {
       boost::asio::post( thread_pool_.get_executor(),
@@ -167,29 +176,34 @@ public:
       } );
    }
 
-   /// ack consume message
+   /// ack consume message, if not connected at time of call, ack is saved and ack'ed on re-establishment of connection
    /// @param multiple true if given delivery_tag and all previous should be ack'ed
    void ack( const delivery_tag_t& delivery_tag, bool multiple = false ) {
       boost::asio::post( thread_pool_.get_executor(),
             [my = this, delivery_tag, multiple]() {
                try {
+                  int flags = multiple ? AMQP::multiple : 0;
                   if( my->channel_ )
-                     my->channel_->ack( delivery_tag, multiple ? AMQP::multiple : 0 );
+                     my->channel_->ack( delivery_tag, flags );
                   else
-                     my->on_error( "AMQP Unable to ack: " + std::to_string(delivery_tag) );
+                     my->acks_.emplace_back( ack_reject_t{.tag_ = delivery_tag, .ack_ = true, .flags_ = flags} );
                } FC_LOG_AND_DROP()
             } );
    }
 
-   // reject consume message
-   void reject( const delivery_tag_t& delivery_tag ) {
+   /// reject consume message, if not connected at time of call, reject is saved and rejected on re-establishment of connection
+   /// @param multiple reject multiple messages: all un-acked messages that were earlier delivered are unacked too
+   /// @param requeue if true, the message is put back in the queue, otherwise it is dead-lettered/removed
+   void reject( const delivery_tag_t& delivery_tag, bool multiple, bool requeue ) {
       boost::asio::post( thread_pool_.get_executor(),
-            [my = this, delivery_tag]() {
+            [my = this, delivery_tag, multiple, requeue]() {
                try {
+                  int flags = multiple ? AMQP::multiple : 0;
+                  flags |= requeue ? AMQP::requeue : 0;
                   if( my->channel_ )
-                     my->channel_->reject( delivery_tag );
+                     my->channel_->reject( delivery_tag, flags );
                   else
-                     my->on_error( "AMQP Unable to reject: " + std::to_string(delivery_tag) );
+                     my->acks_.emplace_back( ack_reject_t{.tag_ = delivery_tag, .ack_ = false, .flags_ = flags} );
                } FC_LOG_AND_DROP()
             } );
    }
@@ -220,7 +234,7 @@ public:
                stop_promise.set_value();
             }
          } );
-         future.wait();
+         future.wait_for(std::chrono::seconds( 10 ));
 
          thread_pool_.stop();
       }
@@ -252,6 +266,22 @@ public:
       } );
    }
 
+   /// Stop consuming from provided queue, does not block.
+   /// Will either callback on on_cancel or on_error from amqp thread.
+   /// @param on_cancel called when cancel has been processed. Called from amqp thread.
+   void stop_consume(on_cancel_t on_cancel) {
+      boost::asio::post( thread_pool_.get_executor(),
+                         [this, on_cancel{std::move(on_cancel)}]() mutable {
+         try {
+            if( !on_consume_ ) {
+               on_error("AMQP not consuming from " + queue_name_);
+               return;
+            }
+            cancel_consume(std::move(on_cancel));
+         } FC_LOG_AND_DROP()
+      } );
+   }
+
 private:
 
    // called from non-amqp thread
@@ -266,14 +296,36 @@ private:
    void channel_ready(AMQP::Channel* c) {
       ilog( "AMQP Channel ready: ${id}, for ${a}", ("id", c ? c->id() : 0)("a", amqp_connection_.address()) );
       channel_ = c;
+      boost::system::error_code ec;
+      timer_.cancel(ec);
+      for( const ack_reject_t& ack : acks_ ) {
+         if( ack.ack_ )
+            channel_->ack(ack.tag_, ack.flags_);
+         else
+            channel_->reject(ack.tag_, ack.flags_);
+      }
+      acks_.clear();
       init_consume(true);
       first_connect_.set();
    }
 
    // called from amqp thread
    void channel_failed() {
-      elog( "AMQP connection failed to: ${a}", ("a", amqp_connection_.address()) );
+      wlog( "AMQP connection failed to: ${a}", ("a", amqp_connection_.address()) );
       channel_ = nullptr;
+      // connection will automatically be retried by single_channel_retrying_amqp_connection
+
+      boost::system::error_code ec;
+      timer_.expires_from_now(retry_timeout_, ec);
+      if(ec)
+         return;
+      timer_.async_wait(boost::asio::bind_executor(thread_pool_.get_executor(), [this](const auto& ec) {
+         if(ec)
+            return;
+         elog( "AMQP connection timeout" );
+         on_error("AMQP connection timeout");
+      }));
+
    }
 
    // called from amqp thread
@@ -288,16 +340,42 @@ private:
               } );
          }
 
-         auto &consumer = channel_->consume(queue_name_);
-         consumer.onSuccess([&](const std::string &consumer_tag) {
-            ilog("consume started: ${tag}, for ${a}", ("tag", consumer_tag)("a", amqp_connection_.address()));
+         auto& consumer = channel_->consume(queue_name_);
+         consumer.onSuccess([&](const std::string& consumer_tag) {
+            ilog("consume started, queue: ${q}, tag: ${tag}, for ${a}",
+                 ("q", queue_name_)("tag", consumer_tag)("a", amqp_connection_.address()));
+            consumer_tag_ = consumer_tag;
          });
-         consumer.onError([&](const char *message) {
-            elog("consume failed: ${e}, for ${a}", ("e", message)("a", amqp_connection_.address()));
-            on_error(message);
+         consumer.onError([&](const char* message) {
+            elog("consume failed, queue ${q}, tag: ${t} error: ${e}, for ${a}",
+                 ("q", queue_name_)("t", consumer_tag_)("e", message)("a", amqp_connection_.address()));
+            consumer_tag_.clear();
          });
          static_assert(std::is_same_v<on_consume_t, AMQP::MessageCallback>, "AMQP::MessageCallback interface changed");
          consumer.onReceived(on_consume_);
+      }
+   }
+
+   // called from amqp thread
+   void cancel_consume(on_cancel_t on_cancel) {
+      if( channel_ && on_consume_ && !consumer_tag_.empty() ) {
+         auto& consumer = channel_->cancel(consumer_tag_);
+         consumer.onSuccess([&, cb{std::move(on_cancel)}](const std::string& consumer_tag) {
+            ilog("consume stopped, queue: ${q}, tag: ${tag}, for ${a}",
+                 ("q", queue_name_)("tag", consumer_tag)("a", amqp_connection_.address()));
+            consumer_tag_.clear();
+            on_consume_ = nullptr;
+            if( cb ) cb(consumer_tag);
+         });
+         consumer.onError([&](const char* message) {
+            elog("cancel consume failed, queue ${q}, tag: ${t} error: ${e}, for ${a}",
+                 ("q", queue_name_)("t", consumer_tag_)("e", message)("a", amqp_connection_.address()));
+            consumer_tag_.clear();
+            on_consume_ = nullptr;
+            on_error(message);
+         });
+      } else {
+         wlog("Unable to stop consuming from queue: ${q}, tag: ${t}", ("q", queue_name_)("t", consumer_tag_));
       }
    }
 
@@ -336,11 +414,21 @@ private:
 private:
    start_cond first_connect_;
    eosio::chain::named_thread_pool thread_pool_;
+   boost::asio::steady_timer timer_;
+   const std::chrono::microseconds retry_timeout_;
    single_channel_retrying_amqp_connection amqp_connection_;
    AMQP::Channel* channel_ = nullptr; // null when not connected
    on_error_t on_error_;
    on_consume_t on_consume_;
    std::string queue_name_;
+   std::string consumer_tag_;
+
+   struct ack_reject_t {
+      delivery_tag_t tag_{};
+      bool ack_ = false;
+      int flags_ = 0; // AMQP::Multiple, AMQP::Requeue
+   };
+   std::deque<ack_reject_t> acks_;
 };
 
 } // namespace eosio

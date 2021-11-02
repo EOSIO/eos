@@ -16,7 +16,7 @@ struct system_callbacks {
 
       block_info_kv table{ { derived().get_db_view_state() } };
       if (table.primary_index.begin() != table.primary_index.end()) {
-         return table.primary_index.begin().value();
+         return (--table.primary_index.end()).value();
       }
       throw std::runtime_error("system callback database is missing block_info_v0");
    }

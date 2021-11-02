@@ -80,7 +80,6 @@ Options:
 
 #include <eosio/chain/name.hpp>
 #include <eosio/chain/config.hpp>
-#include <eosio/chain/wast_to_wasm.hpp>
 #include <eosio/chain/trace.hpp>
 #include <eosio/chain_plugin/chain_plugin.hpp>
 #include <eosio/chain/contract_types.hpp>
@@ -164,6 +163,8 @@ string wallet_url; //to be set to default_wallet_url in main
 string amqp_address;
 string amqp_reply_to;
 string amqp_queue_name = "trx";
+std::map<name, std::string>  abi_files_override;
+
 bool no_verify = false;
 vector<string> headers;
 
@@ -348,14 +349,18 @@ auto abi_serializer_resolver = [](const name& account) -> std::optional<abi_seri
   static unordered_map<account_name, std::optional<abi_serializer> > abi_cache;
   auto it = abi_cache.find( account );
   if ( it == abi_cache.end() ) {
-    const auto raw_abi_result = call(get_raw_abi_func, fc::mutable_variant_object("account_name", account));
-    const auto raw_abi_blob = raw_abi_result["abi"].as_blob().data;
 
     std::optional<abi_serializer> abis;
-    if (raw_abi_blob.size() != 0) {
-      abis.emplace(fc::raw::unpack<abi_def>(raw_abi_blob), abi_serializer::create_yield_function( abi_serializer_max_time ));
+    if (abi_files_override.find(account) != abi_files_override.end()) {
+      abis.emplace( fc::json::from_file(abi_files_override[account]).as<abi_def>(), abi_serializer::create_yield_function( abi_serializer_max_time ));
     } else {
-      std::cerr << "ABI for contract " << account.to_string() << " not found. Action data will be shown in hex only." << std::endl;
+      const auto raw_abi_result = call(get_raw_abi_func, fc::mutable_variant_object("account_name", account));
+      const auto raw_abi_blob = raw_abi_result["abi"].as_blob().data;
+      if (raw_abi_blob.size() != 0) {
+        abis.emplace(fc::raw::unpack<abi_def>(raw_abi_blob), abi_serializer::create_yield_function( abi_serializer_max_time ));
+      } else {
+        std::cerr << "ABI for contract " << account.to_string() << " not found. Action data will be shown in hex only." << std::endl;
+      }
     }
     abi_cache.emplace( account, abis );
 
@@ -444,7 +449,7 @@ fc::variant push_transaction( signed_transaction& trx, const std::vector<public_
             auto buf = fc::raw::pack( msg );
             const auto& tid = std::get<packed_transaction>(msg).id();
             string id = tid.str();
-            eosio::amqp_handler qp_trx( amqp_address, []( const std::string& err ) {
+            eosio::amqp_handler qp_trx( amqp_address, fc::seconds(5), fc::milliseconds(100), []( const std::string& err ) {
                std::cerr << "AMQP trx error: " << err << std::endl;
                exit( 1 );
             } );
@@ -2508,6 +2513,22 @@ CLI::callback_t header_opt_callback = [](CLI::results_t res) {
    return true;
 };
 
+CLI::callback_t abi_files_overide_callback = [](CLI::results_t account_abis) {
+   for (vector<string>::iterator itr = account_abis.begin(); itr != account_abis.end(); ++itr) {
+      size_t delim = itr->find(":");
+      std::string acct_name, abi_path;
+      if (delim != std::string::npos) {
+         acct_name = itr->substr(0, delim);
+         abi_path = itr->substr(delim + 1);
+      }
+      if (acct_name.length() == 0 || abi_path.length() == 0) {
+         std::cerr << "please specify --abi-file in form of <contract name>:<abi file path>.";
+         return false;
+      }
+      abi_files_override[name(acct_name)] = abi_path;
+   }
+   return true;
+};
 
 int main( int argc, char** argv ) {
 
@@ -2525,6 +2546,8 @@ int main( int argc, char** argv ) {
 
    app.add_option( "-u,--url", default_url, localized( "The http/https URL where ${n} is running", ("n", node_executable_name)), true );
    app.add_option( "--wallet-url", wallet_url, localized("The http/https URL where ${k} is running", ("k", key_store_executable_name)), true );
+
+   app.add_option( "--abi-file", abi_files_overide_callback, localized("In form of <contract name>:<abi file path>, use a local abi file for serialization and deserialization instead of getting the abi data from the blockchain; repeat this option to pass multiple abi files for different contracts"))->type_size(0, 1000);
    app.add_option( "--amqp", amqp_address, localized("The ampq URL where AMQP is running amqp://USER:PASSWORD@ADDRESS:PORT"), false );
    app.add_option( "--amqp-queue-name", amqp_queue_name, localized("The ampq queue to send transaction to"), true );
    app.add_option( "--amqp-reply-to", amqp_reply_to, localized("The ampq reply to string"), false );
@@ -2754,14 +2777,14 @@ int main( int argc, char** argv ) {
    // get code
    string codeFilename;
    string abiFilename;
-   bool code_as_wasm = false;
+   bool code_as_wasm = true;
    auto getCode = get->add_subcommand("code", localized("Retrieve the code and ABI for an account"));
    getCode->add_option("name", accountName, localized("The name of the account whose code should be retrieved"))->required();
-   getCode->add_option("-c,--code",codeFilename, localized("The name of the file to save the contract .wast/wasm to") );
+   getCode->add_option("-c,--code",codeFilename, localized("The name of the file to save the contract wasm to") );
    getCode->add_option("-a,--abi",abiFilename, localized("The name of the file to save the contract .abi to") );
-   getCode->add_flag("--wasm", code_as_wasm, localized("Save contract as wasm"));
+   getCode->add_flag("--wasm", code_as_wasm, localized("Save contract as wasm (ignored, default)"));
    getCode->callback([&] {
-      string code_hash, wasm, wast, abi;
+      string code_hash, wasm, abi;
       try {
          const auto result = call(get_raw_code_and_abi_func, fc::mutable_variant_object("account_name", accountName));
          const std::vector<char> wasm_v = result["wasm"].as_blob().data;
@@ -2773,8 +2796,6 @@ int main( int argc, char** argv ) {
          code_hash = (string)hash;
 
          wasm = string(wasm_v.begin(), wasm_v.end());
-         if(!code_as_wasm && wasm_v.size())
-            wast = wasm_to_wast((const uint8_t*)wasm_v.data(), wasm_v.size(), false);
 
          abi_def abi_d;
          if(abi_serializer::to_abi(abi_v, abi_d))
@@ -2784,25 +2805,18 @@ int main( int argc, char** argv ) {
          //see if this is an old nodeos that doesn't support get_raw_code_and_abi
          const auto old_result = call(get_code_func, fc::mutable_variant_object("account_name", accountName)("code_as_wasm",code_as_wasm));
          code_hash = old_result["code_hash"].as_string();
-         if(code_as_wasm) {
-            wasm = old_result["wasm"].as_string();
-            std::cout << localized("Warning: communicating to older ${n} which returns malformed binary wasm", ("n", node_executable_name)) << std::endl;
-         }
-         else
-            wast = old_result["wast"].as_string();
+         wasm = old_result["wasm"].as_string();
+         std::cout << localized("Warning: communicating to older ${n} which returns malformed binary wasm", ("n", node_executable_name)) << std::endl;
          abi = fc::json::to_pretty_string(old_result["abi"]);
       }
 
       std::cout << localized("code hash: ${code_hash}", ("code_hash", code_hash)) << std::endl;
 
       if( codeFilename.size() ){
-         std::cout << localized("saving ${type} to ${codeFilename}", ("type", (code_as_wasm ? "wasm" : "wast"))("codeFilename", codeFilename)) << std::endl;
+         std::cout << localized("saving wasm to ${codeFilename}", ("codeFilename", codeFilename)) << std::endl;
 
          std::ofstream out( codeFilename.c_str() );
-         if(code_as_wasm)
-            out << wasm;
-         else
-            out << wast;
+         out << wasm;
       }
       if( abiFilename.size() ) {
          std::cout << localized("saving abi to ${abiFilename}", ("abiFilename", abiFilename)) << std::endl;

@@ -397,8 +397,8 @@ const std::vector<char>& query_get_block(wasm_ql::thread_state&   thread_state,
 
    if (info) {
       auto&    obj = std::get<block_info_v0>(info->second);
-      uint32_t ref_block_prefix;
-      memcpy(&ref_block_prefix, obj.id.value.begin() + 8, sizeof(ref_block_prefix));
+      const uint32_t ref_block_prefix =
+            fc::sha256{ reinterpret_cast<const char*>(obj.id.extract_as_byte_array().data()), 32 }._hash[1];
 
       std::string result = "{";
       result += "\"block_num\":" + eosio::convert_to_json(obj.num);
@@ -605,16 +605,9 @@ struct send_transaction_params {
 
 EOSIO_REFLECT(send_transaction_params, signatures, compression, packed_context_free_data, packed_trx)
 
-struct send_transaction_results {
-   eosio::checksum256   transaction_id; // todo: redundant with processed.id
-   transaction_trace_v0 processed;
-};
-
-EOSIO_REFLECT(send_transaction_results, transaction_id, processed)
-
-const std::vector<char>& query_send_transaction(wasm_ql::thread_state&   thread_state,
-                                                const std::vector<char>& contract_kv_prefix, std::string_view body,
-                                                bool return_trace_on_except) {
+eosio::ship_protocol::transaction_trace_v0
+query_send_transaction(wasm_ql::thread_state&   thread_state,
+                       const std::vector<char>& contract_kv_prefix, std::string_view body, std::vector<std::vector<char>>& memory) {
    send_transaction_params params;
    {
       std::string              s{ body.begin(), body.end() };
@@ -634,16 +627,7 @@ const std::vector<char>& query_send_transaction(wasm_ql::thread_state&   thread_
 
    rocksdb::ManagedSnapshot snapshot{ thread_state.shared->db->rdb.get() };
 
-   std::vector<std::vector<char>> memory;
-   send_transaction_results       results;
-   results.processed = query_send_transaction(thread_state, contract_kv_prefix, trx, snapshot.snapshot(), memory,
-                                              return_trace_on_except);
-
-   // todo: hide variants during json conversion
-   // todo: avoid the extra copy
-   auto json = eosio::convert_to_json(results);
-   thread_state.action_return_value.assign(json.begin(), json.end());
-   return thread_state.action_return_value;
+   return query_send_transaction(thread_state, contract_kv_prefix, trx, snapshot.snapshot(), memory, true);
 } // query_send_transaction
 
 bool is_signatures_empty(const ship_protocol::prunable_data_type& data) {

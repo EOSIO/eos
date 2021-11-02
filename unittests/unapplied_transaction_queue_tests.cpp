@@ -338,12 +338,12 @@ BOOST_AUTO_TEST_CASE( unapplied_transaction_queue_erase_add ) try {
    auto trx8 = unique_trx_meta_data();
    auto trx9 = unique_trx_meta_data();
 
-   q.add_incoming( trx1, false, [](auto){} );
-   q.add_incoming( trx2, false, [](auto){} );
-   q.add_incoming( trx3, false, [](auto){} );
-   q.add_incoming( trx4, false, [](auto){} );
-   q.add_incoming( trx5, false, [](auto){} );
-   q.add_incoming( trx6, false, [](auto){} );
+   q.add_incoming( trx1, false, false, [](auto){} );
+   q.add_incoming( trx2, false, false, [](auto){} );
+   q.add_incoming( trx3, false, false, [](auto){} );
+   q.add_incoming( trx4, false, false, [](auto){} );
+   q.add_incoming( trx5, false, false, [](auto){} );
+   q.add_incoming( trx6, false, false, [](auto){} );
 
    auto itr = q.incoming_begin();
    auto end = q.incoming_end();
@@ -360,7 +360,7 @@ BOOST_AUTO_TEST_CASE( unapplied_transaction_queue_erase_add ) try {
       if( count == 2 ) BOOST_CHECK( trx_meta == trx5 );
       if( count == 1 ) BOOST_CHECK( trx_meta == trx6 );
       itr = q.erase( itr );
-      q.add_incoming( trx_meta, false, [](auto){} );
+      q.add_incoming( trx_meta, false, false, [](auto){} );
       --count;
    }
 
@@ -374,12 +374,12 @@ BOOST_AUTO_TEST_CASE( unapplied_transaction_queue_erase_add ) try {
    BOOST_CHECK( q.empty() );
 
    // incoming ++itr w/ erase
-   q.add_incoming( trx1, false, [](auto){} );
-   q.add_incoming( trx2, false, [](auto){} );
-   q.add_incoming( trx3, false, [](auto){} );
-   q.add_incoming( trx4, false, [](auto){} );
-   q.add_incoming( trx5, false, [](auto){} );
-   q.add_incoming( trx6, false, [](auto){} );
+   q.add_incoming( trx1, false, false, [](auto){} );
+   q.add_incoming( trx2, false, false, [](auto){} );
+   q.add_incoming( trx3, false, false, [](auto){} );
+   q.add_incoming( trx4, false, false, [](auto){} );
+   q.add_incoming( trx5, false, false, [](auto){} );
+   q.add_incoming( trx6, false, false, [](auto){} );
 
    itr = q.incoming_begin();
    end = q.incoming_end();
@@ -403,7 +403,7 @@ BOOST_AUTO_TEST_CASE( unapplied_transaction_queue_erase_add ) try {
    q.add_persisted( trx4 );
    q.add_persisted( trx5 );
    q.add_persisted( trx6 );
-   q.add_incoming( trx7, false, [](auto){} );
+   q.add_incoming( trx7, false, false, [](auto){} );
 
    itr = q.persisted_begin();
    end = q.persisted_end();
@@ -429,7 +429,7 @@ BOOST_AUTO_TEST_CASE( unapplied_transaction_queue_erase_add ) try {
    q.add_persisted( trx4 );
    q.add_persisted( trx5 );
    q.add_persisted( trx6 );
-   q.add_incoming( trx7, false, [](auto){} );
+   q.add_incoming( trx7, false, false, [](auto){} );
 
    itr = q.unapplied_begin();
    end = q.unapplied_end();
@@ -461,12 +461,12 @@ BOOST_AUTO_TEST_CASE( unapplied_transaction_queue_incoming_count ) try {
    auto trx5 = unique_trx_meta_data();
    auto trx6 = unique_trx_meta_data();
 
-   q.add_incoming( trx1, false, [](auto){} );
-   q.add_incoming( trx2, false, [](auto){} );
-   q.add_incoming( trx3, false, [](auto){} );
-   q.add_incoming( trx4, false, [](auto){} );
-   q.add_incoming( trx5, false, [](auto){} );
-   q.add_incoming( trx6, false, [](auto){} );
+   q.add_incoming( trx1, false, false, [](auto){} );
+   q.add_incoming( trx2, false, false, [](auto){} );
+   q.add_incoming( trx3, false, false, [](auto){} );
+   q.add_incoming( trx4, false, false, [](auto){} );
+   q.add_incoming( trx5, false, false, [](auto){} );
+   q.add_incoming( trx6, false, false, [](auto){} );
 
    auto expected = q.size();
 
@@ -488,7 +488,7 @@ BOOST_AUTO_TEST_CASE( unapplied_transaction_queue_incoming_count ) try {
    end = q.end();
 
    while( itr != end ) {
-      q.add_incoming( itr->trx_meta, false, [](auto){} );
+      q.add_incoming( itr->trx_meta, false, false, [](auto){} );
       ++expected;
       BOOST_CHECK( q.incoming_size() == expected );
       ++itr;

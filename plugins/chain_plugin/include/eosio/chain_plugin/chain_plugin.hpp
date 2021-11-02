@@ -909,8 +909,27 @@ public:
    get_accounts_by_authorizers_result get_accounts_by_authorizers( const get_accounts_by_authorizers_params& args) const;
 
    chain::symbol extract_core_symbol()const;
-
    friend struct resolver_factory<read_only>;
+
+   struct get_all_accounts_result {
+      struct account_result {
+         chain::name                          name;
+         chain::block_timestamp_type          creation_date;
+      };
+
+      std::vector<account_result> accounts;
+
+      std::optional<chain::name> more;
+   };
+
+   struct get_all_accounts_params {
+      uint32_t                    limit = 10;
+      std::optional<chain::name>  lower_bound;
+      std::optional<chain::name>  upper_bound;
+      bool                        reverse = false;
+   };
+
+   get_all_accounts_result get_all_accounts( const get_all_accounts_params& params)  const;
 };
 
 class read_write {
@@ -1138,3 +1157,6 @@ FC_REFLECT( eosio::chain_apis::read_only::abi_bin_to_json_params, (code)(action)
 FC_REFLECT( eosio::chain_apis::read_only::abi_bin_to_json_result, (args) )
 FC_REFLECT( eosio::chain_apis::read_only::get_required_keys_params, (transaction)(available_keys) )
 FC_REFLECT( eosio::chain_apis::read_only::get_required_keys_result, (required_keys) )
+FC_REFLECT( eosio::chain_apis::read_only::get_all_accounts_params, (limit)(lower_bound)(upper_bound)(reverse) )
+FC_REFLECT( eosio::chain_apis::read_only::get_all_accounts_result::account_result, (name)(creation_date))
+FC_REFLECT( eosio::chain_apis::read_only::get_all_accounts_result, (accounts)(more))

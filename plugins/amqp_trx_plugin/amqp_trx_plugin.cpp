@@ -1,7 +1,7 @@
 #include <eosio/amqp_trx_plugin/amqp_trx_plugin.hpp>
 #include <eosio/amqp_trx_plugin/fifo_trx_processing_queue.hpp>
 #include <eosio/amqp/amqp_handler.hpp>
-#include <eosio/amqp_trace_plugin/amqp_trace_plugin_impl.hpp>
+#include <eosio/amqp_trx_plugin/amqp_trace_plugin_impl.hpp>
 #include <eosio/chain_plugin/chain_plugin.hpp>
 #include <eosio/resource_monitor_plugin/resource_monitor_plugin.hpp>
 
@@ -70,6 +70,8 @@ struct amqp_trx_plugin_impl : std::enable_shared_from_this<amqp_trx_plugin_impl>
    std::string block_uuid;
    std::set<std::string> tracked_block_uuid_rks;
    uint32_t trx_processing_queue_size = 1000;
+   uint32_t trx_retry_interval_us = 500 * 1000; // 500 milliseconds
+   uint32_t trx_retry_timeout_us = 60 * 1000 * 1000; // 60 seconds
    bool allow_speculative_execution = false;
    bool started_consuming = false;
    std::shared_ptr<fifo_trx_processing_queue<producer_plugin>> trx_queue_ptr;
@@ -104,7 +106,7 @@ struct amqp_trx_plugin_impl : std::enable_shared_from_this<amqp_trx_plugin_impl>
          return;
       } FC_LOG_AND_DROP()
 
-      amqp_trx->reject( delivery_tag );
+      amqp_trx->reject( delivery_tag, false, false );
    }
 
    void on_block_start( uint32_t bn ) {
@@ -122,6 +124,22 @@ struct amqp_trx_plugin_impl : std::enable_shared_from_this<amqp_trx_plugin_impl>
          block_uuid = boost::uuids::to_string( boost::uuids::random_generator()() );
          tracked_block_uuid_rks.clear();
          trx_queue_ptr->on_block_start();
+      } else {
+         if( prod_plugin->paused() && started_consuming ) {
+            ilog("Stopping consuming amqp messages during on_block_start");
+            amqp_trx->stop_consume([](const std::string& consumer_tag){
+               dlog("Stopped consuming from amqp tag: ${t}", ("t", consumer_tag));
+            });
+            started_consuming = false;
+            const bool clear = true;
+            amqp_handler::delivery_tag_t delivery_tag = 0;
+            trx_queue_ptr->for_each_delivery_tag([&](const amqp_handler::delivery_tag_t& i_delivery_tag){
+               delivery_tag = i_delivery_tag;
+            }, clear);
+            const bool multiple = true;
+            const bool requeue = true;
+            if(delivery_tag != 0) amqp_trx->reject(delivery_tag, multiple, requeue);
+         }
       }
 
    }
@@ -156,6 +174,7 @@ private:
                         const std::string& correlation_id,
                         std::string block_uuid_rk,
                         chain::packed_transaction_ptr trx ) {
+      static_assert(std::is_same_v<amqp_handler::delivery_tag_t, uint64_t>, "fifo_trx_processing_queue assumes delivery_tag is an uint64_t");
       const auto& tid = trx->id();
       dlog( "received packed_transaction ${id}", ("id", tid) );
 
@@ -163,7 +182,7 @@ private:
       auto trx_span = fc_create_span(trx_trace, "AMQP Received");
       fc_add_tag(trx_span, "trx_id", tid);
 
-      trx_queue_ptr->push( trx,
+      trx_queue_ptr->push( trx, delivery_tag,
                 [my=shared_from_this(), token=fc_get_token(trx_trace),
                  delivery_tag, reply_to, correlation_id, block_uuid_rk=std::move(block_uuid_rk), trx]
                 (const std::variant<fc::exception_ptr, chain::transaction_trace_ptr>& result) mutable {
@@ -217,6 +236,7 @@ private:
 amqp_trx_plugin::amqp_trx_plugin()
 : my(std::make_shared<amqp_trx_plugin_impl>()) {
    app().register_config_type<ack_mode>();
+   app().register_config_type<amqp_trace_plugin_impl::reliable_mode>();
 }
 
 amqp_trx_plugin::~amqp_trx_plugin() {}
@@ -230,6 +250,10 @@ void amqp_trx_plugin::set_program_options(options_description& cli, options_desc
       "AMQP queue to consume transactions from, must already exist.");
    op("amqp-trx-queue-size", bpo::value<uint32_t>()->default_value(my->trx_processing_queue_size),
       "The maximum number of transactions to pull from the AMQP queue at any given time.");
+   op("amqp-trx-retry-timeout-us", bpo::value<uint32_t>()->default_value(my->trx_retry_timeout_us),
+      "Time in microseconds to continue to retry a connection to AMQP when connection is loss or startup.");
+   op("amqp-trx-retry-interval-us", bpo::value<uint32_t>()->default_value(my->trx_retry_interval_us),
+      "When connection is lost to amqp-trx-queue-name, interval time in microseconds before retrying connection.");
    op("amqp-trx-speculative-execution", bpo::bool_switch()->default_value(false),
       "Allow non-ordered speculative execution of transactions");
    op("amqp-trx-ack-mode", bpo::value<ack_mode>()->default_value(ack_mode::in_block),
@@ -258,6 +282,8 @@ void amqp_trx_plugin::plugin_initialize(const variables_map& options) {
       my->acked = options.at("amqp-trx-ack-mode").as<ack_mode>();
 
       my->trx_processing_queue_size = options.at("amqp-trx-queue-size").as<uint32_t>();
+      my->trx_retry_timeout_us = options.at("amqp-trx-retry-timeout-us").as<uint32_t>();
+      my->trx_retry_interval_us = options.at("amqp-trx-retry-interval-us").as<uint32_t>();
       my->allow_speculative_execution = options.at("amqp-trx-speculative-execution").as<bool>();
 
       EOS_ASSERT( my->acked != ack_mode::in_block || !my->allow_speculative_execution, chain::plugin_config_exception,
@@ -318,6 +344,8 @@ void amqp_trx_plugin::plugin_startup() {
    my->trx_queue_ptr->run();
 
    my->amqp_trx.emplace( my->amqp_trx_address,
+                         fc::microseconds(my->trx_retry_timeout_us),
+                         fc::microseconds(my->trx_retry_interval_us),
                          []( const std::string& err ) {
                             elog( "amqp error: ${e}", ("e", err) );
                             app().quit();
@@ -343,13 +371,14 @@ void amqp_trx_plugin::plugin_shutdown() {
          my->amqp_trx->stop();
       }
 
+      dlog( "stopping fifo queue" );
       if( my->trx_queue_ptr ) {
          my->trx_queue_ptr->stop();
       }
 
       dlog( "exit amqp_trx_plugin" );
    }
-   FC_CAPTURE_AND_RETHROW()
+   FC_LOG_AND_DROP()
 }
 
 void amqp_trx_plugin::handle_sighup() {

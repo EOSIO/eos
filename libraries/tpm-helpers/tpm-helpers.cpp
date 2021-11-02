@@ -342,7 +342,7 @@ boost::container::flat_set<fc::crypto::public_key> get_all_persistent_keys(const
    return keys;
 }
 
-attested_key create_key_attested(const std::string& tcti, const std::vector<unsigned>& pcrs, uint32_t certifying_key_handle) {
+attested_key create_key_attested(const std::string& tcti, const std::vector<unsigned>& pcrs, const uint32_t certifying_key_handle, const uint32_t at) {
    esys_context esys_ctx(tcti);
    attested_key returned_key;
 
@@ -434,25 +434,33 @@ attested_key create_key_attested(const std::string& tcti, const std::vector<unsi
                                                                            certification_signature);
    }
 
-   std::set<TPM2_HANDLE> currrent_persistent_handles = persistent_handles(esys_ctx);
-   TPMI_DH_PERSISTENT persistent_handle_id = TPM2_PERSISTENT_FIRST;
-   const TPMI_DH_PERSISTENT past_last_owner_persistent = TPM2_PLATFORM_PERSISTENT;
-   for(; persistent_handle_id < past_last_owner_persistent; persistent_handle_id++)
-      if(currrent_persistent_handles.find(persistent_handle_id) == currrent_persistent_handles.end())
-         break;
-   FC_ASSERT(persistent_handle_id != past_last_owner_persistent, "Couldn't find unused persistent handle");
+   TPMI_DH_PERSISTENT persistent_handle_id = 0;
+   if(at) {
+      persistent_handle_id = at;
+   }
+   else {
+      std::set<TPM2_HANDLE> currrent_persistent_handles = persistent_handles(esys_ctx);
+      persistent_handle_id = TPM2_PERSISTENT_FIRST;
+      const TPMI_DH_PERSISTENT past_last_owner_persistent = TPM2_PLATFORM_PERSISTENT;
+      for(; persistent_handle_id < past_last_owner_persistent; persistent_handle_id++)
+         if(currrent_persistent_handles.find(persistent_handle_id) == currrent_persistent_handles.end())
+            break;
+      FC_ASSERT(persistent_handle_id != past_last_owner_persistent, "Couldn't find unused persistent handle");
+   }
 
    ESYS_TR persistent_handle;
    rc = Esys_EvictControl(esys_ctx.ctx(), ESYS_TR_RH_OWNER, created_handle, ESYS_TR_PASSWORD, ESYS_TR_NONE, ESYS_TR_NONE,
                           persistent_handle_id, &persistent_handle);
+   if(rc == TPM2_RC_NV_DEFINED)
+      FC_THROW_EXCEPTION(tpm_key_exists, "Given TPM handle already contains a key");
    FC_ASSERT(!rc, "Failed to persist TPM key: ${m}", ("m", Tss2_RC_Decode(rc)));
    Esys_TR_Close(esys_ctx.ctx(), &persistent_handle);
 
    return returned_key;
 }
 
-fc::crypto::public_key create_key(const std::string& tcti, const std::vector<unsigned>& pcrs) {
-   return create_key_attested(tcti, pcrs, 0).pub_key;
+fc::crypto::public_key create_key(const std::string& tcti, const std::vector<unsigned>& pcrs, const uint32_t at) {
+   return create_key_attested(tcti, pcrs, 0, at).pub_key;
 }
 
 fc::crypto::public_key verify_attestation(const attested_key& ak, const std::map<unsigned, fc::sha256>& pcr_policy) {
