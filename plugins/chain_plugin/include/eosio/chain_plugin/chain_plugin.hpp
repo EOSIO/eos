@@ -1089,8 +1089,10 @@ public:
    
    bool account_queries_enabled() const;
 
-   fc::variant get_entire_trx_trace(const transaction_trace_ptr& trx_trace) const;
-   fc::variant get_entire_trx(const transaction& trx) const;
+   // return variant of trace for logging, trace is modified to minimize log output
+   fc::variant get_log_trx_trace(const transaction_trace_ptr& trx_trace) const;
+   // return variant of trx for logging, trace is modified to minimize log output
+   fc::variant get_log_trx(const transaction& trx) const;
 
 private:
    static void log_guard_exception(const chain::guard_exception& e);

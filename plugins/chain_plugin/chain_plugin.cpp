@@ -3608,24 +3608,24 @@ read_only::get_all_accounts( const get_all_accounts_params& params ) const
 
 } // namespace chain_apis
 
-fc::variant chain_plugin::get_entire_trx_trace(const transaction_trace_ptr& trx_trace ) const {
+fc::variant chain_plugin::get_log_trx_trace(const transaction_trace_ptr& trx_trace ) const {
    fc::variant pretty_output;
    try {
-      abi_serializer::to_variant(trx_trace, pretty_output,
-                                 chain_apis::make_resolver(chain(), abi_serializer::create_yield_function(get_abi_serializer_max_time())),
-                                 abi_serializer::create_yield_function(get_abi_serializer_max_time()));
+      abi_serializer::to_log_variant(trx_trace, pretty_output,
+                                     chain_apis::make_resolver(chain(), abi_serializer::create_yield_function(get_abi_serializer_max_time())),
+                                     abi_serializer::create_yield_function(get_abi_serializer_max_time()));
    } catch (...) {
       pretty_output = trx_trace;
    }
    return pretty_output;
 }
 
-fc::variant chain_plugin::get_entire_trx(const transaction& trx) const {
+fc::variant chain_plugin::get_log_trx(const transaction& trx) const {
    fc::variant pretty_output;
    try {
-      abi_serializer::to_variant(trx, pretty_output,
-                                 chain_apis::make_resolver(chain(), abi_serializer::create_yield_function(get_abi_serializer_max_time())),
-                                 abi_serializer::create_yield_function(get_abi_serializer_max_time()));
+      abi_serializer::to_log_variant(trx, pretty_output,
+                                     chain_apis::make_resolver(chain(), abi_serializer::create_yield_function(get_abi_serializer_max_time())),
+                                     abi_serializer::create_yield_function(get_abi_serializer_max_time()));
    } catch (...) {
       pretty_output = trx;
    }
