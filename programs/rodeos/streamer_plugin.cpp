@@ -11,6 +11,9 @@
 #include <fc/exception/exception.hpp>
 #include <fc/log/trace.hpp>
 #include <boost/filesystem/operations.hpp>
+#include <boost/filesystem/operations.hpp>
+#include <boost/algorithm/string/split.hpp>
+#include <boost/algorithm/string/classification.hpp>
 #include <memory>
 
 namespace b1 {
@@ -71,14 +74,27 @@ streamer_plugin::~streamer_plugin() {}
 
 void streamer_plugin::set_program_options(options_description& cli, options_description& cfg) {
    auto op = cfg.add_options();
-   op("stream-rabbits", bpo::value<std::vector<string>>()->composing(),
-      "RabbitMQ Streams to queues if any; Additional list of streams delimited by ::: can be specified in the environment variable "
+
+   std::string rabbits_default_value;
+   char* rabbits_env_var = std::getenv(EOSIO_STREAM_RABBITS_ENV_VAR);
+   if (rabbits_env_var) rabbits_default_value = rabbits_env_var;
+   op("stream-rabbits", bpo::value<std::string>()->default_value(rabbits_default_value),
+      "Addresses of RabbitMQ queues to stream to. Format: amqp://USER:PASSWORD@ADDRESS:PORT/QUEUE[/STREAMING_ROUTE, ...]. "
+      "Multiple queue addresses can be specified with ::: as the delimiter, such as \"amqp://u1:p1@amqp1:5672/queue1:::amqp://u2:p2@amqp2:5672/queue2\"."
+      "If this option is not specified, the value from the environment variable "
       EOSIO_STREAM_RABBITS_ENV_VAR
-      ". Format: amqp://USER:PASSWORD@ADDRESS:PORT/QUEUE[/STREAMING_ROUTE, ...].");
-   op("stream-rabbits-exchange", bpo::value<std::vector<string>>()->composing(),
-      "RabbitMQ Streams to exchanges if any; Additional list of streams delimited by ::: can be specified in the environment variable "
+      " will be used.");
+
+   std::string rabbits_exchange_default_value;
+   char* rabbits_exchange_env_var = std::getenv(EOSIO_STREAM_RABBITS_EXCHANGE_ENV_VAR);
+   if (rabbits_exchange_env_var) rabbits_exchange_default_value = rabbits_exchange_env_var;
+   op("stream-rabbits-exchange", bpo::value<std::string>()->default_value(rabbits_exchange_default_value),
+      "Addresses of RabbitMQ exchanges to stream to. amqp://USER:PASSWORD@ADDRESS:PORT/EXCHANGE[::EXCHANGE_TYPE][/STREAMING_ROUTE, ...]. "
+      "Multiple queue addresses can be specified with ::: as the delimiter, such as \"amqp://u1:p1@amqp1:5672/exchange1:::amqp://u2:p2@amqp2:5672/exchange2\"."
+      "If this option is not specified, the value from the environment variable "
       EOSIO_STREAM_RABBITS_EXCHANGE_ENV_VAR
-      ". Format: amqp://USER:PASSWORD@ADDRESS:PORT/EXCHANGE[::EXCHANGE_TYPE][/STREAMING_ROUTE, ...]");
+      " will be used.");
+
    op("stream-rabbits-immediately", bpo::bool_switch(&my->publish_immediately)->default_value(false),
       "Stream to RabbitMQ immediately instead of batching per block. Disables reliable message delivery.");
    op("stream-loggers", bpo::value<std::vector<string>>()->composing(),
@@ -103,42 +119,23 @@ void streamer_plugin::plugin_initialize(const variables_map& options) {
          initialize_loggers(my->streams, loggers);
       }
 
-      // split strings delimited by ':::' and add splits to the splits var
-      auto split_env_var = [](const char* env_name, std::vector<std::string>& splits) {
-         if (!std::getenv(env_name)) {
-            ilog("Environment variable ${s} for AMQP is not set. Skip it.", ("s", env_name));
-            return;
-         }
-
-         std::string env{std::getenv(env_name)};
-         std::string delimiter{":::"};
-         size_t pos = 0;
-         std::string split;
-         while ((pos = env.find(delimiter)) != std::string::npos) {
-            split = env.substr(0, pos);
-            if (!split.empty()) splits.push_back(split);
-            env.erase(0, pos + delimiter.size());
-         }
-         if (!env.empty()) splits.push_back(env);
-      };
-
-      std::vector<std::string> rabbits;
       if (options.count("stream-rabbits")) {
-         auto rabbits_options = options.at("stream-rabbits").as<std::vector<std::string>>();
-         rabbits.insert(std::end(rabbits), std::begin(rabbits_options), std::end(rabbits_options));
+         std::vector<std::string> rabbits;
+         boost::split(rabbits,
+            options.at("stream-rabbits").as<std::string>(),
+            boost::algorithm::is_any_of(":::"),
+            boost::algorithm::token_compress_on);
+         initialize_rabbits_queue(my->streams, rabbits, my->publish_immediately, stream_data_path);
       }
-      split_env_var(EOSIO_STREAM_RABBITS_ENV_VAR, rabbits);
-      if (rabbits.size()) initialize_rabbits_queue(my->streams, rabbits, my->publish_immediately, stream_data_path);
 
-      std::vector<std::string> rabbits_exchange;
       if (options.count("stream-rabbits-exchange")) {
-         auto rabbits_exchange_options = options.at("stream-rabbits-exchange").as<std::vector<std::string>>();
-         rabbits_exchange.insert(std::end(rabbits_exchange),
-            std::begin(rabbits_exchange_options), std::end(rabbits_exchange_options));
+         std::vector<std::string> rabbits_exchanges;
+         boost::split(rabbits_exchanges,
+            options.at("stream-rabbits-exchange").as<std::string>(),
+            boost::algorithm::is_any_of(":::"),
+            boost::algorithm::token_compress_on);
+         initialize_rabbits_exchange(my->streams, rabbits_exchanges, my->publish_immediately, stream_data_path);
       }
-      split_env_var(EOSIO_STREAM_RABBITS_EXCHANGE_ENV_VAR, rabbits_exchange);
-      if (rabbits_exchange.size()) initialize_rabbits_exchange(my->streams, rabbits_exchange, my->publish_immediately, stream_data_path);
-
 
       ilog("initialized streams: ${streams}", ("streams", my->streams.size()));
    } FC_LOG_AND_RETHROW()
