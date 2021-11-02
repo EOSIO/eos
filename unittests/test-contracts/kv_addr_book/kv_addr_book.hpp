@@ -7,41 +7,35 @@ using namespace std;
 // this structure defines the data stored in the kv::table
 struct person {
    eosio::name account_name;
-   eosio::kv::non_unique<eosio::name, std::string> first_name;
-   eosio::kv::non_unique<eosio::name, std::string> last_name;
-   eosio::kv::non_unique<eosio::name, std::string, std::string, std::string, std::string> street_city_state_cntry;
-   eosio::kv::non_unique<eosio::name, std::string> personal_id;
+   //std::tuple instead of non_unique should be used here so that eosio-cpp can generate .abi correctly
+   tuple<eosio::name, std::string> first_name;
+   tuple<eosio::name, std::string> last_name;
+   tuple<eosio::name, std::string, std::string, std::string, std::string> street_city_state_cntry;
+   tuple<eosio::name, std::string> personal_id;
    std::pair<std::string, std::string> country_personal_id;
 
    eosio::name get_account_name() const {
       return account_name;
    }
    std::string get_first_name() const {
-      // from the non_unique tuple we extract the value with key 1, the first name
       return std::get<1>(first_name);
    }
    std::string get_last_name() const {
-      // from the non_unique tuple we extract the value with key 1, the last name
       return std::get<1>(last_name);
    }
    std::string get_street() const {
-      // from the non_unique tuple we extract the value with key 1, the street
       return std::get<1>(street_city_state_cntry);
    }
    std::string get_city() const {
-      // from the non_unique tuple we extract the value with key 2, the city
       return std::get<2>(street_city_state_cntry);
    }
    std::string get_state() const {
-      // from the non_unique tuple we extract the value with key 3, the state
       return std::get<3>(street_city_state_cntry);
    }
    std::string get_country() const {
-      // from the non_unique tuple we extract the value with key 4, the country
       return std::get<4>(street_city_state_cntry);
    }
    std::string get_personal_id() const {
-      // from the non_unique tuple we extract the value with key 1, the personal id
       return std::get<1>(personal_id);
    }
 };
@@ -84,19 +78,22 @@ class [[eosio::contract]] kv_addr_book : public eosio::contract {
          &person::country_personal_id };
       
       // non-unique indexes definitions
+      // Note: <eosio/table.hpp> has declared the following:
+      //            template <typename ...Types> using non_unique = std::tuple<Types...>;
+      //       Therefore eosio::kv::non_unique is the same as std::tuple
       // 1. non unique indexes need to be defined for at least two properties, 
       // 2. the first one needs to be a property that stores unique values, because 
       //    under the hood every index (non-unique or unique) is stored as an unique 
       //    index, and by providing as the first property one that has unique values
       //    it ensures the uniques of the values combined (including non-unique ones)
       // 3. the rest of the properties are the ones wanted to be indexed non-uniquely
-      index<kv::non_unique<eosio::name, std::string>> first_name_idx {
+      index<tuple<eosio::name, std::string>> first_name_idx {
          name{"firstname"_n},
          &person::first_name};
-      index<kv::non_unique<eosio::name, std::string>> last_name_idx {
+      index<tuple<eosio::name, std::string>> last_name_idx {
          name{"lastname"_n},
          &person::last_name};
-      index<kv::non_unique<eosio::name, std::string>> personal_id_idx {
+      index<tuple<eosio::name, std::string>> personal_id_idx {
          name{"persid"_n},
          &person::personal_id};
       // non-unique index defined using the KV_NAMED_INDEX macro
