@@ -504,6 +504,16 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          auto send_response = [this, &trx, &chain, &next, is_resource_payer_pf_activated](const std::variant<fc::exception_ptr, transaction_trace_ptr>& response) {
             next(response);
 
+            fc::exception_ptr except_ptr; // rejected
+            if (std::holds_alternative<fc::exception_ptr>(response)) {
+               except_ptr = std::get<fc::exception_ptr>(response);
+            } else if (std::get<transaction_trace_ptr>(response)->except) {
+               except_ptr = std::get<transaction_trace_ptr>(response)->except->dynamic_copy_exception();
+            }
+            if (!trx->read_only) {
+               _transaction_ack_channel.publish(priority::low, std::pair<fc::exception_ptr, transaction_metadata_ptr>(except_ptr, trx));
+            }
+
             auto get_trace = [&](const std::variant<fc::exception_ptr, transaction_trace_ptr>& response) -> fc::variant {
                if (std::holds_alternative<fc::exception_ptr>(response)) {
                   return fc::variant{std::get<fc::exception_ptr>(response)};
@@ -512,16 +522,13 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
                }
             };
 
-            if (std::holds_alternative<fc::exception_ptr>(response)) {
-               if (!trx->read_only) {
-                  _transaction_ack_channel.publish(priority::low, std::pair<fc::exception_ptr, transaction_metadata_ptr>(std::get<fc::exception_ptr>(response), trx));
-               }
+            if (except_ptr) {
                if (_pending_block_mode == pending_block_mode::producing) {
                   fc_dlog(_trx_failed_trace_log, "[TRX_TRACE] Block ${block_num} for producer ${prod} is REJECTING tx: ${txid}, auth: ${a} : ${why} ",
                         ("block_num", chain.head_block_num() + 1)("prod", get_pending_block_producer())
                         ("txid", trx->id())
                         ("a", trx->packed_trx()->get_transaction().resource_payer(is_resource_payer_pf_activated))
-                        ("why",std::get<fc::exception_ptr>(response)->what()));
+                        ("why",except_ptr->what()));
 
                   fc_dlog(_trx_log, "[TRX_TRACE] Block ${block_num} for producer ${prod} is REJECTING tx: ${trx}",
                           ("block_num", chain.head_block_num() + 1)("prod", get_pending_block_producer())
@@ -533,7 +540,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
                   fc_dlog(_trx_failed_trace_log, "[TRX_TRACE] Speculative execution is REJECTING tx: ${txid}, auth: ${a} : ${why} ",
                           ("txid", trx->id())
                           ("a", trx->packed_trx()->get_transaction().resource_payer(is_resource_payer_pf_activated))
-                          ("why",std::get<fc::exception_ptr>(response)->what()));
+                          ("why",except_ptr->what()));
 
                   fc_dlog(_trx_log, "[TRX_TRACE] Speculative execution is REJECTING tx: ${trx} ",
                           ("trx", chain_plug->get_log_trx(trx->packed_trx()->get_transaction())));
@@ -541,9 +548,6 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
                           ("entire_trace", get_trace(response)));
                }
             } else {
-               if (!trx->read_only) {
-                  _transaction_ack_channel.publish(priority::low, std::pair<fc::exception_ptr, transaction_metadata_ptr>(nullptr, trx));
-               }
                if (_pending_block_mode == pending_block_mode::producing) {
                   fc_dlog(_trx_successful_trace_log, "[TRX_TRACE] Block ${block_num} for producer ${prod} is ACCEPTING tx: ${txid}, auth: ${a}",
                           ("block_num", chain.head_block_num() + 1)("prod", get_pending_block_producer())
