@@ -1075,9 +1075,9 @@ public:
    
    bool account_queries_enabled() const;
 
-   // return variant of trace for logging, trace is modified to minimize log output
+   // return variant of trace for logging, trace variant is modified to minimize log output
    fc::variant get_log_trx_trace(const transaction_trace_ptr& trx_trace) const;
-   // return variant of trx for logging, trace is modified to minimize log output
+   // return variant of trx for logging, trx variant is modified to minimize log output
    fc::variant get_log_trx(const transaction& trx) const;
 
 private:
