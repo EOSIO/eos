@@ -86,7 +86,7 @@ void wasm_ql_plugin::set_program_options(options_description& cli, options_descr
    op("wql-console-size", bpo::value<uint32_t>()->default_value(0), "Maximum size of console data");
    op("wql-wasm-cache-size", bpo::value<uint32_t>()->default_value(100), "Maximum number of compiled wasms to cache");
    op("wql-max-request-size", bpo::value<uint32_t>()->default_value(10000), "HTTP maximum request body size (bytes)");
-   op("wql-idle-timeout", bpo::value<uint32_t>()->default_value(30000), "HTTP idle connection timeout");
+   op("wql-idle-timeout", bpo::value<uint64_t>()->default_value(std::numeric_limits<uint32_t>::max()), "HTTP idle connection timeout");
    op("wql-exec-time", bpo::value<uint64_t>()->default_value(200), "Max query execution time (ms)");
    op("wql-checkpoint-dir", bpo::value<boost::filesystem::path>(),
       "Directory to place checkpoints. Caution: this allows anyone to create a checkpoint using RPC (default: "
