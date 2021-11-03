@@ -582,7 +582,7 @@ class http_session {
    void do_close() {
       // Send a TCP shutdown
       beast::error_code ec;
-      derived_session().stream.socket().shutdown(tcp::socket::shutdown_both, ec);
+      derived_session().stream.socket().shutdown(tcp::socket::shutdown_send, ec);
       socket_closed = true;
       // At this point the connection is closed gracefully
    }
