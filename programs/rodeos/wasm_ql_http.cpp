@@ -512,7 +512,7 @@ class http_session {
       auto session_time = steady_clock::now() - session_begin;
       auto session_time_ms = std::chrono::duration_cast<std::chrono::milliseconds>( session_time ).count();
       if ( session_time_ms <= http_config->idle_timeout_ms.count() && !socket_closed ){
-         _timer->expires_after( http_config->idle_timeout_ms - session_time ); // update timer for the remainder of timeout period
+         _timer->expires_after( http_config->idle_timeout_ms ); // reset the timer for timeout period
          _timer->async_wait(boost::asio::bind_executor(derived_session().stream.socket().get_executor(), boost::bind(&http_session::wait_to_timeout, derived_session().shared_from_this())));
       } 
       else {
