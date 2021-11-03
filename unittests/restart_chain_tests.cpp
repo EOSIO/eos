@@ -220,7 +220,7 @@ BOOST_AUTO_TEST_CASE(restart_from_existing_state_do_not_meet_min_initial_block_n
 
    // restarting chain with no block log and no genesis
    BOOST_REQUIRE_EXCEPTION({ tester other(cfg); }, misc_exception,
-                           fc_exception_message_starts_with("Controller head at block"));
+                           fc_exception_message_starts_with("Controller latest irreversible block at block"));
 }
 
 BOOST_AUTO_TEST_CASE(restart_from_blocklog_do_not_meet_min_initial_block_num) {
@@ -239,7 +239,7 @@ BOOST_AUTO_TEST_CASE(restart_from_blocklog_do_not_meet_min_initial_block_num) {
 
    // restarting chain with no block log and no genesis
    BOOST_REQUIRE_EXCEPTION({ tester other(cfg, *genesis); }, misc_exception,
-                           fc_exception_message_starts_with("Controller head at block"));
+                           fc_exception_message_starts_with("Controller latest irreversible block at block"));
 }
 
 BOOST_AUTO_TEST_CASE(test_restart_with_different_chain_id) {

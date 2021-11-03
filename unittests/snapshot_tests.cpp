@@ -616,7 +616,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(restart_from_snapshot_do_not_meet_min_initial_bloc
    // create a new child at this snapshot
    BOOST_REQUIRE_EXCEPTION(
        { snapshotted_tester snap_chain(cfg, SNAPSHOT_SUITE::get_reader(snapshot), 1); },
-       misc_exception, fc_exception_message_starts_with("Controller head at block"));
+       misc_exception, fc_exception_message_starts_with("Controller latest irreversible block at block"));
 }
 
 // Psudo code for the following WAST:
