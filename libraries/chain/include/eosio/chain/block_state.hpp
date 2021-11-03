@@ -23,12 +23,10 @@ namespace eosio { namespace chain {
                    const protocol_feature_set& pfs,
                    const std::function<void( block_timestamp_type,
                                              const flat_set<digest_type>&,
-                                             const vector<digest_type>& )>& validator,
-                   const signer_callback_type& signer
-                );
+                                             const vector<digest_type>& )>& validator
+                 );
 
       block_state() = default;
-
 
       signed_block_ptr                                    block;
 

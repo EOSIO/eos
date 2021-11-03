@@ -150,7 +150,7 @@ struct pending_state {
    }
 };
 
-struct controller_impl {
+struct controller_impl : public std::enable_shared_from_this<controller_impl> {
 
    // LLVM sets the new handler, we need to reset this to throw a bad_alloc exception so we can possibly exit cleanly
    // and not just abort.
@@ -181,8 +181,12 @@ struct controller_impl {
    bool                                trusted_producer_light_validation = false;
    uint32_t                            snapshot_head_block = 0;
    named_thread_pool                   thread_pool;
+   named_thread_pool                   block_sign_pool;
    platform_timer                      timer;
    fc::logger*                         deep_mind_logger = nullptr;
+   std::future<std::tuple<protocol_feature_activation_set_ptr,
+                          protocol_feature_set,
+                          block_state_ptr>>               block_sign_fut;
 #if defined(EOSIO_EOS_VM_RUNTIME_ENABLED) || defined(EOSIO_EOS_VM_JIT_RUNTIME_ENABLED)
    vm::wasm_allocator               wasm_alloc;
 #endif
@@ -255,7 +259,8 @@ struct controller_impl {
     conf( cfg ),
     chain_id( chain_id ),
     read_mode( cfg.read_mode ),
-    thread_pool( "chain", cfg.thread_pool_size )
+    thread_pool( "chain", cfg.thread_pool_size ),
+    block_sign_pool( "sign", 1 )
    {
 #ifdef EOSIO_REQUIRE_CHAIN_ID
       EOS_ASSERT(chain_id == chain_id_type(EOSIO_REQUIRE_CHAIN_ID), disallowed_chain_id_exception,
@@ -762,6 +767,7 @@ struct controller_impl {
 
    ~controller_impl() {
       thread_pool.stop();
+      block_sign_pool.stop();
       pending.reset();
    }
 
@@ -1656,11 +1662,11 @@ struct controller_impl {
          fc_add_tag( trace, "block_num", bsp->block_num );
          fc_add_tag( trace, "num_transactions", bsp->block->transactions.size());         
 
-         emit( self.accepted_block, bsp );
+//         emit( self.accepted_block, bsp );
 
-         if( add_to_fork_db ) {
-            log_irreversible();
-         }
+//         if( add_to_fork_db ) {
+//            log_irreversible();
+//         }
       } catch (...) {
          // dont bother resetting pending, instead abort the block
          reset_pending_on_exit.cancel();
@@ -2592,20 +2598,65 @@ block_state_ptr controller::finalize_block( const signer_callback_type& signer_c
 
    auto& ab = std::get<assembled_block>(my->pending->_block_stage);
 
+   auto pfa = ab._pending_block_header_state.prev_activated_protocol_features;
+   auto pfs = my->protocol_features.get_protocol_feature_set();
+
    auto bsp = std::make_shared<block_state>(
                   std::move( ab._pending_block_header_state ),
                   std::move( ab._unsigned_block ),
                   std::move( ab._trx_metas ),
-                  my->protocol_features.get_protocol_feature_set(),
+                  //my->protocol_features.get_protocol_feature_set(),
+                  pfs,
                   []( block_timestamp_type timestamp,
                       const flat_set<digest_type>& cur_features,
                       const vector<digest_type>& new_features )
-                  {},
-                  signer_callback
+                  {}
               );
 
    my->pending->_block_stage = completed_block{ bsp };
+try {
+   if( my->block_sign_fut.valid() ) {
+      auto [pfa_preserved, pfs_preserved, result] = my->block_sign_fut.get();
 
+      try{
+      if (!result->additional_signatures.empty()) {
+         bool wtmsig_enabled = detail::is_builtin_activated(pfa_preserved, pfs_preserved, builtin_protocol_feature_t::wtmsig_block_signatures);
+
+         constexpr auto additional_sigs_eid = additional_block_signatures_extension::extension_id();
+
+         EOS_ASSERT(wtmsig_enabled, block_validate_exception,
+                    "Block has multiple signatures before activation of WTMsig Block Signatures");
+
+         // as an optimization we don't copy this out into the legitimate extension structure as it serializes
+         // the same way as the vector of signatures
+         static_assert(fc::reflector<additional_block_signatures_extension>::total_member_count == 1);
+         static_assert(std::is_same_v<decltype(additional_block_signatures_extension::signatures), std::vector<signature_type>>);
+
+         emplace_extension(result->block->block_extensions, additional_sigs_eid, fc::raw::pack( result->additional_signatures ));
+      }
+      } catch (...) {
+         wlog("failed while checking protocol features");
+         throw;
+      }
+
+      try {
+      my->emit( accepted_block, result );
+      my->log_irreversible();
+      } catch (...) {
+         wlog("failed while emitting accepted block or log_irreversible");
+         throw;
+      }
+   }
+   } catch (...) {
+      wlog("failed while processing result of future");
+      throw;
+   }
+
+   my->block_sign_fut = async_thread_pool( my->block_sign_pool.get_executor(),
+                                           [pfa, pfs, bsp, &signer_callback]() mutable {
+                                              (*bsp).sign( bsp->block, signer_callback );
+                                              return std::make_tuple(pfa, pfs, bsp);
+                                           } );
    return bsp;
 }
 

@@ -352,21 +352,19 @@ namespace eosio { namespace chain {
                                  const protocol_feature_set& pfs,
                                  const std::function<void( block_timestamp_type,
                                                            const flat_set<digest_type>&,
-                                                           const vector<digest_type>& )>& validator,
-                                 const signer_callback_type& signer
+                                                           const vector<digest_type>& )>& validator
    )&&
    {
-      auto pfa = prev_activated_protocol_features;
+//      auto pfa = prev_activated_protocol_features;
 
       auto result = std::move(*this)._finish_next( h, pfs, validator );
-      result.sign( signer );
-      h.producer_signature = result.header.producer_signature;
+//      result.sign( signer );
+//      h.producer_signature = result.header.producer_signature;
 
-      if( !result.additional_signatures.empty() ) {
-         bool wtmsig_enabled = detail::is_builtin_activated(pfa, pfs, builtin_protocol_feature_t::wtmsig_block_signatures);
-         EOS_ASSERT(wtmsig_enabled, producer_schedule_exception, "Block was signed with multiple signatures before WTMsig block signatures are enabled" );
-      }
-
+//      if( !result.additional_signatures.empty() ) {
+//         bool wtmsig_enabled = detail::is_builtin_activated(pfa, pfs, builtin_protocol_feature_t::wtmsig_block_signatures);
+//         EOS_ASSERT(wtmsig_enabled, producer_schedule_exception, "Block was signed with multiple signatures before WTMsig block signatures are enabled" );
+//      }
       return result;
    }
 
@@ -395,7 +393,8 @@ namespace eosio { namespace chain {
       return digest_type::hash( std::make_pair(header_bmroot, pending_schedule.schedule_hash) );
    }
 
-   void block_header_state::sign( const signer_callback_type& signer ) {
+   void block_header_state::sign( std::shared_ptr<signed_block_header> h,
+                                  const signer_callback_type& signer ) {
       auto d = sig_digest();
       auto sigs = signer( d );
 
@@ -406,6 +405,8 @@ namespace eosio { namespace chain {
       additional_signatures = std::move(sigs);
 
       verify_signee();
+
+      h->producer_signature = header.producer_signature;
    }
 
    void block_header_state::verify_signee( )const {

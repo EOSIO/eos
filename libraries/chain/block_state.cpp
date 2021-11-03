@@ -52,22 +52,22 @@ namespace eosio { namespace chain {
                                                        const protocol_feature_set& pfs,
                                                        Extras&& ... extras )
       {
-         auto pfa = cur.prev_activated_protocol_features;
+//         auto pfa = cur.prev_activated_protocol_features;
          block_header_state result = std::move(cur).finish_next(b, pfs, std::forward<Extras>(extras)...);
 
-         if (!result.additional_signatures.empty()) {
-            bool wtmsig_enabled = detail::is_builtin_activated(pfa, pfs, builtin_protocol_feature_t::wtmsig_block_signatures);
+//         if (!result.additional_signatures.empty()) {
+//            bool wtmsig_enabled = detail::is_builtin_activated(pfa, pfs, builtin_protocol_feature_t::wtmsig_block_signatures);
 
-            EOS_ASSERT(wtmsig_enabled, block_validate_exception,
-                       "Block has multiple signatures before activation of WTMsig Block Signatures");
+//            EOS_ASSERT(wtmsig_enabled, block_validate_exception,
+//                       "Block has multiple signatures before activation of WTMsig Block Signatures");
 
             // as an optimization we don't copy this out into the legitimate extension structure as it serializes
             // the same way as the vector of signatures
-            static_assert(fc::reflector<additional_block_signatures_extension>::total_member_count == 1);
-            static_assert(std::is_same_v<decltype(additional_block_signatures_extension::signatures), std::vector<signature_type>>);
+//            static_assert(fc::reflector<additional_block_signatures_extension>::total_member_count == 1);
+//            static_assert(std::is_same_v<decltype(additional_block_signatures_extension::signatures), std::vector<signature_type>>);
 
-            emplace_extension(b.block_extensions, additional_sigs_eid, fc::raw::pack( result.additional_signatures ));
-         }
+//            emplace_extension(b.block_extensions, additional_sigs_eid, fc::raw::pack( result.additional_signatures ));
+//         }
 
          return result;
       }
@@ -92,10 +92,10 @@ namespace eosio { namespace chain {
                              const protocol_feature_set& pfs,
                              const std::function<void( block_timestamp_type,
                                                        const flat_set<digest_type>&,
-                                                       const vector<digest_type>& )>& validator,
-                             const signer_callback_type& signer
+                                                       const vector<digest_type>& )>& validator
+//                             ,const signer_callback_type& signer
                            )
-   :block_header_state( inject_additional_signatures( std::move(cur), *b, pfs, validator, signer ) )
+   :block_header_state( inject_additional_signatures( std::move(cur), *b, pfs, validator ) )
    ,block( std::move(b) )
    ,_pub_keys_recovered( true ) // called by produce_block so signature recovery of trxs must have been done
    ,_cached_trxs( std::move(trx_metas) )

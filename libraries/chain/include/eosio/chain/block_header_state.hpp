@@ -99,8 +99,7 @@ struct pending_block_header_state : public detail::block_header_state_common {
                                     const protocol_feature_set& pfs,
                                     const std::function<void( block_timestamp_type,
                                                               const flat_set<digest_type>&,
-                                                              const vector<digest_type>& )>& validator,
-                                    const signer_callback_type& signer )&&;
+                                                              const vector<digest_type>& )>& validator)&&;
 
 protected:
    block_header_state  _finish_next( const signed_block_header& h,
@@ -149,7 +148,8 @@ struct block_header_state : public detail::block_header_state_common {
    producer_authority     get_scheduled_producer( block_timestamp_type t )const;
    const block_id_type&   prev()const { return header.previous; }
    digest_type            sig_digest()const;
-   void                   sign( const signer_callback_type& signer );
+   void                   sign( std::shared_ptr<signed_block_header> h,
+                                const signer_callback_type& signer );
    void                   verify_signee()const;
 
    const vector<digest_type>& get_new_protocol_feature_activations()const;
