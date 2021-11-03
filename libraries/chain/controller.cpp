@@ -619,8 +619,8 @@ struct controller_impl {
    void init(std::function<bool()> check_shutdown, bool clean_startup) {
       uint32_t lib_num = (blog.head() ? blog.head()->block_num() : fork_db.root()->block_num);
 
-      EOS_ASSERT( lib_num >= this->conf.min_initial_block_num, misc_exception, "Controller head "
-      "at block number ${block_num}, which is smaller than the minimum required ${required}", ("block_num", fork_db.head()->block_num)("required",this->conf.min_initial_block_num) );
+      EOS_ASSERT( lib_num >= this->conf.min_initial_block_num, misc_exception, "Controller latest irreversible block "
+      "at block number ${lib_num}, which is smaller than the minimum required ${required}", ("block_num", lib_num)("required",this->conf.min_initial_block_num) );
 
       auto header_itr = validate_db_version( db );
 
