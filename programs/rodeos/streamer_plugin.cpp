@@ -11,6 +11,7 @@
 #include <fc/exception/exception.hpp>
 #include <fc/log/trace.hpp>
 #include <boost/filesystem/operations.hpp>
+#include <regex>
 #include <memory>
 
 namespace b1 {
@@ -71,10 +72,27 @@ streamer_plugin::~streamer_plugin() {}
 
 void streamer_plugin::set_program_options(options_description& cli, options_description& cfg) {
    auto op = cfg.add_options();
-   op("stream-rabbits", bpo::value<std::vector<string>>()->composing(),
-      "RabbitMQ Streams to queues if any; Format: amqp://USER:PASSWORD@ADDRESS:PORT/QUEUE[/STREAMING_ROUTE, ...]");
-   op("stream-rabbits-exchange", bpo::value<std::vector<string>>()->composing(),
-      "RabbitMQ Streams to exchanges if any; Format: amqp://USER:PASSWORD@ADDRESS:PORT/EXCHANGE[::EXCHANGE_TYPE][/STREAMING_ROUTE, ...]");
+
+   std::string rabbits_default_value;
+   char* rabbits_env_var = std::getenv(EOSIO_STREAM_RABBITS_ENV_VAR);
+   if (rabbits_env_var) rabbits_default_value = rabbits_env_var;
+   op("stream-rabbits", bpo::value<std::string>()->default_value(rabbits_default_value),
+      "Addresses of RabbitMQ queues to stream to. Format: amqp://USER:PASSWORD@ADDRESS:PORT/QUEUE[/STREAMING_ROUTE, ...]. "
+      "Multiple queue addresses can be specified with ::: as the delimiter, such as \"amqp://u1:p1@amqp1:5672/queue1:::amqp://u2:p2@amqp2:5672/queue2\"."
+      "If this option is not specified, the value from the environment variable "
+      EOSIO_STREAM_RABBITS_ENV_VAR
+      " will be used.");
+
+   std::string rabbits_exchange_default_value;
+   char* rabbits_exchange_env_var = std::getenv(EOSIO_STREAM_RABBITS_EXCHANGE_ENV_VAR);
+   if (rabbits_exchange_env_var) rabbits_exchange_default_value = rabbits_exchange_env_var;
+   op("stream-rabbits-exchange", bpo::value<std::string>()->default_value(rabbits_exchange_default_value),
+      "Addresses of RabbitMQ exchanges to stream to. amqp://USER:PASSWORD@ADDRESS:PORT/EXCHANGE[::EXCHANGE_TYPE][/STREAMING_ROUTE, ...]. "
+      "Multiple queue addresses can be specified with ::: as the delimiter, such as \"amqp://u1:p1@amqp1:5672/exchange1:::amqp://u2:p2@amqp2:5672/exchange2\"."
+      "If this option is not specified, the value from the environment variable "
+      EOSIO_STREAM_RABBITS_EXCHANGE_ENV_VAR
+      " will be used.");
+
    op("stream-rabbits-immediately", bpo::bool_switch(&my->publish_immediately)->default_value(false),
       "Stream to RabbitMQ immediately instead of batching per block. Disables reliable message delivery.");
    op("stream-loggers", bpo::value<std::vector<string>>()->composing(),
@@ -99,14 +117,26 @@ void streamer_plugin::plugin_initialize(const variables_map& options) {
          initialize_loggers(my->streams, loggers);
       }
 
+      auto split_option = [](const std::string& str, std::vector<std::string>& results) {
+         std::regex delim{":::"};
+         std::sregex_token_iterator end;
+         std::sregex_token_iterator iter(str.begin(), str.end(), delim, -1);
+         for ( ; iter != end; ++iter) {
+            std::string split(*iter);
+            if (split.size()) results.push_back(split);
+         }
+      };
+
       if (options.count("stream-rabbits")) {
-         auto rabbits = options.at("stream-rabbits").as<std::vector<std::string>>();
+         std::vector<std::string> rabbits;
+         split_option(options.at("stream-rabbits").as<std::string>(), rabbits);
          initialize_rabbits_queue(my->streams, rabbits, my->publish_immediately, stream_data_path);
       }
 
       if (options.count("stream-rabbits-exchange")) {
-         auto rabbits = options.at("stream-rabbits-exchange").as<std::vector<std::string>>();
-         initialize_rabbits_exchange(my->streams, rabbits, my->publish_immediately, stream_data_path);
+         std::vector<std::string> rabbits_exchanges;
+         split_option(options.at("stream-rabbits-exchange").as<std::string>(), rabbits_exchanges);
+         initialize_rabbits_exchange(my->streams, rabbits_exchanges, my->publish_immediately, stream_data_path);
       }
 
       ilog("initialized streams: ${streams}", ("streams", my->streams.size()));

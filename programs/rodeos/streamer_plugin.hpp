@@ -6,6 +6,9 @@
 
 #include "cloner_plugin.hpp"
 
+#define EOSIO_STREAM_RABBITS_ENV_VAR "EOSIO_STREAM_RABBITS"
+#define EOSIO_STREAM_RABBITS_EXCHANGE_ENV_VAR "EOSIO_STREAM_RABBITS_EXCHANGE"
+
 namespace b1 {
 
 struct stream_wrapper_v0 {
