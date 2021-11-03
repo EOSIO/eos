@@ -27,6 +27,7 @@ private:
       amqp_publisher_ =
             std::make_unique<eosio::transactional_amqp_publisher>( address_, exchange_name_,
                                                                    fc::seconds( 60 ),
+                                                                   true,
                                                                    []( const std::string& err ) {
                                                                       elog( "AMQP fatal error: ${e}", ("e", err) );
                                                                       appbase::app().quit();

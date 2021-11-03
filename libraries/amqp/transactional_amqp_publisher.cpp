@@ -2,6 +2,7 @@
 #include <eosio/amqp/retrying_amqp_connection.hpp>
 #include <eosio/amqp/util.hpp>
 
+#include <fc/crypto/sha256.hpp>
 #include <fc/network/url.hpp>
 #include <fc/exception/exception.hpp>
 #include <fc/log/logger_config.hpp> //set_os_thread_name()
@@ -21,6 +22,7 @@ namespace eosio {
 struct transactional_amqp_publisher_impl {
    transactional_amqp_publisher_impl(const std::string& url, const std::string& exchange,
                                      const fc::microseconds& time_out,
+                                     bool dedup,
                                      transactional_amqp_publisher::error_callback_t on_fatal_error);
    ~transactional_amqp_publisher_impl();
    void wait_for_signal(std::shared_ptr<boost::asio::signal_set> ss);
@@ -46,6 +48,7 @@ struct transactional_amqp_publisher_impl {
 
    const std::string exchange;
    const fc::microseconds ack_time_out;
+   bool add_dedup_header;
 
    boost::asio::strand<boost::asio::io_context::executor_type> submitted_work_strand = boost::asio::make_strand(ctx);
 
@@ -90,11 +93,13 @@ void transactional_amqp_publisher_impl::wait_for_signal(std::shared_ptr<boost::a
 
 transactional_amqp_publisher_impl::transactional_amqp_publisher_impl(const std::string& url, const std::string& exchange,
                                                                      const fc::microseconds& time_out,
+                                                                     bool dedup,
                                                                      transactional_amqp_publisher::error_callback_t on_fatal_error)
   : retrying_connection(ctx, url, fc::microseconds(time_out.count()/2), [this](AMQP::Channel* c){channel_ready(c);}, [this](){channel_failed();})
   , on_fatal_error(std::move(on_fatal_error))
   , exchange(exchange)
   , ack_cond(time_out)
+  , add_dedup_header(dedup)
 {
    thread = std::thread([this]() {
       fc::set_os_thread_name("tamqp");
@@ -145,6 +150,11 @@ void transactional_amqp_publisher_impl::pump_queue() {
    in_flight = true;
    for(const auto& msg : message_deque) {
       AMQP::Envelope envelope(msg.second.data(), msg.second.size());
+      AMQP::Table headers;
+      if (add_dedup_header) {
+          headers["x-deduplication-header"] = (uint32_t) fc::sha256::hash(msg.second.data(), msg.second.size())._hash[0];
+          envelope.setHeaders(headers);
+      }
       envelope.setPersistent();
       channel->publish(exchange, msg.first, envelope);
    }
@@ -207,6 +217,12 @@ void transactional_amqp_publisher_impl::publish_message_direct(const std::string
    }
 
    AMQP::Envelope envelope(data.data(), data.size());
+   AMQP::Table headers;
+    if (add_dedup_header) {
+       headers["x-deduplication-header"] = (uint32_t) fc::sha256::hash(data.data(), data.size())._hash[0];
+       envelope.setHeaders(headers);
+   }
+
    envelope.setPersistent();
    channel->publish(exchange, rk, envelope);
 }
@@ -214,8 +230,9 @@ void transactional_amqp_publisher_impl::publish_message_direct(const std::string
 
 transactional_amqp_publisher::transactional_amqp_publisher(const std::string& url, const std::string& exchange,
                                                            const fc::microseconds& time_out,
+                                                           bool dedup,
                                                            transactional_amqp_publisher::error_callback_t on_fatal_error) :
-   my(new transactional_amqp_publisher_impl(url, exchange, time_out, std::move(on_fatal_error))) {}
+   my(new transactional_amqp_publisher_impl(url, exchange, time_out, dedup, std::move(on_fatal_error))) {}
 
 void transactional_amqp_publisher::publish_messages_raw(std::deque<std::pair<std::string, std::vector<char>>>&& queue) {
    my->publish_messages_raw( std::move( queue ) );
