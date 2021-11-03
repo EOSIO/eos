@@ -116,6 +116,7 @@ namespace eosio { namespace chain {
             uint32_t                 greylist_limit         = chain::config::maximum_elastic_resource_multiplier;
 
             flat_set<account_name>   profile_accounts;
+            uint32_t                 min_initial_block_num = 0;
          };
 
          enum class block_status {

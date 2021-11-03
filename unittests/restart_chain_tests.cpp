@@ -205,6 +205,43 @@ BOOST_AUTO_TEST_CASE(test_existing_state_without_block_log) {
    }
 }
 
+BOOST_AUTO_TEST_CASE(restart_from_existing_state_do_not_meet_min_initial_block_num) {
+   tester chain;
+
+   std::vector<signed_block_ptr> blocks;
+   blocks.push_back(chain.produce_block());
+   blocks.push_back(chain.produce_block());
+   blocks.push_back(chain.produce_block());
+   chain.close();
+
+   auto cfg                  = chain.get_config();
+   cfg.min_initial_block_num = 100;
+   remove_existing_blocks(cfg);
+
+   // restarting chain with no block log and no genesis
+   BOOST_REQUIRE_EXCEPTION({ tester other(cfg); }, misc_exception,
+                           fc_exception_message_starts_with("Controller head at block"));
+}
+
+BOOST_AUTO_TEST_CASE(restart_from_blocklog_do_not_meet_min_initial_block_num) {
+   tester chain;
+
+   std::vector<signed_block_ptr> blocks;
+   blocks.push_back(chain.produce_block());
+   blocks.push_back(chain.produce_block());
+   blocks.push_back(chain.produce_block());
+   chain.close();
+
+   auto cfg                  = chain.get_config();
+   cfg.min_initial_block_num = 100;
+   auto genesis              = chain::block_log::extract_genesis_state(cfg.blog.log_dir);
+   remove_existing_states(cfg);
+
+   // restarting chain with no block log and no genesis
+   BOOST_REQUIRE_EXCEPTION({ tester other(cfg, *genesis); }, misc_exception,
+                           fc_exception_message_starts_with("Controller head at block"));
+}
+
 BOOST_AUTO_TEST_CASE(test_restart_with_different_chain_id) {
    tester chain;
 

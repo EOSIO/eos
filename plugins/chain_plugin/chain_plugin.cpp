@@ -458,6 +458,8 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          ("export-reversible-blocks", bpo::value<bfs::path>(),
            "export reversible block database in portable format into specified file and then exit")
          ("snapshot", bpo::value<bfs::path>(), "File to read Snapshot State from")
+         ("min-initial-block-num", bpo::value<uint32_t>()->default_value(0), "minimum block number to load, "
+         "nodeos would refuse to load any state from prior to that block number")
          ;
 
 }
@@ -1222,6 +1224,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 #endif
 
       my->account_queries_enabled = options.at("enable-account-queries").as<bool>();
+      my->chain_config->min_initial_block_num = options["min-initial-block-num"].as<uint32_t>();
 
       my->chain.emplace( *my->chain_config, std::move(pfs), *chain_id );
 
