@@ -158,6 +158,12 @@ namespace eosio {
       void sync_update_expected( const connection_ptr& c, const block_id_type& blk_id, uint32_t blk_num, bool blk_applied );
       void recv_handshake( const connection_ptr& c, const handshake_message& msg );
       void sync_recv_notice( const connection_ptr& c, const notice_message& msg );
+      inline std::unique_lock<std::mutex> locked_sync_mutex() {
+         return std::unique_lock<std::mutex>(sync_mtx);
+      }
+      inline void reset_last_requested_num(const std::unique_lock<std::mutex>& lock) {
+         sync_last_requested_num = 0;
+      }
    };
 
    class dispatch_manager {
@@ -1649,7 +1655,7 @@ namespace eosio {
 
          // if closing the connection we are currently syncing from, then reset our last requested and next expected.
          if( c == sync_source ) {
-            sync_last_requested_num = 0;
+            reset_last_requested_num(g);
             uint32_t head_blk_num = 0;
             std::tie( std::ignore, head_blk_num, std::ignore, std::ignore, std::ignore, std::ignore ) = my_impl->get_chain_info();
             sync_next_expected_num = head_blk_num + 1;
@@ -1735,7 +1741,7 @@ namespace eosio {
       if( !sync_source || !sync_source->current() || sync_source->is_transactions_only_connection() ) {
          fc_elog( logger, "Unable to continue syncing at this time");
          sync_known_lib_num = lib_block_num;
-         sync_last_requested_num = 0;
+         reset_last_requested_num(g_sync);
          set_state( in_sync ); // probably not, but we can't do anything else
          return;
       }
@@ -1820,7 +1826,7 @@ namespace eosio {
 
       if( c == sync_source ) {
          c->cancel_sync(reason);
-         sync_last_requested_num = 0;
+         reset_last_requested_num(g);
          request_next_chunk( std::move(g) );
       }
    }
@@ -2004,14 +2010,15 @@ namespace eosio {
    // called from connection strand
    void sync_manager::rejected_block( const connection_ptr& c, uint32_t blk_num ) {
       c->block_status_monitor_.rejected();
+      std::unique_lock<std::mutex> g( sync_mtx );
+      reset_last_requested_num(g);
       if( c->block_status_monitor_.max_events_violated()) {
          peer_wlog( c, "block ${bn} not accepted, closing connection", ("bn", blk_num) );
-         std::unique_lock<std::mutex> g( sync_mtx );
-         sync_last_requested_num = 0;
          sync_source.reset();
          g.unlock();
          c->close();
       } else {
+         g.unlock();
          c->send_handshake();
       }
    }
@@ -2730,10 +2737,12 @@ namespace eosio {
                close();
             } else {
                peer_ilog( this, "received block ${n} less than lib ${lib}", ("n", blk_num)("lib", lib) );
+               my_impl->sync_master->reset_last_requested_num(my_impl->sync_master->locked_sync_mutex());
                enqueue( (sync_request_message) {0, 0} );
                send_handshake();
                cancel_wait();
             }
+
 
             pending_message_buffer.advance_read_ptr( message_length );
             return true;
