@@ -150,8 +150,8 @@ void transactional_amqp_publisher_impl::pump_queue() {
    in_flight = true;
    for(const auto& msg : message_deque) {
       AMQP::Envelope envelope(msg.second.data(), msg.second.size());
-      AMQP::Table headers;
       if (add_dedup_header) {
+          AMQP::Table headers;
           headers["x-deduplication-header"] = (uint32_t) fc::sha256::hash(msg.second.data(), msg.second.size())._hash[0];
           envelope.setHeaders(headers);
       }
@@ -217,8 +217,8 @@ void transactional_amqp_publisher_impl::publish_message_direct(const std::string
    }
 
    AMQP::Envelope envelope(data.data(), data.size());
-   AMQP::Table headers;
     if (add_dedup_header) {
+       AMQP::Table headers;
        headers["x-deduplication-header"] = (uint32_t) fc::sha256::hash(data.data(), data.size())._hash[0];
        envelope.setHeaders(headers);
    }
