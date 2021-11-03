@@ -162,7 +162,7 @@ try:
     specificExtraNodeosArgs={}
     # producer nodes will be mapped to 0 through totalProducerNodes-1, so the number totalProducerNodes will be the non-producing node
     specificExtraNodeosArgs[totalProducerNodes]="--plugin eosio::test_control_api_plugin"
-    traceNodeosArgs = " --plugin eosio::trace_api_plugin --trace-no-abis "
+    traceNodeosArgs = " --plugin eosio::trace_api_plugin --trace-no-abis --max-consecutive-immediate-connection-close 100"
 
 
     # ***   setup topogrophy   ***

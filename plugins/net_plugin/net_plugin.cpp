@@ -249,6 +249,7 @@ namespace eosio {
       std::chrono::milliseconds             heartbeat_timeout{keepalive_interval * 2};
 
       int                                   max_cleanup_time_ms = 0;
+      int                                   max_consecutive_immediate_connection_close = 1;
       uint32_t                              max_client_count = 0;
       uint32_t                              max_nodes_per_host = 1;
       bool                                  p2p_accept_transactions = true;
@@ -2638,7 +2639,7 @@ namespace eosio {
 
       connection_ptr c = shared_from_this();
 
-      if( consecutive_immediate_connection_close > def_max_consecutive_immediate_connection_close || no_retry == benign_other ) {
+      if( consecutive_immediate_connection_close > my_impl->max_consecutive_immediate_connection_close || no_retry == benign_other ) {
          auto connector_period_us = std::chrono::duration_cast<std::chrono::microseconds>( my_impl->connector_period );
          std::lock_guard<std::mutex> g( c->conn_mtx );
          if( last_close == fc::time_point() || last_close > fc::time_point::now() - fc::microseconds( connector_period_us.count() ) ) {
@@ -4025,6 +4026,7 @@ namespace eosio {
            "Tuple of [PublicKey, WIF private key] (may specify multiple times)")
          ( "max-clients", bpo::value<int>()->default_value(def_max_clients), "Maximum number of clients from which connections are accepted, use 0 for no limit")
          ( "connection-cleanup-period", bpo::value<int>()->default_value(def_conn_retry_wait), "number of seconds to wait before cleaning up dead connections")
+         ( "max-consecutive-immediate-connection-close", bpo::value<int>()->default_value(def_max_consecutive_immediate_connection_close), "number of consequtive connection close attepmts before cooldown")
          ( "max-cleanup-time-msec", bpo::value<int>()->default_value(10), "max connection cleanup time per cleanup call in millisec")
          ( "net-threads", bpo::value<uint16_t>()->default_value(my->thread_pool_size),
            "Number of worker threads in net_plugin thread pool" )
@@ -4062,6 +4064,7 @@ namespace eosio {
          my->sync_master.reset( new sync_manager( options.at( "sync-fetch-span" ).as<uint32_t>()));
 
          my->connector_period = std::chrono::seconds( options.at( "connection-cleanup-period" ).as<int>());
+         my->max_consecutive_immediate_connection_close = options.at("max-consecutive-immediate-connection-close").as<int>();
          my->max_cleanup_time_ms = options.at("max-cleanup-time-msec").as<int>();
          my->txn_exp_period = def_txn_expire_wait;
          my->resp_expected_period = def_resp_expected_wait;
