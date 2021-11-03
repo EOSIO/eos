@@ -2610,7 +2610,7 @@ int main( int argc, char** argv ) {
 
    app.add_option( "-u,--url", default_url, localized( "The http/https URL where ${n} is running", ("n", node_executable_name)), true );
    app.add_option( "--wallet-url", wallet_url, localized("The http/https URL where ${k} is running", ("k", key_store_executable_name)), true );
-   app.add_option( "--amqp", amqp_address, localized("The ampq URL where AMQP is running amqp://USER:PASSWORD@ADDRESS:PORT"), false );
+   app.add_option( "--amqp", amqp_address, localized("The ampq URL where AMQP is running amqp://USER:PASSWORD@ADDRESS:PORT"), false )->envname(EOSIO_AMQP_ADDRESS_ENV_VAR);
    app.add_option( "--amqp-queue-name", amqp_queue_name, localized("The ampq queue to send transaction to"), true );
    app.add_option( "--amqp-reply-to", amqp_reply_to, localized("The ampq reply to string"), false );
 
