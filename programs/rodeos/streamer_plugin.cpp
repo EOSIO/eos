@@ -11,8 +11,7 @@
 #include <fc/exception/exception.hpp>
 #include <fc/log/trace.hpp>
 #include <boost/filesystem/operations.hpp>
-#include <boost/algorithm/string/split.hpp>
-#include <boost/algorithm/string/classification.hpp>
+#include <regex>
 #include <memory>
 
 namespace b1 {
@@ -118,21 +117,25 @@ void streamer_plugin::plugin_initialize(const variables_map& options) {
          initialize_loggers(my->streams, loggers);
       }
 
+      auto split_option = [](const std::string& str, std::vector<std::string>& results) {
+         std::regex delim{":::"};
+         std::sregex_token_iterator end;
+         std::sregex_token_iterator iter(str.begin(), str.end(), delim, -1);
+         for ( ; iter != end; ++iter) {
+            std::string split(*iter);
+            if (split.size()) results.push_back(split);
+         }
+      };
+
       if (options.count("stream-rabbits")) {
          std::vector<std::string> rabbits;
-         boost::split(rabbits,
-            options.at("stream-rabbits").as<std::string>(),
-            boost::algorithm::is_any_of(":::"),
-            boost::algorithm::token_compress_on);
+         split_option(options.at("stream-rabbits").as<std::string>(), rabbits);
          initialize_rabbits_queue(my->streams, rabbits, my->publish_immediately, stream_data_path);
       }
 
       if (options.count("stream-rabbits-exchange")) {
          std::vector<std::string> rabbits_exchanges;
-         boost::split(rabbits_exchanges,
-            options.at("stream-rabbits-exchange").as<std::string>(),
-            boost::algorithm::is_any_of(":::"),
-            boost::algorithm::token_compress_on);
+         split_option(options.at("stream-rabbits-exchange").as<std::string>(), rabbits_exchanges);
          initialize_rabbits_exchange(my->streams, rabbits_exchanges, my->publish_immediately, stream_data_path);
       }
 
