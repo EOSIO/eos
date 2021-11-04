@@ -150,7 +150,7 @@ struct pending_state {
    }
 };
 
-struct controller_impl : public std::enable_shared_from_this<controller_impl> {
+struct controller_impl {
 
    // LLVM sets the new handler, we need to reset this to throw a bad_alloc exception so we can possibly exit cleanly
    // and not just abort.
