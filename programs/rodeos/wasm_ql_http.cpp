@@ -478,7 +478,6 @@ class http_session {
    queue                                        queue_;
    std::unique_ptr< net::steady_timer >         _timer;
    steady_clock::time_point                     session_begin;
-   bool                                         socket_closed{ false };
 
    // The parser is stored in an optional container so we can
    // construct it from scratch it at the beginning of each new message.
@@ -511,14 +510,11 @@ class http_session {
    {       
       auto session_time = steady_clock::now() - session_begin;
       auto session_time_ms = std::chrono::duration_cast<std::chrono::milliseconds>( session_time ).count();
-      if ( session_time_ms <= http_config->idle_timeout_ms.count() && !socket_closed ){
+      if ( session_time_ms <= http_config->idle_timeout_ms.count() ){
          _timer->expires_after( http_config->idle_timeout_ms ); // reset the timer for timeout period
          _timer->async_wait(boost::asio::bind_executor(derived_session().stream.socket().get_executor(), boost::bind(&http_session::wait_to_timeout, derived_session().shared_from_this())));
       } 
       else {
-         _timer->cancel();
-         if (socket_closed)
-            return;
          beast::error_code ec = beast::error::timeout;
          fail( ec, "timeout" );
          return do_close();
@@ -583,7 +579,7 @@ class http_session {
       // Send a TCP shutdown
       beast::error_code ec;
       derived_session().stream.socket().shutdown(tcp::socket::shutdown_send, ec);
-      socket_closed = true;
+      _timer->cancel(); // cancel connection timer.
       // At this point the connection is closed gracefully
    }
 }; // http_session
