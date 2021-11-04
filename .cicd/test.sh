@@ -32,7 +32,15 @@ if [[ "$BUILDKITE" == 'true' ]]; then
     [[ -d var ]] && tar czf var.tar.gz var
     [[ -d eosio-ignition-wd ]] && tar czf eosio-ignition-wd.tar.gz eosio-ignition-wd
     echo 'Compressing core dumps...'
-    [[ $((`ls -1 core.* 2>/dev/null | wc -l`)) != 0 ]] && tar czf core.tar.gz core.* || : # collect core dumps
+    if [[ $(uname) == 'Darwin' ]]; then
+        if [[ $((`ls -1 ~/Library/Logs/DiagnosticReports/*.crash | wc -l`)) != 0 ]]; then
+            echo "MacOS crash dump directory:"
+            ls -l ~/Library/Logs/DiagnosticReports
+            tar czf core.tar.gz -C ~/Library/Logs/DiagnosticReports . #collect core dumps on mac
+        fi
+    else
+        [[ $((`ls -1 core.* 2>/dev/null | wc -l`)) != 0 ]] && tar czf core.tar.gz core.* || : # collect core dumps on non-mac
+    fi
     echo 'Exporting xUnit XML'
     mv -f ./Testing/$(ls ./Testing/ | grep '2' | tail -n 1)/Test.xml test-results.xml
     echo 'Uploading artifacts'
