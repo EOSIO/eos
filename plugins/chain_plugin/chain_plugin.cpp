@@ -458,8 +458,8 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          ("export-reversible-blocks", bpo::value<bfs::path>(),
            "export reversible block database in portable format into specified file and then exit")
          ("snapshot", bpo::value<bfs::path>(), "File to read Snapshot State from")
-         ("min-initial-block-num", bpo::value<uint32_t>()->default_value(0), "minimum latest irreversible block number to load, "
-         "nodeos would refuse to load any state from prior to that block number")
+         ("min-initial-block-num", bpo::value<uint32_t>()->default_value(0), 
+         "minimum last irreversible block (lib) number, fail to start if state/snapshot lib is prior to specified")
          ;
 
 }
