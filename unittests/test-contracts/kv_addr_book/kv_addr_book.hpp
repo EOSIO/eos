@@ -87,13 +87,13 @@ class [[eosio::contract]] kv_addr_book : public eosio::contract {
       //    index, and by providing as the first property one that has unique values
       //    it ensures the uniques of the values combined (including non-unique ones)
       // 3. the rest of the properties are the ones wanted to be indexed non-uniquely
-      index<kv::non_unique<eosio::name, std::string>> first_name_idx {
+      index<tuple<eosio::name, std::string>> first_name_idx {
          name{"firstname"_n},
          &person::first_name};
-      index<kv::non_unique<eosio::name, std::string>> last_name_idx {
+      index<tuple<eosio::name, std::string>> last_name_idx {
          name{"lastname"_n},
          &person::last_name};
-      index<kv::non_unique<eosio::name, std::string>> personal_id_idx {
+      index<tuple<eosio::name, std::string>> personal_id_idx {
          name{"persid"_n},
          &person::personal_id};
       // non-unique index defined using the KV_NAMED_INDEX macro
