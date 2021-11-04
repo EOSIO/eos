@@ -152,7 +152,6 @@ namespace {
             []( chain::block_timestamp_type timestamp,
                 const fc::flat_set<digest_type>& cur_features,
                 const std::vector<digest_type>& new_features ) {}
-//            , signer
       );
       bsp->sign( bsp->block, signer );
       bsp->block_num = height;

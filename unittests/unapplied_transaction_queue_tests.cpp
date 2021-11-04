@@ -72,7 +72,6 @@ auto create_test_block_state( deque<transaction_metadata_ptr> trx_metas ) {
              const flat_set<digest_type>& cur_features,
              const vector<digest_type>& new_features )
          {}
-//         ,signer
    );
    bsp->sign( bsp->block, signer );
 
