@@ -30,7 +30,7 @@ import sys
 #
 ###############################################################
 class RodeosCluster(object):
-    def __init__(self, dump_error_details, keep_logs, leave_running, clean_run, unix_socket_option, filterName, filterWasm, enableOC=False, numRodeos=1, numShip=1, timeout=500):
+    def __init__(self, dump_error_details, keep_logs, leave_running, clean_run, unix_socket_option, filterName, filterWasm, enableOC=False, numRodeos=1, numShip=1, timeout=300000):
         Utils.Print("Standing up RodeosCluster -- unix_socket_option {}, enableOC {}, numRodeos {}, numShip {}, timeout {}".format(unix_socket_option, enableOC, numRodeos, numShip, timeout))
 
         self.cluster=Cluster(walletd=True)
