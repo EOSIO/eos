@@ -238,10 +238,14 @@ class RodeosCluster(object):
         assert(rodeosId >= 0 and rodeosId < self.numRodeos)
         request_body = { "block_num_or_id": blockNum }
         if self.unix_socket_option:
+            Utils.waitForTruth(lambda:  Utils.runCmdArrReturnJson(['curl', '-X', 'POST', '-H', 'Content-Type: application/json', '-H', \
+                'Accept: application/json', '--unix-socket', './var/lib/rodeos{}/rodeos{}.sock'.format(rodeosId, rodeosId) , 'http://localhost/v1/chain/get_block', '--data', json.dumps(request_body)], silentErrors=True) != "" , timeout=30)
             return Utils.runCmdArrReturnJson(['curl', '-X', 'POST', '-H', 'Content-Type: application/json', '-H', \
-                'Accept: application/json', '--unix-socket', './var/lib/rodeos{}/rodeos{}.sock'.format(rodeosId, rodeosId) , 'http://localhost/v1/chain/get_block', '--data', json.dumps(request_body)])
-        return Utils.runCmdArrReturnJson(['curl', '-X', 'POST', '-H', 'Content-Type: application/json', '-H', 'Accept: application/json', self.wqlEndPoints[rodeosId] + 'v1/chain/get_block', '--data', json.dumps(request_body)])
+            'Accept: application/json', '--unix-socket', './var/lib/rodeos{}/rodeos{}.sock'.format(rodeosId, rodeosId) , 'http://localhost/v1/chain/get_block', '--data', json.dumps(request_body)])
         
+        Utils.waitForTruth(lambda:  Utils.runCmdArrReturnJson(['curl', '-X', 'POST', '-H', 'Content-Type: application/json', '-H', 'Accept: application/json', self.wqlEndPoints[rodeosId] + 'v1/chain/get_block', '--data', json.dumps(request_body)], silentErrors=True) != "" , timeout=30)
+        return Utils.runCmdArrReturnJson(['curl', '-X', 'POST', '-H', 'Content-Type: application/json', '-H', 'Accept: application/json', self.wqlEndPoints[rodeosId] + 'v1/chain/get_block', '--data', json.dumps(request_body)])
+
     def getInfo(self, rodeosId=0):
         assert(rodeosId >= 0 and rodeosId < self.numRodeos)
         if self.unix_socket_option:
