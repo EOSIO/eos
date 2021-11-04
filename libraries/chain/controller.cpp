@@ -1661,12 +1661,6 @@ struct controller_impl {
          fc_add_tag( trace, "block_id",  bsp->id.str() );
          fc_add_tag( trace, "block_num", bsp->block_num );
          fc_add_tag( trace, "num_transactions", bsp->block->transactions.size());         
-
-//         emit( self.accepted_block, bsp );
-
-//         if( add_to_fork_db ) {
-//            log_irreversible();
-//         }
       } catch (...) {
          // dont bother resetting pending, instead abort the block
          reset_pending_on_exit.cancel();
@@ -2637,7 +2631,6 @@ block_state_ptr controller::finalize_block( const signer_callback_type& signer_c
       my->log_irreversible();
 
    }
-
 
    my->block_sign_fut = async_thread_pool( my->block_sign_pool.get_executor(),
                                            [pfa, pfs, bsp, signer_callback]() mutable {
