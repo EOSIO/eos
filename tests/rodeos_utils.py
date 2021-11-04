@@ -30,7 +30,7 @@ import sys
 #
 ###############################################################
 class RodeosCluster(object):
-    def __init__(self, dump_error_details, keep_logs, leave_running, clean_run, unix_socket_option, filterName, filterWasm, enableOC=False, numRodeos=1, numShip=1, timeout=30000):
+    def __init__(self, dump_error_details, keep_logs, leave_running, clean_run, unix_socket_option, filterName, filterWasm, enableOC=False, numRodeos=1, numShip=1, timeout=500):
         Utils.Print("Standing up RodeosCluster -- unix_socket_option {}, enableOC {}, numRodeos {}, numShip {}, timeout {}".format(unix_socket_option, enableOC, numRodeos, numShip, timeout))
 
         self.cluster=Cluster(walletd=True)
@@ -238,12 +238,8 @@ class RodeosCluster(object):
         assert(rodeosId >= 0 and rodeosId < self.numRodeos)
         request_body = { "block_num_or_id": blockNum }
         if self.unix_socket_option:
-            Utils.waitForTruth(lambda:  Utils.runCmdArrReturnJson(['curl', '-X', 'POST', '-H', 'Content-Type: application/json', '-H', \
-                'Accept: application/json', '--unix-socket', './var/lib/rodeos{}/rodeos{}.sock'.format(rodeosId, rodeosId) , 'http://localhost/v1/chain/get_block', '--data', json.dumps(request_body)], silentErrors=True) != "" , timeout=30)
             return Utils.runCmdArrReturnJson(['curl', '-X', 'POST', '-H', 'Content-Type: application/json', '-H', \
-            'Accept: application/json', '--unix-socket', './var/lib/rodeos{}/rodeos{}.sock'.format(rodeosId, rodeosId) , 'http://localhost/v1/chain/get_block', '--data', json.dumps(request_body)])
-        
-        Utils.waitForTruth(lambda:  Utils.runCmdArrReturnJson(['curl', '-X', 'POST', '-H', 'Content-Type: application/json', '-H', 'Accept: application/json', self.wqlEndPoints[rodeosId] + 'v1/chain/get_block', '--data', json.dumps(request_body)], silentErrors=True) != "" , timeout=30)
+                'Accept: application/json', '--unix-socket', './var/lib/rodeos{}/rodeos{}.sock'.format(rodeosId, rodeosId) , 'http://localhost/v1/chain/get_block', '--data', json.dumps(request_body)])
         return Utils.runCmdArrReturnJson(['curl', '-X', 'POST', '-H', 'Content-Type: application/json', '-H', 'Accept: application/json', self.wqlEndPoints[rodeosId] + 'v1/chain/get_block', '--data', json.dumps(request_body)])
 
     def getInfo(self, rodeosId=0):
