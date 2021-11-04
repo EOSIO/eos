@@ -184,7 +184,7 @@ struct controller_impl : public std::enable_shared_from_this<controller_impl> {
    named_thread_pool                   block_sign_pool;
    platform_timer                      timer;
    fc::logger*                         deep_mind_logger = nullptr;
-   std::future<std::tuple<protocol_feature_activation_set_ptr,
+   std::future<std::tuple<protocol_feature_activation_set,
                           protocol_feature_set,
                           block_state_ptr>>               block_sign_fut;
 #if defined(EOSIO_EOS_VM_RUNTIME_ENABLED) || defined(EOSIO_EOS_VM_JIT_RUNTIME_ENABLED)
@@ -2598,14 +2598,13 @@ block_state_ptr controller::finalize_block( const signer_callback_type& signer_c
 
    auto& ab = std::get<assembled_block>(my->pending->_block_stage);
 
-   auto pfa = ab._pending_block_header_state.prev_activated_protocol_features;
+   auto pfa = *ab._pending_block_header_state.prev_activated_protocol_features.get();
    auto pfs = my->protocol_features.get_protocol_feature_set();
 
    auto bsp = std::make_shared<block_state>(
                   std::move( ab._pending_block_header_state ),
                   std::move( ab._unsigned_block ),
                   std::move( ab._trx_metas ),
-                  //my->protocol_features.get_protocol_feature_set(),
                   pfs,
                   []( block_timestamp_type timestamp,
                       const flat_set<digest_type>& cur_features,
@@ -2614,11 +2613,10 @@ block_state_ptr controller::finalize_block( const signer_callback_type& signer_c
               );
 
    my->pending->_block_stage = completed_block{ bsp };
-try {
+
    if( my->block_sign_fut.valid() ) {
       auto [pfa_preserved, pfs_preserved, result] = my->block_sign_fut.get();
 
-      try{
       if (!result->additional_signatures.empty()) {
          bool wtmsig_enabled = detail::is_builtin_activated(pfa_preserved, pfs_preserved, builtin_protocol_feature_t::wtmsig_block_signatures);
 
@@ -2634,26 +2632,15 @@ try {
 
          emplace_extension(result->block->block_extensions, additional_sigs_eid, fc::raw::pack( result->additional_signatures ));
       }
-      } catch (...) {
-         wlog("failed while checking protocol features");
-         throw;
-      }
 
-      try {
       my->emit( accepted_block, result );
       my->log_irreversible();
-      } catch (...) {
-         wlog("failed while emitting accepted block or log_irreversible");
-         throw;
-      }
-   }
-   } catch (...) {
-      wlog("failed while processing result of future");
-      throw;
+
    }
 
+
    my->block_sign_fut = async_thread_pool( my->block_sign_pool.get_executor(),
-                                           [pfa, pfs, bsp, &signer_callback]() mutable {
+                                           [pfa, pfs, bsp, signer_callback]() mutable {
                                               (*bsp).sign( bsp->block, signer_callback );
                                               return std::make_tuple(pfa, pfs, bsp);
                                            } );

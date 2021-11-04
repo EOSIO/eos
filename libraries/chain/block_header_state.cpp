@@ -9,8 +9,14 @@ namespace eosio { namespace chain {
                                  const protocol_feature_set& pfs,
                                  builtin_protocol_feature_t feature_codename )
       {
+         return is_builtin_activated(*pfa, pfs, feature_codename);
+      }
+      bool is_builtin_activated( const protocol_feature_activation_set& pfa,
+                                 const protocol_feature_set& pfs,
+                                 builtin_protocol_feature_t feature_codename )
+      {
          auto digest = pfs.get_builtin_digest(feature_codename);
-         const auto& protocol_features = pfa->protocol_features;
+         const auto& protocol_features = pfa.protocol_features;
          return digest && protocol_features.find(*digest) != protocol_features.end();
       }
    }

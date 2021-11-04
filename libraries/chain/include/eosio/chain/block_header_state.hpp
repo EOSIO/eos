@@ -69,6 +69,9 @@ namespace detail {
    bool is_builtin_activated( const protocol_feature_activation_set_ptr& pfa,
                               const protocol_feature_set& pfs,
                               builtin_protocol_feature_t feature_codename );
+   bool is_builtin_activated( const protocol_feature_activation_set& pfa,
+                              const protocol_feature_set& pfs,
+                              builtin_protocol_feature_t feature_codename );
 }
 
 struct pending_block_header_state : public detail::block_header_state_common {
