@@ -78,8 +78,8 @@ def launch_cluster(num_ships, num_rodeos, unix_socket, cleanRestart, killSignal,
         # Verify that the other rodeos instances receiving blocks
         for i in range(num_rodeos):
             if i != rodeosKilledId:
-                assert cluster.allBlocksReceived(numBlocks, i), "Rodeos #{} did not receive {} blocks after a rodeos node shutdown"\
-                    .format(i, numBlocks, num_ships, num_rodeos)
+                assert cluster.allBlocksReceived(numBlocks, i), "Rodeos #{} did not receive {} blocks after rodeos #{} shutdown"\
+                    .format(i, numBlocks, rodeosKilledId)
 
         # Restarting rodeos        
         Print("Restarting rodeos #{}".format(rodeosKilledId))
@@ -94,8 +94,8 @@ def launch_cluster(num_ships, num_rodeos, unix_socket, cleanRestart, killSignal,
             .format(numBlocks, num_ships, num_rodeos)
 
         # verify that rodeos receives all blocks from start to now
-        assert cluster.allBlocksReceived(numBlocks, rodeosKilledId), "Rodeos #{} did not receive {} blocks after the other rodeos node shutdown"\
-                .format(rodeosKilledId, numBlocks, num_ships, num_rodeos)
+        assert cluster.allBlocksReceived(numBlocks, rodeosKilledId), "Rodeos #{} did not receive {} blocks after it restarted"\
+                .format(rodeosKilledId, numBlocks)
 
         # Stop ShipId = 1
         shipKilledId=1
@@ -112,8 +112,8 @@ def launch_cluster(num_ships, num_rodeos, unix_socket, cleanRestart, killSignal,
         for i in cluster.shipNodeIdPortsNodes:
             if i != shipKilledId:
                 for j in cluster.ShiprodeosConnectionMap[i]:
-                    assert cluster.allBlocksReceived(numBlocks, j), "Rodeos #{} did not receive {} blocks after a rodeos node shutdown"\
-                        .format(j, numBlocks, num_ships - 1, num_rodeos)
+                    assert cluster.allBlocksReceived(numBlocks, j), "Rodeos #{} did not receive {} blocks after ship {} shutdown"\
+                        .format(j, numBlocks, shipKilledId)
 
         # Restart Ship
         Print("Restarting SHiP #{}".format(shipKilledId))
@@ -130,8 +130,8 @@ def launch_cluster(num_ships, num_rodeos, unix_socket, cleanRestart, killSignal,
 
         # Verify that the rodeos node listening to the newly started Ship is receiving blocks.
         for j in cluster.ShiprodeosConnectionMap[shipKilledId]:
-            assert cluster.allBlocksReceived(numBlocks, j), "Rodeos #{} did not receive {} blocks after a rodeos node shutdown"\
-                    .format(j, numBlocks, num_ships, num_rodeos)
+            assert cluster.allBlocksReceived(numBlocks, j), "Rodeos #{} did not receive {} blocks after ship #{} restarted"\
+                    .format(j, numBlocks, shipKilledId)
         if enableLoadTest:
             cluster.stopLoad()
         cluster.setTestSuccessful(True)
