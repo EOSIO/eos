@@ -187,7 +187,7 @@ try:
                         Print("Transaction not found for trans id: %s. Will wait %d seconds to see if it arrives in a block." %
                               (transId, args.transaction_time_delta))
                     transTimeDelayed = True
-                    node.waitForTransInBlock(transId, timeout = args.transaction_time_delta)
+                    node.waitForTransInBlock(transId)
                     continue
 
             lastIrreversibleBlockNum = node.getIrreversibleBlockNum()
