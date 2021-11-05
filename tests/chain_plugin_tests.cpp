@@ -442,8 +442,8 @@ BOOST_FIXTURE_TEST_CASE( get_account, TESTER ) try {
       BOOST_REQUIRE_EQUAL(nm, result.account_name);
       BOOST_REQUIRE_EQUAL(isPriv, result.privileged);
 
-      BOOST_REQUIRE_EQUAL(3, result.permissions.size());
-      if (result.permissions.size() > 2) {
+      BOOST_REQUIRE_EQUAL(2, result.permissions.size());
+      if (result.permissions.size() > 1) {
          auto perm = result.permissions[0];
          BOOST_REQUIRE_EQUAL(name("active"_n), perm.perm_name); 
          BOOST_REQUIRE_EQUAL(name("owner"_n), perm.parent);
@@ -461,15 +461,6 @@ BOOST_FIXTURE_TEST_CASE( get_account, TESTER ) try {
          BOOST_REQUIRE_EQUAL(1, auth.keys.size());
          BOOST_REQUIRE_EQUAL(0, auth.accounts.size());
          BOOST_REQUIRE_EQUAL(0, auth.waits.size());
-
-         perm = result.permissions[2];
-         BOOST_REQUIRE_EQUAL(name("eosio.any"_n), perm.perm_name); 
-         BOOST_REQUIRE_EQUAL(name(""_n), perm.parent);
-         auth = perm.required_auth;
-         BOOST_REQUIRE_EQUAL(0, auth.threshold);
-         BOOST_REQUIRE_EQUAL(0, auth.keys.size());
-         BOOST_REQUIRE_EQUAL(0, auth.accounts.size());
-         BOOST_REQUIRE_EQUAL(0, auth.waits.size());
       }
    };
 
@@ -480,6 +471,7 @@ BOOST_FIXTURE_TEST_CASE( get_account, TESTER ) try {
       if (perm.linked_actions.has_value())
          BOOST_REQUIRE_EQUAL(0, perm.linked_actions->size());
    }
+   BOOST_REQUIRE_EQUAL(0, result.eosio_any_linked_actions.size());
 
    // test link authority
    link_authority(name("alice"_n), name("bob"_n), name("active"_n), name("foo"_n));
@@ -497,6 +489,7 @@ BOOST_FIXTURE_TEST_CASE( get_account, TESTER ) try {
          BOOST_REQUIRE_EQUAL(name("foo"_n), la.action.value());
       }
    }
+   BOOST_REQUIRE_EQUAL(0, result.eosio_any_linked_actions.size());
 
    // test link authority to eosio.any
    link_authority(name("alice"_n), name("bob"_n), name("eosio.any"_n), name("foo"_n));
@@ -506,10 +499,11 @@ BOOST_FIXTURE_TEST_CASE( get_account, TESTER ) try {
    // active permission should no longer have linked auth, as eosio.any replaces it
    perm = result.permissions[0];
    BOOST_REQUIRE_EQUAL(0, perm.linked_actions->size());
-   perm = result.permissions[2];
-   BOOST_REQUIRE_EQUAL(1, perm.linked_actions->size());
-   if (perm.linked_actions->size() >= 1) {
-      auto la = (*perm.linked_actions)[0];
+
+   auto eosio_any_la = result.eosio_any_linked_actions;
+   BOOST_REQUIRE_EQUAL(1, eosio_any_la.size());
+   if (eosio_any_la.size() >= 1) {
+      auto la = eosio_any_la[0];
       BOOST_REQUIRE_EQUAL(name("bob"_n), la.account);
       BOOST_REQUIRE_EQUAL(true, la.action.has_value());
       if(la.action.has_value()) {
