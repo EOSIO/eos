@@ -49,7 +49,7 @@
         "pipeline-branch": "master",
         "dependencies": // dependencies to pull for a build of contracts, by branch, tag, or commit hash
         {
-            "eosio.cdt": "release/1.8.x"
+            "eosio.cdt": "develop"
         }
     }
 }
