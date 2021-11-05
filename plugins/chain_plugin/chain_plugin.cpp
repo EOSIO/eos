@@ -3380,6 +3380,16 @@ read_only::get_account_results read_only::get_account( const get_account_params&
       return result;
    })();
 
+   auto get_linked_actions = [&](chain::name perm_name) {
+      auto link_bounds = linked_action_map.equal_range(perm_name);
+      auto linked_actions = std::vector<linked_action>();
+      linked_actions.reserve(linked_action_map.count(perm_name));
+      for (auto link = link_bounds.first; link != link_bounds.second; ++link) {
+         linked_actions.push_back(link->second);
+      }
+      return linked_actions;
+   };
+
    const auto& permissions = d.get_index<permission_index,by_owner>();
    auto perm = permissions.lower_bound( boost::make_tuple( params.account_name ) );
    while( perm != permissions.end() && perm->owner == params.account_name ) {
@@ -3395,16 +3405,15 @@ read_only::get_account_results read_only::get_account( const get_account_params&
          }
       }
 
-      auto link_bounds = linked_action_map.equal_range(perm->name);
-      auto linked_actions = std::vector<linked_action>();
-      linked_actions.reserve(linked_action_map.count(perm->name));
-      for (auto link = link_bounds.first; link != link_bounds.second; ++link) {
-         linked_actions.push_back(link->second);
-      }
+      auto linked_actions = get_linked_actions(perm->name);
 
       result.permissions.push_back( permission{ perm->name, parent, perm->auth.to_authority(), std::move(linked_actions)} );
       ++perm;
    }
+
+   // add eosio.any linked authorizations
+   auto linked_actions = get_linked_actions("eosio.any"_n);
+   result.permissions.push_back( permission{"eosio.any"_n, {}, {}, std::move(linked_actions)} );
 
    const auto& code_account = db.db().get<account_object,by_name>( config::system_account_name );
 
