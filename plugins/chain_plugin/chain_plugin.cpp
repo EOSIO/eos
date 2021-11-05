@@ -3412,8 +3412,8 @@ read_only::get_account_results read_only::get_account( const get_account_params&
    }
 
    // add eosio.any linked authorizations
-   auto linked_actions = get_linked_actions("eosio.any"_n);
-   result.permissions.push_back( permission{"eosio.any"_n, {}, {}, std::move(linked_actions)} );
+   auto linked_actions = get_linked_actions(chain::config::eosio_any_name);
+   result.permissions.push_back( permission{chain::config::eosio_any_name, {}, {}, std::move(linked_actions)} );
 
    const auto& code_account = db.db().get<account_object,by_name>( config::system_account_name );
 
