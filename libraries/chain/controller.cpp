@@ -184,7 +184,7 @@ struct controller_impl {
    named_thread_pool                   block_sign_pool;
    platform_timer                      timer;
    fc::logger*                         deep_mind_logger = nullptr;
-   std::future<std::tuple<protocol_feature_activation_set,
+   std::future<std::tuple<protocol_feature_activation_set_ptr,
                           protocol_feature_set,
                           block_state_ptr>>               block_sign_fut;
 #if defined(EOSIO_EOS_VM_RUNTIME_ENABLED) || defined(EOSIO_EOS_VM_JIT_RUNTIME_ENABLED)
@@ -2585,14 +2585,14 @@ void controller::start_block( block_timestamp_type when,
                     block_status::incomplete, std::optional<block_id_type>() );
 }
 
-block_state_ptr controller::finalize_block( const signer_callback_type& signer_callback ) {
+block_state_ptr controller::finalize_block( const signer_callback_type signer_callback ) {
    validate_db_available_size();
 
    my->finalize_block();
 
    auto& ab = std::get<assembled_block>(my->pending->_block_stage);
 
-   auto pfa = *ab._pending_block_header_state.prev_activated_protocol_features.get();
+   auto pfa = ab._pending_block_header_state.prev_activated_protocol_features;
    auto pfs = my->protocol_features.get_protocol_feature_set();
 
    auto bsp = std::make_shared<block_state>(
@@ -2633,7 +2633,7 @@ block_state_ptr controller::finalize_block( const signer_callback_type& signer_c
    }
 
    my->block_sign_fut = async_thread_pool( my->block_sign_pool.get_executor(),
-                                           [pfa, pfs, bsp, signer_callback]() mutable {
+                                           [pfa, pfs, bsp, signer_callback = std::move(signer_callback)]() mutable {
                                               (*bsp).sign( bsp->block, signer_callback );
                                               return std::make_tuple(pfa, pfs, bsp);
                                            } );
