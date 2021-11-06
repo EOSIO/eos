@@ -185,9 +185,9 @@ try:
                 else:
                     if Utils.Debug:
                         Print("Transaction not found for trans id: %s. Will wait %d seconds to see if it arrives in a block." %
-                              (transId, args.transaction_time_delta))
+                              (transId, args.transaction_time_delta + 10))
                     transTimeDelayed = True
-                    node.waitForTransInBlock(transId)
+                    node.waitForTransInBlock(transId, timeout = args.transaction_time_delta + 10)
                     continue
 
             lastIrreversibleBlockNum = node.getIrreversibleBlockNum()
