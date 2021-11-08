@@ -375,7 +375,21 @@ namespace eosio { namespace chain {
 
          }
          auto h1 = ctx.push_to_path( impl::field_path_item{ .parent_struct_itr = s_itr, .field_ordinal = i } );
-         obj( field.name, _binary_to_variant(resolve_type( extension ? _remove_bin_extension(field.type) : field.type ), stream, ctx) );
+         auto field_type = resolve_type( extension ? _remove_bin_extension(field.type) : field.type );
+         auto v = _binary_to_variant(field_type, stream, ctx);
+         if( ctx.is_logging() && v.is_string() && field_type == "bytes" ) {
+            fc::mutable_variant_object sub_obj;
+            auto size = v.get_string().size() / 2; // half because it is in hex
+            sub_obj( "size", size );
+            if( size > impl::hex_log_max_size ) {
+               sub_obj( "trimmed_hex", v.get_string().substr( 0, impl::hex_log_max_size*2 ) );
+            } else {
+               sub_obj( "hex", std::move( v ) );
+            }
+            obj( field.name, std::move(sub_obj) );
+         } else {
+            obj( field.name, std::move(v) );
+         }
       }
    }
 
