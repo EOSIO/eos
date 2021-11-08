@@ -240,10 +240,10 @@ try:
     if args.send_duplicates:
         # kill bios, since it prevents the ring topography from really being a ring
         cluster.biosNode.kill(signal.SIGTERM)
-        nodeOrder.append(0)
         # jump to node furthest in ring from node 0
         next = int((totalNodes + 1) / 2)
         nodeOrder.append(next)
+        nodeOrder.append(0)
         # then just fill in the rest of the nodes
         for i in range(1, next):
             nodeOrder.append(i)
