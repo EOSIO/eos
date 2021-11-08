@@ -9,27 +9,33 @@ USAGE = "\
 Usage: blockchain_audit_tool.py [OPTIONS] [<rpc_endpoint>]\n"
 
 HELP_INFO = "\
-    Retrieve info from EOSIO blockchain.\n\
+    Audit EOSIO blockchain.\n\
     <rpc_endpoint> RPC endpoint URI of nodeos with chain_api_plugin enabled. Defaults to 'localhost:8888'\n\
     OPTIONS:\n\
                   --help  Print help info and exit\n\
        --comp <filepath>  Do not query nodeos.  Instead use <filepath> as basis for comparison combined with '--ref' option\n\
            -o <filepath>  Output to filepath instead of default 'blockchain_audit_data.json'\n\
-       --page_size <num>  Integer > 0, default 1024. The 'limit' field in RPC queries for accounts and.  Default 1024\n\
+       --page_size <num>  Integer > 0, default 1024. The 'limit' field in RPC queries for accounts and table data.  Default 1024\n\
         --ref <filepath>  Use <filepath> to comparefor non-transient data to use comparison\n\
-     --scope-limit <num>  Integer > 0, default 10. The 'limit' field when calling /v1/chain/get_table_by_scope. \n\
- --table-row-limit <num>  Integer > 0, default 10. The 'limit' field when calling /v1/chain/get_table_rows and. \n\
+     --scope-limit <num>  Integer >= 0, default 0. Max # of scopes to fetch. 0=no limit\n\
+ --table-row-limit <num>  Integer >= 0, default 0. Max # of rows of MI and KV tables to fetch. 0=no limit\n\
+       --keep-irrelevant  Flag.  Normally time and block number data will be removed from the JSON.  Setting this flag keeps that data.\n\
     Outputs to stdout in a human readable format, and write to JSON file specified by '-o' which defaults to:\n\
          'blockchain_audit_data.json'\n\
     Status and error info is written to stderr.\n\
     Information currently includes:\n\
-        Full server info\n\
+        Server info\n\
         All accounts, creation dates, code hashes\n\
         Account permissions\n\
         Producer schedules\n\
         Activated protocol features\n\
         Preview of MI and KV tables on each account\n\
         Deferred transactions"
+
+SERVER_INFO_TRANSIENT_FIELDS = [ "head_block_num", "last_irreversible_block_num",
+    "last_irreversible_block_id", "head_block_id",  "head_block_time",
+    "fork_db_head_block_num", "fork_db_head_block_id", "server_full_version_string",
+    "last_irreversible_block_time", "virtual_block_cpu_limit", "virtual_block_net_limit" ]
 
 class ArgumentParseError(Exception):
     def __init__(self, msg):
@@ -141,7 +147,7 @@ def getJSONResp(conn, rpc, req_body="", exitOnError=True):
     return json_data
 
 
-def getAllAccounts(limit):
+def getAllAccounts(conn, limit):
     moreAccounts = True
     all_accts = []
     req_body = '{"limit":' + str(limit) + '}'
@@ -158,8 +164,67 @@ def getAllAccounts(limit):
         if moreAccounts:
             nextAcct = accts['more']
             req_body = '{"limit":' + str(limit) + f', "lower_bound":"{nextAcct}"' + '}'
-    return all_accts
+    return all_accts, numAccounts
 
+def getScopes(conn, code_name, page_size, max_scopes):
+    next_scope = ""
+    i = 0
+    scope_rows_all = []
+    moreData = True
+    while moreData and (max_scopes == 0 or i < max_scopes):
+        req_body = '{' + f'"code":"{code_name}", "table":"", "lower_bound":"{next_scope}", "upper_bound":"", "limit":{page_size}, "reverse":false' + '}'
+        scopes = getJSONResp(conn, "/v1/chain/get_table_by_scope", req_body)
+        scope_rows_all.extend(scopes["rows"])
+        next_scope = scopes["more"]
+        i += page_size
+        moreData = (next_scope != "")
+
+    return scope_rows_all
+
+def getTableRows(conn, code_name, scope_name, table_name, page_size, max_rows):
+    next_table = ""
+    i = 0
+    table_rows_all = []
+    moreData = True
+    while moreData and (i < max_rows or max_rows == 0):
+        req_body = '{' + f'"json":true, "code":"{code_name}", "scope":"{scope_name}", "table":"{table_name}", "lower_bound":"{next_table}",\
+    "upper_bound":"", "limit": {page_size},"table_key": "",  "key_type": "", "index_position": "",\
+    "encode_type": "bytes", "reverse": false, "show_payer": false' + '}'
+
+        resp = getJSONResp(conn, "/v1/chain/get_table_rows", req_body, exitOnError=False)
+        try:
+            table_rows_all.extend(resp["rows"])
+
+            next_table = resp["more"]
+            moreData = (next_table != "")
+            i += page_size
+        except Exception as e:
+            break
+
+    return table_rows_all
+
+def getKVTableData(conn, code_name, page_size, max_rows):
+    next_key = ""
+    i = 0
+    kv_data_all = []
+    moreData = True
+    while moreData and (i < max_rows or max_rows == 0):
+        req_body = '{' + f'"json": false,  "code": "{code_name}",  "table": "{next_key}",\
+"index_name": "", "index_value": "", "lower_bound": "", "upper_bound": "",\
+"limit": {page_size},  "encode_type": "bytes",  "reverse": false,  "show_payer": false' + '}'
+
+        # print(f"getKVTableData: req_body={req_body}")
+        resp = getJSONResp(conn, "/v1/chain/get_kv_table_rows", req_body, exitOnError=False)
+        try:
+            kv_data_all.extend(resp["rows"])
+
+            moreData = resp['more']
+            next_key = resp["next_key"]
+            i += page_size
+        except Exception as e:
+            break
+
+    return kv_data_all
 
 def compareAccountNames(ref, cmp):
     mismatch = []
@@ -193,7 +258,13 @@ def compareServerInfo(ref, cmp):
               'server_full_version_string')
     mismatches = []
     for f in fields:
-        if ref[f] != cmp[f]:
+        if f in ref and f not in cmp:
+            mismatches.append((f, ref[f], None))
+        elif f in cmp and f not in ref:
+            mismatches.append((f, None, cmp[f]))
+        elif f not in ref and f not in cmp:
+            continue
+        elif ref[f] != cmp[f]:
             mismatches.append((f, ref[f], cmp[f]))
     return mismatches
 
@@ -224,7 +295,7 @@ def compareProduceSchedules(ref, cmp):
     mismatches = []
     for s in ('active', 'pending', 'proposed'):
         if ref[s] != cmp[s]:
-            mismatches.append(s, ref[s], cmp[s])
+            mismatches.append((s, ref[s], cmp[s]))
     return mismatches
 
 
@@ -253,7 +324,7 @@ def compareRefData(refData, cmpData):
     mismatches['accounts_tables'] = compareAccountsField(refAccts, cmpAccts, 'tables')
     mismatches['accounts_kv_tables'] = compareAccountsField(refAccts, cmpAccts, 'kv_tables')
     mismatches['accounts_permissions'] = compareAccountsField(refAccts, cmpAccts, 'metadata', 'permissions')
-    mismatches['producer_schedule'] = compareProduceSchedules(refData['producer_schedule'], cmpData['producer_schedule'])        
+    mismatches['producer_schedule'] = compareProduceSchedules(refData['producer_schedule'], cmpData['producer_schedule'])
     mismatches['deferred_trx'] = compareDeferredTrx(refData['deferred_transactions'], cmpData['deferred_transactions'])
     mismatches['server_info'] = compareServerInfo(refData['server_info_begin'], cmpData['server_info_begin'])
     mismatches['protocol_features'] = compareProtocolFeatures(refProtFeats, cmpProtFeats)
@@ -264,12 +335,32 @@ def compareRefData(refData, cmpData):
             isSame = False
             print(f"ERROR: mismatch in '{k}'", file=sys.stderr)
             for i in v:
-                print(f"  ref: {i[0]}  comp: {i[1]}", file=sys.stderr)
+                print(f"  '{i[0]}' ref: {i[1]}  comp: {i[2]}", file=sys.stderr)
     if isSame:
         print("Reference comparison SUCCESS", file=sys.stderr)
     else:
         print("Reference comparison FAILURE - see errors above.", file=sys.stderr)
     return isSame
+
+def removeIrrelevant(data):
+    inf_begin = data["server_info_begin"]
+    inf_end = data["server_info_end"]
+    for fld in SERVER_INFO_TRANSIENT_FIELDS:
+        del inf_begin[fld]
+        del inf_end[fld]
+    accts = data["accounts"]
+    for a in accts:
+        md = a["metadata"]
+        del md["head_block_num"]
+        del md["head_block_time"]
+        del md["last_code_update"]
+        del md["created"]
+        del md["net_limit"]["last_usage_update_time"]
+        del md["cpu_limit"]["last_usage_update_time"]
+
+    for feat in data["activated_protocol_features"]:
+        del feat["activation_block_num"]
+
 
 if __name__ == "__main__":
     rpc_endpt = "127.0.0.1:8888"
@@ -277,17 +368,18 @@ if __name__ == "__main__":
                "--comp" : ("comp-filepath", ""),
                "--help" : ("help", None),
                    "-o" : ("output-filepath", "blockchain_audit_data.json"),
-          "--page-size" : ("page-size", 1024), 
+          "--page-size" : ("page-size", 1024),
                 "--ref" : ("reference-filepath", ""),
-        "--scope-limit" : ("scope-limit", 10),
-    "--table-row-limit" : ("table-row-limit", 10)          
-                }
+        "--scope-limit" : ("scope-limit", 0),
+    "--table-row-limit" : ("table-row-limit", 0),
+    "--keep-irrelevant" : ("keep-irrelevant", None)
+                  }
 
     # parse options
     optionsMap, otherArgLst = parseArgs(sys.argv, optionsMap, 0, 1)
     if optionsMap['help']:
-        print(USAGE)
-        print(HELP_INFO)
+        print(USAGE, file=sys.stderr)
+        print(HELP_INFO, file=sys.stderr)
         exit(0)
 
     if len(otherArgLst) > 0:
@@ -299,10 +391,19 @@ if __name__ == "__main__":
     output_filepath = optionsMap['output-filepath']
     ref_filepath = optionsMap['reference-filepath']
     comp_filepath = optionsMap['comp-filepath']
+    keep_irrelevant = optionsMap['keep-irrelevant']
+
+    if scope_limit < 0:
+        print("scope-limit must be >= 0")
+        print(USAGE)
+        exit(1)
+    if table_row_limit < 0:
+        print("scope-limit must be >= 0")
+        print(USAGE)
 
     if comp_filepath != "":
         if ref_filepath == "":
-            print("'--comp 'option must be used in combination with '--ref' option")
+            print("'--comp 'option must be used in combination with '--ref' option", file=sys.stderr)
             exit(1)
         fComp = open(comp_filepath, "r")
         s = fComp.read()
@@ -322,8 +423,7 @@ if __name__ == "__main__":
     server_info_begin = getJSONResp(conn, "/v1/chain/get_info")
 
     # get all accounts on the chain
-    all_accts = getAllAccounts(page_size)
-    numAccounts = len(all_accts)
+    all_accts, numAccounts = getAllAccounts(conn, page_size)
     if numAccounts == 0:
         print("Error, no accounts returned from get_all_accounts!", file=sys.stderr)
         exit(1)
@@ -337,7 +437,7 @@ if __name__ == "__main__":
             i += 1
             nm = a['name']
             print("\b"*31, end="", file=sys.stderr)
-            print(f"{nm:13} {i:8}/{numAccounts:8}", end="", file=sys.stderr)
+            print(f"{nm:13} {i:8}/{numAccounts:8}", end="", file=sys.stderr, flush=True)
 
             e = { 'name' : nm }
             req_body = '{ "account_name": "' + nm + '" }'
@@ -358,42 +458,26 @@ if __name__ == "__main__":
         # get scopes and tables
         nm = a['name']
         print("\b"*31, end="", file=sys.stderr)
-        print(f"{nm:13} {i:8}/{numAccounts:8}", end="", file=sys.stderr)
+        print(f"{nm:13} {i:8}/{numAccounts:8}", end="", file=sys.stderr, flush=True)
         i += 1
 
-        req_body = '{' + f'"code":"{nm}", "table":"", "lower_bound":"", "upper_bound":"", "limit":{scope_limit}, "reverse":false' + '}'
-        scopes = getJSONResp(conn, "/v1/chain/get_table_by_scope", req_body)
-        scope_rows = scopes["rows"]
+        scopes = getScopes(conn, nm, page_size, scope_limit)
+
         a['scopes'] = scopes
         a['tables'] = dict()
-        for scope in scope_rows:
+        for scope in scopes:
             sc = scope['scope']
             tbl = scope['table']
 
-            req_body = '{' + f'"json":true, "code":"{nm}", "scope":"{sc}", "table":"{tbl}", "lower_bound":"",\
-    "upper_bound":"", "limit": {table_row_limit},"table_key": "",  "key_type": "", "index_position": "",\
-    "encode_type": "bytes", "reverse": false, "show_payer": false' + '}'
+            table_rows = getTableRows(conn, nm, sc, tbl, page_size, table_row_limit)
 
-            table_rows = getJSONResp(conn, "/v1/chain/get_table_rows", req_body, exitOnError=False)
             a['tables'][sc + ":" + tbl] = table_rows
 
-        # get abi so we can determine kv_tables
-        req_body = '{' + f'"account_name": "{nm}"' + '}'
-        abi = getJSONResp(conn, "/v1/chain/get_abi", req_body)
-        a['kv_tables'] = dict()
-        if 'abi' in abi:
-            kv_tables = abi['abi']['kv_tables']
-            for tbl_name, tbl_def in kv_tables.items():
-                tbl_idx_nm = tbl_def['primary_index']['name']
-
-                req_body = '{' + f'"json": true,  "code": "{nm}",  "table": "{tbl_name}",\
-    "index_name": "{tbl_idx_nm}", "index_value": "", "lower_bound": "", "upper_bound": "",\
-    "limit": {table_row_limit},  "encode_type": "bytes",  "reverse": false,  "show_payer": false' + '}'
-
-                table_rows = getJSONResp(conn, "/v1/chain/get_kv_table_rows", req_body, exitOnError=False)
-                a['kv_tables'][tbl_name + ":" + tbl_idx_nm] = table_rows
+        kv_data = getKVTableData(conn, nm, page_size, table_row_limit)
+        a['kv_tables'] = kv_data
 
     data = {'accounts' : accts_lst, 'scope_limit' : scope_limit, 'table_row_limit' : table_row_limit }
+    print(file=sys.stderr)
 
     prod_sched = getJSONResp(conn, "/v1/chain/get_producer_schedule")
     data['producer_schedule'] = prod_sched
@@ -424,13 +508,12 @@ if __name__ == "__main__":
     data['server_info_end'] = server_info_end
 
     # get all accounts again
-    all_accts_end = getAllAccounts(page_size)
-    numAccounts_end = len(all_accts_end)
+    all_accts_end, numAccounts_end = getAllAccounts(conn, page_size)
+    print(file=sys.stderr)
     if numAccounts != numAccounts_end:
         msg = f"ERROR: Accounts added during audit. begin= {numAccounts} end= {numAccounts_end}"
         print(msg, file=sys.stderr)
-        exit(1)
-    
+
     if server_info_begin['head_block_num'] != server_info_end['head_block_num']:
         print("WARNING: Audit data was collected from different blocks.  Data may be inconssitent.", file=sys.stderr)
 
@@ -453,9 +536,9 @@ if __name__ == "__main__":
             lcu = lcu[0:21]
             print(f"{a['name']:13} | {m['privileged']:9} | {cr:21} | {lcu:21} | {a['code_hash']} ")
 
-        print("\n\n     ======  ACCOUNT PERMISSIONS ======")
-        print("Accoount        Perm Name       Parent         Auth Threshold / [(Key, Weight)..] / Accounts / Waits                    ")
-        print("---------------------------------------------------------------------------------------------------------")
+        print("\n\n     ======  ACCOUNT PERMISSIONS AND PERMISSION LINKS ======")
+        print("Accoount        Perm Name       Parent         Auth Threshold / [(Key, Weight)..] / Accounts / Waits               ")
+        print("-------------------------------------------------------------------------------------------------------------------")
         for a in accts_lst:
             m = a['metadata']
             for p in m['permissions']:
@@ -471,6 +554,17 @@ if __name__ == "__main__":
                 for auth_w in auth['waits']:
                     print(f"{auth_w}", end=",")
                 print("]")
+
+                print("     Linked Actions: ", end="")
+                if 'linked_actions' in p:
+                    linked_acts = p['linked_actions']
+                    if len(linked_acts) == 0:
+                        print("(None)", end="")
+                    for l_act in linked_acts:
+                        print(f'{l_act["account"]}::{l_act["action"]}, ', end="")
+                    print()
+                else:
+                    print('(Unkonwn)')
 
         for s in ('active', 'pending', 'proposed'):
             sched = prod_sched[s]
@@ -510,45 +604,29 @@ if __name__ == "__main__":
         atLeastOne = False
         for a in accts_lst:
             scopes = a['scopes']
-            for s in scopes['rows']:
+            for s in scopes:
                 scope_table = s['scope'] + ":" + s['table']
                 print(f"{s['code']:13} | {scope_table:27}", end=" ")
                 tbl = a['tables'][scope_table]
-                if 'rows' in tbl:
-                    print('[', end="")
-                    for v in tbl['rows']:
-                        print(v, end=", ")
-                    if tbl['more']:
-                        print("(truncated)", end="")
-                    print(']')
-                else:
-                    print("(no data)")
+                print('[', end="")
+                for v in tbl:
+                    print(v, end=", ")
+                print(']')
                 atLeastOne = True
-            if scopes['more']:
-                print(f"{a['name']:13} | (truncated)")
         if not atLeastOne:
             print("(None)")
 
         print("\n\n     ====== KV TABLES ======")
-        print("Account        Table:Primary Index                Values")
+        print("Account        Data")
         print("---------------------------------------------------------------------------------------------------------")
-        atLeastOne = False
         for a in accts_lst:
-            if 'kv_tables' not in a:
-                continue
+            print(f"{a['name']:13}", end="")
             kv_tables = a['kv_tables']
-            for tbl_nm_idx, kv_tbl in kv_tables.items():
-                print(f"{a['name']:13} | {tbl_nm_idx:27} | [", end="")
-                for v in kv_tbl['rows']:
-                    print(v, end=", ")
-                if kv_tbl['more']:
-                    print("(truncated)", end="")
-                print(']')
-                atLeastOne = True
-            if kv_tables['more']:
-                print(f"{a['name']:13} | (truncated)")
-        if not atLeastOne:
-            print("(None)")
+            print("[", end="")
+            for v in kv_tables:
+                print(v, end=", ")
+
+            print(']')
 
         print("\n\n     ====== DEFERRED TRANSACTIONS ======")
         print("---------------------------------------------------------------------------------------------------------")
@@ -569,11 +647,14 @@ if __name__ == "__main__":
 
     # save results as json
     with open(output_filepath, "wt") as f:
-        f.write(json.dumps(data))
+        if not keep_irrelevant:
+            removeIrrelevant(data)
+
+        f.write(json.dumps(data, sort_keys=True, indent=2))
 
     if ref_filepath != "":
         with open(ref_filepath, "r") as f:
-            s = f.read()         
+            s = f.read()
             refData = json.loads(s)
             compSuccess = compareRefData(refData, data)
             if compSuccess:
