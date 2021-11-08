@@ -424,5 +424,92 @@ BOOST_FIXTURE_TEST_CASE( get_all_accounts, TESTER ) try {
 
 } FC_LOG_AND_RETHROW() //get_all_accounts
 
+BOOST_FIXTURE_TEST_CASE( get_account, TESTER ) try {
+   produce_blocks(2);
+
+   std::vector<account_name> accs{{ "alice"_n, "bob"_n, "cindy"_n}};
+   create_accounts(accs, false, false);
+
+   produce_block();
+
+   chain_apis::read_only plugin(*(this->control), {}, fc::microseconds::maximum());
+
+   chain_apis::read_only::get_account_params p{"alice"_n};
+
+   chain_apis::read_only::get_account_results result = plugin.read_only::get_account(p);
+
+   auto check_result_basic = [](chain_apis::read_only::get_account_results result, eosio::name nm, bool isPriv) {
+      BOOST_REQUIRE_EQUAL(nm, result.account_name);
+      BOOST_REQUIRE_EQUAL(isPriv, result.privileged);
+
+      BOOST_REQUIRE_EQUAL(2, result.permissions.size());
+      if (result.permissions.size() > 1) {
+         auto perm = result.permissions[0];
+         BOOST_REQUIRE_EQUAL(name("active"_n), perm.perm_name); 
+         BOOST_REQUIRE_EQUAL(name("owner"_n), perm.parent);
+         auto auth = perm.required_auth;
+         BOOST_REQUIRE_EQUAL(1, auth.threshold);
+         BOOST_REQUIRE_EQUAL(1, auth.keys.size());
+         BOOST_REQUIRE_EQUAL(0, auth.accounts.size());
+         BOOST_REQUIRE_EQUAL(0, auth.waits.size());
+
+         perm = result.permissions[1];
+         BOOST_REQUIRE_EQUAL(name("owner"_n), perm.perm_name); 
+         BOOST_REQUIRE_EQUAL(name(""_n), perm.parent); 
+         auth = perm.required_auth;
+         BOOST_REQUIRE_EQUAL(1, auth.threshold);
+         BOOST_REQUIRE_EQUAL(1, auth.keys.size());
+         BOOST_REQUIRE_EQUAL(0, auth.accounts.size());
+         BOOST_REQUIRE_EQUAL(0, auth.waits.size());
+      }
+   };
+
+   check_result_basic(result, name("alice"_n), false);
+
+   for (auto perm : result.permissions) {
+      BOOST_REQUIRE_EQUAL(true, perm.linked_actions.has_value());
+      if (perm.linked_actions.has_value())
+         BOOST_REQUIRE_EQUAL(0, perm.linked_actions->size());
+   }
+   BOOST_REQUIRE_EQUAL(0, result.eosio_any_linked_actions.size());
+
+   // test link authority
+   link_authority(name("alice"_n), name("bob"_n), name("active"_n), name("foo"_n));
+   produce_block();
+   result = plugin.read_only::get_account(p);
+
+   check_result_basic(result, name("alice"_n), false);
+   auto perm = result.permissions[0];
+   BOOST_REQUIRE_EQUAL(1, perm.linked_actions->size());
+   if (perm.linked_actions->size() >= 1) {
+      auto la = (*perm.linked_actions)[0];
+      BOOST_REQUIRE_EQUAL(name("bob"_n), la.account);
+      BOOST_REQUIRE_EQUAL(true, la.action.has_value());
+      if(la.action.has_value()) {
+         BOOST_REQUIRE_EQUAL(name("foo"_n), la.action.value());
+      }
+   }
+   BOOST_REQUIRE_EQUAL(0, result.eosio_any_linked_actions.size());
+
+   // test link authority to eosio.any
+   link_authority(name("alice"_n), name("bob"_n), name("eosio.any"_n), name("foo"_n));
+   produce_block();
+   result = plugin.read_only::get_account(p);
+   check_result_basic(result, name("alice"_n), false);
+   // active permission should no longer have linked auth, as eosio.any replaces it
+   perm = result.permissions[0];
+   BOOST_REQUIRE_EQUAL(0, perm.linked_actions->size());
+
+   auto eosio_any_la = result.eosio_any_linked_actions;
+   BOOST_REQUIRE_EQUAL(1, eosio_any_la.size());
+   if (eosio_any_la.size() >= 1) {
+      auto la = eosio_any_la[0];
+      BOOST_REQUIRE_EQUAL(name("bob"_n), la.account);
+      BOOST_REQUIRE_EQUAL(true, la.action.has_value());
+      if(la.action.has_value()) {
+         BOOST_REQUIRE_EQUAL(name("foo"_n), la.action.value());
+      }
+   }
+} FC_LOG_AND_RETHROW() /// get_account
 
 BOOST_AUTO_TEST_SUITE_END()

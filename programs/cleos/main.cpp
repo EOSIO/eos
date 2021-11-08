@@ -2295,15 +2295,9 @@ void get_account( const string& accountName, const string& coresym, bool json_fo
       }
       std::cout << std::endl;
 
-      bool header_printed = false;
+      std::cout << "permission links: " << std::endl;
       dfs_fn_t print_links = [&](const eosio::chain_apis::permission& p, int) -> void {
          if (p.linked_actions) {
-
-            if (!header_printed) {
-               std::cout << "permission links: " << std::endl;
-               header_printed = true;
-            }
-
             if (!p.linked_actions->empty()) {
                std::cout << indent << p.perm_name.to_string() + ":" << std::endl;
                for ( auto it = p.linked_actions->begin(); it != p.linked_actions->end(); ++it ) {
@@ -2318,10 +2312,15 @@ void get_account( const string& accountName, const string& coresym, bool json_fo
          dfs_exec( r, 0, print_links);
       }
 
-      if (header_printed) {
-         std::cout << std::endl;
+      // print linked actions 
+      std::cout << indent << "eosio.any: " << std::endl;
+      for (const auto& it : res.eosio_any_linked_actions) {
+         auto action_value = it.action ? it.action->to_string() : std::string("*");
+         std::cout << indent << indent << it.account << "::" << action_value << std::endl;
       }
 
+      std::cout << std::endl;
+ 
       auto to_pretty_net = []( int64_t nbytes, uint8_t width_for_units = 5 ) {
          if(nbytes == -1) {
              // special case. Treat it as unlimited
