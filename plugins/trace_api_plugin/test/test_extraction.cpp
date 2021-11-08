@@ -144,16 +144,19 @@ namespace {
                                                                      chain::block_signing_authority_v0{1, {{pub_key, 1}}}}}};
       pbhs.active_schedule = schedule;
       pbhs.valid_block_signing_authority = chain::block_signing_authority_v0{1, {{pub_key, 1}}};
+      auto pfa = pbhs.prev_activated_protocol_features;
+      chain::protocol_feature_set pfs;
+
       auto bsp = std::make_shared<chain::block_state>(
             std::move( pbhs ),
             std::move( block ),
             eosio::chain::deque<chain::transaction_metadata_ptr>(),
-            chain::protocol_feature_set(),
+            pfs,
             []( chain::block_timestamp_type timestamp,
                 const fc::flat_set<digest_type>& cur_features,
                 const std::vector<digest_type>& new_features ) {}
       );
-      bsp->sign( bsp->block, signer );
+      bsp->sign_and_inject_additional_signatures( signer, pfa, pfs );
       bsp->block_num = height;
 
       return bsp;

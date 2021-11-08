@@ -184,9 +184,6 @@ struct controller_impl {
    named_thread_pool                   block_sign_pool;
    platform_timer                      timer;
    fc::logger*                         deep_mind_logger = nullptr;
-   std::future<std::tuple<protocol_feature_activation_set_ptr,
-                          protocol_feature_set,
-                          block_state_ptr>>               block_sign_fut;
 #if defined(EOSIO_EOS_VM_RUNTIME_ENABLED) || defined(EOSIO_EOS_VM_JIT_RUNTIME_ENABLED)
    vm::wasm_allocator               wasm_alloc;
 #endif
@@ -1660,7 +1657,14 @@ struct controller_impl {
          auto trace = fc_create_trace_with_id_if(add_to_fork_db, "block", bsp->id);
          fc_add_tag( trace, "block_id",  bsp->id.str() );
          fc_add_tag( trace, "block_num", bsp->block_num );
-         fc_add_tag( trace, "num_transactions", bsp->block->transactions.size());         
+         fc_add_tag( trace, "num_transactions", bsp->block->transactions.size());     
+         
+         emit( self.accepted_block, bsp );
+
+         if( add_to_fork_db ) {
+            log_irreversible();
+         }
+
       } catch (...) {
          // dont bother resetting pending, instead abort the block
          reset_pending_on_exit.cancel();
@@ -1670,6 +1674,11 @@ struct controller_impl {
 
       // push the state for pending.
       pending->push();
+   }
+
+   void on_block_signed(block_state_ptr bsp) {  
+      log_irreversible();
+      emit( self.accepted_block, bsp );
    }
 
    /**
@@ -2585,7 +2594,7 @@ void controller::start_block( block_timestamp_type when,
                     block_status::incomplete, std::optional<block_id_type>() );
 }
 
-block_state_ptr controller::finalize_block( const signer_callback_type signer_callback ) {
+block_state_ptr controller::finalize_block(signer_callback_type&& signer_callback, std::function<void(block_state_ptr)>&& continuation) {
    validate_db_available_size();
 
    my->finalize_block();
@@ -2608,36 +2617,21 @@ block_state_ptr controller::finalize_block( const signer_callback_type signer_ca
 
    my->pending->_block_stage = completed_block{ bsp };
 
-   if( my->block_sign_fut.valid() ) {
-      auto [pfa_preserved, pfs_preserved, result] = my->block_sign_fut.get();
-
-      if (!result->additional_signatures.empty()) {
-         bool wtmsig_enabled = detail::is_builtin_activated(pfa_preserved, pfs_preserved, builtin_protocol_feature_t::wtmsig_block_signatures);
-
-         constexpr auto additional_sigs_eid = additional_block_signatures_extension::extension_id();
-
-         EOS_ASSERT(wtmsig_enabled, block_validate_exception,
-                    "Block has multiple signatures before activation of WTMsig Block Signatures");
-
-         // as an optimization we don't copy this out into the legitimate extension structure as it serializes
-         // the same way as the vector of signatures
-         static_assert(fc::reflector<additional_block_signatures_extension>::total_member_count == 1);
-         static_assert(std::is_same_v<decltype(additional_block_signatures_extension::signatures), std::vector<signature_type>>);
-
-         emplace_extension(result->block->block_extensions, additional_sigs_eid, fc::raw::pack( result->additional_signatures ));
-      }
-
-      my->emit( accepted_block, result );
-      my->log_irreversible();
-
+   if (!continuation) {
+      bsp->sign_and_inject_additional_signatures(signer_callback, pfa, pfs );
+   } else {
+      async_thread_pool(my->block_sign_pool.get_executor(),
+                        [bsp, pfa, &pfs, signer_callback = std::move(signer_callback),
+                           continuation = std::move(continuation)]() mutable {
+                           bsp->sign_and_inject_additional_signatures(signer_callback, pfa, pfs);
+                           continuation(bsp);
+                        });
    }
-
-   my->block_sign_fut = async_thread_pool( my->block_sign_pool.get_executor(),
-                                           [pfa, pfs, bsp, signer_callback = std::move(signer_callback)]() mutable {
-                                              (*bsp).sign( bsp->block, signer_callback );
-                                              return std::make_tuple(pfa, pfs, bsp);
-                                           } );
    return bsp;
+}
+
+void controller::on_block_signed(block_state_ptr bsp) {
+  my->on_block_signed(bsp);
 }
 
 void controller::commit_block() {

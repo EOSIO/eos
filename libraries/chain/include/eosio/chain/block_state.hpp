@@ -28,6 +28,10 @@ namespace eosio { namespace chain {
 
       block_state() = default;
 
+      void sign_and_inject_additional_signatures(const signer_callback_type& signer,
+                                                 protocol_feature_activation_set_ptr pfa,
+                                                 const protocol_feature_set &pfs);
+
       signed_block_ptr                                    block;
 
    private: // internal use only, not thread safe

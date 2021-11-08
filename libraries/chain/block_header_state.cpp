@@ -383,8 +383,7 @@ namespace eosio { namespace chain {
       return digest_type::hash( std::make_pair(header_bmroot, pending_schedule.schedule_hash) );
    }
 
-   void block_header_state::sign( std::shared_ptr<signed_block_header> h,
-                                  const signer_callback_type& signer ) {
+   void block_header_state::sign( const signer_callback_type& signer ) {
       auto d = sig_digest();
       auto sigs = signer( d );
 
@@ -395,8 +394,6 @@ namespace eosio { namespace chain {
       additional_signatures = std::move(sigs);
 
       verify_signee();
-
-      h->producer_signature = header.producer_signature;
    }
 
    void block_header_state::verify_signee( )const {

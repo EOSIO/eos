@@ -151,6 +151,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       void schedule_production_loop();
       void schedule_maybe_produce_block( bool exhausted );
       void produce_block();
+      void on_block_signed(block_state_ptr pending_blk_state);
       bool maybe_produce_block();
       bool remove_expired_trxs( const fc::time_point& deadline );
       bool block_is_exhausted() const;
@@ -2346,37 +2347,48 @@ void producer_plugin_impl::produce_block() {
    }
 
    //idump( (fc::time_point::now() - chain.pending_block_time()) );
-   block_state_ptr pending_blk_state = chain.finalize_block( [relevant_providers = std::move(relevant_providers)]( const digest_type& d ) {
-      auto debug_logger = maybe_make_debug_time_logger();
-      vector<signature_type> sigs;
-      sigs.reserve(relevant_providers.size());
+   auto pending_blk_state = chain.finalize_block(
+       [relevant_providers =
+            std::move(relevant_providers)](const digest_type &d) {
+         auto debug_logger = maybe_make_debug_time_logger();
+         vector<signature_type> sigs;
+         sigs.reserve(relevant_providers.size());
 
-      // sign with all relevant public keys
-      for (const auto& p : relevant_providers) {
-         sigs.emplace_back(p.get()(d));
+         // sign with all relevant public keys
+         for (const auto &p : relevant_providers) {
+           sigs.emplace_back(p.get()(d));
+         }
+         return sigs;
+       },
+       [&chain, self = shared_from_this()](block_state_ptr pending_blk_state) {
+          app().post( priority::high, [&chain, pending_blk_state]() {
+            chain.on_block_signed(pending_blk_state);
+          });
+       });
+
+       if (blockvault != nullptr) {
+         std::promise<bool> p;
+         std::future<bool> f = p.get_future();
+         blockvault->async_propose_constructed_block(
+            pending_blk_state->dpos_irreversible_blocknum,
+            pending_blk_state->block, [&p](bool b) { p.set_value(b); });
+         if (!f.get()) {
+            _latest_rejected_block_num = pending_blk_state->block->block_num();
+            _block_vault_resync.schedule();
+            EOS_ASSERT(false, block_validation_error, "Block rejected by block vault");
+         }
       }
-      return sigs;
-   } );
 
-   if ( blockvault != nullptr ) {
-      std::promise<bool> p;
-      std::future<bool> f = p.get_future();
-      blockvault->async_propose_constructed_block(pending_blk_state->dpos_irreversible_blocknum,
-                                                  pending_blk_state->block, [&p](bool b) { p.set_value(b); });
-      if (!f.get()) {
-         _latest_rejected_block_num = pending_blk_state->block->block_num();
-         _block_vault_resync.schedule();
-         EOS_ASSERT(false, block_validation_error, "Block rejected by block vault");
-      }
+      chain.commit_block();
+      block_state_ptr new_bs = chain.head_block_state();
+      ilog("Produced block ${id}... #${n} @ ${t} signed by ${p} [trxs: ${count}, lib: ${lib}, confirmed: ${confs}]",
+         ("p",new_bs->header.producer)("id",new_bs->id.str().substr(8,16))
+         ("n",new_bs->block_num)("t",new_bs->header.timestamp)
+         ("count",new_bs->block->transactions.size())("lib",chain.last_irreversible_block_num())("confs", new_bs->header.confirmed));
+}
 
-   }
-
-   chain.commit_block();
-   block_state_ptr new_bs = chain.head_block_state();
-   ilog("Produced block ${id}... #${n} @ ${t} signed by ${p} [trxs: ${count}, lib: ${lib}, confirmed: ${confs}]",
-        ("p",new_bs->header.producer)("id",new_bs->id.str().substr(8,16))
-        ("n",new_bs->block_num)("t",new_bs->header.timestamp)
-        ("count",new_bs->block->transactions.size())("lib",chain.last_irreversible_block_num())("confs", new_bs->header.confirmed));
+void producer_plugin_impl::on_block_signed(block_state_ptr pending_blk_state) {
+   
 }
 
 void producer_plugin::log_failed_transaction(const transaction_id_type& trx_id, const char* reason) const {
