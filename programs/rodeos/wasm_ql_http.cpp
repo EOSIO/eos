@@ -477,7 +477,7 @@ class http_session {
    std::shared_ptr<thread_state_cache>          state_cache;
    queue                                        queue_;
    std::unique_ptr< net::steady_timer >         _timer;
-   steady_clock::time_point                     session_begin;
+   steady_clock::time_point                     last_activity_timepoint;
 
    // The parser is stored in an optional container so we can
    // construct it from scratch it at the beginning of each new message.
@@ -494,10 +494,8 @@ class http_session {
    // Start the session
    void run() {
       _timer.reset(new boost::asio::steady_timer(derived_session().stream.socket().get_executor()));
-      session_begin = steady_clock::now();
-      _timer->expires_after( http_config->idle_timeout_ms );
-      _timer->async_wait(boost::asio::bind_executor(derived_session().stream.socket().get_executor(), boost::bind(&http_session::wait_to_timeout, derived_session().shared_from_this())));
-
+      last_activity_timepoint = steady_clock::now();
+      start_socket_timer();
       do_read(); 
    }
 
@@ -506,19 +504,24 @@ class http_session {
       return static_cast<SessionType&>(*this);
    }
    
-   void wait_to_timeout() 
+   void start_socket_timer() 
    {       
-      auto session_time = steady_clock::now() - session_begin;
-      auto session_time_ms = std::chrono::duration_cast<std::chrono::milliseconds>( session_time ).count();
-      if ( session_time_ms <= http_config->idle_timeout_ms.count() ){
-         _timer->expires_after( http_config->idle_timeout_ms ); // reset the timer for timeout period
-         _timer->async_wait(boost::asio::bind_executor(derived_session().stream.socket().get_executor(), boost::bind(&http_session::wait_to_timeout, derived_session().shared_from_this())));
-      } 
-      else {
-         beast::error_code ec = beast::error::timeout;
-         fail( ec, "timeout" );
-         return do_close();
-      } 
+      _timer->expires_after( http_config->idle_timeout_ms );
+      _timer->async_wait( [ this ]( beast::error_code ec ) {
+         if ( ec ){
+            return;
+         }
+         auto session_duration    = steady_clock::now() - last_activity_timepoint;
+         auto session_duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>( session_duration ).count();
+         if ( session_duration_ms <= http_config->idle_timeout_ms.count() ){
+            start_socket_timer();
+         }
+         else{
+            beast::error_code ec = beast::error::timeout;
+            fail( ec, "timeout" );
+            return do_close();
+         }
+      });
    }
 
    void do_read() {
@@ -529,7 +532,7 @@ class http_session {
       // of the body in bytes to prevent abuse.
       // todo: make configurable
       parser->body_limit(http_config->max_request_size);
-      session_begin = steady_clock::now();
+      last_activity_timepoint = steady_clock::now();
       // Read a request using the parser-oriented interface
       http::async_read(derived_session().stream, buffer, *parser, beast::bind_front_handler(&http_session::on_read, derived_session().shared_from_this()));
    }
