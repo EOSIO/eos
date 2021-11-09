@@ -234,19 +234,36 @@ class RodeosCluster(object):
             return Utils.waitForTruth(lambda:  Utils.runCmdArrReturnStr(['curl', '-H', 'Accept: application/json', '--unix-socket', './var/lib/rodeos{}/rodeos{}.sock'.format(rodeosId, rodeosId), 'http://localhost/v1/chain/get_info'], silentErrors=True) != "" , timeout=30)
         return Utils.waitForTruth(lambda:  Utils.runCmdArrReturnStr(['curl', '-H', 'Accept: application/json', self.wqlEndPoints[rodeosId] + 'v1/chain/get_info'], silentErrors=True) != "" , timeout=30)
 
-    def getBlock(self, blockNum, rodeosId=0):
+    def callCmdArrReturnJson(self, rodeosId, endpoint, data=None):
         assert(rodeosId >= 0 and rodeosId < self.numRodeos)
+
+        retry_count = 3
+        for _ in range (retry_count):
+            try:
+                if data is not None:
+                    if self.unix_socket_option:
+                        return Utils.runCmdArrReturnJson(['curl', '-X', 'POST', '-H', 'Content-Type: application/json', '-H', \
+                            'Accept: application/json', '--unix-socket', './var/lib/rodeos{}/rodeos{}.sock'.format(rodeosId, rodeosId) , 'http://localhost/' + endpoint, '--data', json.dumps(data)])
+                    return Utils.runCmdArrReturnJson(['curl', '-X', 'POST', '-H', 'Content-Type: application/json', '-H', 'Accept: application/json', self.wqlEndPoints[rodeosId] + endpoint, '--data', json.dumps(data)])
+                else:
+                    if self.unix_socket_option:
+                        return Utils.runCmdArrReturnJson(['curl', '-H', 'Accept: application/json', '--unix-socket', './var/lib/rodeos{}/rodeos{}.sock'.format(rodeosId, rodeosId), 'http://localhost/' + endpoint])
+                    return Utils.runCmdArrReturnJson(['curl', '-X', 'POST', '-H', 'Content-Type: application/json', '-H', 'Accept: application/json', self.wqlEndPoints[rodeosId] + endpoint])
+            except subprocess.CalledProcessError as ex:
+                # On MacOS, we occassionally get empty return (code 52)
+                # Retrying
+                if ex.returncode == 52:
+                    # On MacOS, we occassionally get empty return. Retrying
+                    Utils.Print("runCmdArrReturnJson returned nothing. Retrying...")
+                else:
+                    return "{ }"
+
+    def getBlock(self, blockNum, rodeosId=0):
         request_body = { "block_num_or_id": blockNum }
-        if self.unix_socket_option:
-            return Utils.runCmdArrReturnJson(['curl', '-X', 'POST', '-H', 'Content-Type: application/json', '-H', \
-                'Accept: application/json', '--unix-socket', './var/lib/rodeos{}/rodeos{}.sock'.format(rodeosId, rodeosId) , 'http://localhost/v1/chain/get_block', '--data', json.dumps(request_body)])
-        return Utils.runCmdArrReturnJson(['curl', '-X', 'POST', '-H', 'Content-Type: application/json', '-H', 'Accept: application/json', self.wqlEndPoints[rodeosId] + 'v1/chain/get_block', '--data', json.dumps(request_body)])
+        return self.callCmdArrReturnJson(rodeosId, 'v1/chain/get_block', request_body)
 
     def getInfo(self, rodeosId=0):
-        assert(rodeosId >= 0 and rodeosId < self.numRodeos)
-        if self.unix_socket_option:
-            return Utils.runCmdArrReturnJson(['curl', '-H', 'Accept: application/json', '--unix-socket', './var/lib/rodeos{}/rodeos{}.sock'.format(rodeosId, rodeosId), 'http://localhost/v1/chain/get_info'])
-        return Utils.runCmdArrReturnJson(['curl', '-H', 'Accept: application/json', self.wqlEndPoints[rodeosId] + 'v1/chain/get_info'])
+        return self.callCmdArrReturnJson(rodeosId, 'v1/chain/get_info')
 
     def produceBlocks(self, numBlocks):
         Utils.Print("Wait for Nodeos to produce {} blocks".format(numBlocks))
@@ -281,13 +298,13 @@ class RodeosCluster(object):
                 break
         assert firstBlockNum >= 1, "firstBlockNum not found"
 
-        Utils.Print("Verifying blocks were not skipped")
+        Utils.Print("Verifying blocks were received ...")
         for blockNum in range(firstBlockNum, lastBlockNum+1):
             response = self.getBlock(blockNum, rodeosId)
             #Utils.Print("response body = {}".format(json.dumps(response)))
             if "block_num" in response:
                 assert response["block_num"] == blockNum, "Rodeos responds with wrong block {0}, response body = {1}".format(i, json.dumps(response))
-        Utils.Print("No blocks were skipped")
+        Utils.Print("All blocks were received in correct order")
 
         return True
 

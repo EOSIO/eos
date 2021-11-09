@@ -25,11 +25,13 @@ extraArgs=AppArgs()
 extraArgs.add_bool("--eos-vm-oc-enable", "Use OC for rodeos")
 extraArgs.add_bool("--clean-restart", "Use for clean restart of SHiP and Rodeos")
 extraArgs.add_bool("--load-test-enable", "Enable load test")
+extraArgs.add_bool(flag="--unix-socket", help="Run ship over unix socket")
 
 args=TestHelper.parse_args({"--dump-error-details","--keep-logs","-v","--leave-running","--clean-run"}, extraArgs)
 enableOC=args.eos_vm_oc_enable
 cleanRestart=args.clean_restart
 enableLoadTest=args.load_test_enable
+enableUnixSocket=args.unix_socket
 Utils.Debug=args.v
 
 TestHelper.printSystemInfo("BEGIN")
@@ -76,8 +78,8 @@ def launch_cluster(num_ships, num_rodeos, unix_socket, cleanRestart, killSignal,
         # Verify that the other rodeos instances receiving blocks
         for i in range(num_rodeos):
             if i != rodeosKilledId:
-                assert cluster.allBlocksReceived(numBlocks, i), "Rodeos #{} did not receive {} blocks after a rodeos node shutdown"\
-                    .format(i, numBlocks, num_ships, num_rodeos)
+                assert cluster.allBlocksReceived(numBlocks, i), "Rodeos #{} did not receive {} blocks after rodeos #{} shutdown"\
+                    .format(i, numBlocks, rodeosKilledId)
 
         # Restarting rodeos        
         Print("Restarting rodeos #{}".format(rodeosKilledId))
@@ -92,8 +94,8 @@ def launch_cluster(num_ships, num_rodeos, unix_socket, cleanRestart, killSignal,
             .format(numBlocks, num_ships, num_rodeos)
 
         # verify that rodeos receives all blocks from start to now
-        assert cluster.allBlocksReceived(numBlocks, rodeosKilledId), "Rodeos #{} did not receive {} blocks after the other rodeos node shutdown"\
-                .format(rodeosKilledId, numBlocks, num_ships, num_rodeos)
+        assert cluster.allBlocksReceived(numBlocks, rodeosKilledId), "Rodeos #{} did not receive {} blocks after it restarted"\
+                .format(rodeosKilledId, numBlocks)
 
         # Stop ShipId = 1
         shipKilledId=1
@@ -110,8 +112,8 @@ def launch_cluster(num_ships, num_rodeos, unix_socket, cleanRestart, killSignal,
         for i in cluster.shipNodeIdPortsNodes:
             if i != shipKilledId:
                 for j in cluster.ShiprodeosConnectionMap[i]:
-                    assert cluster.allBlocksReceived(numBlocks, j), "Rodeos #{} did not receive {} blocks after a rodeos node shutdown"\
-                        .format(j, numBlocks, num_ships - 1, num_rodeos)
+                    assert cluster.allBlocksReceived(numBlocks, j), "Rodeos #{} did not receive {} blocks after ship {} shutdown"\
+                        .format(j, numBlocks, shipKilledId)
 
         # Restart Ship
         Print("Restarting SHiP #{}".format(shipKilledId))
@@ -128,8 +130,8 @@ def launch_cluster(num_ships, num_rodeos, unix_socket, cleanRestart, killSignal,
 
         # Verify that the rodeos node listening to the newly started Ship is receiving blocks.
         for j in cluster.ShiprodeosConnectionMap[shipKilledId]:
-            assert cluster.allBlocksReceived(numBlocks, j), "Rodeos #{} did not receive {} blocks after a rodeos node shutdown"\
-                    .format(j, numBlocks, num_ships, num_rodeos)
+            assert cluster.allBlocksReceived(numBlocks, j), "Rodeos #{} did not receive {} blocks after ship #{} restarted"\
+                    .format(j, numBlocks, shipKilledId)
         if enableLoadTest:
             cluster.stopLoad()
         cluster.setTestSuccessful(True)
@@ -139,12 +141,11 @@ def launch_cluster(num_ships, num_rodeos, unix_socket, cleanRestart, killSignal,
 numSHiPs=[2]
 numRodeos=[2]
 NumTestCase=len(numSHiPs)
-for i in [False, True]: # True means Unix-socket, False means TCP/IP
-    for j in range(NumTestCase):
-        for killSignal in [signal.SIGKILL, signal.SIGINT, signal.SIGTERM]:
-            if killSignal == signal.SIGKILL and cleanRestart == False: # With ungraceful shutdown, clean restart is required.
-                continue
-            launch_cluster(numSHiPs[j], numRodeos[j], i, cleanRestart, killSignal, enableOC)
+for i in range(NumTestCase):
+    for killSignal in [signal.SIGKILL, signal.SIGINT, signal.SIGTERM]:
+        if killSignal == signal.SIGKILL and cleanRestart == False: # With ungraceful shutdown, clean restart is required.
+            continue
+        launch_cluster(numSHiPs[i], numRodeos[i], enableUnixSocket, cleanRestart, killSignal, enableOC)
 
 
 testSuccessful=True
