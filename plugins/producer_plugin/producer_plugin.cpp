@@ -151,7 +151,6 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       void schedule_production_loop();
       void schedule_maybe_produce_block( bool exhausted );
       void produce_block();
-      void on_block_signed(block_state_ptr pending_blk_state);
       bool maybe_produce_block();
       bool remove_expired_trxs( const fc::time_point& deadline );
       bool block_is_exhausted() const;
@@ -2385,10 +2384,6 @@ void producer_plugin_impl::produce_block() {
          ("p",new_bs->header.producer)("id",new_bs->id.str().substr(8,16))
          ("n",new_bs->block_num)("t",new_bs->header.timestamp)
          ("count",new_bs->block->transactions.size())("lib",chain.last_irreversible_block_num())("confs", new_bs->header.confirmed));
-}
-
-void producer_plugin_impl::on_block_signed(block_state_ptr pending_blk_state) {
-   
 }
 
 void producer_plugin::log_failed_transaction(const transaction_id_type& trx_id, const char* reason) const {
