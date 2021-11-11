@@ -1,3 +1,4 @@
+#include "eosio/vm/function_traits.hpp"
 #include <eosio/chain/controller.hpp>
 #include <eosio/chain/transaction_context.hpp>
 
@@ -1658,13 +1659,6 @@ struct controller_impl {
          fc_add_tag( trace, "block_id",  bsp->id.str() );
          fc_add_tag( trace, "block_num", bsp->block_num );
          fc_add_tag( trace, "num_transactions", bsp->block->transactions.size());     
-         
-         emit( self.accepted_block, bsp );
-
-         if( add_to_fork_db ) {
-            log_irreversible();
-         }
-
       } catch (...) {
          // dont bother resetting pending, instead abort the block
          reset_pending_on_exit.cancel();
@@ -1676,9 +1670,13 @@ struct controller_impl {
       pending->push();
    }
 
-   void on_block_signed(block_state_ptr bsp) {  
-      log_irreversible();
-      emit( self.accepted_block, bsp );
+   void on_block_signed(block_state_ptr &bsp) {
+      if (bsp) {
+         ilog("on_block_signed for block ${num}", ("num", bsp->block->block_num()));
+         log_irreversible();
+         emit(self.accepted_block, bsp);
+         bsp.reset();
+      }
    }
 
    /**
@@ -2594,7 +2592,8 @@ void controller::start_block( block_timestamp_type when,
                     block_status::incomplete, std::optional<block_id_type>() );
 }
 
-block_state_ptr controller::finalize_block(signer_callback_type&& signer_callback, std::function<void(block_state_ptr)>&& continuation) {
+std::future<void>
+controller::finalize_block(block_state_ptr& bsp, signer_callback_type&& signer_callback, std::function<void()>&& continuation) {
    validate_db_available_size();
 
    my->finalize_block();
@@ -2604,7 +2603,7 @@ block_state_ptr controller::finalize_block(signer_callback_type&& signer_callbac
    auto pfa = ab._pending_block_header_state.prev_activated_protocol_features;
    auto pfs = my->protocol_features.get_protocol_feature_set();
 
-   auto bsp = std::make_shared<block_state>(
+   bsp = std::make_shared<block_state>(
                   std::move( ab._pending_block_header_state ),
                   std::move( ab._unsigned_block ),
                   std::move( ab._trx_metas ),
@@ -2617,20 +2616,17 @@ block_state_ptr controller::finalize_block(signer_callback_type&& signer_callbac
 
    my->pending->_block_stage = completed_block{ bsp };
 
-   if (!continuation) {
-      bsp->sign_and_inject_additional_signatures(signer_callback, pfa, pfs );
-   } else {
-      async_thread_pool(my->block_sign_pool.get_executor(),
-                        [bsp, pfa, &pfs, signer_callback = std::move(signer_callback),
-                           continuation = std::move(continuation)]() mutable {
-                           bsp->sign_and_inject_additional_signatures(signer_callback, pfa, pfs);
-                           continuation(bsp);
-                        });
-   }
-   return bsp;
+   return async_thread_pool(
+      my->block_sign_pool.get_executor(),
+      [&bsp, pfa, &pfs, signer_callback = std::move(signer_callback),
+         continuation = std::move(continuation)]() {
+            bsp->sign_and_inject_additional_signatures(signer_callback, pfa, pfs);
+            if (continuation) continuation();
+         }
+   );   
 }
 
-void controller::on_block_signed(block_state_ptr bsp) {
+void controller::on_block_signed(block_state_ptr& bsp) {
   my->on_block_signed(bsp);
 }
 

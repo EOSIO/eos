@@ -432,7 +432,8 @@ namespace eosio { namespace testing {
          }
       });
 
-      auto bsp = control->finalize_block( [&]( digest_type d ) {
+      block_state_ptr bsp;
+      auto signing_done = control->finalize_block( bsp, [&]( digest_type d ) {
          std::vector<signature_type> result;
          result.reserve(signing_keys.size());
          for (const auto& k: signing_keys)
@@ -442,6 +443,7 @@ namespace eosio { namespace testing {
       } );
 
       control->commit_block();
+      signing_done.get();
       control->on_block_signed(bsp);
       last_produced_block[control->head_block_state()->header.producer] =
           control->head_block_state()->id;

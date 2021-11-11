@@ -208,8 +208,11 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
 
       std::optional<scoped_connection>                          _accepted_block_connection;
       std::optional<scoped_connection>                          _accepted_block_header_connection;
-      std::optional<scoped_connection>                          _irreversible_block_connection;
+      std::optional<scoped_connection> _irreversible_block_connection;
 
+      std::future<void>                                          signing_done;
+      eosio::chain::block_state_ptr pending_blk_state;
+      void post_commit_previous_block_if_ready();
       /*
        * HACK ALERT
        * Boost timers can be in a state where a handler has not yet executed but is not abortable.
@@ -1660,17 +1663,27 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
 
       try {
          if( !remove_expired_trxs( preprocess_deadline ) )
-            return start_block_result::exhausted;
+           return start_block_result::exhausted;
+
+         post_commit_previous_block_if_ready();
+         
          if( !remove_expired_blacklisted_trxs( preprocess_deadline ) )
-            return start_block_result::exhausted;
+           return start_block_result::exhausted;
+
+         post_commit_previous_block_if_ready();
+
          if( !_subjective_billing.remove_expired( _log, chain.pending_block_time(), fc::time_point::now(), preprocess_deadline ) )
             return start_block_result::exhausted;
+
+         post_commit_previous_block_if_ready();
 
          // limit execution of pending incoming to once per block
          size_t pending_incoming_process_limit = _unapplied_transactions.incoming_size();
 
          if( !process_unapplied_trxs( preprocess_deadline ) )
-            return start_block_result::exhausted;
+           return start_block_result::exhausted;
+
+         post_commit_previous_block_if_ready();
 
          if (_pending_block_mode == pending_block_mode::producing) {
             auto scheduled_trx_deadline = preprocess_deadline;
@@ -1681,7 +1694,9 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
                );
             }
             // may exhaust scheduled_trx_deadline but not preprocess_deadline, exhausted preprocess_deadline checked below
-            process_scheduled_and_incoming_trxs( scheduled_trx_deadline, pending_incoming_process_limit );
+            process_scheduled_and_incoming_trxs(scheduled_trx_deadline,
+                                                pending_incoming_process_limit);
+            post_commit_previous_block_if_ready();
          }
 
          if( app().is_quiting() ) // db guard exception above in LOG_AND_DROP could have called app().quit()
@@ -2320,6 +2335,13 @@ void block_only_sync::on_block(eosio::chain::signed_block_ptr block) {
    }
 }
 
+void producer_plugin_impl::post_commit_previous_block_if_ready() {
+  if (pending_blk_state && signing_done.wait_for(std::chrono::seconds(0)) ==
+                               std::future_status::ready) {
+    chain_plug->chain().on_block_signed(pending_blk_state);
+  }
+}
+
 void producer_plugin_impl::produce_block() {
    //ilog("produce_block ${t}", ("t", fc::time_point::now())); // for testing _produce_time_offset_us
    EOS_ASSERT(_pending_block_mode == pending_block_mode::producing, producer_exception, "called produce_block while not actually producing");
@@ -2345,8 +2367,9 @@ void producer_plugin_impl::produce_block() {
       _protocol_features_signaled = false;
    }
 
-   //idump( (fc::time_point::now() - chain.pending_block_time()) );
-   auto pending_blk_state = chain.finalize_block(
+   // idump( (fc::time_point::now() - chain.pending_block_time()) );
+   signing_done = chain.finalize_block(
+       pending_blk_state,
        [relevant_providers =
             std::move(relevant_providers)](const digest_type &d) {
          auto debug_logger = maybe_make_debug_time_logger();
@@ -2359,15 +2382,16 @@ void producer_plugin_impl::produce_block() {
          }
          return sigs;
        },
-       [&chain, self = shared_from_this()](block_state_ptr pending_blk_state) {
-          app().post( priority::high, [&chain, pending_blk_state]() {
-            chain.on_block_signed(pending_blk_state);
+       [&chain, self = shared_from_this()]() {
+         app().post(priority::high, [&chain, self]() {
+            chain.on_block_signed(self->pending_blk_state);
           });
        });
 
        if (blockvault != nullptr) {
          std::promise<bool> p;
          std::future<bool> f = p.get_future();
+         signing_done.get();
          blockvault->async_propose_constructed_block(
             pending_blk_state->dpos_irreversible_blocknum,
             pending_blk_state->block, [&p](bool b) { p.set_value(b); });
