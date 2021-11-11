@@ -512,12 +512,11 @@ class http_session {
             return;
          }
          auto session_duration    = steady_clock::now() - last_activity_timepoint;
-         auto session_duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>( session_duration ).count();
-         if ( session_duration_ms <= http_config->idle_timeout_ms.count() ){
+         if ( session_duration <= http_config->idle_timeout_ms ){
             start_socket_timer();
          }
          else{
-            beast::error_code ec = beast::error::timeout;
+            ec = beast::error::timeout;
             fail( ec, "timeout" );
             return do_close();
          }
