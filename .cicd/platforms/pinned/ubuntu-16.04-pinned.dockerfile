@@ -9,7 +9,7 @@ RUN apt-get update && \
     sudo ruby libusb-1.0-0-dev libcurl4-gnutls-dev pkg-config apt-transport-https vim-common jq rabbitmq-server \
     libtasn1-dev libnss3-dev iproute2 expect gawk socat python3-pip libseccomp-dev uuid-dev
 # requests and requests_unixsocket module. used by tests
-RUN python3 -m pip install requests && python3 -m pip install requests 
+RUN pip3 install requests requests_unixsocket
 # build cmake
 RUN curl -LO https://github.com/Kitware/CMake/releases/download/v3.16.2/cmake-3.16.2.tar.gz && \
     tar -xzf cmake-3.16.2.tar.gz && \
