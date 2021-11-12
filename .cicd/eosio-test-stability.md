@@ -42,15 +42,15 @@ We recommend stability testing one test per build with two builds per test, on L
 ```bash
 PINNED='true'
 ROUNDS='42'
-ROUND_SIZE'5'
+ROUND_SIZE='5'
 SKIP_MAC='true'
 TEST='read_only_query'
 ```
 ...and one unpinned build on Linux:
 ```bash
-PINNED='true'
+PINNED='false'
 ROUNDS='42'
-ROUND_SIZE'5'
+ROUND_SIZE='5'
 SKIP_MAC='true'
 TEST='read_only_query'
 ```
@@ -58,16 +58,16 @@ Once the Linux runs have proven stable, and if instability was observed on macOS
 ```bash
 PINNED='true'
 ROUNDS='42'
-ROUND_SIZE'5'
+ROUND_SIZE='5'
 SKIP_LINUX='true'
 SKIP_MAC='false'
 TEST='read_only_query'
 ```
 ...and one unpinned build on macOS:
 ```bash
-PINNED='true'
+PINNED='false'
 ROUNDS='42'
-ROUND_SIZE'5'
+ROUND_SIZE='5'
 SKIP_LINUX='true'
 SKIP_MAC='false'
 TEST='read_only_query'
