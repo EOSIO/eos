@@ -27,6 +27,7 @@ private:
       amqp_publisher_ =
             std::make_unique<eosio::transactional_amqp_publisher>( address_, exchange_name_,
                                                                    fc::seconds( 60 ),
+                                                                   true,
                                                                    []( const std::string& err ) {
                                                                       elog( "AMQP fatal error: ${e}", ("e", err) );
                                                                       appbase::app().quit();
@@ -41,14 +42,6 @@ public:
        , queue_name_( std::move( queue_name))
    {
       ilog("Connecting to RabbitMQ address ${a} - Queue: ${q}...", ("a", address)( "q", queue_name_));
-      std::atomic<bool> error = false;
-      eosio::amqp_handler declare_queue( address_, fc::seconds(60), fc::milliseconds(200), [&error](const std::string& err){
-         elog("AMQP Queue error: ${e}", ("e", err));
-         appbase::app().quit();
-         error = true;
-      } );
-      if( !error ) declare_queue.declare_queue(queue_name_);
-      if( error ) return;
       init();
    }
 
@@ -60,14 +53,6 @@ public:
        , exchange_name_( std::move( exchange_name))
    {
       ilog("Connecting to RabbitMQ address ${a} - Exchange: ${e}...", ("a", address)( "e", exchange_name_));
-      std::atomic<bool> error = false;
-      eosio::amqp_handler declare_exchange( address_, fc::seconds(60), fc::milliseconds(200), [&error](const std::string& err){
-         elog("AMQP Exchange error: ${e}", ("e", err));
-         appbase::app().quit();
-         error = true;
-      } );
-      if( !error ) declare_exchange.declare_exchange(exchange_name_, exchange_type);
-      if( error ) return;
       init();
    }
 
