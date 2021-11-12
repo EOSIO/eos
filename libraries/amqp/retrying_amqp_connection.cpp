@@ -12,7 +12,7 @@ struct retrying_amqp_connection::impl : public AMQP::ConnectionHandler {
      _address(address), _retry_interval(retry_interval.count()),
      _ready_callback(std::move(ready)), _failed_callback(std::move(failed)), _logger(std::move(logger)) {
 
-      FC_ASSERT(!_address.secure(), "Only amqp:// URIs are supported for AMQP addresses (${a})", ("a", _address));
+      FC_ASSERT(!_address.secure(), "Only amqp:// URIs are supported for AMQP addresses (${a})", ("a", fc::variant(_address).as_string()));
       FC_ASSERT(_ready_callback, "Ready callback required");
       FC_ASSERT(_failed_callback, "Failed callback required");
 
@@ -20,7 +20,7 @@ struct retrying_amqp_connection::impl : public AMQP::ConnectionHandler {
    }
 
    void onReady(AMQP::Connection* connection) override {
-      fc_ilog(_logger, "AMQP connection to ${s} is fully operational", ("s", _address));
+      fc_ilog(_logger, "AMQP connection to ${s} is fully operational", ("s", fc::variant(_address).as_string()));
 
       _ready_callback(connection);
       _indicated_ready = true;
@@ -34,12 +34,12 @@ struct retrying_amqp_connection::impl : public AMQP::ConnectionHandler {
    }
 
    void onError(AMQP::Connection* connection, const char* message) override {
-      fc_elog(_logger, "AMQP connection to ${s} suffered an error; will retry shortly: ${m}", ("s", _address)("m", message));
+      fc_elog(_logger, "AMQP connection to ${s} suffered an error; will retry shortly: ${m}", ("s", fc::variant(_address).as_string())("m", message));
       schedule_retry();
    }
 
    void onClosed(AMQP::Connection *connection) override {
-      fc_wlog(_logger, "AMQP connection to ${s} closed AMQP connection", ("s", _address));
+      fc_wlog(_logger, "AMQP connection to ${s} closed AMQP connection", ("s", fc::variant(_address).as_string()));
       schedule_retry();
    }
 
@@ -47,7 +47,7 @@ struct retrying_amqp_connection::impl : public AMQP::ConnectionHandler {
        _resolver.async_resolve(_address.hostname(), std::to_string(_address.port()), boost::asio::bind_executor(_strand, [this](const auto ec, const auto endpoints) {
          if(ec) {
             if(ec != boost::asio::error::operation_aborted) {
-               fc_wlog(_logger, "Failed resolving AMQP server ${s}; will retry shortly: ${m}", ("s", _address)("m", ec.message()));
+               fc_wlog(_logger, "Failed resolving AMQP server ${s}; will retry shortly: ${m}", ("s", fc::variant(_address).as_string())("m", ec.message()));
                schedule_retry();
             }
             return;
@@ -58,12 +58,12 @@ struct retrying_amqp_connection::impl : public AMQP::ConnectionHandler {
          boost::asio::async_connect(_sock, endpoints, boost::asio::bind_executor(_strand, [this](const auto ec, const auto endpoint) {
             if(ec) {
                if(ec != boost::asio::error::operation_aborted) {
-                  fc_wlog(_logger, "Failed connecting AMQP server ${s}; will retry shortly: ${m}", ("s", _address)("m", ec.message()));
+                  fc_wlog(_logger, "Failed connecting AMQP server ${s}; will retry shortly: ${m}", ("s", fc::variant(_address).as_string())("m", ec.message()));
                   schedule_retry();
                }
                return;
             }
-            fc_ilog(_logger, "TCP connection to AMQP server at ${s} is up", ("s", _address));
+            fc_ilog(_logger, "TCP connection to AMQP server at ${s} is up", ("s", fc::variant(_address).as_string()));
             receive_some();
             _state->amqp_connection.emplace(this, _address.login(), _address.vhost());
          }));
@@ -109,7 +109,7 @@ struct retrying_amqp_connection::impl : public AMQP::ConnectionHandler {
       boost::asio::async_write(_sock, boost::asio::buffer(_state->outgoing_queue.front()), boost::asio::bind_executor(_strand, [this](const auto& ec, size_t wrote) {
          if(ec) {
             if(ec != boost::asio::error::operation_aborted) {
-               fc_wlog(_logger, "Failed writing to AMQP server ${s}; connection will retry shortly: ${m}", ("s", _address)("m", ec.message()));
+               fc_wlog(_logger, "Failed writing to AMQP server ${s}; connection will retry shortly: ${m}", ("s", fc::variant(_address).as_string())("m", ec.message()));
                schedule_retry();
             }
             return;
@@ -124,7 +124,7 @@ struct retrying_amqp_connection::impl : public AMQP::ConnectionHandler {
       _sock.async_read_some(boost::asio::buffer(_read_buff), boost::asio::bind_executor(_strand, [this](const auto& ec, size_t sz) {
          if(ec) {
             if(ec != boost::asio::error::operation_aborted) {
-               fc_wlog(_logger, "Failed reading from AMQP server ${s}; connection will retry shortly: ${m}", ("s", _address)("m", ec.message()));
+               fc_wlog(_logger, "Failed reading from AMQP server ${s}; connection will retry shortly: ${m}", ("s", fc::variant(_address).as_string())("m", ec.message()));
                schedule_retry();
             }
             return;
@@ -213,11 +213,11 @@ struct single_channel_retrying_amqp_connection::impl {
          _amqp_channel.emplace(_amqp_connection);
       }
       catch(...) {
-         fc_wlog(_logger, "AMQP channel could not start for AMQP connection ${c}; retrying", ("c", _connection.address()));
+         fc_wlog(_logger, "AMQP channel could not start for AMQP connection ${c}; retrying", ("c", fc::variant(_connection.address()).as_string()));
          start_retry();
       }
       _amqp_channel->onError([this](const char* e) {
-         fc_wlog(_logger, "AMQP channel failure on AMQP connection ${c}; retrying : ${m}", ("c", _connection.address())("m", e));
+         fc_wlog(_logger, "AMQP channel failure on AMQP connection ${c}; retrying : ${m}", ("c", fc::variant(_connection.address()).as_string())("m", e));
          _failed();
          start_retry();
       });

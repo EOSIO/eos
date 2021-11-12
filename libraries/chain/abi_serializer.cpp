@@ -295,7 +295,7 @@ namespace eosio { namespace chain {
             ctx.check_deadline();
             EOS_ASSERT(_is_type(type, ctx), invalid_type_inside_abi, "${type}", ("type",impl::limit_size(type)) );
          } FC_CAPTURE_AND_RETHROW( (type) ) }
-      } FC_CAPTURE_AND_RETHROW( (s) ) }
+      } FC_CAPTURE_AND_RETHROW( (s.first) ) }
       for( const auto& a : actions ) { try {
         ctx.check_deadline();
         EOS_ASSERT(_is_type(a.second, ctx), invalid_type_inside_abi, "${type}", ("type",impl::limit_size(a.second)) );
@@ -336,7 +336,7 @@ namespace eosio { namespace chain {
    {
       auto h = ctx.enter_scope();
       auto s_itr = structs.find(type);
-      EOS_ASSERT( s_itr != structs.end(), invalid_type_inside_abi, "Unknown type ${type}", ("type",ctx.maybe_shorten(type)) );
+      EOS_ASSERT( s_itr != structs.end(), invalid_type_inside_abi, "Unknown type {type}", ("type",ctx.maybe_shorten(type)) );
       ctx.hint_struct_type_if_in_array( s_itr );
       const auto& st = s_itr->second;
       if( st.base != type_name() ) {
@@ -531,7 +531,7 @@ namespace eosio { namespace chain {
                const auto& field = st.fields[i];
                if( vo.contains( string(field.name).c_str() ) ) {
                   if( disallow_additional_fields )
-                     EOS_THROW( pack_exception, "Unexpected field '${f}' found in input object while processing struct '${p}'",
+                     EOS_THROW( pack_exception, "Unexpected field '{f}' found in input object while processing struct '{p}'",
                                 ("f", ctx.maybe_shorten(field.name))("p", ctx.get_path_string()) );
                   {
                      auto h1 = ctx.push_to_path( impl::field_path_item{ .parent_struct_itr = s_itr, .field_ordinal = i } );
@@ -541,17 +541,17 @@ namespace eosio { namespace chain {
                } else if( ends_with(field.type, "$") && ctx.extensions_allowed() ) {
                   disallow_additional_fields = true;
                } else if( disallow_additional_fields ) {
-                  EOS_THROW( abi_exception, "Encountered field '${f}' without binary extension designation while processing struct '${p}'",
+                  EOS_THROW( abi_exception, "Encountered field '{f}' without binary extension designation while processing struct '{p}'",
                              ("f", ctx.maybe_shorten(field.name))("p", ctx.get_path_string()) );
                } else {
-                  EOS_THROW( pack_exception, "Missing field '${f}' in input object while processing struct '${p}'",
+                  EOS_THROW( pack_exception, "Missing field '{f}' in input object while processing struct '{p}'",
                              ("f", ctx.maybe_shorten(field.name))("p", ctx.get_path_string()) );
                }
             }
          } else if( var.is_array() ) {
             const auto& va = var.get_array();
             EOS_ASSERT( st.base == type_name(), invalid_type_inside_abi,
-                        "Using input array to specify the fields of the derived struct '${p}'; input arrays are currently only allowed for structs without a base",
+                        "Using input array to specify the fields of the derived struct '{p}'; input arrays are currently only allowed for structs without a base",
                         ("p",ctx.get_path_string()) );
             for( uint32_t i = 0; i < st.fields.size(); ++i ) {
                const auto& field = st.fields[i];
@@ -562,12 +562,12 @@ namespace eosio { namespace chain {
                } else if( ends_with(field.type, "$") && ctx.extensions_allowed() ) {
                   break;
                } else {
-                  EOS_THROW( pack_exception, "Early end to input array specifying the fields of struct '${p}'; require input for field '${f}'",
+                  EOS_THROW( pack_exception, "Early end to input array specifying the fields of struct '{p}'; require input for field '{f}'",
                              ("p", ctx.get_path_string())("f", ctx.maybe_shorten(field.name)) );
                }
             }
          } else {
-            EOS_THROW( pack_exception, "Unexpected input encountered while processing struct '${p}'", ("p",ctx.get_path_string()) );
+            EOS_THROW( pack_exception, "Unexpected input encountered while processing struct '{p}'", ("p",ctx.get_path_string()) );
          }
       } else if( var.is_object() ) {
          if( !kv_tables.empty() && is_string_valid_name(rtype) ) {
@@ -579,7 +579,7 @@ namespace eosio { namespace chain {
             EOS_THROW(invalid_type_inside_abi, "Unknown type ${type}", ("type", ctx.maybe_shorten(type)));
          }
       } else {
-         EOS_THROW( invalid_type_inside_abi, "Unknown type ${type}", ("type",ctx.maybe_shorten(type)) );
+         EOS_THROW( invalid_type_inside_abi, "Unknown type {type}", ("type",ctx.maybe_shorten(type)) );
       }
    } FC_CAPTURE_AND_RETHROW() }
 

@@ -1098,6 +1098,6 @@ void abi_serializer::from_variant( const fc::variant& v, T& o, Resolver resolver
    static_assert( !std::is_same_v<T, signed_block>, "use signed_block_v0" );
    impl::abi_traverse_context ctx( yield );
    impl::abi_from_variant::extract(v, o, resolver, ctx);
-} FC_RETHROW_EXCEPTIONS(error, "Failed to deserialize variant", ("variant",v))
+} FC_RETHROW_EXCEPTIONS(error, "Failed to deserialize variant", ("variant",fc::format_string("${v}", variant_object("v", v))))
 
 } } // eosio::chain

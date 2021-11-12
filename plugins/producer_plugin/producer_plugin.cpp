@@ -2297,7 +2297,7 @@ std::optional<fc::time_point> producer_plugin_impl::calculate_producer_wake_up_t
 
 void producer_plugin_impl::schedule_delayed_production_loop(const std::weak_ptr<producer_plugin_impl>& weak_this, std::optional<fc::time_point> wake_up_time) {
    if (wake_up_time) {
-      fc_dlog(_log, "Scheduling Speculative/Production Change at ${time}", ("time", wake_up_time));
+      fc_dlog(_log, "Scheduling Speculative/Production Change at {time}", ("time", *wake_up_time));
       static const boost::posix_time::ptime epoch(boost::gregorian::date(1970, 1, 1));
       _timer.expires_at(epoch + boost::posix_time::microseconds(wake_up_time->time_since_epoch().count()));
       _timer.async_wait( app().get_priority_queue().wrap( priority::high,

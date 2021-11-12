@@ -1228,7 +1228,9 @@ struct controller_impl {
       }
 
       return trace;
-   } FC_CAPTURE_AND_RETHROW() } /// push_scheduled_transaction
+   } FC_RETHROW_EXCEPTIONS(warn, "trx_id: {trx_id}, sender: {sender}, sender_id: {sender_id}",
+                           ("trx_id", gto.trx_id)("sender", gto.sender)("sender_id", gto.sender_id))
+   } /// push_scheduled_transaction
 
 
    /**
@@ -1387,7 +1389,7 @@ struct controller_impl {
          emit( self.applied_transaction, std::tie(trace, trx->packed_trx()) );
 
          return trace;
-      } FC_CAPTURE_AND_RETHROW((trace))
+      } FC_RETHROW_EXCEPTIONS( warn, "trx {id}", ("id", trx->id.str()) )
    } /// push_transaction
 
    void start_block( block_timestamp_type when,
@@ -1807,7 +1809,6 @@ struct controller_impl {
             bool transaction_failed =  trace && trace->except;
             bool transaction_can_fail = receipt.status == transaction_receipt_header::hard_fail && std::holds_alternative<transaction_id_type>(receipt.trx);
             if( transaction_failed && !transaction_can_fail) {
-               edump((*trace));
                throw *trace->except;
             }
 
@@ -1846,7 +1847,7 @@ struct controller_impl {
       } catch ( const boost::interprocess::bad_alloc& ) {
          throw;
       } catch ( const fc::exception& e ) {
-         edump((e.to_detail_string()));
+         elog(e.to_detail_string());
          abort_block();
          throw;
       } catch ( const std::exception& e ) {
@@ -1854,14 +1855,14 @@ struct controller_impl {
          abort_block();
          throw;
       }
-   } FC_CAPTURE_AND_RETHROW() } /// apply_block
+   } FC_RETHROW_EXCEPTIONS(warn, "block_id: {blk_id}", ("blk_id", b->id())) } /// apply_block
 
    std::future<block_state_ptr> create_block_state_future( const block_id_type& id, const signed_block_ptr& b ) {
       EOS_ASSERT( b, block_validate_exception, "null block" );
 
       // no reason for a block_state if fork_db already knows about block
       auto existing = fork_db.get_block( id );
-      EOS_ASSERT( !existing, fork_database_exception, "we already know about this block: ${id}", ("id", id) );
+      EOS_ASSERT( !existing, fork_database_exception, "we already know about this block: {id}", ("id", id) );
 
       auto prev = fork_db.get_block_header( b->previous );
       EOS_ASSERT( prev, unlinkable_block_exception,
@@ -2200,8 +2201,8 @@ struct controller_impl {
          };
 
          EOS_ASSERT( is_subset,  actor_whitelist_exception,
-                     "authorizing actor(s) in transaction are not on the actor whitelist: ${actors}",
-                     ("actors", generate_missing_actors(actors, whitelist))
+                     "authorizing actor(s) in transaction are not on the actor whitelist: {actors}",
+                     ("actors", fc::json::to_string( generate_missing_actors(actors, whitelist) ))
                    );
       } else if( conf.actor_blacklist.size() > 0 ) {
          // throw if actors intersects blacklist
@@ -2240,8 +2241,8 @@ struct controller_impl {
          };
 
          EOS_ASSERT( !intersects, actor_blacklist_exception,
-                     "authorizing actor(s) in transaction are on the actor blacklist: ${actors}",
-                     ("actors", generate_blacklisted_actors(actors, blacklist))
+                     "authorizing actor(s) in transaction are on the actor blacklist: {actors}",
+                     ("actors", fc::json::to_string( generate_blacklisted_actors(actors, blacklist) ))
                    );
       }
    }
@@ -2250,12 +2251,12 @@ struct controller_impl {
       if( conf.contract_whitelist.size() > 0 ) {
          EOS_ASSERT( conf.contract_whitelist.find( code ) != conf.contract_whitelist.end(),
                      contract_whitelist_exception,
-                     "account '${code}' is not on the contract whitelist", ("code", code)
+                     "account '{code}' is not on the contract whitelist", ("code", code)
                    );
       } else if( conf.contract_blacklist.size() > 0 ) {
          EOS_ASSERT( conf.contract_blacklist.find( code ) == conf.contract_blacklist.end(),
                      contract_blacklist_exception,
-                     "account '${code}' is on the contract blacklist", ("code", code)
+                     "account '{code}' is on the contract blacklist", ("code", code)
                    );
       }
    }
@@ -2264,7 +2265,7 @@ struct controller_impl {
       if( conf.action_blacklist.size() > 0 ) {
          EOS_ASSERT( conf.action_blacklist.find( std::make_pair(code, action) ) == conf.action_blacklist.end(),
                      action_blacklist_exception,
-                     "action '${code}::${action}' is on the action blacklist",
+                     "action '{code}::{action}' is on the action blacklist",
                      ("code", code)("action", action)
                    );
       }
@@ -2274,7 +2275,7 @@ struct controller_impl {
       if( conf.key_blacklist.size() > 0 ) {
          EOS_ASSERT( conf.key_blacklist.find( key ) == conf.key_blacklist.end(),
                      key_blacklist_exception,
-                     "public key '${key}' is on the key blacklist",
+                     "public key '{key}' is on the key blacklist",
                      ("key", key)
                    );
       }
@@ -3116,15 +3117,15 @@ void controller::validate_expiration( const transaction& trx )const { try {
    EOS_ASSERT( time_point(trx.expiration) >= pending_block_time(),
                expired_tx_exception,
                "transaction has expired, "
-               "expiration is ${trx.expiration} and pending block time is ${pending_block_time}",
+               "expiration is {trx.expiration} and pending block time is {pending_block_time}",
                ("trx.expiration",trx.expiration)("pending_block_time",pending_block_time()));
    EOS_ASSERT( time_point(trx.expiration) <= pending_block_time() + fc::seconds(chain_configuration.max_transaction_lifetime),
                tx_exp_too_far_exception,
-               "Transaction expiration is too far in the future relative to the reference time of ${reference_time}, "
-               "expiration is ${trx.expiration} and the maximum transaction lifetime is ${max_til_exp} seconds",
+               "Transaction expiration is too far in the future relative to the reference time of {reference_time}, "
+               "expiration is {trx.expiration} and the maximum transaction lifetime is {max_til_exp} seconds",
                ("trx.expiration",trx.expiration)("reference_time",pending_block_time())
                ("max_til_exp",chain_configuration.max_transaction_lifetime) );
-} FC_CAPTURE_AND_RETHROW((trx)) }
+} FC_RETHROW_EXCEPTIONS(warn, "trx_id: {trx_id}", ("trx_id", trx.id())) }
 
 void controller::validate_tapos( const transaction& trx )const { try {
    const auto& tapos_block_summary = db().get<block_summary_object>((uint16_t)trx.ref_block_num);
@@ -3138,13 +3139,13 @@ void controller::validate_tapos( const transaction& trx )const { try {
 void controller::validate_db_available_size() const {
    const auto free = db().get_segment_manager()->get_free_memory();
    const auto guard = my->conf.state_guard_size;
-   EOS_ASSERT(free >= guard, database_guard_exception, "database free: ${f}, guard size: ${g}", ("f", free)("g",guard));
+   EOS_ASSERT(free >= guard, database_guard_exception, "database free: {f}, guard size: {g}", ("f", free)("g",guard));
 }
 
 void controller::validate_reversible_available_size() const {
    const auto free = my->reversible_blocks.get_segment_manager()->get_free_memory();
    const auto guard = my->conf.reversible_guard_size;
-   EOS_ASSERT(free >= guard, reversible_guard_exception, "reversible free: ${f}, guard size: ${g}", ("f", free)("g",guard));
+   EOS_ASSERT(free >= guard, reversible_guard_exception, "reversible free: {f}, guard size: {g}", ("f", free)("g",guard));
 }
 
 bool controller::is_protocol_feature_activated( const digest_type& feature_digest )const {

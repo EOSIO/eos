@@ -5,6 +5,7 @@
 #include <eosio/chain/chain_snapshot.hpp>
 
 #include "multi_index_includes.hpp"
+#include <fc/uint128.hpp>
 
 
 namespace eosio { namespace chain { namespace resource_limits {
@@ -42,7 +43,9 @@ namespace eosio { namespace chain { namespace resource_limits {
       {
          const GreaterIntType max = std::numeric_limits<LesserIntType>::max();
          const GreaterIntType min = std::numeric_limits<LesserIntType>::min();
-         EOS_ASSERT( val >= min && val <= max, rate_limiting_state_inconsistent, "Casting a higher bit integer value ${v} to a lower bit integer value which cannot contain the value, valid range is [${min}, ${max}]", ("v", val)("min", min)("max",max) );
+         EOS_ASSERT( val >= min && val <= max, rate_limiting_state_inconsistent,
+                     "Casting a higher bit integer value {v} to a lower bit integer value which cannot contain "
+                     "the value, valid range is [{min}, {max}]", ("v", val)("min", min)("max",max) );
          return LesserIntType(val);
       };
 

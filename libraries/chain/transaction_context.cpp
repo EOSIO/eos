@@ -6,6 +6,7 @@
 #include <eosio/chain/generated_transaction_object.hpp>
 #include <eosio/chain/transaction_object.hpp>
 #include <eosio/chain/global_property_object.hpp>
+#include <fc/io/json.hpp>
 
 #pragma push_macro("N")
 #undef N
@@ -712,7 +713,7 @@ namespace eosio { namespace chain {
          throw;
       } catch ( ... ) {
           EOS_ASSERT( false, tx_duplicate,
-                     "duplicate transaction ${id}", ("id", id ) );
+                     "duplicate transaction {id}", ("id", id.str() ) );
       }
    } /// record_transaction
 
@@ -736,15 +737,15 @@ namespace eosio { namespace chain {
       for( const auto& a : trx.actions ) {
          auto* code = db.find<account_object, by_name>(a.account);
          EOS_ASSERT( code != nullptr, transaction_exception,
-                     "action's code account '${account}' does not exist", ("account", a.account) );
+                     "action's code account '{account}' does not exist", ("account", a.account.to_string()) );
          for( const auto& auth : a.authorization ) {
             one_auth = true;
             auto* actor = db.find<account_object, by_name>(auth.actor);
             EOS_ASSERT( actor  != nullptr, transaction_exception,
-                        "action's authorizing actor '${account}' does not exist", ("account", auth.actor) );
+                        "action's authorizing actor '{account}' does not exist", ("account", auth.actor.to_string()) );
             EOS_ASSERT( auth_manager.find_permission(auth) != nullptr, transaction_exception,
                         "action's authorizations include a non-existent permission: ${permission}",
-                        ("permission", auth) );
+                        ("permission", fc::variant(auth).as_string()) );
             if( enforce_actor_whitelist_blacklist )
                actors.insert( auth.actor );
          }

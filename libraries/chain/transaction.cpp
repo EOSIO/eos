@@ -75,7 +75,7 @@ fc::microseconds transaction::get_signature_keys( const vector<signature_type>& 
    }
 
    return fc::time_point::now() - start;
-} FC_CAPTURE_AND_RETHROW() }
+} FC_RETHROW_EXCEPTIONS(warn, "") }
 
 flat_multimap<uint16_t, transaction_extension> transaction::validate_and_extract_extensions()const {
    using decompose_t = transaction_extension_types::decompose_t;
@@ -324,7 +324,7 @@ static transaction unpack_transaction(const bytes& packed_trx, packed_transactio
          default:
             EOS_THROW( unknown_transaction_compression, "Unknown transaction compression algorithm" );
       }
-   } FC_CAPTURE_AND_RETHROW( (compression) )
+   } FC_RETHROW_EXCEPTIONS(warn, "{c}", ("c", fc::reflector<packed_transaction_v0::compression_type>::to_string(compression) ) )
 }
 
 void packed_transaction_v0::local_unpack_transaction(vector<bytes>&& context_free_data)
@@ -344,7 +344,7 @@ static vector<bytes> unpack_context_free_data(const bytes& packed_context_free_d
          default:
             EOS_THROW( unknown_transaction_compression, "Unknown transaction compression algorithm" );
       }
-   } FC_CAPTURE_AND_RETHROW( (compression) )
+   } FC_RETHROW_EXCEPTIONS(warn, "{c}", ("c", fc::reflector<packed_transaction_v0::compression_type>::to_string(compression) ) )
 }
 
 void packed_transaction_v0::local_unpack_context_free_data()
@@ -364,7 +364,7 @@ static bytes pack_transaction(const transaction& trx, packed_transaction_v0::com
          default:
             EOS_THROW(unknown_transaction_compression, "Unknown transaction compression algorithm");
       }
-   } FC_CAPTURE_AND_RETHROW((compression))
+   } FC_RETHROW_EXCEPTIONS(warn, "{c}", ("c", fc::reflector<packed_transaction_v0::compression_type>::to_string(compression) ) )
 }
 
 void packed_transaction_v0::local_pack_transaction()
@@ -382,7 +382,7 @@ static bytes pack_context_free_data( const vector<bytes>& cfd, packed_transactio
          default:
             EOS_THROW(unknown_transaction_compression, "Unknown transaction compression algorithm");
       }
-   } FC_CAPTURE_AND_RETHROW((compression))
+   } FC_RETHROW_EXCEPTIONS(warn, "{c}", ("c", fc::reflector<packed_transaction_v0::compression_type>::to_string(compression) ) )
 }
 
 void packed_transaction_v0::local_pack_context_free_data()

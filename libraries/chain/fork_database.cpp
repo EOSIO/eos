@@ -156,7 +156,7 @@ namespace eosio { namespace chain {
                            "head not set to best available option available; '${filename}' is likely corrupted",
                            ("filename", fork_db_dat.generic_string()) );
             }
-         } FC_CAPTURE_AND_RETHROW( (fork_db_dat) )
+         } FC_RETHROW_EXCEPTIONS( error, "{f}", ("f", fork_db_dat.generic_string()) )
 
          fc::remove( fork_db_dat );
       }

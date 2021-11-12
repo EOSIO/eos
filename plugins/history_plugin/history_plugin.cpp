@@ -370,7 +370,6 @@ namespace eosio {
 
    namespace history_apis {
       read_only::get_actions_result read_only::get_actions( const read_only::get_actions_params& params )const {
-         edump((params));
         auto& chain = history->chain_plug->chain();
         const auto& db = chain.db();
         const auto abi_serializer_max_time = history->chain_plug->get_abi_serializer_max_time();

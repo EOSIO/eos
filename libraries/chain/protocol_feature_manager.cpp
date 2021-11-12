@@ -506,7 +506,7 @@ Allows privileged contracts to get and set subsets of blockchain parameters.
 
          EOS_THROW(  protocol_feature_validation_exception,
                      "Not all the builtin dependencies of the builtin protocol feature with codename '${codename}' and digest of ${digest} were satisfied.",
-                     ("missing_dependencies", missing_builtins_with_names)
+                     ("missing_dependencies", fc::variant(missing_builtins_with_names).as_string())
          );
       }
 
@@ -720,10 +720,11 @@ Allows privileged contracts to get and set subsets of blockchain parameters.
       );
 
       if (auto dm_logger = _get_deep_mind_logger()) {
-         fc_dlog(*dm_logger, "FEATURE_OP ACTIVATE ${feature_digest} ${feature}",
-            ("feature_digest", feature_digest)
-            ("feature", itr->to_variant())
-         );
+#warning todo determine format
+//         fc_dlog(*dm_logger, "FEATURE_OP ACTIVATE ${feature_digest} ${feature}",
+//            ("feature_digest", feature_digest)
+//            ("feature", itr->to_variant())
+//         );
       }
 
       _activated_protocol_features.push_back( protocol_feature_entry{itr, current_block_num} );

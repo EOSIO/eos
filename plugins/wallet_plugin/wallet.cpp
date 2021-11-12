@@ -87,9 +87,9 @@ public:
          ++suffix;
          dest_path = destination_filename + "-" + std::to_string( suffix ) + _wallet_filename_extension;
       }
-      wlog( "backing up wallet ${src} to ${dest}",
-            ("src", src_path)
-            ("dest", dest_path) );
+      wlog( "backing up wallet {src} to {dest}",
+            ("src", src_path.string())
+            ("dest", dest_path.string()) );
 
       fc::path dest_parent = fc::absolute(dest_path).parent_path();
       try

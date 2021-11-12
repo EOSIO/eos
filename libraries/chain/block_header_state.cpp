@@ -1,5 +1,6 @@
 #include <eosio/chain/block_header_state.hpp>
 #include <eosio/chain/exceptions.hpp>
+#include <fc/io/json.hpp>
 #include <limits>
 
 namespace eosio { namespace chain {
@@ -415,7 +416,7 @@ namespace eosio { namespace chain {
                  "number of block signatures (${num_block_signatures}) exceeds number of keys in block signing authority (${num_keys})",
                  ("num_block_signatures", 1 + additional_signatures.size())
                  ("num_keys", num_keys_in_authority)
-                 ("authority", valid_block_signing_authority)
+                 ("authority", fc::json::to_string(valid_block_signing_authority))
       );
 
       std::set<public_key_type> keys;
@@ -434,11 +435,11 @@ namespace eosio { namespace chain {
 
       EOS_ASSERT(relevant_sig_count == keys.size(), wrong_signing_key,
                  "block signed by unexpected key",
-                 ("signing_keys", keys)("authority", valid_block_signing_authority));
+                 ("signing_keys", fc::json::to_string(keys))("authority", fc::json::to_string(valid_block_signing_authority)));
 
       EOS_ASSERT(is_satisfied, wrong_signing_key,
                  "block signatures do not satisfy the block signing authority",
-                 ("signing_keys", keys)("authority", valid_block_signing_authority));
+                 ("signing_keys", fc::json::to_string(keys))("authority", fc::json::to_string(valid_block_signing_authority)));
    }
 
    /**

@@ -272,7 +272,7 @@ void undo_stack<Session>::open() {
             }
          }
          m_revision = rev; // restore head revision
-      } FC_CAPTURE_AND_RETHROW( (undo_stack_dat) )
+      } FC_RETHROW_EXCEPTIONS( error, "{p}", ("p", undo_stack_dat.string()) )
 
       fc::remove( undo_stack_dat );
    }

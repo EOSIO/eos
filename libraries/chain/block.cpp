@@ -16,7 +16,7 @@ namespace eosio { namespace chain {
          auto res = unique_sigs.insert( s );
          EOS_ASSERT( res.second, ill_formed_additional_block_signatures_extension,
                      "Signature ${s} was repeated in the additional block signatures extension",
-                     ("s", s)
+                     ("s", s.to_string())
          );
       }
    }

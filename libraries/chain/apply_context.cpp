@@ -12,6 +12,8 @@
 #include <eosio/chain/global_property_object.hpp>
 #include <boost/container/flat_set.hpp>
 #include <eosio/chain/kv_chainbase_objects.hpp>
+#include <fc/io/json.hpp>
+#include <fmt/format.h>
 
 using boost::container::flat_set;
 
@@ -21,12 +23,10 @@ using db_context = backing_store::db_context;
 
 static inline void print_debug(account_name receiver, const action_trace& ar) {
    if (!ar.console.empty()) {
-      auto prefix = fc::format_string(
-                                      "\n[(${a},${n})->${r}]",
-                                      fc::mutable_variant_object()
-                                      ("a", ar.act.account)
-                                      ("n", ar.act.name)
-                                      ("r", receiver));
+      auto prefix = fmt::format( "\n[({a},{n})->{r}]",
+                                      fmt::arg("a", ar.act.account.to_string()),
+                                      fmt::arg("n", ar.act.name.to_string()),
+                                      fmt::arg("r", receiver.to_string()));
       dlog(prefix + ": CONSOLE OUTPUT BEGIN =====================\n"
            + ar.console
            + prefix + ": CONSOLE OUTPUT END   =====================" );
@@ -252,7 +252,7 @@ void apply_context::require_authorization( const account_name& account ) const {
         return;
      }
    }
-   EOS_ASSERT( false, missing_auth_exception, "missing authority of ${account}", ("account",account));
+   EOS_ASSERT( false, missing_auth_exception, "missing authority of {account}", ("account",account.to_string()));
 }
 
 bool apply_context::has_authorization( const account_name& account )const {
@@ -270,8 +270,8 @@ void apply_context::require_authorization(const account_name& account,
            return;
         }
      }
-  EOS_ASSERT( false, missing_auth_exception, "missing authority of ${account}/${permission}",
-              ("account",account)("permission",permission) );
+  EOS_ASSERT( false, missing_auth_exception, "missing authority of {account}/{permission}",
+              ("account",account.to_string())("permission",permission.to_string()) );
 }
 
 bool apply_context::has_recipient( account_name code )const {
@@ -315,7 +315,7 @@ void apply_context::require_recipient( account_name recipient ) {
 void apply_context::execute_inline( action&& a ) {
    auto* code = control.db().find<account_object, by_name>(a.account);
    EOS_ASSERT( code != nullptr, action_validate_exception,
-               "inline action's code account ${account} does not exist", ("account", a.account) );
+               "inline action's code account {account} does not exist", ("account", a.account.to_string()) );
 
    bool enforce_actor_whitelist_blacklist = trx_context.enforce_whiteblacklist && control.is_producing_block();
    flat_set<account_name> actors;
@@ -332,10 +332,10 @@ void apply_context::execute_inline( action&& a ) {
    for( const auto& auth : a.authorization ) {
       auto* actor = control.db().find<account_object, by_name>(auth.actor);
       EOS_ASSERT( actor != nullptr, action_validate_exception,
-                  "inline action's authorizing actor ${account} does not exist", ("account", auth.actor) );
+                  "inline action's authorizing actor {account} does not exist", ("account", auth.actor.to_string()) );
       EOS_ASSERT( control.get_authorization_manager().find_permission(auth) != nullptr, action_validate_exception,
-                  "inline action's authorizations include a non-existent permission: ${permission}",
-                  ("permission", auth) );
+                  "inline action's authorizations include a non-existent permission: {permission}",
+                  ("permission", fc::json::to_string(auth)) );
       if( enforce_actor_whitelist_blacklist )
          actors.insert( auth.actor );
 
@@ -404,7 +404,7 @@ void apply_context::execute_inline( action&& a ) {
 void apply_context::execute_context_free_inline( action&& a ) {
    auto* code = control.db().find<account_object, by_name>(a.account);
    EOS_ASSERT( code != nullptr, action_validate_exception,
-               "inline action's code account ${account} does not exist", ("account", a.account) );
+               "inline action's code account {account} does not exist", ("account", a.account.to_string()) );
 
    EOS_ASSERT( a.authorization.size() == 0, action_validate_exception,
                "context-free actions cannot have authorizations" );

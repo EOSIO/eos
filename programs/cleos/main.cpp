@@ -636,7 +636,7 @@ void print_result( const fc::variant& result ) { try {
       } else {
          cerr << fc::json::to_pretty_string( result ) << endl;
       }
-} FC_CAPTURE_AND_RETHROW( (result) ) }
+} FC_CAPTURE_AND_RETHROW() }
 
 using std::cout;
 void send_actions(std::vector<chain::action>&& actions, const std::vector<public_key_type>& signing_keys = std::vector<public_key_type>() ) {
@@ -835,7 +835,8 @@ asset to_asset( account_name code, const string& s ) {
       auto factor = expected_symbol.precision() / a.precision();
       a = asset( a.get_amount() * factor, expected_symbol );
    } else if ( a.decimals() > expected_symbol.decimals() ) {
-      EOS_THROW(symbol_type_exception, "Too many decimal digits in ${a}, only ${d} supported", ("a", a)("d", expected_symbol.decimals()));
+      EOS_THROW(symbol_type_exception, "Too many decimal digits in {a}, only {d} supported",
+                ("a", a.to_string())("d", expected_symbol.decimals()));
    } // else precision matches
    return a;
 }
@@ -3968,12 +3969,14 @@ int main( int argc, char** argv ) {
       vector<permission_level> reqperm;
       try {
          reqperm = requested_perm_var.as<vector<permission_level>>();
-      } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Wrong requested permissions format: '${data}'", ("data",requested_perm_var));
+      } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Wrong requested permissions format: '{data}'",
+                               ("data", fc::json::to_string(requested_perm_var)));
 
       vector<permission_level> trxperm;
       try {
          trxperm = transaction_perm_var.as<vector<permission_level>>();
-      } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Wrong transaction permissions format: '${data}'", ("data",transaction_perm_var));
+      } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Wrong transaction permissions format: '{data}'",
+                               ("data", fc::json::to_string(transaction_perm_var)));
 
       auto accountPermissions = get_account_permissions(tx_permission);
       if (accountPermissions.empty()) {

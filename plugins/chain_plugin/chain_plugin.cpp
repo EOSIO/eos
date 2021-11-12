@@ -1484,16 +1484,16 @@ bool chain_plugin::recover_reversible_blocks( const fc::path& db_dir, uint32_t c
 
       EOS_ASSERT( !fc::exists(backup_dir),
                   reversible_blocks_backup_dir_exist,
-                 "Cannot move existing reversible directory to already existing directory '${backup_dir}'",
-                 ("backup_dir", backup_dir) );
+                 "Cannot move existing reversible directory to already existing directory '{backup_dir}'",
+                 ("backup_dir", backup_dir.string()) );
 
       fc::rename( reversible_dir, backup_dir );
-      ilog( "Moved existing reversible directory to backup location: '${new_db_dir}'", ("new_db_dir", backup_dir) );
+      ilog( "Moved existing reversible directory to backup location: '{new_db_dir}'", ("new_db_dir", backup_dir.string()) );
    }
 
    fc::create_directories( reversible_dir );
 
-   ilog( "Reconstructing '${reversible_dir}' from backed up reversible directory", ("reversible_dir", reversible_dir) );
+   ilog( "Reconstructing '{reversible_dir}' from backed up reversible directory", ("reversible_dir", reversible_dir.string()) );
 
    std::optional<chainbase::database> old_reversible;
 
@@ -1522,13 +1522,14 @@ bool chain_plugin::recover_reversible_blocks( const fc::path& db_dir, uint32_t c
       end = start - 1;
    }
    if( truncate_at_block > 0 && start > truncate_at_block ) {
-      ilog( "Did not recover any reversible blocks since the specified block number to stop at (${stop}) is less than first block in the reversible database (${start}).", ("stop", truncate_at_block)("start", start) );
+      ilog( "Did not recover any reversible blocks since the specified block number to stop at ({stop}) is "
+            "less than first block in the reversible database ({start}).", ("stop", truncate_at_block)("start", start) );
       return true;
    }
    try {
       for( ; itr != ubi.end(); ++itr ) {
          EOS_ASSERT( itr->blocknum == end + 1, gap_in_reversible_blocks_db,
-                     "gap in reversible block database between ${end} and ${blocknum}",
+                     "gap in reversible block database between {end} and {blocknum}",
                      ("end", end)("blocknum", itr->blocknum)
                    );
          reversible_blocks.write( itr->packedblock.data(), itr->packedblock.size() );
@@ -1546,14 +1547,14 @@ bool chain_plugin::recover_reversible_blocks( const fc::path& db_dir, uint32_t c
    } catch( ... ) {}
 
    if( end == truncate_at_block )
-      ilog( "Stopped recovery of reversible blocks early at specified block number: ${stop}", ("stop", truncate_at_block) );
+      ilog( "Stopped recovery of reversible blocks early at specified block number: {stop}", ("stop", truncate_at_block) );
 
    if( num == 0 )
       ilog( "There were no recoverable blocks in the reversible block database" );
    else if( num == 1 )
-      ilog( "Recovered 1 block from reversible block database: block ${start}", ("start", start) );
+      ilog( "Recovered 1 block from reversible block database: block {start}", ("start", start) );
    else
-      ilog( "Recovered ${num} blocks from reversible block database: blocks ${start} to ${end}",
+      ilog( "Recovered ${num} blocks from reversible block database: blocks {start} to {end}",
             ("num", num)("start", start)("end", end) );
 
    return true;
@@ -1584,7 +1585,7 @@ bool chain_plugin::import_reversible_blocks( const fc::path& reversible_dir,
             start = num;
          } else {
             EOS_ASSERT( num == end + 1, gap_in_reversible_blocks_db,
-                        "gap in reversible block database between ${end} and ${num}",
+                        "gap in reversible block database between {end} and {num}",
                         ("end", end)("num", num)
                       );
          }
@@ -1596,11 +1597,11 @@ bool chain_plugin::import_reversible_blocks( const fc::path& reversible_dir,
          end = num;
       }
    } catch( gap_in_reversible_blocks_db& e ) {
-      wlog( "${details}", ("details", e.to_detail_string()) );
+      wlog( "{details}", ("details", e.to_detail_string()) );
       FC_RETHROW_EXCEPTION( e, warn, "rethrow" );
    } catch( ... ) {}
 
-   ilog( "Imported blocks ${start} to ${end}", ("start", start)("end", end));
+   ilog( "Imported blocks {start} to {end}", ("start", start)("end", end));
 
    if( num == 0 || end != num )
       return false;
@@ -1982,7 +1983,7 @@ read_only::get_table_rows_result read_only::get_table_rows( const read_only::get
       if( table_type == KEYi64 || p.key_type == "i64" || p.key_type == "name" ) {
          return get_table_rows_ex<key_value_index>(p,abi);
       }
-      EOS_ASSERT( false, chain::contract_table_query_exception,  "Invalid table type ${type}", ("type",table_type)("abi",abi));
+      EOS_ASSERT( false, chain::contract_table_query_exception,  "Invalid table type {type}", ("type",table_type));
    } else {
       EOS_ASSERT( !p.key_type.empty(), chain::contract_table_query_exception, "key type required for non-primary index" );
 
@@ -2031,7 +2032,7 @@ read_only::get_table_rows_result read_only::get_table_rows( const read_only::get
          using  conv = keytype_converter<chain_apis::ripemd160,chain_apis::hex>;
          return get_table_rows_by_seckey<conv::index_type, conv::input_type>(p, abi, conv::function());
       }
-      EOS_ASSERT(false, chain::contract_table_query_exception,  "Unsupported secondary index type: ${t}", ("t", p.key_type));
+      EOS_ASSERT(false, chain::contract_table_query_exception,  "Unsupported secondary index type: {t}", ("t", p.key_type));
    }
 #pragma GCC diagnostic pop
 }
@@ -3466,24 +3467,28 @@ static fc::variant action_abi_to_variant( const abi_def& abi, type_name action_t
 read_only::abi_json_to_bin_result read_only::abi_json_to_bin( const read_only::abi_json_to_bin_params& params )const try {
    abi_json_to_bin_result result;
    const auto code_account = db.db().find<account_object,by_name>( params.code );
-   EOS_ASSERT(code_account != nullptr, contract_query_exception, "Contract can't be found ${contract}", ("contract", params.code));
+   EOS_ASSERT(code_account != nullptr, contract_query_exception, "Contract can't be found {contract}", ("contract", params.code));
 
    abi_def abi;
    if( abi_serializer::to_abi(code_account->abi, abi) ) {
       abi_serializer abis( abi, abi_serializer::create_yield_function( abi_serializer_max_time ) );
       auto action_type = abis.get_action_type(params.action);
-      EOS_ASSERT(!action_type.empty(), action_validate_exception, "Unknown action ${action} in contract ${contract}", ("action", params.action)("contract", params.code));
+      EOS_ASSERT(!action_type.empty(), action_validate_exception, "Unknown action {action} in contract {contract}",
+                 ("action", params.action)("contract", params.code));
       try {
          result.binargs = abis.variant_to_binary( action_type, params.args, abi_serializer::create_yield_function( abi_serializer_max_time ), shorten_abi_errors );
       } EOS_RETHROW_EXCEPTIONS(chain::invalid_action_args_exception,
-                                "'${args}' is invalid args for action '${action}' code '${code}'. expected '${proto}'",
-                                ("args", params.args)("action", params.action)("code", params.code)("proto", action_abi_to_variant(abi, action_type)))
+                               "'{args}' is invalid args for action '{action}' code '{code}'. expected '{proto}'",
+                               ("args", shorten_abi_errors ? "{args}" : fc::json::to_string(params.args))
+                               ("action", params.action)("code", params.code)
+                               ("proto", shorten_abi_errors ? "{proto}" : fc::json::to_string(action_abi_to_variant(abi, action_type))))
    } else {
-      EOS_ASSERT(false, abi_not_found_exception, "No ABI found for ${contract}", ("contract", params.code));
+      EOS_ASSERT(false, abi_not_found_exception, "No ABI found for {contract}", ("contract", params.code));
    }
    return result;
-} FC_RETHROW_EXCEPTIONS( warn, "code: ${code}, action: ${action}, args: ${args}",
-                         ("code", params.code)( "action", params.action )( "args", params.args ))
+} FC_RETHROW_EXCEPTIONS( warn, "code: {code}, action: {action}, args: {args}",
+                         ("code", params.code)( "action", params.action )
+                         ("args", shorten_abi_errors ? "{args}" : fc::json::to_string(params.args)) )
 
 read_only::abi_bin_to_json_result read_only::abi_bin_to_json( const read_only::abi_bin_to_json_params& params )const {
    abi_bin_to_json_result result;
@@ -3493,7 +3498,7 @@ read_only::abi_bin_to_json_result read_only::abi_bin_to_json( const read_only::a
       abi_serializer abis( abi, abi_serializer::create_yield_function( abi_serializer_max_time ) );
       result.args = abis.binary_to_variant( abis.get_action_type( params.action ), params.binargs, abi_serializer::create_yield_function( abi_serializer_max_time ), shorten_abi_errors );
    } else {
-      EOS_ASSERT(false, abi_not_found_exception, "No ABI found for ${contract}", ("contract", params.code));
+      EOS_ASSERT(false, abi_not_found_exception, "No ABI found for {contract}", ("contract", params.code));
    }
    return result;
 }

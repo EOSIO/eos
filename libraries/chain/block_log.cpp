@@ -411,7 +411,7 @@ namespace eosio { namespace chain {
          EOS_ASSERT(
              log_num_blocks == index_num_blocks, block_log_exception,
              "${block_file_name} says it has ${log_num_blocks} blocks which disagrees with ${index_num_blocks} indicated by ${index_file_name}",
-             ("block_file_name", block_file_name)("log_num_blocks", log_num_blocks)("index_num_blocks", index_num_blocks)("index_file_name", index_file_name));
+             ("block_file_name", block_file_name.string())("log_num_blocks", log_num_blocks)("index_num_blocks", index_num_blocks)("index_file_name", index_file_name.string()));
       }
    };
 
@@ -614,7 +614,7 @@ namespace eosio { namespace chain {
          future_version = preamble.version;
 
          EOS_ASSERT(catalog.verifier.chain_id.empty() || catalog.verifier.chain_id == preamble.chain_id(), block_log_exception,
-                    "block log file ${path} has a different chain id", ("path", block_file.get_file_path()));
+                    "block log file ${path} has a different chain id", ("path", block_file.get_file_path().string()));
 
          genesis_written_to_block_log = true; // Assume it was constructed properly.
 
@@ -889,7 +889,7 @@ namespace eosio { namespace chain {
 
       ilog("Data at tail end of block log which should contain the (incomplete) serialization of block ${num} "
             "has been written out to '${tail_path}'.",
-            ("num", block_num + 1)("tail_path", tail_path));
+            ("num", block_num + 1)("tail_path", tail_path.generic_string()));
       
    }
 
@@ -932,7 +932,7 @@ namespace eosio { namespace chain {
    fc::path block_log::repair_log(const fc::path& data_dir, uint32_t truncate_at_block, const char* reversible_block_dir_name) {
       ilog("Recovering Block Log...");
       EOS_ASSERT(fc::is_directory(data_dir) && fc::is_regular_file(data_dir / "blocks.log"), block_log_not_found,
-                 "Block log not found in '${blocks_dir}'", ("blocks_dir", data_dir));
+                 "Block log not found in '${blocks_dir}'", ("blocks_dir", data_dir.generic_string()));
                  
       if (truncate_at_block == 0)
          truncate_at_block = UINT32_MAX;
@@ -945,7 +945,7 @@ namespace eosio { namespace chain {
 
       EOS_ASSERT(!fc::exists(backup_dir), block_log_backup_dir_exist,
                  "Cannot move existing blocks directory to already existing directory '${new_blocks_dir}'",
-                 ("new_blocks_dir", backup_dir));
+                 ("new_blocks_dir", backup_dir.generic_string()));
 
       fc::create_directories(backup_dir);
       fc::rename(blocks_dir / "blocks.log", backup_dir / "blocks.log");
@@ -955,7 +955,7 @@ namespace eosio { namespace chain {
       if (strlen(reversible_block_dir_name) && fc::is_directory(blocks_dir/reversible_block_dir_name)) {
          fc::rename(blocks_dir/ reversible_block_dir_name, backup_dir/ reversible_block_dir_name);
       }
-      ilog("Moved existing blocks directory to backup location: '${new_blocks_dir}'", ("new_blocks_dir", backup_dir));
+      ilog("Moved existing blocks directory to backup location: '${new_blocks_dir}'", ("new_blocks_dir", backup_dir.generic_string()));
 
       const auto block_log_path  = blocks_dir / "blocks.log";
       const auto block_file_name = block_log_path.generic_string();

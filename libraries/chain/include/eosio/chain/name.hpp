@@ -127,4 +127,25 @@ namespace std {
    };
 };
 
+namespace fc {
+  class variant;
+  void to_variant(const eosio::chain::name& c, fc::variant& v);
+  void from_variant(const fc::variant& v, eosio::chain::name& check);
+} // fc
+
 FC_REFLECT( eosio::chain::name, (value) )
+
+#include <fmt/format.h>
+
+namespace fmt {
+template<>
+struct formatter<eosio::chain::name> {
+   template<typename ParseContext>
+   constexpr auto parse( ParseContext& ctx ) { return ctx.begin(); }
+
+   template<typename FormatContext>
+   auto format( const eosio::chain::name& v, FormatContext& ctx ) {
+      return format_to( ctx.out(), "{}", v.to_string() );
+   }
+};
+}

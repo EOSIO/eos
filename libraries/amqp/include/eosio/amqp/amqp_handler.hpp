@@ -42,7 +42,7 @@ public:
                               [this](AMQP::Channel* c){channel_ready(c);}, [this](){channel_failed();} )
          , on_error_( std::move( on_err ) )
    {
-      ilog( "Connecting to AMQP address ${a} ...", ("a", amqp_connection_.address()) );
+      ilog( "Connecting to AMQP address ${a} ...", ("a", fc::variant(amqp_connection_.address()).as_string()) ); // todo: optimize to string conversion
 
       wait();
    }

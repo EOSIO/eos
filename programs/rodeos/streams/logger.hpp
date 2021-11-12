@@ -14,7 +14,7 @@ class logger : public stream_handler {
 
    void publish(const std::vector<char>& data, const std::string& routing_key) override {
       ilog("logger stream ${r}: [${data_size}] >> ${data}",
-           ("r", routing_key)("data", data)("data_size", data.size()));
+           ("r", routing_key)("data", fc::variant(data).as_string())("data_size", data.size()));
    }
 };
 
