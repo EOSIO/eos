@@ -124,15 +124,17 @@ namespace eosio::trace_api {
             fc::raw::unpack(ds, entry);
             if (std::holds_alternative<block_trxs_entry>(entry)) {
                const auto& trxs_entry = std::get<block_trxs_entry>(entry);
-               for (auto i = 0U; i < trxs_entry.ids.size(); ++i){
-                  if (trxs_entry.ids[i] == trx_id)
+               for (auto i = 0U; i < trxs_entry.ids.size(); ++i) {
+                  if (trxs_entry.ids[i] == trx_id) {
                      trx_entries++;
                      trx_block_num = trxs_entry.block_num;
+                  }
                }
             } else if (std::holds_alternative<lib_entry_v0>(entry)) {
                auto lib = std::get<lib_entry_v0>(entry).lib;
-               if (trx_entries > 0 && lib >= trx_block_num)
+               if (trx_entries > 0 && lib >= trx_block_num) {
                   return trx_block_num;
+               }
             } else {
                FC_ASSERT( false, "unpacked data should be a block trxs entry or a lib entry" );;
             }
