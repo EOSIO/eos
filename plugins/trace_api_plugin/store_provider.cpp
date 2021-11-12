@@ -143,7 +143,8 @@ namespace eosio::trace_api {
          slice_number++;
       }
 
-      // no irreversible blocks after the block containing the target trx, e.g., some unit tests
+      // no irreversible blocks after the block containing the target trx, e.g., it happens
+      // in some integration tests that call waitForTransInBlock during bios bootstrap.
       if (trx_entries > 0)
          return trx_block_num;
 
