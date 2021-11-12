@@ -7,7 +7,7 @@ RUN yum update -y && \
     yum --enablerepo=extras install -y  graphviz bzip2-devel openssl-devel gmp-devel && \
     yum --enablerepo=extras install -y  file libusbx-devel && \
     yum --enablerepo=extras install -y libcurl-devel patch vim-common jq && \
-    yum install -y python3 python3-devel clang llvm-devel llvm-static procps-ng util-linux sudo libstdc++ \
+    yum install -y python3 python3-devel python3-pip clang llvm-devel llvm-static procps-ng util-linux sudo libstdc++ \
     glibc-locale-source glibc-langpack-en && \
     yum clean all && rm -rf /var/cache/yum
 RUN dnf install -y  https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm && \
@@ -18,6 +18,8 @@ RUN curl -s https://packagecloud.io/install/repositories/rabbitmq/erlang/script.
     yum install -y erlang
 RUN curl -s https://packagecloud.io/install/repositories/rabbitmq/rabbitmq-server/script.rpm.sh | bash && \
     yum install -y rabbitmq-server
+# install request and requests_unixsocket module
+RUN pip3 install requests && pip3 install requests_unixsocket
 # cmake3.18.0
 RUN curl -LO https://github.com/Kitware/CMake/releases/download/v3.18.0/cmake-3.18.0.tar.gz && \
     tar -xzf cmake-3.18.0.tar.gz && \

@@ -5,11 +5,13 @@ RUN apt-get update && \
     apt-get upgrade -y && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y git make \
     bzip2 automake libbz2-dev libssl-dev doxygen graphviz libgmp3-dev \
-    autotools-dev python2.7 python2.7-dev python3 python3-dev \
+    autotools-dev python2.7 python2.7-dev python3 python3-dev python3-pip \
     autoconf libtool curl zlib1g-dev sudo ruby libusb-1.0-0-dev \
     libcurl4-gnutls-dev pkg-config patch llvm-7-dev clang-7 vim-common jq g++ gnupg rabbitmq-server && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
+# install request and requests_unixsocket module
+RUN pip3 install requests && pip3 install requests_unixsocket
 # build cmake
 RUN curl -LO https://github.com/Kitware/CMake/releases/download/v3.16.2/cmake-3.16.2.tar.gz && \
     tar -xzf cmake-3.16.2.tar.gz && \
