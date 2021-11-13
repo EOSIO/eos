@@ -142,7 +142,8 @@ numSHiPs=[2]
 numRodeos=[2]
 NumTestCase=len(numSHiPs)
 for i in range(NumTestCase):
-    for killSignal in [signal.SIGKILL, signal.SIGINT, signal.SIGTERM]:
+    # SIGTERM is similar to SIGINT. Drop it to reduce testing duration
+    for killSignal in [signal.SIGKILL, signal.SIGINT]:
         if killSignal == signal.SIGKILL and cleanRestart == False: # With ungraceful shutdown, clean restart is required.
             continue
         launch_cluster(numSHiPs[i], numRodeos[i], enableUnixSocket, cleanRestart, killSignal, enableOC)
