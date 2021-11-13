@@ -4,7 +4,7 @@ VERSION=1
 brew update
 brew install git cmake python libtool libusb graphviz automake wget gmp pkgconfig doxygen openssl@1.1 jq boost libpq postgres rabbitmq || :
 # install request and requests_unixsocket module
-pip3 install requests && pip3 install requests_unixsocket
+pip3 install requests requests_unixsocket
 # libpqxx 7.3+ installations on mojave try to import libs not present in the sdk. pin to libpqxx 7.2.1 instead.
 curl -LO  https://raw.githubusercontent.com/Homebrew/homebrew-core/d14398187084e1d3fd1763ec13cea1044946a51f/Formula/libpqxx.rb
 brew install -f ./libpqxx.rb
