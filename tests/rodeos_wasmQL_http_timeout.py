@@ -7,17 +7,8 @@ from TestHelper import AppArgs
 import time
 import os
 import logging
-
-try: 
-    import requests
-except ImportError:
-    os.system('pip3 install requests')
-    import requests
-try: 
-    import requests_unixsocket
-except ImportError:
-    os.system('pip3 install requests_unixsocket')
-    import requests_unixsocket
+import requests
+import requests_unixsocket
 
 
 ###############################################################
