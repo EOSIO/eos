@@ -12,6 +12,8 @@ RUN apt-get update && \
     libtasn1-dev libnss3-dev iproute2 expect gawk socat python3-pip libseccomp-dev uuid-dev && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
+# install request and requests_unixsocket module
+RUN pip3 install requests requests_unixsocket
 # build cmake
 RUN curl -LO https://github.com/Kitware/CMake/releases/download/v3.16.2/cmake-3.16.2.tar.gz && \
     tar -xzf cmake-3.16.2.tar.gz && \

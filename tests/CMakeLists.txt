@@ -18,6 +18,7 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/WalletMgr.py ${CMAKE_CURRENT_BINARY_D
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/Node.py ${CMAKE_CURRENT_BINARY_DIR}/Node.py COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/Cluster.py ${CMAKE_CURRENT_BINARY_DIR}/Cluster.py COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/TestHelper.py ${CMAKE_CURRENT_BINARY_DIR}/TestHelper.py COPYONLY)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/rodeos_utils.py ${CMAKE_CURRENT_BINARY_DIR}/rodeos_utils.py COPYONLY)
 
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/p2p_tests/dawn_515/test.sh ${CMAKE_CURRENT_BINARY_DIR}/p2p_tests/dawn_515/test.sh COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/block_log_util_test.py ${CMAKE_CURRENT_BINARY_DIR}/block_log_util_test.py COPYONLY)
@@ -58,12 +59,17 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/cli_test.py ${CMAKE_CURRENT_BINARY_DI
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/plugin_http_api_test.py ${CMAKE_CURRENT_BINARY_DIR}/plugin_http_api_test.py COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/resource_monitor_plugin_test.py ${CMAKE_CURRENT_BINARY_DIR}/resource_monitor_plugin_test.py COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/rodeos_test.py ${CMAKE_CURRENT_BINARY_DIR}/rodeos_test.py COPYONLY)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/rodeos_idle_test.py ${CMAKE_CURRENT_BINARY_DIR}/rodeos_idle_test.py COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/test_filter.wasm ${CMAKE_CURRENT_BINARY_DIR}/test_filter.wasm COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/trace_plugin_test.py ${CMAKE_CURRENT_BINARY_DIR}/trace_plugin_test.py COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/nodeos_contrl_c_test.py ${CMAKE_CURRENT_BINARY_DIR}/nodeos_contrl_c_test.py COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/blockvault_tests.py ${CMAKE_CURRENT_BINARY_DIR}/blockvault_tests.py COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/amqp_tests.py ${CMAKE_CURRENT_BINARY_DIR}/amqp_tests.py COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/large-lib-test.py ${CMAKE_CURRENT_BINARY_DIR}/large-lib-test.py COPYONLY)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/rodeos_multi_ship_test.py ${CMAKE_CURRENT_BINARY_DIR}/rodeos_multi_ship_test.py COPYONLY)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/rodeos_multi_ship_kill_restart.py ${CMAKE_CURRENT_BINARY_DIR}/rodeos_multi_ship_kill_restart.py COPYONLY)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/rodeos_wasmQL_http_timeout.py ${CMAKE_CURRENT_BINARY_DIR}/rodeos_wasmQL_http_timeout.py COPYONLY)
+
 
 #To run plugin_test with all log from blockchain displayed, put --verbose after --, i.e. plugin_test -- --verbose
 add_test(NAME plugin_test COMMAND plugin_test --report_level=detailed --color_output)
@@ -144,12 +150,60 @@ if(NOT EOSIO_REQUIRE_FULL_VALIDATION)
    add_test(NAME eosio_blocklog_prune_test COMMAND tests/eosio_blocklog_prune_test.py -v --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
    set_property(TEST eosio_blocklog_prune_test PROPERTY LABELS nonparallelizable_tests)
 endif()
+
+# rodeos tests
 add_test(NAME rodeos_test COMMAND tests/rodeos_test.py -v --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 set_property(TEST rodeos_test PROPERTY LABELS nonparallelizable_tests)
 if("eos-vm-oc" IN_LIST EOSIO_WASM_RUNTIMES)
    add_test(NAME rodeos_test_eosvmoc COMMAND tests/rodeos_test.py -v --clean-run --dump-error-detail --eos-vm-oc-enable WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
    set_property(TEST rodeos_test_eosvmoc PROPERTY LABELS nonparallelizable_tests)
 endif()
+
+add_test(NAME rodeos_idle_test COMMAND tests/rodeos_test.py -v --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_property(TEST rodeos_idle_test PROPERTY LABELS nonparallelizable_tests)
+
+# rodoes restart scenarios: stop/start single node, TCP/IP 
+add_test(NAME rodeos_idle_restart_ship_test COMMAND tests/rodeos_idle_test.py -v --clean-run --dump-error-detail --node-order _ship-k2,+ship-n,_ship-k15,+ship-n WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_property(TEST rodeos_idle_restart_ship_test PROPERTY LABELS nonparallelizable_tests)
+add_test(NAME rodeos_idle_restart_producer_test COMMAND tests/rodeos_idle_test.py -v --clean-run --dump-error-detail --node-order _prod-k2,+prod-n,_prod-k15,+prod-n WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_property(TEST rodeos_idle_restart_producer_test PROPERTY LABELS nonparallelizable_tests)
+add_test(NAME rodeos_idle_restart_rodeos_test COMMAND tests/rodeos_idle_test.py -v --clean-run --dump-error-detail --node-order _rodeos-k2,+rodeos-n,_rodeos-k15,+rodeos-n WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_property(TEST rodeos_idle_restart_rodeos_test PROPERTY LABELS nonparallelizable_tests)
+
+# rodoes restart scenarios: stop/start single node UNIX domain socket
+add_test(NAME rodeos_idle_restart_ship_unix-socket_test COMMAND tests/rodeos_idle_test.py -v --clean-run --dump-error-detail --unix-socket --node-order _ship-k2,+ship-n,_ship-k15,+ship-n WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_property(TEST rodeos_idle_restart_ship_unix-socket_test PROPERTY LABELS nonparallelizable_tests)
+add_test(NAME rodeos_idle_restart_rodeos_unix-socket_test COMMAND tests/rodeos_idle_test.py -v --clean-run --dump-error-detail --unix-socket --node-order _rodeos-k2,+rodeos-n,_rodeos-k15,+rodeos-n WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_property(TEST rodeos_idle_restart_rodeos_unix-socket_test PROPERTY LABELS nonparallelizable_tests)
+
+# rodeos restart scenarios: shutdown two nodes bringing bringing back up
+add_test(NAME rodeos_idle_restart_rodeos_ship_test COMMAND tests/rodeos_idle_test.py -v --clean-run --dump-error-detail --reps 2 --node-order _rodeos-k2,_ship-k2,+rodeos-n,+ship-n,_ship-k15,_rodeos-k15,+rodeos-n,+ship-n WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_property(TEST rodeos_idle_restart_rodeos_ship_test PROPERTY LABELS nonparallelizable_tests)
+add_test(NAME rodeos_idle_restart_rodeos_producer_test COMMAND tests/rodeos_idle_test.py -v --clean-run --dump-error-detail --reps 2 --node-order _rodeos-k2,_prod-k2,+rodeos-n,+prod-n,_prod-k15,_rodeos-k15,+rodeos-n,+prod-n WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_property(TEST rodeos_idle_restart_rodeos_producer_test PROPERTY LABELS nonparallelizable_tests)
+# TODO add restart_producer_ship when it becomes stable
+
+# rodeos restart scenarios: stop/start single node, TCP/IP, eos-vm-oc  (does not work on Apple)
+add_test(NAME rodeos_idle_restart_ship_eos-vm-oc_test COMMAND tests/rodeos_idle_test.py -v --clean-run --dump-error-detail --node-order _ship-k2,+ship-n,_ship-k15,+ship-n  --eos-vm-oc-enable WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_property(TEST rodeos_idle_restart_ship_eos-vm-oc_test PROPERTY LABELS nonparallelizable_tests)
+add_test(NAME rodeos_idle_restart_producer_eos-vm-oc_test COMMAND tests/rodeos_idle_test.py -v --clean-run --dump-error-detail --node-order _prod-k2,+prod-n,_prod-k15,+prod-n --eos-vm-oc-enable WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_property(TEST rodeos_idle_restart_producer_eos-vm-oc_test PROPERTY LABELS nonparallelizable_tests)
+add_test(NAME rodeos_idle_restart_rodeos_eos-vm-oc_test COMMAND tests/rodeos_idle_test.py -v --clean-run --dump-error-detail --node-order _rodeos-k2,+rodeos-n,_rodeos-k15,+rodeos-n --eos-vm-oc-enable WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_property(TEST rodeos_idle_restart_rodeos_eos-vm-oc_test PROPERTY LABELS nonparallelizable_tests)
+
+# rodeos restart scenarios: stop/start single node, UNIX domain socket, eos-vm-oc  (does not work on Apple)
+add_test(NAME rodeos_idle_restart_ship_unix-socket_eos-vm-oc_test COMMAND tests/rodeos_idle_test.py -v --clean-run --dump-error-detail --unix-socket --node-order _ship-k2,+ship-n,_ship-k15,+ship-n --eos-vm-oc-enable WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_property(TEST rodeos_idle_restart_ship_unix-socket_eos-vm-oc_test PROPERTY LABELS nonparallelizable_tests)
+add_test(NAME rodeos_idle_restart_rodeos_unix-socket_eos-vm-oc_test COMMAND tests/rodeos_idle_test.py -v --clean-run --dump-error-detail --unix-socket --node-order _rodeos-k2,+rodeos-n,_rodeos-k15,+rodeos-n --eos-vm-oc-enable WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_property(TEST rodeos_idle_restart_rodeos_unix-socket_eos-vm-oc_test PROPERTY LABELS nonparallelizable_tests)
+
+
+# TODO add restart_producer_ship_eos-vm-oc when it becomes stable
+# TODO add restart_rodeos_ship_eos-vm-oc when it becomes stable
+add_test(NAME rodeos_idle_restart_rodeos_producer_eos-vm-oc_test COMMAND tests/rodeos_idle_test.py -v --clean-run --dump-error-detail --reps 2 --node-order _rodeos-k2,_prod-k2,+rodeos-n,+prod-n,_prod-k15,_rodeos-k15,+rodeos-n,+prod-n --eos-vm-oc-enable WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_property(TEST rodeos_idle_restart_rodeos_producer_eos-vm-oc_test PROPERTY LABELS nonparallelizable_tests)
+
+# TODO add test restart all three  (rodeos, producer, ship) shutdown then brought back up
 
 # Long running tests
 add_test(NAME nodeos_sanity_lr_test COMMAND tests/nodeos_run_test.py -v --sanity-test --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
@@ -187,6 +241,84 @@ set_property(TEST nodeos_startup_catchup_lr_test PROPERTY LABELS long_running_te
 
 add_test(NAME nodeos_short_fork_take_over_lr_test COMMAND tests/nodeos_short_fork_take_over_test.py -v --wallet-port 9905 --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 set_property(TEST nodeos_short_fork_take_over_lr_test PROPERTY LABELS long_running_tests)
+
+add_test(NAME rodeos_multi_ship_idle_test COMMAND tests/rodeos_multi_ship_test.py -v --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_property(TEST rodeos_multi_ship_idle_test PROPERTY LABELS nonparallelizable_tests)
+
+add_test(NAME rodeos_multi_ship_load_test COMMAND tests/rodeos_multi_ship_test.py -v --clean-run --dump-error-detail --load-test-enable WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_property(TEST rodeos_multi_ship_load_test PROPERTY LABELS nonparallelizable_tests)
+
+add_test(NAME rodeos_multi_ship_kill_restart_idle_test COMMAND tests/rodeos_multi_ship_kill_restart.py -v --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_property(TEST rodeos_multi_ship_kill_restart_idle_test PROPERTY LABELS nonparallelizable_tests)
+
+add_test(NAME rodeos_multi_ship_kill_restart_load_test COMMAND tests/rodeos_multi_ship_kill_restart.py -v --clean-run --dump-error-detail --load-test-enable WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_property(TEST rodeos_multi_ship_kill_restart_load_test PROPERTY LABELS nonparallelizable_tests)
+
+add_test(NAME rodeos_multi_ship_kill_clean_restart_idle_test COMMAND tests/rodeos_multi_ship_kill_restart.py -v --clean-run --dump-error-detail --clean-restart WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_property(TEST rodeos_multi_ship_kill_clean_restart_idle_test PROPERTY LABELS nonparallelizable_tests)
+
+add_test(NAME rodeos_multi_ship_kill_clean_restart_load_test COMMAND tests/rodeos_multi_ship_kill_restart.py -v --clean-run --dump-error-detail --clean-restart --load-test-enable WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_property(TEST rodeos_multi_ship_kill_clean_restart_load_test PROPERTY LABELS nonparallelizable_tests)
+
+
+add_test(NAME rodeos_wasmQL_http_timeout COMMAND tests/rodeos_wasmQL_http_timeout.py -v --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_property(TEST rodeos_wasmQL_http_timeout PROPERTY LABELS nonparallelizable_tests)
+
+add_test(NAME rodeos_wasmQL_http_timeout_unix_socket COMMAND tests/rodeos_wasmQL_http_timeout.py --unix-socket -v --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_property(TEST rodeos_wasmQL_http_timeout_unix_socket PROPERTY LABELS nonparallelizable_tests)
+
+add_test(NAME rodeos_multi_ship_kill_restart_idle_unixsocket_test COMMAND tests/rodeos_multi_ship_kill_restart.py -v --clean-run --dump-error-detail --unix-socket WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_property(TEST rodeos_multi_ship_kill_restart_idle_unixsocket_test PROPERTY LABELS nonparallelizable_tests)
+
+add_test(NAME rodeos_multi_ship_kill_restart_load_unixsocket_test COMMAND tests/rodeos_multi_ship_kill_restart.py -v --clean-run --dump-error-detail --load-test-enable --unix-socket WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_property(TEST rodeos_multi_ship_kill_restart_load_unixsocket_test PROPERTY LABELS nonparallelizable_tests)
+
+add_test(NAME rodeos_multi_ship_kill_clean_restart_idle_unixsocket_test COMMAND tests/rodeos_multi_ship_kill_restart.py -v --clean-run --dump-error-detail --clean-restart --unix-socket WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_property(TEST rodeos_multi_ship_kill_clean_restart_idle_unixsocket_test PROPERTY LABELS nonparallelizable_tests)
+
+add_test(NAME rodeos_multi_ship_kill_clean_restart_load_unixsocket_test COMMAND tests/rodeos_multi_ship_kill_restart.py -v --clean-run --dump-error-detail --clean-restart --load-test-enable --unix-socket WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_property(TEST rodeos_multi_ship_kill_clean_restart_load_test PROPERTY LABELS nonparallelizable_tests)
+
+if("eos-vm-oc" IN_LIST EOSIO_WASM_RUNTIMES)
+
+  add_test(NAME rodeos_multi_ship_eos_vm_oc_idle_test COMMAND tests/rodeos_multi_ship_test.py -v --clean-run --dump-error-detail --eos-vm-oc-enable WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+  set_property(TEST rodeos_multi_ship_eos_vm_oc_idle_test PROPERTY LABELS nonparallelizable_tests)
+
+  add_test(NAME rodeos_multi_ship_eos_vm_oc_load_test COMMAND tests/rodeos_multi_ship_test.py -v --clean-run --dump-error-detail --eos-vm-oc-enable --load-test-enable WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+  set_property(TEST rodeos_multi_ship_eos_vm_oc_load_test PROPERTY LABELS nonparallelizable_tests)
+
+  add_test(NAME rodeos_multi_ship_kill_clean_restart_eos_vm_oc_idle_test COMMAND tests/rodeos_multi_ship_kill_restart.py -v --clean-run --dump-error-detail --clean-restart --eos-vm-oc-enable WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+  set_property(TEST rodeos_multi_ship_kill_clean_restart_eos_vm_oc_idle_test PROPERTY LABELS nonparallelizable_tests)
+
+  add_test(NAME rodeos_multi_ship_kill_clean_restart_eos_vm_oc_load_test COMMAND tests/rodeos_multi_ship_kill_restart.py -v --clean-run --dump-error-detail --clean-restart --eos-vm-oc-enable --load-test-enable WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+  set_property(TEST rodeos_multi_ship_kill_clean_restart_eos_vm_oc_load_test PROPERTY LABELS nonparallelizable_tests)
+
+  add_test(NAME rodeos_multi_ship_kill_restart_eos_vm_oc_idle_test COMMAND tests/rodeos_multi_ship_kill_restart.py -v --clean-run --dump-error-detail --eos-vm-oc-enable WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+  set_property(TEST rodeos_multi_ship_kill_restart_eos_vm_oc_idle_test PROPERTY LABELS nonparallelizable_tests)
+
+  add_test(NAME rodeos_multi_ship_kill_restart_eos_vm_oc_load_test COMMAND tests/rodeos_multi_ship_kill_restart.py -v --clean-run --dump-error-detail --eos-vm-oc-enable --load-test-enable WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+  set_property(TEST rodeos_multi_ship_kill_restart_eos_vm_oc_load_test PROPERTY LABELS nonparallelizable_tests)
+
+
+  add_test(NAME rodeos_wasmQL_http_timeout_eos_vm_oc COMMAND tests/rodeos_wasmQL_http_timeout.py -v --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+  set_property(TEST rodeos_wasmQL_http_timeout_eos_vm_oc PROPERTY LABELS nonparallelizable_tests)
+
+  add_test(NAME rodeos_wasmQL_http_timeout_unix_socket_eos_vm_oc COMMAND tests/rodeos_wasmQL_http_timeout.py --unix-socket -v --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+  set_property(TEST rodeos_wasmQL_http_timeout_unix_socket_eos_vm_oc PROPERTY LABELS nonparallelizable_tests)
+
+  add_test(NAME rodeos_multi_ship_kill_clean_restart_eos_vm_oc_idle_unixsocket_test COMMAND tests/rodeos_multi_ship_kill_restart.py -v --clean-run --dump-error-detail --clean-restart --eos-vm-oc-enable --unix-socket WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+  set_property(TEST rodeos_multi_ship_kill_clean_restart_eos_vm_oc_idle_unixsocket_test PROPERTY LABELS nonparallelizable_tests)
+
+  add_test(NAME rodeos_multi_ship_kill_clean_restart_eos_vm_oc_load_unixsocket_test COMMAND tests/rodeos_multi_ship_kill_restart.py -v --clean-run --dump-error-detail --clean-restart --eos-vm-oc-enable --load-test-enable --unix-socket WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+  set_property(TEST rodeos_multi_ship_kill_clean_restart_eos_vm_oc_load_unixsocket_test PROPERTY LABELS nonparallelizable_tests)
+
+  add_test(NAME rodeos_multi_ship_kill_restart_eos_vm_oc_idle_unixsocket_test COMMAND tests/rodeos_multi_ship_kill_restart.py -v --clean-run --dump-error-detail --eos-vm-oc-enable --unix-socket WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+  set_property(TEST rodeos_multi_ship_kill_restart_eos_vm_oc_idle_unixsocket_test PROPERTY LABELS nonparallelizable_tests)
+
+  add_test(NAME rodeos_multi_ship_kill_restart_eos_vm_oc_load_unixsocket_test COMMAND tests/rodeos_multi_ship_kill_restart.py -v --clean-run --dump-error-detail --eos-vm-oc-enable --load-test-enable --unix-socket WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+  set_property(TEST rodeos_multi_ship_kill_restart_eos_vm_oc_load_unixsocket_test PROPERTY LABELS nonparallelizable_tests)
+
+endif()
 
 if(ENABLE_MULTIVERSION_PROTOCOL_TEST)
   set(ALTERNATE_VERSION_LABELS_FILE "${CMAKE_BINARY_DIR}/tests/multiversion_paths.conf")
