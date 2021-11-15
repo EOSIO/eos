@@ -2392,6 +2392,7 @@ void producer_plugin_impl::produce_block() {
          std::promise<bool> p;
          std::future<bool> f = p.get_future();
          signing_done.get();
+         chain.on_block_signed(pending_blk_state);
          blockvault->async_propose_constructed_block(
             pending_blk_state->dpos_irreversible_blocknum,
             pending_blk_state->block, [&p](bool b) { p.set_value(b); });
