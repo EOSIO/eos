@@ -421,6 +421,7 @@ try:
             nextProdChange=True
         elif nextProdChange and blockProducer1!=killAtProducer:
             nextProdChange=False
+            Print("nextProdChange = False")
             if blockProducer0!=blockProducer1:
                 Print("Divergence identified at block %s, node_00 producer: %s, node_01 producer: %s" % (blockNum, blockProducer0, blockProducer1))
                 actualLastBlockNum=blockNum
@@ -428,6 +429,7 @@ try:
             else:
                 missedTransitionBlock=blockNum
                 transitionCount+=1
+                Print("missedTransitionBlock = {} transitionCount = {}".format(missedTransitionBlock, transitionCount))
                 # allow this to transition twice, in case the script was identifying an earlier transition than the bridge node received the kill command
                 if transitionCount>1:
                     Print("At block %d and have passed producer: %s %d times and we have not diverged, stopping looking and letting errors report" % (blockNum, killAtProducer, transitionCount))
@@ -495,16 +497,20 @@ try:
 
     #ensure that the nodes have enough time to get in concensus, so wait for 3 producers to produce their complete round
     time.sleep(inRowCountPerProducer * 3 / 2)
-    remainingChecks=20
+    remainingChecks=60
     match=False
     checkHead=False
+    checkMatchBlock=killBlockNum
+    forkResolved=False
     while remainingChecks>0:
-        checkMatchBlock=killBlockNum if not checkHead else prodNodes[0].getBlockNum()
+        if checkMatchBlock == killBlockNum and checkHead:
+            checkMatchBlock = prodNodes[0].getBlockNum()
         blockProducer0=prodNodes[0].getBlockProducerByNum(checkMatchBlock)
         blockProducer1=prodNodes[1].getBlockProducerByNum(checkMatchBlock)
         match=blockProducer0==blockProducer1
         if match:
             if checkHead:
+                forkResolved=True
                 break
             else:
                 checkHead=True
@@ -512,6 +518,12 @@ try:
         Print("Fork has not resolved yet, wait a little more. Block %s has producer %s for node_00 and %s for node_01.  Original divergence was at block %s. Wait time remaining: %d" % (checkMatchBlock, blockProducer0, blockProducer1, killBlockNum, remainingChecks))
         time.sleep(1)
         remainingChecks-=1
+    
+    assert forkResolved, "fork was not resolved in a reasonable time. node_00 lib {} head {} node_01 lib {} head {}".format(
+                                                                                  prodNodes[0].getIrreversibleBlockNum(), 
+                                                                                          prodNodes[0].getHeadBlockNum(), 
+                                                                                                          prodNodes[1].getIrreversibleBlockNum(), 
+                                                                                                                 prodNodes[1].getHeadBlockNum()) 
 
     for prodNode in prodNodes:
         info=prodNode.getInfo()
