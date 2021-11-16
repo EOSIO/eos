@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import re
 import signal
 import time
 
@@ -47,6 +48,7 @@ keepLogs = args.keep_logs
 # This wrapper function will resurrect the node to be tested, and shut
 # it down by the end of the test
 def executeTest(cluster, producerNode, testNodeId, testNodeArgs, resultMsgs):
+    testNode = None
     testResult = False
     resultDesc = "!!!BUG IS CONFIRMED ON TEST CASE #{} ({})".format(
         testNodeId,
@@ -68,28 +70,21 @@ def executeTest(cluster, producerNode, testNodeId, testNodeArgs, resultMsgs):
         # in testNodeArgs. The option for each node has already
         # been set via specificExtraNodeosArg in the cluster launch.
         cluster.launchUnstarted(cachePopen=True)
+        testNode = cluster.getNode(testNodeId)
 
         # Wait for node to start up.
         time.sleep(10)
 
-        Print(testNodeArgs)
-        Print(" ".join([
-            "The test node has begun receiving from the producing node and",
-            "is expected to stop at or little bigger than the block number",
-            "specified here: ",
-            testNodeArgs
-        ]))
+        # Check the node stops at the correct block.
+        checkStatus(testNode, testNodeArgs)
 
-        # Read block information from the test node as it runs.
-        testNode = cluster.getNode(testNodeId)
-        head, lib = getBlockNumInfo(testNode)
+        # Kill node after use.
+        if not testNode.killed:
+            assert testNode.kill(signal.SIGTERM)
 
-        Print("Test node head = {}, lib = {}.".format(head, lib))
-
-        if "irreversible" in testNodeArgs:
-            checkIrreversible(head, lib)
-        else:
-            checkHeadOrSpeculative(head, lib)
+        # Replay the blockchain for the node that just finished,
+        # also checking it stops at the correct block.
+        checkReplay(testNode, testNodeArgs)
 
         resultDesc = "!!!TEST CASE #{} ({}) IS SUCCESSFUL".format(
             testNodeId,
@@ -102,12 +97,62 @@ def executeTest(cluster, producerNode, testNodeId, testNodeArgs, resultMsgs):
         resultMsgs.append(resultDesc)
 
         # Kill node after use.
-        if not testNode.killed:
+        if testNode and not testNode.killed:
             assert testNode.kill(signal.SIGTERM)
 
     return testResult
 
 
+def checkStatus(testNode, testNodeArgs):
+    """Test --terminate-at-block stops at the correct block."""
+    Print(" ".join([
+        "The test node has begun receiving from the producing node and",
+        "is expected to stop at or little bigger than the block number",
+        "specified here: ",
+        testNodeArgs
+    ]))
+
+    # Read block information from the test node as it runs.
+    head, lib = getBlockNumInfo(testNode)
+
+    Print("Test node head = {}, lib = {}.".format(head, lib))
+
+    if "irreversible" in testNodeArgs:
+        checkIrreversible(head, lib)
+    else:
+        checkHeadOrSpeculative(head, lib)
+
+
+def checkReplay(testNode, testNodeArgs):
+    """Test --terminate-at-block with --replay-blockchain."""
+    # node.getInfo() doesn't work when replaying the blockchain so a
+    # relaunch  combined with --terminate-at-block will appear to fail.
+    # In reality, the relaunch works fine and it will (hopefully)
+    # run until completion normally. Code below ensures it does.
+    Print(" ".join([
+        "Relaunch the node in replay mode. The replay should stop",
+        "at or little bigger than the block number specified here: ",
+        testNodeArgs
+    ]))
+
+    testNode.relaunch(chainArg="--replay-blockchain", cachePopen=True)
+
+    # Check node exited without error.
+    assert testNode.popenProc.returncode == 0
+
+    # Check for the terminate at block message.
+    match = re.search("--terminate-at-block=(\d+)", testNodeArgs)
+    termAtBlock = int(match.group(1))
+
+    termMsg = "Reached configured maximum block {}; terminating".format(
+        termAtBlock
+    )
+
+    with open(testNode.popenProc.errfile.name, 'r') as f:
+        assert termMsg in f.read()
+
+
+# Wrapper function to execute test
 def getBlockNumInfo(testNode):
     head = None
     lib = None
@@ -152,9 +197,9 @@ testSuccessful = False
 try:
     specificNodeosArgs = {
         0 : "--enable-stale-production",
-        1 : "--read-mode irreversible --terminate-at-block=150",
-        2 : "--read-mode speculative --terminate-at-block=200",
-        3 : "--read-mode head --terminate-at-block=250",
+        1 : "--read-mode irreversible --terminate-at-block=250",
+        2 : "--read-mode speculative --terminate-at-block=500",
+        3 : "--read-mode head --terminate-at-block=750",
     }
     traceNodeosArgs = " --plugin eosio::trace_api_plugin --trace-no-abis "
 
