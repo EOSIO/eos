@@ -156,7 +156,9 @@ namespace {
                 const fc::flat_set<digest_type>& cur_features,
                 const std::vector<digest_type>& new_features ) {}
       );
-      bsp->sign_and_inject_additional_signatures( signer, pfa, pfs );
+      bool wtmsig_enabled = eosio::chain::detail::is_builtin_activated(pfa, pfs,
+                                                                       eosio::chain::builtin_protocol_feature_t::wtmsig_block_signatures);
+      bsp->sign_and_inject_additional_signatures( signer, wtmsig_enabled );
       bsp->block_num = height;
 
       return bsp;

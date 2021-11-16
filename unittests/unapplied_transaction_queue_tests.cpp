@@ -71,7 +71,8 @@ auto create_test_block_state( deque<transaction_metadata_ptr> trx_metas ) {
        [](block_timestamp_type timestamp,
           const flat_set<digest_type> &cur_features,
           const vector<digest_type> &new_features) {});
-   bsp->sign_and_inject_additional_signatures( signer,  pfa, pfs);
+   bool wtmsig_enabled = eosio::chain::detail::is_builtin_activated(pfa, pfs, builtin_protocol_feature_t::wtmsig_block_signatures);
+   bsp->sign_and_inject_additional_signatures( signer,  wtmsig_enabled);
 
    return bsp;
 }

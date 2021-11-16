@@ -2616,13 +2616,14 @@ controller::finalize_block(block_state_ptr& bsp, signer_callback_type&& signer_c
                   {}
               );
 
-   my->pending->_block_stage = completed_block{ bsp };
-
+   my->pending->_block_stage = completed_block{bsp};
+   bool wtmsig_enabled = eosio::chain::detail::is_builtin_activated(pfa, pfs, builtin_protocol_feature_t::wtmsig_block_signatures);
+         
    return async_thread_pool(
       my->block_sign_pool.get_executor(),
-      [&bsp, pfa, &pfs, signer_callback = std::move(signer_callback),
+      [&bsp, wtmsig_enabled, signer_callback = std::move(signer_callback),
          continuation = std::move(continuation)]() {
-            bsp->sign_and_inject_additional_signatures(signer_callback, pfa, pfs);
+            bsp->sign_and_inject_additional_signatures(signer_callback, wtmsig_enabled);
             if (continuation) continuation();
          }
    );   

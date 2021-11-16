@@ -58,13 +58,10 @@ namespace eosio { namespace chain {
    {}
 
   void block_state::sign_and_inject_additional_signatures(const signer_callback_type& signer_callback,
-                                                          protocol_feature_activation_set_ptr pfa,
-                                                          const protocol_feature_set &pfs){
+                                                          bool wtmsig_enabled){
       sign(signer_callback);  
       block->producer_signature = header.producer_signature;                                           
       if (!additional_signatures.empty()) {
-         bool wtmsig_enabled = detail::is_builtin_activated(pfa, pfs, builtin_protocol_feature_t::wtmsig_block_signatures);
-
          EOS_ASSERT(wtmsig_enabled, block_validate_exception,
                      "Block has multiple signatures before activation of WTMsig Block Signatures");
 
