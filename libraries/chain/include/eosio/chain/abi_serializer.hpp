@@ -98,7 +98,7 @@ struct abi_serializer {
 
    void add_specialized_unpack_pack( const string& name, std::pair<abi_serializer::unpack_function, abi_serializer::pack_function> unpack_pack );
 
-   static constexpr size_t max_recursion_depth = 32; // arbitrary depth to prevent infinite recursion
+   static constexpr size_t max_recursion_depth = 1024; // arbitrary depth to prevent infinite recursion, increased from 32 for develop-boxed branch
 
    // create standard yield function that checks for max_serialization_time and max_recursion_depth.
    // now() deadline caputered at time of this call
