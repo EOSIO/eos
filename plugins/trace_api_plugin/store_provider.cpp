@@ -136,15 +136,14 @@ namespace eosio::trace_api {
                   return trx_block_num;
                }
             } else {
-               FC_ASSERT( false, "unpacked data should be a block trxs entry or a lib entry" );;
+               FC_ASSERT( false, "unpacked data should be a block_trxs_entry or a lib_entry_v0" );;
             }
             offset = trx_id_file.tellp();
          }
          slice_number++;
       }
 
-      // no irreversible blocks after the block containing the target trx, e.g., it happens
-      // in some integration tests that call waitForTransInBlock during bios bootstrap.
+      // transaction's block is not irreversible
       if (trx_entries > 0)
          return trx_block_num;
 
