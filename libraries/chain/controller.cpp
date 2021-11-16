@@ -1844,7 +1844,6 @@ struct controller_impl {
          pending->_block_stage = completed_block{ bsp };
 
          commit_block(false);
-         log_irreversible();
          emit(self.accepted_block, bsp);
          return;
       } catch ( const std::bad_alloc& ) {
