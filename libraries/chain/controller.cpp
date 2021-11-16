@@ -1670,13 +1670,9 @@ struct controller_impl {
       pending->push();
    }
 
-   void on_block_signed(block_state_ptr &bsp) {
-      if (bsp) {
-         ilog("on_block_signed for block ${num}", ("num", bsp->block->block_num()));
-         log_irreversible();
-         emit(self.accepted_block, bsp);
-         bsp.reset();
-      }
+   void on_block_signed(block_state_ptr bsp) {
+      log_irreversible();
+      emit(self.accepted_block, bsp);
    }
 
    /**
@@ -2594,7 +2590,7 @@ void controller::start_block( block_timestamp_type when,
 }
 
 std::future<void>
-controller::finalize_block(block_state_ptr& bsp, signer_callback_type&& signer_callback, std::function<void()>&& continuation) {
+controller::finalize_block(block_state_ptr& bsp, signer_callback_type&& signer_callback, std::function<void(std::exception_ptr ptr)>&& continuation) {
    validate_db_available_size();
 
    my->finalize_block();
@@ -2617,18 +2613,20 @@ controller::finalize_block(block_state_ptr& bsp, signer_callback_type&& signer_c
 
    my->pending->_block_stage = completed_block{bsp};
    bool wtmsig_enabled = eosio::chain::detail::is_builtin_activated(pfa, pfs, builtin_protocol_feature_t::wtmsig_block_signatures);
-         
-   return async_thread_pool(
-      my->block_sign_pool.get_executor(),
-      [&bsp, wtmsig_enabled, signer_callback = std::move(signer_callback),
-         continuation = std::move(continuation)]() {
-            bsp->sign_and_inject_additional_signatures(signer_callback, wtmsig_enabled);
-            if (continuation) continuation();
-         }
-   );   
+
+   return async_thread_pool(my->block_sign_pool.get_executor(),
+                            [&bsp, wtmsig_enabled, signer_callback = std::move(signer_callback),
+                             continuation = std::move(continuation)]() {
+                               std::exception_ptr eptr = nullptr;
+                               try {
+                                  bsp->sign_and_inject_additional_signatures(signer_callback, wtmsig_enabled);
+                               } catch (...) { eptr = std::current_exception(); }
+                               if (continuation)
+                                  continuation(eptr);
+                            });
 }
 
-void controller::on_block_signed(block_state_ptr& bsp) {
+void controller::on_block_signed(block_state_ptr bsp) {
   my->on_block_signed(bsp);
 }
 

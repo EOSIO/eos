@@ -2336,10 +2336,15 @@ void block_only_sync::on_block(eosio::chain::signed_block_ptr block) {
 }
 
 void producer_plugin_impl::post_commit_previous_block_if_ready() {
-  if (pending_blk_state && signing_done.wait_for(std::chrono::seconds(0)) ==
-                               std::future_status::ready) {
-    chain_plug->chain().on_block_signed(pending_blk_state);
-  }
+   if (pending_blk_state && signing_done.wait_for(std::chrono::seconds(0)) != std::future_status::ready) {
+      try {
+         signing_done.get();
+         chain_plug->chain().on_block_signed(pending_blk_state);
+      } catch (...) {
+         // rewind forksdb
+      }
+      pending_blk_state.reset();
+   }
 }
 
 void producer_plugin_impl::produce_block() {
@@ -2382,9 +2387,16 @@ void producer_plugin_impl::produce_block() {
          }
          return sigs;
        },
-       [&chain, self = shared_from_this()]() {
-         app().post(priority::high, [&chain, self]() {
-            chain.on_block_signed(self->pending_blk_state);
+       [&chain, self = shared_from_this()](std::exception_ptr eptr) {
+         app().post(priority::high, [&chain, self, eptr]() {
+            if (self->pending_blk_state.get())  {
+               if (!eptr) {
+                  chain.on_block_signed(self->pending_blk_state);
+               } else {
+                  // rewind forksdb
+               }
+               self->pending_blk_state.reset();
+            }
           });
        });
 
