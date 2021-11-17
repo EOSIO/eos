@@ -447,7 +447,7 @@ namespace eosio { namespace testing {
          signing_done.get();
          control->on_block_signed(bsp);
       } catch (...) {
-        // rewind forksdb 
+        control->abort_block();
         throw;
       }
       last_produced_block[control->head_block_state()->header.producer] =

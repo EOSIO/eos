@@ -299,8 +299,8 @@ struct test_chain {
          signing_done.get();
          control->on_block_signed(bsp);
       } catch (...) {
-        // rewind forksdb 
-        throw;
+         control->abort_block();
+         throw;
       }
    }
 };

@@ -284,7 +284,9 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       void abort_block() {
          auto& chain = chain_plug->chain();
 
-         _unapplied_transactions.add_aborted( chain.abort_block() );
+         _unapplied_transactions.add_aborted(chain.abort_block());
+
+         // TODO: need work on the signing failure case
          _subjective_billing.abort_block();
       }
 
@@ -1686,10 +1688,8 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
          if( !process_unapplied_trxs( preprocess_deadline ) )
            return start_block_result::exhausted;
 
-         if (!post_commit_previous_block_if_ready()) {
-            abort_block();
+         if (!post_commit_previous_block_if_ready()) 
             return start_block_result::failed;
-         }
 
          if (_pending_block_mode == pending_block_mode::producing) {
             auto scheduled_trx_deadline = preprocess_deadline;
@@ -1702,10 +1702,8 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
             // may exhaust scheduled_trx_deadline but not preprocess_deadline, exhausted preprocess_deadline checked below
             process_scheduled_and_incoming_trxs(scheduled_trx_deadline,
                                                 pending_incoming_process_limit);
-            if (!post_commit_previous_block_if_ready()) {
-               abort_block();
+            if (!post_commit_previous_block_if_ready()) 
                return start_block_result::failed;
-            }
          }
 
          if( app().is_quiting() ) // db guard exception above in LOG_AND_DROP could have called app().quit()
@@ -2354,7 +2352,7 @@ bool producer_plugin_impl::post_commit_previous_block_if_ready() {
          chain_plug->chain().on_block_signed(pending_blk_state);
          pending_blk_state.reset();
       } catch (...) {
-         // rewind forksdb
+         abort_block();
          pending_blk_state.reset();
          return false;
       }
