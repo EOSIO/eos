@@ -443,8 +443,13 @@ namespace eosio { namespace testing {
       } );
 
       control->commit_block();
-      signing_done.get();
-      control->on_block_signed(bsp);
+      try {
+         signing_done.get();
+         control->on_block_signed(bsp);
+      } catch (...) {
+        // rewind forksdb 
+        throw;
+      }
       last_produced_block[control->head_block_state()->header.producer] =
           control->head_block_state()->id;
 

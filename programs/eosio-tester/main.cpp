@@ -294,8 +294,14 @@ struct test_chain {
       block_state_ptr bsp;
       auto signing_done = control->finalize_block(bsp, [&](eosio::chain::digest_type d) { return std::vector{ producer_key.sign(d) }; });
       control->commit_block();
-      signing_done.get();
-      control->on_block_signed(bsp);
+
+      try {
+         signing_done.get();
+         control->on_block_signed(bsp);
+      } catch (...) {
+        // rewind forksdb 
+        throw;
+      }
    }
 };
 
