@@ -210,7 +210,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       std::optional<scoped_connection>                          _accepted_block_header_connection;
       std::optional<scoped_connection> _irreversible_block_connection;
 
-      std::future<void>                                          signing_done;
+      std::future<std::exception_ptr>                           signing_done;
       eosio::chain::block_state_ptr pending_blk_state;
       bool post_commit_previous_block_if_ready();
       /*
@@ -2347,11 +2347,11 @@ void block_only_sync::on_block(eosio::chain::signed_block_ptr block) {
 
 bool producer_plugin_impl::post_commit_previous_block_if_ready() {
    if (pending_blk_state && signing_done.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
-      try {
-         signing_done.get();
+      auto eptr = signing_done.get();
+      if (!eptr) {
          chain_plug->chain().on_block_signed(pending_blk_state);
          pending_blk_state.reset();
-      } catch (...) {
+      } else {
          abort_block();
          pending_blk_state.reset();
          return false;

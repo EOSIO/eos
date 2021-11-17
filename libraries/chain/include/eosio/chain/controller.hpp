@@ -176,7 +176,7 @@ namespace eosio { namespace chain {
          transaction_trace_ptr push_scheduled_transaction( const transaction_id_type& scheduled, fc::time_point deadline,
                                                            uint32_t billed_cpu_time_us, bool explicit_billed_cpu_time );
 
-         std::future<void> finalize_block(block_state_ptr& bsp, signer_callback_type&& signer_callback, std::function<void(std::exception_ptr ptr)>&& continuation = std::function<void(std::exception_ptr ptr)>());
+         std::future<std::exception_ptr> finalize_block(block_state_ptr& bsp, signer_callback_type&& signer_callback, std::function<void(std::exception_ptr ptr)>&& continuation = std::function<void(std::exception_ptr ptr)>());
          void sign_block( const signer_callback_type& signer_callback );
          void commit_block();
          void on_block_signed(block_state_ptr bsp);

@@ -295,12 +295,12 @@ struct test_chain {
       auto signing_done = control->finalize_block(bsp, [&](eosio::chain::digest_type d) { return std::vector{ producer_key.sign(d) }; });
       control->commit_block();
 
-      try {
-         signing_done.get();
+      auto eptr = signing_done.get();
+      if (!eptr) {
          control->on_block_signed(bsp);
-      } catch (...) {
-         control->abort_block();
-         throw;
+      } else {
+        control->abort_block();
+        std::rethrow_exception(eptr);
       }
    }
 };

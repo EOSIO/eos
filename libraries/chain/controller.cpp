@@ -2590,7 +2590,7 @@ void controller::start_block( block_timestamp_type when,
                     block_status::incomplete, std::optional<block_id_type>() );
 }
 
-std::future<void>
+std::future<std::exception_ptr>
 controller::finalize_block(block_state_ptr& bsp, signer_callback_type&& signer_callback, std::function<void(std::exception_ptr ptr)>&& continuation) {
    validate_db_available_size();
 
@@ -2618,12 +2618,15 @@ controller::finalize_block(block_state_ptr& bsp, signer_callback_type&& signer_c
    return async_thread_pool(my->block_sign_pool.get_executor(),
                             [&bsp, wtmsig_enabled, signer_callback = std::move(signer_callback),
                              continuation = std::move(continuation)]() {
-                               std::exception_ptr eptr = nullptr;
+                               std::exception_ptr eptr = nullptr; 
                                try {
                                   bsp->sign_and_inject_additional_signatures(signer_callback, wtmsig_enabled);
-                               } catch (...) { eptr = std::current_exception(); }
+                               } catch (...) {
+                                  eptr = std::current_exception();
+                               }
                                if (continuation)
                                   continuation(eptr);
+                               return eptr;
                             });
 }
 
