@@ -17,7 +17,7 @@ namespace eosio { namespace chain {
 template <typename Stream>
 struct versioned_unpack_stream {
 
-   block_header_state_unpack_stream(Stream& stream, bool has_state_extension)
+   versioned_unpack_stream(Stream& stream, bool has_state_extension)
        : strm(stream)
        , has_block_header_state_extension(has_state_extension) {}
    Stream&     strm;

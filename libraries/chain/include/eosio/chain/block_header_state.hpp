@@ -118,7 +118,7 @@ protected:
 struct block_header_state : public detail::block_header_state_common {
 
    /// this version is coming from chain_snapshot_header.version
-   static constexpr uint32_t minimum_version_with_state_extension = 6; 
+   static constexpr uint32_t minimum_snapshot_version_with_state_extension = 6; 
 
    block_id_type                        id;
    signed_block_header                  header;
