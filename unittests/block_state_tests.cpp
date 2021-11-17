@@ -84,9 +84,9 @@ eosio::testing::tester main;
    auto b = main.produce_block();
 
    auto bs = main.control->head_block_state();
-   auto& sgi = bs->get_security_group_info();
-   sgi.version = 1;
-   sgi.participants.insert("adam"_n);
+   //auto& sgi = bs->get_security_group_info();
+   //sgi.version = 1;
+   //sgi.participants.insert("adam"_n);
 
    // pack block_header_state as the legacy format
    fc::datastream<std::vector<char>> out_strm;
@@ -102,8 +102,8 @@ eosio::testing::tester main;
       eosio::chain::block_state tmp;
       BOOST_CHECK_NO_THROW(fc::raw::unpack(unpack_strm, tmp));
       BOOST_CHECK_EQUAL(bs->id, tmp.id);
-      BOOST_CHECK_EQUAL(bs->get_security_group_info().version, 1);
-      BOOST_TEST(bs->get_security_group_info().participants == sgi.participants);
+      //BOOST_CHECK_EQUAL(bs->get_security_group_info().version, 1);
+      //BOOST_TEST(bs->get_security_group_info().participants == sgi.participants);
       BOOST_CHECK_EQUAL(in_strm.remaining(), 0);
    }
 }
