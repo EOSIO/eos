@@ -212,7 +212,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
 
       std::future<void>                                          signing_done;
       eosio::chain::block_state_ptr pending_blk_state;
-      void post_commit_previous_block_if_ready();
+      bool post_commit_previous_block_if_ready();
       /*
        * HACK ALERT
        * Boost timers can be in a state where a handler has not yet executed but is not abortable.
@@ -1665,17 +1665,20 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
          if( !remove_expired_trxs( preprocess_deadline ) )
            return start_block_result::exhausted;
 
-         post_commit_previous_block_if_ready();
+         if (!post_commit_previous_block_if_ready())
+            return start_block_result::failed;
          
          if( !remove_expired_blacklisted_trxs( preprocess_deadline ) )
            return start_block_result::exhausted;
 
-         post_commit_previous_block_if_ready();
+         if (!post_commit_previous_block_if_ready())
+            return start_block_result::failed;
 
          if( !_subjective_billing.remove_expired( _log, chain.pending_block_time(), fc::time_point::now(), preprocess_deadline ) )
             return start_block_result::exhausted;
 
-         post_commit_previous_block_if_ready();
+         if (!post_commit_previous_block_if_ready())
+            return start_block_result::failed;
 
          // limit execution of pending incoming to once per block
          size_t pending_incoming_process_limit = _unapplied_transactions.incoming_size();
@@ -1683,7 +1686,10 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
          if( !process_unapplied_trxs( preprocess_deadline ) )
            return start_block_result::exhausted;
 
-         post_commit_previous_block_if_ready();
+         if (!post_commit_previous_block_if_ready()) {
+            abort_block();
+            return start_block_result::failed;
+         }
 
          if (_pending_block_mode == pending_block_mode::producing) {
             auto scheduled_trx_deadline = preprocess_deadline;
@@ -1696,7 +1702,10 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
             // may exhaust scheduled_trx_deadline but not preprocess_deadline, exhausted preprocess_deadline checked below
             process_scheduled_and_incoming_trxs(scheduled_trx_deadline,
                                                 pending_incoming_process_limit);
-            post_commit_previous_block_if_ready();
+            if (!post_commit_previous_block_if_ready()) {
+               abort_block();
+               return start_block_result::failed;
+            }
          }
 
          if( app().is_quiting() ) // db guard exception above in LOG_AND_DROP could have called app().quit()
@@ -2260,9 +2269,12 @@ void producer_plugin_impl::schedule_delayed_production_loop(const std::weak_ptr<
 }
 
 bool producer_plugin_impl::maybe_produce_block() {
-   auto reschedule = fc::make_scoped_exit([this]{
-      schedule_production_loop();
-   });
+   auto reschedule = fc::make_scoped_exit([this] { schedule_production_loop(); });
+
+   if (pending_blk_state) {
+      // we have to make sure the previous block has signed
+      return false;
+   }
 
    const char* reason = "produce_block error";
 
@@ -2335,16 +2347,19 @@ void block_only_sync::on_block(eosio::chain::signed_block_ptr block) {
    }
 }
 
-void producer_plugin_impl::post_commit_previous_block_if_ready() {
-   if (pending_blk_state && signing_done.wait_for(std::chrono::seconds(0)) != std::future_status::ready) {
+bool producer_plugin_impl::post_commit_previous_block_if_ready() {
+   if (pending_blk_state && signing_done.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
       try {
          signing_done.get();
          chain_plug->chain().on_block_signed(pending_blk_state);
+         pending_blk_state.reset();
       } catch (...) {
          // rewind forksdb
+         pending_blk_state.reset();
+         return false;
       }
-      pending_blk_state.reset();
    }
+   return true;
 }
 
 void producer_plugin_impl::produce_block() {
@@ -2394,6 +2409,7 @@ void producer_plugin_impl::produce_block() {
                   chain.on_block_signed(self->pending_blk_state);
                } else {
                   // rewind forksdb
+                  self->abort_block(); // need to abort two blocks
                }
                self->pending_blk_state.reset();
             }
