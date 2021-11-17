@@ -324,8 +324,8 @@ fc::variant call( const std::string& url,
    }
    catch(boost::system::system_error& e) {
       if(url == ::default_url) {
-          std::string error_wasm_toolarge = "is your WASM file too large (default maximum size is 512KB)?";
-          std::cerr << localized("Failed to connect to ${n} at ${u}; is ${n} running or ${wasm_size_error}",
+          std::string error_wasm_toolarge = "if trying to set contract code, is your WASM file too large (default maximum size is 512KB)?";
+          std::cerr << localized("Failed to connect to ${n} at ${u}!\nPlease check the log of ${n},is ${n} running? or ${wasm_size_error}",
                              ("n", node_executable_name)("u", url)("wasm_size_error", error_wasm_toolarge))<< std::endl;
       }
       else if(url == ::wallet_url)
