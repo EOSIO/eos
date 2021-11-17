@@ -464,6 +464,20 @@ namespace eosio { namespace chain {
       }
    }
 
+   void fork_database::remove_unsigned_head() {
+      if( my->head->block->producer_signature != signature_type() ) {
+         return;
+      }
+      auto itr = my->index.find( my->head->id );
+      auto prev_id = my->head->prev();
+      auto prev_itr = my->index.find( prev_id );
+      if( prev_itr == my->index.end() )
+         return;
+      if( itr != my->index.end() )
+         my->index.erase(itr);
+      my->head = *prev_itr;
+   }
+
    void fork_database::mark_valid( const block_state_ptr& h ) {
       if( h->validated ) return;
 
