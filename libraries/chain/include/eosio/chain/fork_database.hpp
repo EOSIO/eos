@@ -55,7 +55,7 @@ namespace eosio { namespace chain {
 
          void            remove( const block_id_type& id );
          bool            is_head_unsigned();
-         deque<transaction_metadata_ptr> remove_unsigned_head();
+         void            remove_head();
 
          const block_state_ptr& root()const;
          const block_state_ptr& head()const;

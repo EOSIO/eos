@@ -465,25 +465,20 @@ namespace eosio { namespace chain {
    }
 
    bool fork_database::is_head_unsigned()  {
-      return my->head->block->producer_signature == signature_type();
+      return my->head->block && my->head->block->producer_signature == signature_type();
    }
 
-   deque<transaction_metadata_ptr> fork_database::remove_unsigned_head() {
-      deque<transaction_metadata_ptr> aborted_trxs;
-      if( my->head->block->producer_signature != signature_type() ) {
-         return aborted_trxs;
-      }
+   void fork_database::remove_head() {
       auto itr = my->index.find( my->head->id );
       auto prev_id = my->head->prev();
       auto prev_itr = my->index.find( prev_id );
       if( prev_itr == my->index.end() )
-         return aborted_trxs;
+         return;
       if( itr != my->index.end() ) {
-         aborted_trxs = (*itr)->extract_trxs_metas();
          my->index.erase(itr);
       }
       my->head = *prev_itr;
-      return aborted_trxs;
+      return;
    }
 
    void fork_database::mark_valid( const block_state_ptr& h ) {

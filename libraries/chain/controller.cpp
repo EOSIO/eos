@@ -193,7 +193,7 @@ struct controller_impl {
    map< account_name, map<handler_key, apply_handler> >   apply_handlers;
    unordered_map< builtin_protocol_feature_t, std::function<void(controller_impl&)>, enum_hash<builtin_protocol_feature_t> > protocol_feature_activation_handlers;
 
-   void pop_block() {
+   block_state_ptr pop_block() {
       auto prev = fork_db.get_block( head->header.previous );
 
       if( !prev ) {
@@ -210,11 +210,13 @@ struct controller_impl {
          EOS_ASSERT( head->block, block_validate_exception, "attempting to pop a block that was sparsely loaded from a snapshot");
       }
 
+      auto result = head;
       head = prev;
 
       kv_db.undo();
 
       protocol_features.popped_blocks_to( prev->block_num );
+      return result;
    }
 
    template<builtin_protocol_feature_t F>
@@ -2080,19 +2082,24 @@ struct controller_impl {
 
    deque<transaction_metadata_ptr> abort_block() {
       deque<transaction_metadata_ptr> applied_trxs;
+      
       if( pending ) {
          uint32_t block_num = pending->get_block_num();
-         applied_trxs = pending->extract_trx_metas();
+         auto trxs = pending->extract_trx_metas();
+         applied_trxs.insert(applied_trxs.begin(), trxs.begin(), trxs.end());
          pending.reset();
          protocol_features.popped_blocks_to( head->block_num );
-         if( fork_db.is_head_unsigned() ) {
-            auto head_block_num = fork_db.head()->block_num;
-            auto trxs = fork_db.remove_unsigned_head();
-            applied_trxs.insert(applied_trxs.end(), trxs.begin(), trxs.end());
-            emit( self.block_abort, head_block_num );
-         }
          emit( self.block_abort, block_num );
       }
+
+      if (fork_db.is_head_unsigned()) {
+         auto poped = pop_block();
+         fork_db.remove_head();
+         auto trxs  = poped->extract_trxs_metas();
+         applied_trxs.insert(applied_trxs.end(), trxs.begin(), trxs.end());
+         emit(self.block_abort, poped->block_num);
+      }
+
       return applied_trxs;
    }
 
@@ -2628,6 +2635,8 @@ controller::finalize_block(block_state_ptr& bsp, signer_callback_type&& signer_c
                                   bsp->sign_and_inject_additional_signatures(signer_callback, wtmsig_enabled);
                                } catch (...) {
                                   eptr = std::current_exception();
+                                  fc::unhandled_exception e(FC_LOG_MESSAGE( warn, "sign_and_inject_additional_signatures failure: "), eptr );
+                                  wlog("${details}", ("details", e.to_detail_string()));
                                }
                                if (continuation)
                                   continuation(eptr);

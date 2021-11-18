@@ -443,13 +443,10 @@ namespace eosio { namespace testing {
       } );
 
       control->commit_block();
-      auto eptr = signing_done.get();
-      if (!eptr) {
+      if (auto eptr = signing_done.get())
+         std::rethrow_exception(eptr);
+      else
          control->on_block_signed(bsp);
-      } else {
-        control->abort_block();
-        std::rethrow_exception(eptr);
-      }
       last_produced_block[control->head_block_state()->header.producer] =
           control->head_block_state()->id;
 

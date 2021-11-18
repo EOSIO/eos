@@ -211,7 +211,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       std::optional<scoped_connection> _irreversible_block_connection;
 
       std::future<std::exception_ptr>                           signing_done;
-      eosio::chain::block_state_ptr pending_blk_state;
+      eosio::chain::block_state_ptr unsigned_block_state;
       bool post_commit_previous_block_if_ready();
       /*
        * HACK ALERT
@@ -2269,7 +2269,7 @@ void producer_plugin_impl::schedule_delayed_production_loop(const std::weak_ptr<
 bool producer_plugin_impl::maybe_produce_block() {
    auto reschedule = fc::make_scoped_exit([this] { schedule_production_loop(); });
 
-   if (pending_blk_state) {
+   if (unsigned_block_state) {
       // we have to make sure the previous block has signed
       return false;
    }
@@ -2346,16 +2346,14 @@ void block_only_sync::on_block(eosio::chain::signed_block_ptr block) {
 }
 
 bool producer_plugin_impl::post_commit_previous_block_if_ready() {
-   if (pending_blk_state && signing_done.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
+   if (unsigned_block_state && signing_done.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
       auto eptr = signing_done.get();
-      if (!eptr) {
-         chain_plug->chain().on_block_signed(pending_blk_state);
-         pending_blk_state.reset();
-      } else {
+      if (eptr) 
          abort_block();
-         pending_blk_state.reset();
-         return false;
-      }
+      else
+         chain_plug->chain().on_block_signed(unsigned_block_state);
+      unsigned_block_state.reset();
+      return !eptr;
    }
    return true;
 }
@@ -2387,54 +2385,50 @@ void producer_plugin_impl::produce_block() {
 
    // idump( (fc::time_point::now() - chain.pending_block_time()) );
    signing_done = chain.finalize_block(
-       pending_blk_state,
-       [relevant_providers =
-            std::move(relevant_providers)](const digest_type &d) {
-         auto debug_logger = maybe_make_debug_time_logger();
-         vector<signature_type> sigs;
-         sigs.reserve(relevant_providers.size());
+         unsigned_block_state,
+         [relevant_providers = std::move(relevant_providers)](const digest_type& d) {
+            auto                   debug_logger = maybe_make_debug_time_logger();
+            vector<signature_type> sigs;
+            sigs.reserve(relevant_providers.size());
 
-         // sign with all relevant public keys
-         for (const auto &p : relevant_providers) {
-           sigs.emplace_back(p.get()(d));
-         }
-         return sigs;
-       },
-       [&chain, self = shared_from_this()](std::exception_ptr eptr) {
-         app().post(priority::high, [&chain, self, eptr]() {
-            if (self->pending_blk_state.get())  {
-               if (!eptr) {
-                  chain.on_block_signed(self->pending_blk_state);
-               } else {
-                  // rewind forksdb
-                  self->abort_block(); // need to abort two blocks
+            // sign with all relevant public keys
+            for (const auto& p : relevant_providers) { sigs.emplace_back(p.get()(d)); }
+            return sigs;
+         },
+         [&chain, self = shared_from_this()](std::exception_ptr eptr) {
+            app().post(priority::high, [&chain, self, eptr]() {
+               if (self->unsigned_block_state.get()) {                  
+                  if (auto eptr = self->signing_done.get()) {
+                     self->abort_block();
+                  } else
+                     chain.on_block_signed(self->unsigned_block_state);
+                  self->unsigned_block_state.reset();
                }
-               self->pending_blk_state.reset();
-            }
-          });
-       });
+            });
+         });
 
-       if (blockvault != nullptr) {
-         std::promise<bool> p;
-         std::future<bool> f = p.get_future();
-         signing_done.get();
-         chain.on_block_signed(pending_blk_state);
-         blockvault->async_propose_constructed_block(
-            pending_blk_state->dpos_irreversible_blocknum,
-            pending_blk_state->block, [&p](bool b) { p.set_value(b); });
-         if (!f.get()) {
-            _latest_rejected_block_num = pending_blk_state->block->block_num();
-            _block_vault_resync.schedule();
-            EOS_ASSERT(false, block_validation_error, "Block rejected by block vault");
-         }
+   if (blockvault != nullptr) {
+      std::promise<bool> p;
+      std::future<bool>  f = p.get_future();
+      // Block vault requires a signed block, just wait until it signed for now.
+      signing_done.get();
+      chain.on_block_signed(unsigned_block_state);
+      block_state_ptr block_state = std::move(unsigned_block_state);
+      blockvault->async_propose_constructed_block(block_state->dpos_irreversible_blocknum,
+                                                  block_state->block, [&p](bool b) { p.set_value(b); });
+      if (!f.get()) {
+         _latest_rejected_block_num = block_state->block->block_num();
+         _block_vault_resync.schedule();
+         EOS_ASSERT(false, block_validation_error, "Block rejected by block vault");
       }
+   }
 
-      chain.commit_block();
-      block_state_ptr new_bs = chain.head_block_state();
-      ilog("Produced block ${id}... #${n} @ ${t} signed by ${p} [trxs: ${count}, lib: ${lib}, confirmed: ${confs}]",
-         ("p",new_bs->header.producer)("id",new_bs->id.str().substr(8,16))
-         ("n",new_bs->block_num)("t",new_bs->header.timestamp)
-         ("count",new_bs->block->transactions.size())("lib",chain.last_irreversible_block_num())("confs", new_bs->header.confirmed));
+   chain.commit_block();
+   block_state_ptr new_bs = chain.head_block_state();
+   ilog("Produced block ${id}... #${n} @ ${t} signed by ${p} [trxs: ${count}, lib: ${lib}, confirmed: ${confs}]",
+      ("p",new_bs->header.producer)("id",new_bs->id.str().substr(8,16))
+      ("n",new_bs->block_num)("t",new_bs->header.timestamp)
+      ("count",new_bs->block->transactions.size())("lib",chain.last_irreversible_block_num())("confs", new_bs->header.confirmed));
 }
 
 void producer_plugin::log_failed_transaction(const transaction_id_type& trx_id, const char* reason) const {
