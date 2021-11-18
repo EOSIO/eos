@@ -126,9 +126,6 @@ else()
     endif()
 endif()
 
-option(ENABLE_RODEOS "enable building rodeos" OFF)
-option(ENABLE_TESTER "enable building eosio-tester" OFF)
-
 option(EOSIO_ENABLE_DEVELOPER_OPTIONS "enable developer options for EOSIO" OFF)
 option(EOSIO_REQUIRE_FULL_VALIDATION "remove runtime options allowing light validation" OFF)
 

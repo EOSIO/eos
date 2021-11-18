@@ -20,7 +20,9 @@ using namespace std::literals;
 using prunable_data_type = eosio::chain::packed_transaction::prunable_data_type;
 
 namespace bio = boost::iostreams;
-extern const char* const state_history_plugin_abi;
+namespace eosio { namespace ship_protocol {
+extern const char* const ship_abi;
+}}
 
 prunable_data_type::prunable_data_t
 get_prunable_data_from_traces(std::vector<eosio::state_history::transaction_trace>& traces,
@@ -84,7 +86,7 @@ struct state_history_abi_serializer {
 
    state_history_abi_serializer(tester& chn)
        : chain(chn)
-       , sr(fc::json::from_string(state_history_plugin_abi).as<abi_def>(),
+       , sr(fc::json::from_string(eosio::ship_protocol::ship_abi).as<abi_def>(),
             abi_serializer::create_yield_function(chain.abi_serializer_max_time)) {}
 
    fc::variant deserialize(const eosio::chain::bytes& data, const char* type) {
