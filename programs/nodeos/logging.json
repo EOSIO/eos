@@ -121,6 +121,33 @@
         "net"
       ]
     },{
+      "name": "transaction_trace_success",
+      "level": "info",
+      "enabled": true,
+      "additivity": false,
+      "appenders": [
+        "stderr",
+        "net"
+      ]
+    },{
+      "name": "transaction_trace_failure",
+      "level": "info",
+      "enabled": true,
+      "additivity": false,
+      "appenders": [
+        "stderr",
+        "net"
+      ]
+    },{
+      "name": "transaction",
+      "level": "info",
+      "enabled": true,
+      "additivity": false,
+      "appenders": [
+        "stderr",
+        "net"
+      ]
+    },{
       "name": "state_history",
       "level": "debug",
       "enabled": true,

@@ -458,6 +458,8 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          ("export-reversible-blocks", bpo::value<bfs::path>(),
            "export reversible block database in portable format into specified file and then exit")
          ("snapshot", bpo::value<bfs::path>(), "File to read Snapshot State from")
+         ("min-initial-block-num", bpo::value<uint32_t>()->default_value(0), 
+         "minimum last irreversible block (lib) number, fail to start if state/snapshot lib is prior to specified")
          ;
 
 }
@@ -1222,6 +1224,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 #endif
 
       my->account_queries_enabled = options.at("enable-account-queries").as<bool>();
+      my->chain_config->min_initial_block_num = options["min-initial-block-num"].as<uint32_t>();
 
       my->chain.emplace( *my->chain_config, std::move(pfs), *chain_id );
 
@@ -2280,30 +2283,37 @@ struct kv_table_rows_context {
        , shorten_abi_errors(shorten_error) {
 
       EOS_ASSERT(p.limit > 0, chain::contract_table_query_exception, "invalid limit : ${n}", ("n", p.limit));
-      string tbl_name = p.table.to_string();
+      EOS_ASSERT(p.table.good() || !p.json, chain::contract_table_query_exception, "JSON value is not supported when the table is empty");
+      if (p.table.good()) {
+         string tbl_name = p.table.to_string();
+         // Check valid table name
+         const auto table_it = abi.kv_tables.value.find(p.table);
+         if (table_it == abi.kv_tables.value.end()) {
+            EOS_ASSERT(false, chain::contract_table_query_exception, "Unknown kv_table: ${t}", ("t", tbl_name));
+         }
+         const auto& kv_tbl_def = table_it->second;
+         // Check valid index_name
+         is_primary_idx  = (p.index_name == kv_tbl_def.primary_index.name);
+         bool is_sec_idx = (kv_tbl_def.secondary_indices.find(p.index_name) != kv_tbl_def.secondary_indices.end());
+         EOS_ASSERT(is_primary_idx || is_sec_idx, chain::contract_table_query_exception, "Unknown kv index: ${t} ${i}",
+                  ("t", p.table)("i", p.index_name));
 
-      // Check valid table name
-      const auto table_it = abi.kv_tables.value.find(p.table);
-      if (table_it == abi.kv_tables.value.end()) {
-         EOS_ASSERT(false, chain::contract_table_query_exception, "Unknown kv_table: ${t}", ("t", tbl_name));
+         index_type = kv_tbl_def.get_index_type(p.index_name.to_string());
+         abis.set_abi(abi, yield_function);
       }
-      const auto& kv_tbl_def = table_it->second;
-      // Check valid index_name
-      is_primary_idx  = (p.index_name == kv_tbl_def.primary_index.name);
-      bool is_sec_idx = (kv_tbl_def.secondary_indices.find(p.index_name) != kv_tbl_def.secondary_indices.end());
-      EOS_ASSERT(is_primary_idx || is_sec_idx, chain::contract_table_query_exception, "Unknown kv index: ${t} ${i}",
-                 ("t", p.table)("i", p.index_name));
-
-      index_type = kv_tbl_def.get_index_type(p.index_name.to_string());
-      abis.set_abi(abi, yield_function);
+      else {
+         is_primary_idx = true;
+      } 
    }
 
    bool point_query() const { return p.index_value.size(); }
 
    void write_prefix(fixed_buf_stream& strm) const {
       strm.write('\1');
-      to_key(p.table.to_uint64_t(), strm);
-      to_key(p.index_name.to_uint64_t(), strm);
+      if (p.table.good()) {
+         to_key(p.table.to_uint64_t(), strm);
+         to_key(p.index_name.to_uint64_t(), strm);
+      }
    }
 
    std::vector<char> get_full_key(string key) const {
@@ -2329,7 +2339,7 @@ struct kv_iterator_ex {
 
    kv_iterator_ex(const kv_table_rows_context& ctx, const std::vector<char>& full_key)
        : context(ctx) {
-      base   = context.kv_context->kv_it_create(context.p.code.to_uint64_t(), full_key.data(), prefix_size);
+      base   = context.kv_context->kv_it_create(context.p.code.to_uint64_t(), full_key.data(), std::min<uint32_t>(prefix_size, full_key.size()));
       status = base->kv_it_lower_bound(full_key.data(), full_key.size(), &key_size, &value_size);
       EOS_ASSERT(status != chain::kv_it_stat::iterator_erased, chain::contract_table_query_exception,
                  "Invalid iterator in ${t} ${i}", ("t", context.p.table)("i", context.p.index_name));
@@ -2379,11 +2389,16 @@ struct kv_iterator_ex {
    /// @pre ! is_end()
    fc::variant get_value_and_maybe_payer_var() const {
       fc::variant result = get_value_var();
-      if (context.p.show_payer) {
+      if (context.p.show_payer || context.p.table.empty()) {
+         auto r = fc::mutable_variant_object("data", std::move(result));
          auto maybe_payer = base->kv_it_payer();
-         std::string payer = maybe_payer.has_value() ? maybe_payer.value().to_string() : "";
-         return fc::mutable_variant_object("data", std::move(result))("payer", payer);
+         if (maybe_payer.has_value())
+            r.set("payer", maybe_payer.value().to_string());
+         if (context.p.table.empty()) 
+            r.set("key", get_key_hex_string());
+         return r;
       }
+      
       return result;
    }
 
@@ -2828,26 +2843,23 @@ read_only::get_producer_schedule_result read_only::get_producer_schedule( const 
    return result;
 }
 
-template<typename Api>
 struct resolver_factory {
-   static auto make(const Api* api, abi_serializer::yield_function_t yield) {
-      return [api, yield{std::move(yield)}](const account_name &name) -> std::optional<abi_serializer> {
-         const auto* accnt = api->db.db().template find<account_object, by_name>(name);
+   static auto make(const controller& control, abi_serializer::yield_function_t yield) {
+      return [&control, yield{std::move(yield)}](const account_name &name) -> std::optional<abi_serializer> {
+         const auto* accnt = control.db().template find<account_object, by_name>(name);
          if (accnt != nullptr) {
             abi_def abi;
             if (abi_serializer::to_abi(accnt->abi, abi)) {
                return abi_serializer(abi, yield);
             }
          }
-
          return std::optional<abi_serializer>();
       };
    }
 };
 
-template<typename Api>
-auto make_resolver(const Api* api, abi_serializer::yield_function_t yield) {
-   return resolver_factory<Api>::make(api, std::move( yield ));
+auto make_resolver(const controller& control, abi_serializer::yield_function_t yield) {
+   return resolver_factory::make(control, std::move( yield ));
 }
 
 
@@ -2883,7 +2895,7 @@ read_only::get_scheduled_transactions( const read_only::get_scheduled_transactio
 
    read_only::get_scheduled_transactions_result result;
 
-   auto resolver = make_resolver(this, abi_serializer::create_yield_function( abi_serializer_max_time ));
+   auto resolver = make_resolver(db, abi_serializer::create_yield_function( abi_serializer_max_time ));
 
    uint32_t remaining = p.limit;
    auto time_limit = fc::time_point::now() + fc::microseconds(1000 * 10); /// 10ms max time
@@ -2949,7 +2961,7 @@ fc::variant read_only::get_block(const read_only::get_block_params& params) cons
 
    // serializes signed_block to variant in signed_block_v0 format
    fc::variant pretty_output;
-   abi_serializer::to_variant(*block, pretty_output, make_resolver(this, abi_serializer::create_yield_function( abi_serializer_max_time )),
+   abi_serializer::to_variant(*block, pretty_output, make_resolver(db, abi_serializer::create_yield_function( abi_serializer_max_time )),
                               abi_serializer::create_yield_function( abi_serializer_max_time ));
 
    const auto id = block->calculate_id();
@@ -3027,7 +3039,7 @@ void read_write::push_block(read_write::push_block_params&& params, next_functio
 void read_write::push_transaction(const read_write::push_transaction_params& params, next_function<read_write::push_transaction_results> next) {
    try {
       packed_transaction_v0 input_trx_v0;
-      auto resolver = make_resolver(this, abi_serializer::create_yield_function( abi_serializer_max_time ));
+      auto resolver = make_resolver(db, abi_serializer::create_yield_function( abi_serializer_max_time ));
       packed_transaction_ptr input_trx;
       try {
          abi_serializer::from_variant(params, input_trx_v0, std::move( resolver ), abi_serializer::create_yield_function( abi_serializer_max_time ));
@@ -3180,7 +3192,7 @@ void read_write::send_transaction(const read_write::send_transaction_params& par
 
    try {
       packed_transaction_v0 input_trx_v0;
-      auto resolver = make_resolver(this, abi_serializer::create_yield_function( abi_serializer_max_time ));
+      auto resolver = make_resolver(db, abi_serializer::create_yield_function( abi_serializer_max_time ));
       packed_transaction_ptr input_trx;
       try {
          abi_serializer::from_variant(params, input_trx_v0, std::move( resolver ), abi_serializer::create_yield_function( abi_serializer_max_time ));
@@ -3371,6 +3383,16 @@ read_only::get_account_results read_only::get_account( const get_account_params&
       return result;
    })();
 
+   auto get_linked_actions = [&](chain::name perm_name) {
+      auto link_bounds = linked_action_map.equal_range(perm_name);
+      auto linked_actions = std::vector<linked_action>();
+      linked_actions.reserve(linked_action_map.count(perm_name));
+      for (auto link = link_bounds.first; link != link_bounds.second; ++link) {
+         linked_actions.push_back(link->second);
+      }
+      return linked_actions;
+   };
+
    const auto& permissions = d.get_index<permission_index,by_owner>();
    auto perm = permissions.lower_bound( boost::make_tuple( params.account_name ) );
    while( perm != permissions.end() && perm->owner == params.account_name ) {
@@ -3386,16 +3408,14 @@ read_only::get_account_results read_only::get_account( const get_account_params&
          }
       }
 
-      auto link_bounds = linked_action_map.equal_range(perm->name);
-      auto linked_actions = std::vector<linked_action>();
-      linked_actions.reserve(linked_action_map.count(perm->name));
-      for (auto link = link_bounds.first; link != link_bounds.second; ++link) {
-         linked_actions.push_back(link->second);
-      }
+      auto linked_actions = get_linked_actions(perm->name);
 
       result.permissions.push_back( permission{ perm->name, parent, perm->auth.to_authority(), std::move(linked_actions)} );
       ++perm;
    }
+
+   // add eosio.any linked authorizations
+   result.eosio_any_linked_actions = get_linked_actions(chain::config::eosio_any_name);
 
    const auto& code_account = db.db().get<account_object,by_name>( config::system_account_name );
 
@@ -3480,7 +3500,7 @@ read_only::abi_bin_to_json_result read_only::abi_bin_to_json( const read_only::a
 
 read_only::get_required_keys_result read_only::get_required_keys( const get_required_keys_params& params )const {
    transaction pretty_input;
-   auto resolver = make_resolver(this, abi_serializer::create_yield_function( abi_serializer_max_time ));
+   auto resolver = make_resolver(db, abi_serializer::create_yield_function( abi_serializer_max_time ));
    try {
       abi_serializer::from_variant(params.transaction, pretty_input, resolver, abi_serializer::create_yield_function( abi_serializer_max_time ));
    } EOS_RETHROW_EXCEPTIONS(chain::transaction_type_exception, "Invalid transaction")
@@ -3598,6 +3618,31 @@ read_only::get_all_accounts( const get_all_accounts_params& params ) const
 }
 
 } // namespace chain_apis
+
+fc::variant chain_plugin::get_log_trx_trace(const transaction_trace_ptr& trx_trace ) const {
+   fc::variant pretty_output;
+   try {
+      abi_serializer::to_log_variant(trx_trace, pretty_output,
+                                     chain_apis::make_resolver(chain(), abi_serializer::create_yield_function(get_abi_serializer_max_time())),
+                                     abi_serializer::create_yield_function(get_abi_serializer_max_time()));
+   } catch (...) {
+      pretty_output = trx_trace;
+   }
+   return pretty_output;
+}
+
+fc::variant chain_plugin::get_log_trx(const transaction& trx) const {
+   fc::variant pretty_output;
+   try {
+      abi_serializer::to_log_variant(trx, pretty_output,
+                                     chain_apis::make_resolver(chain(), abi_serializer::create_yield_function(get_abi_serializer_max_time())),
+                                     abi_serializer::create_yield_function(get_abi_serializer_max_time()));
+   } catch (...) {
+      pretty_output = trx;
+   }
+   return pretty_output;
+}
+
 } // namespace eosio
 
 FC_REFLECT( eosio::chain_apis::detail::ram_market_exchange_state_t, (ignore1)(ignore2)(ignore3)(core_symbol)(ignore4) )

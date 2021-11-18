@@ -205,6 +205,65 @@ BOOST_AUTO_TEST_CASE(test_existing_state_without_block_log) {
    }
 }
 
+
+std::pair<controller::config, uint32_t> setup_existing_chain(tester& chain) {
+   chain.produce_block();
+   chain.produce_block();
+   auto blk = chain.produce_block();
+   auto lib_num = chain.control->last_irreversible_block_num();
+   chain.close();
+
+   return std::make_pair(chain.get_config(), lib_num);
+}
+
+BOOST_AUTO_TEST_CASE(restart_from_existing_state_exactly_meet_min_initial_block_num) {
+   tester chain;
+
+   auto [cfg, lib_num]    = setup_existing_chain(chain);
+   cfg.min_initial_block_num = lib_num;
+   remove_existing_blocks(cfg);
+
+   // restarting chain with no block log and no genesis
+   BOOST_REQUIRE_NO_THROW({ tester other(cfg); });
+}
+
+BOOST_AUTO_TEST_CASE(restart_from_existing_state_do_not_meet_min_initial_block_num) {
+   tester chain;
+
+   auto [cfg, lib_num]    = setup_existing_chain(chain);
+   cfg.min_initial_block_num = lib_num + 1;
+   remove_existing_blocks(cfg);
+
+   // restarting chain with no block log and no genesis
+   BOOST_REQUIRE_EXCEPTION({ tester other(cfg); }, misc_exception,
+                           fc_exception_message_starts_with("Controller latest irreversible block at block"));
+}
+
+BOOST_AUTO_TEST_CASE(restart_from_blocklog_exactly_meet_min_initial_block_num) {
+   tester chain;
+
+   auto [cfg, lib_num]    = setup_existing_chain(chain);
+   cfg.min_initial_block_num = lib_num;
+   auto genesis              = chain::block_log::extract_genesis_state(cfg.blog.log_dir);
+   remove_existing_states(cfg);
+
+   // restarting chain with no block log and no genesis
+   BOOST_REQUIRE_NO_THROW({ tester other(cfg, *genesis); });
+}
+
+BOOST_AUTO_TEST_CASE(restart_from_blocklog_do_not_meet_min_initial_block_num) {
+   tester chain;
+
+   auto [cfg, lib_num]    = setup_existing_chain(chain);
+   cfg.min_initial_block_num = lib_num + 1;
+   auto genesis              = chain::block_log::extract_genesis_state(cfg.blog.log_dir);
+   remove_existing_states(cfg);
+
+   // restarting chain with no block log and no genesis
+   BOOST_REQUIRE_EXCEPTION({ tester other(cfg, *genesis); }, misc_exception,
+                           fc_exception_message_starts_with("Controller latest irreversible block at block"));
+}
+
 BOOST_AUTO_TEST_CASE(test_restart_with_different_chain_id) {
    tester chain;
 

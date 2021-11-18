@@ -342,7 +342,26 @@ EOF
     skip: $(echo "$PLATFORM_JSON" | jq -r '.PLATFORM_SKIP_VAR | env[.] // empty')${SKIP_SERIAL_TESTS}
 
 EOF
-            elif [[ "$TEST_NAME" != 'rodeos_test_eosvmoc' ]]; then
+            elif [ $TEST_NAME != 'rodeos_test_eosvmoc'  -a \
+                   $TEST_NAME != 'rodeos_multi_ship_eos_vm_oc_idle_test'  -a \
+                   $TEST_NAME != 'rodeos_multi_ship_eos_vm_oc_load_test'  -a \
+                   $TEST_NAME != 'rodeos_idle_restart_producer_eos-vm-oc_test'  -a \
+                   $TEST_NAME != 'rodeos_idle_restart_rodeos_eos-vm-oc_test'  -a \
+                   $TEST_NAME != 'rodeos_idle_restart_ship_eos-vm-oc_test'  -a \
+                   $TEST_NAME != 'rodeos_idle_restart_rodeos_producer_eos-vm-oc_test'  -a \
+                   $TEST_NAME != 'rodeos_multi_ship_kill_clean_restart_eos_vm_oc_idle_test'  -a \
+                   $TEST_NAME != 'rodeos_multi_ship_kill_clean_restart_eos_vm_oc_load_test'  -a \
+                   $TEST_NAME != 'rodeos_multi_ship_kill_restart_eos_vm_oc_idle_test'  -a \
+                   $TEST_NAME != 'rodeos_multi_ship_kill_restart_eos_vm_oc_load_test'  -a \
+                   $TEST_NAME != 'rodeos_multi_ship_kill_clean_restart_eos_vm_oc_idle_unixsocket_test'  -a \
+                   $TEST_NAME != 'rodeos_multi_ship_kill_clean_restart_eos_vm_oc_load_unixsocket_test'  -a \
+                   $TEST_NAME != 'rodeos_multi_ship_kill_restart_eos_vm_oc_idle_unixsocket_test'  -a \
+                   $TEST_NAME != 'rodeos_multi_ship_kill_restart_eos_vm_oc_load_unixsocket_test'  -a \
+                   $TEST_NAME != 'rodeos_idle_restart_ship_unix-socket_eos-vm-oc_test'  -a \
+                   $TEST_NAME != 'rodeos_idle_restart_rodeos_unix-socket_eos-vm-oc_test'  -a \
+                   $TEST_NAME != 'rodeos_wasmQL_http_timeout_unix_socket_eos_vm_oc'  -a \
+                   $TEST_NAME != 'rodeos_wasmQL_http_timeout_eos_vm_oc' ]
+                 then
                 cat <<EOF
   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - $TEST_NAME"
     command:

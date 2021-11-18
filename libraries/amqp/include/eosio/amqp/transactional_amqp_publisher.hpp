@@ -30,9 +30,10 @@ class transactional_amqp_publisher {
       /// \param server_url server url as amqp://...
       /// \param exchange the exchange to publish to
       /// \param time_out time to wait on transactional ack from AMQP before calling on_fatal_error
+      /// \param dedup should de-duplication headers be added
       /// \param on_fatal_error called from AMQP does not ack transaction in time_out time
       transactional_amqp_publisher(const std::string& server_url, const std::string& exchange,
-                                   const fc::microseconds& time_out, error_callback_t on_fatal_error);
+                                   const fc::microseconds& time_out, bool dedup, error_callback_t on_fatal_error);
 
       /// Publish messages. May be called from any thread except internal thread (do not call from on_fatal_error)
       /// All calls should be from the same thread or at the very least no two calls should be performed concurrently.

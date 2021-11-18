@@ -63,9 +63,6 @@ struct permission {
    std::optional<std::vector<linked_action>>  linked_actions;
 };
 
-template<typename>
-struct resolver_factory;
-
 // see specializations for uint64_t and double in source file
 template<typename Type>
 Type convert_to_type(const string& str, const string& desc) {
@@ -209,6 +206,9 @@ public:
       fc::variant                refund_request;
       fc::variant                voter_info;
       fc::variant                rex_info;
+
+      // linked actions for eosio_any
+      std::vector<linked_action> eosio_any_linked_actions;
    };
 
    struct get_account_params {
@@ -915,7 +915,6 @@ public:
    get_accounts_by_authorizers_result get_accounts_by_authorizers( const get_accounts_by_authorizers_params& args) const;
 
    chain::symbol extract_core_symbol()const;
-   friend struct resolver_factory<read_only>;
 
    struct get_all_accounts_result {
       struct account_result {
@@ -965,8 +964,6 @@ public:
    using send_transaction_params = push_transaction_params;
    using send_transaction_results = push_transaction_results;
    void send_transaction(const send_transaction_params& params, chain::plugin_interface::next_function<send_transaction_results> next);
-
-   friend resolver_factory<read_write>;
 };
 
  //support for --key_types [sha256,ripemd160] and --encoding [dec/hex]
@@ -1094,6 +1091,12 @@ public:
    static void handle_bad_alloc();
    
    bool account_queries_enabled() const;
+
+   // return variant of trace for logging, trace is modified to minimize log output
+   fc::variant get_log_trx_trace(const transaction_trace_ptr& trx_trace) const;
+   // return variant of trx for logging, trace is modified to minimize log output
+   fc::variant get_log_trx(const transaction& trx) const;
+
 private:
    static void log_guard_exception(const chain::guard_exception& e);
 
@@ -1144,7 +1147,7 @@ FC_REFLECT( eosio::chain_apis::read_only::account_resource_info, (used)(availabl
 FC_REFLECT( eosio::chain_apis::read_only::get_account_results,
             (account_name)(head_block_num)(head_block_time)(privileged)(last_code_update)(created)
             (core_liquid_balance)(ram_quota)(net_weight)(cpu_weight)(net_limit)(cpu_limit)(ram_usage)(permissions)
-            (total_resources)(self_delegated_bandwidth)(refund_request)(voter_info)(rex_info) )
+            (total_resources)(self_delegated_bandwidth)(refund_request)(voter_info)(rex_info)(eosio_any_linked_actions) )
 // @swap code_hash
 FC_REFLECT( eosio::chain_apis::read_only::get_code_results, (account_name)(code_hash)(wast)(wasm)(abi) )
 FC_REFLECT( eosio::chain_apis::read_only::get_code_hash_results, (account_name)(code_hash) )

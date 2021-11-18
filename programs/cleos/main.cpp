@@ -2295,15 +2295,9 @@ void get_account( const string& accountName, const string& coresym, bool json_fo
       }
       std::cout << std::endl;
 
-      bool header_printed = false;
+      std::cout << "permission links: " << std::endl;
       dfs_fn_t print_links = [&](const eosio::chain_apis::permission& p, int) -> void {
          if (p.linked_actions) {
-
-            if (!header_printed) {
-               std::cout << "permission links: " << std::endl;
-               header_printed = true;
-            }
-
             if (!p.linked_actions->empty()) {
                std::cout << indent << p.perm_name.to_string() + ":" << std::endl;
                for ( auto it = p.linked_actions->begin(); it != p.linked_actions->end(); ++it ) {
@@ -2318,10 +2312,15 @@ void get_account( const string& accountName, const string& coresym, bool json_fo
          dfs_exec( r, 0, print_links);
       }
 
-      if (header_printed) {
-         std::cout << std::endl;
+      // print linked actions 
+      std::cout << indent << "eosio.any: " << std::endl;
+      for (const auto& it : res.eosio_any_linked_actions) {
+         auto action_value = it.action ? it.action->to_string() : std::string("*");
+         std::cout << indent << indent << it.account << "::" << action_value << std::endl;
       }
 
+      std::cout << std::endl;
+ 
       auto to_pretty_net = []( int64_t nbytes, uint8_t width_for_units = 5 ) {
          if(nbytes == -1) {
              // special case. Treat it as unlimited
@@ -2584,7 +2583,8 @@ int main( int argc, char** argv ) {
    app.add_option( "--wallet-url", wallet_url, localized("The http/https URL where ${k} is running", ("k", key_store_executable_name)), true );
 
    app.add_option( "--abi-file", abi_files_overide_callback, localized("In form of <contract name>:<abi file path>, use a local abi file for serialization and deserialization instead of getting the abi data from the blockchain; repeat this option to pass multiple abi files for different contracts"))->type_size(0, 1000);
-   app.add_option( "--amqp", amqp_address, localized("The ampq URL where AMQP is running amqp://USER:PASSWORD@ADDRESS:PORT"), false );
+
+   app.add_option( "--amqp", amqp_address, localized("The ampq URL where AMQP is running amqp://USER:PASSWORD@ADDRESS:PORT"), false )->envname(EOSIO_AMQP_ADDRESS_ENV_VAR);
    app.add_option( "--amqp-queue-name", amqp_queue_name, localized("The ampq queue to send transaction to"), true );
    app.add_option( "--amqp-reply-to", amqp_reply_to, localized("The ampq reply to string"), false );
 
@@ -3796,7 +3796,7 @@ int main( int argc, char** argv ) {
       EOSC_ASSERT( str_private_key.empty() || str_public_key.empty(), "ERROR: Either -k/--private-key or --public-key or none of them can be set" );
       fc::variant trx_var = json_from_file_or_string(trx_json_to_sign);
 
-      // If transaction was packed, unpack it before signing 
+      // If transaction was packed, unpack it before signing
       bool was_packed_trx = false;
       if( trx_var.is_object() ) {
          fc::variant_object& vo = trx_var.get_object();
@@ -4459,7 +4459,7 @@ int main( int argc, char** argv ) {
    } catch (const fc::exception& e) {
      return handle_error(e);
    } catch (const std::exception& e) {
-      return handle_error(fc::std_exception_wrapper::from_current_exception(e)); 
+      return handle_error(fc::std_exception_wrapper::from_current_exception(e));
    }
 
    return 0;

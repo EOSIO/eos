@@ -579,6 +579,46 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_restart_with_existing_state_and_truncated_blo
    verify_integrity_hash<SNAPSHOT_SUITE>(*chain.control, *snap_chain.control);
 }
 
+BOOST_AUTO_TEST_CASE_TEMPLATE(restart_from_snapshot_do_not_meet_min_initial_block_num, SNAPSHOT_SUITE, snapshot_suites)
+{
+   tester chain;
+   const chainbase::bfs::path parent_path = chain.get_config().blog.log_dir.parent_path();
+
+   chain.create_account("snapshot"_n);
+   chain.produce_blocks(1);
+   chain.set_code("snapshot"_n, contracts::snapshot_test_wasm());
+   chain.set_abi("snapshot"_n, contracts::snapshot_test_abi().data());
+   chain.produce_blocks(1);
+   chain.control->abort_block();
+
+   static const int pre_snapshot_block_count = 12;
+
+   for (int itr = 0; itr < pre_snapshot_block_count; itr++) {
+      // increment the contract
+      chain.push_action("snapshot"_n, "increment"_n, "snapshot"_n, mutable_variant_object()
+                        ( "value", 1 )
+                        );
+
+      // produce block
+      chain.produce_block();
+   }
+
+   chain.control->abort_block();
+
+   // create a new snapshot child
+   auto writer = SNAPSHOT_SUITE::get_writer();
+   chain.control->write_snapshot(writer);
+   auto snapshot = SNAPSHOT_SUITE::finalize(writer);
+
+   auto cfg                  = chain.get_config();
+   cfg.min_initial_block_num = 100;
+
+   // create a new child at this snapshot
+   BOOST_REQUIRE_EXCEPTION(
+       { snapshotted_tester snap_chain(cfg, SNAPSHOT_SUITE::get_reader(snapshot), 1); },
+       misc_exception, fc_exception_message_starts_with("Controller latest irreversible block at block"));
+}
+
 // Psudo code for the following WAST:
 //    kv_get(receiver, ...)
 //    uint64_t buff[1];
@@ -690,8 +730,6 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_kv_snapshot, SNAPSHOT_SUITE, snapshot_suites)
 
             // produce block
             auto new_block = chain.produce_block();
-
-#warning TODO: adding verification of the kv_object content and storing more than one key so that snapshot looping is tested
 
             // undo the auto-pending from tester
             chain.control->abort_block();

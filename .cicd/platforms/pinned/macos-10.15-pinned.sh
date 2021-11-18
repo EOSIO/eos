@@ -4,6 +4,8 @@ VERSION=1
 export SDKROOT="$(xcrun --sdk macosx --show-sdk-path)"
 brew update
 brew install git cmake python libtool libusb graphviz automake wget gmp pkgconfig doxygen openssl jq rabbitmq postgres || :
+# install request and requests_unixsocket module
+pip3 install requests requests_unixsocket
 # install clang from source
 git clone --single-branch --branch llvmorg-10.0.0 https://github.com/llvm/llvm-project clang10
 mkdir clang10/build
