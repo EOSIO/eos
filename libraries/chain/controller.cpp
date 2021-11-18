@@ -2085,7 +2085,12 @@ struct controller_impl {
          applied_trxs = pending->extract_trx_metas();
          pending.reset();
          protocol_features.popped_blocks_to( head->block_num );
-         fork_db.remove_unsigned_head();
+         if( fork_db.is_head_unsigned() ) {
+            auto head_block_num = fork_db.head()->block_num;
+            auto trxs = fork_db.remove_unsigned_head();
+            applied_trxs.insert(applied_trxs.end(), trxs.begin(), trxs.end());
+            emit( self.block_abort, head_block_num );
+         }
          emit( self.block_abort, block_num );
       }
       return applied_trxs;
