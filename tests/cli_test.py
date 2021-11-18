@@ -57,204 +57,6 @@ def cli11_optional_option_arg_test():
                                       '-c', chain, '-k', key, '{}'])
     assert(b'signatures' in output)
 
-    """Test option --abi-file """
-    token_abi_path  = os.path.abspath(os.getcwd() + '/../unittests/contracts/eosio.token/eosio.token.abi')
-    system_abi_path = os.path.abspath(os.getcwd() + '/../unittests/contracts/eosio.system/eosio.system.abi')
-    token_abi_file_arg = 'eosio.token' + ':' + token_abi_path
-    system_abi_file_arg = 'eosio' + ':' + system_abi_path
-
-    # no option --abi-file
-    account = 'eosio.token'
-    action = 'transfer'
-    unpacked_action_data = '{"from":"aaa","to":"bbb","quantity":"10.0000 SYS","memo":"hello"}'
-    cmd = ['./programs/cleos/cleos', 'convert', 'pack_action_data', account, action, unpacked_action_data]
-    outs=None
-    errs=None
-    try:
-        popen=subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        outs,errs=popen.communicate()
-        popen.wait()
-    except subprocess.CalledProcessError as ex:
-        print(ex.output)
-    assert(b'Failed to connect to nodeos' in errs)
-
-    # invalid option --abi-file
-    invalid_abi_arg = 'eosio.token' + ' ' + token_abi_path
-    cmd = ['./programs/cleos/cleos', '--abi-file', invalid_abi_arg, 'convert', 'pack_action_data', account, action, unpacked_action_data]
-    outs=None
-    errs=None
-    try:
-        popen=subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        outs,errs=popen.communicate()
-        popen.wait()
-    except subprocess.CalledProcessError as ex:
-        print(ex.output)
-    assert(b'please specify --abi-file in form of <contract name>:<abi file path>.' in errs)
-
-    # pack token transfer data
-    account = 'eosio.token'
-    action = 'transfer'
-    unpacked_action_data = '{"from":"aaa","to":"bbb","quantity":"10.0000 SYS","memo":"hello"}'
-    packed_action_data = '0000000000008c31000000000000ce39a08601000000000004535953000000000568656c6c6f'
-    cmd = ['./programs/cleos/cleos', '--abi-file', token_abi_file_arg, 'convert', 'pack_action_data', account, action, unpacked_action_data]
-    output = subprocess.check_output(cmd)
-    actual = output.strip()
-    assert(actual.decode('utf-8') == packed_action_data)
-
-    # unpack token transfer data
-    cmd = ['./programs/cleos/cleos', '--abi-file', token_abi_file_arg, 'convert', 'unpack_action_data', account, action, packed_action_data]
-    output = subprocess.check_output(cmd)
-    assert(b'"from": "aaa"' in output)
-    assert(b'"to": "bbb"' in output)
-    assert(b'"quantity": "10.0000 SYS"' in output)
-    assert(b'"memo": "hello"' in output)
-
-    # pack account create data
-    account = 'eosio'
-    action = 'newaccount'
-
-    unpacked_action_data = """{
-        "creator": "eosio",
-        "name": "bob",
-        "owner": {
-          "threshold": 1,
-          "keys": [{
-              "key": "EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
-              "weight": 1
-            }
-          ],
-          "accounts": [],
-          "waits": []
-        },
-        "active": {
-          "threshold": 1,
-          "keys": [{
-              "key": "EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
-              "weight": 1
-            }
-          ],
-          "accounts": [],
-          "waits": []
-        }
-    }"""
-
-    cmd = ['./programs/cleos/cleos', '--abi-file', system_abi_file_arg, 'convert', 'pack_action_data', account, action, unpacked_action_data]
-    packed_action_data = '0000000000ea30550000000000000e3d01000000010002c0ded2bc1f1305fb0faac5e6c03ee3a1924234985427b6167ca569d13df435cf0100000001000000010002c0ded2bc1f1305fb0faac5e6c03ee3a1924234985427b6167ca569d13df435cf01000000'
-    output = subprocess.check_output(cmd)
-    actual = output.strip()
-    assert(actual.decode('utf-8') == packed_action_data)
-
-    # unpack account create data
-    cmd = ['./programs/cleos/cleos', '--abi-file', system_abi_file_arg, 'convert', 'unpack_action_data', account, action, packed_action_data]
-    output = subprocess.check_output(cmd)
-    assert(b'"creator": "eosio"' in output)
-    assert(b'"name": "bob"' in output)
-
-    # pack transaction
-    unpacked_trx = """{
-        "expiration": "2021-07-18T04:21:14",
-        "ref_block_num": 494,
-        "ref_block_prefix": 2118878731,
-        "max_net_usage_words": 0,
-        "max_cpu_usage_ms": 0,
-        "delay_sec": 0,
-        "context_free_actions": [],
-        "actions": [{
-            "account": "eosio",
-            "name": "newaccount",
-            "authorization": [{
-                "actor": "eosio",
-                "permission": "active"
-                }
-            ],
-            "data": {
-                "creator": "eosio",
-                "name": "bob",
-                "owner": {
-                "threshold": 1,
-                "keys": [{
-                    "key": "EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
-                    "weight": 1
-                    }
-                ],
-                "accounts": [],
-                "waits": []
-                },
-                "active": {
-                "threshold": 1,
-                "keys": [{
-                    "key": "EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
-                    "weight": 1
-                    }
-                ],
-                "accounts": [],
-                "waits": []
-                }
-            },
-            "hex_data": "0000000000ea30550000000000000e3d01000000010002c0ded2bc1f1305fb0faac5e6c03ee3a1924234985427b6167ca569d13df435cf0100000001000000010002c0ded2bc1f1305fb0faac5e6c03ee3a1924234985427b6167ca569d13df435cf01000000"
-            },
-            {
-            "account": "eosio.token",
-            "name": "transfer",
-            "authorization": [{
-                "actor": "aaa",
-                "permission": "active"
-                }
-            ],
-            "data": {
-                "from": "aaa",
-                "to": "bbb",
-                "quantity": "10.0000 SYS",
-                "memo": "hello"
-            },
-            "hex_data": "0000000000008c31000000000000ce39a08601000000000004535953000000000568656c6c6f"
-            }
-        ],
-        "signatures": [
-            "SIG_K1_K3LfbB7ZV2DNBu67iSn3yUMseTdiwoT49gAcwSZVT1QTvGXVHjkcvKqhentCW4FJngZJ1H9gBRSWgo9UPiWEXWHyKpXNCZ"
-        ],
-        "context_free_data": []
-
-    }"""
-
-    expected_output = b'3aacf360ee010b864b7e00000000020000000000ea305500409e9a2264b89a010000000000ea305500000000a8ed3232660000000000ea30550000000000000e3d01000000010002c0ded2bc1f1305fb0faac5e6c03ee3a1924234985427b6167ca569d13df435cf0100000001000000010002c0ded2bc1f1305fb0faac5e6c03ee3a1924234985427b6167ca569d13df435cf0100000000a6823403ea3055000000572d3ccdcd010000000000008c3100000000a8ed3232260000000000008c31000000000000ce39a08601000000000004535953000000000568656c6c6f00'
-    cmd = ['./programs/cleos/cleos', '--abi-file', system_abi_file_arg, token_abi_file_arg, 'convert', 'pack_transaction', '--pack-action-data', unpacked_trx]
-    outs=None
-    errs=None
-    try:
-        popen=subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        outs,errs=popen.communicate()
-        popen.wait()
-    except subprocess.CalledProcessError as ex:
-        print(ex.output)
-    assert(expected_output in outs)
-
-    # unpack transaction
-    packed_trx = """{
-        "signatures": [
-            "SIG_K1_K3LfbB7ZV2DNBu67iSn3yUMseTdiwoT49gAcwSZVT1QTvGXVHjkcvKqhentCW4FJngZJ1H9gBRSWgo9UPiWEXWHyKpXNCZ"
-        ],
-        "compression": "none",
-        "packed_context_free_data": "",
-        "packed_trx": "3aacf360ee010b864b7e00000000020000000000ea305500409e9a2264b89a010000000000ea305500000000a8ed3232660000000000ea30550000000000000e3d01000000010002c0ded2bc1f1305fb0faac5e6c03ee3a1924234985427b6167ca569d13df435cf0100000001000000010002c0ded2bc1f1305fb0faac5e6c03ee3a1924234985427b6167ca569d13df435cf0100000000a6823403ea3055000000572d3ccdcd010000000000008c3100000000a8ed3232260000000000008c31000000000000ce39a08601000000000004535953000000000568656c6c6f00"
-    }"""
-    cmd = ['./programs/cleos/cleos', '--abi-file', system_abi_file_arg, token_abi_file_arg, 'convert', 'unpack_transaction', '--unpack-action-data', packed_trx]
-    outs=None
-    errs=None
-    try:
-        popen=subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        outs,errs=popen.communicate()
-        popen.wait()
-    except subprocess.CalledProcessError as ex:
-        print(ex.output)
-    assert(b'"creator": "eosio"' in outs)
-    assert(b'"name": "bob"' in outs)
-
-    assert(b'"from": "aaa"' in outs)
-    assert(b'"to": "bbb"' in outs)
-    assert(b'"quantity": "10.0000 SYS"' in outs)
-    assert(b'"memo": "hello"' in outs)
-
 def cleos_sign_test():
     """Test that sign can on both regular and packed transactions"""
     chain = 'cf057bbfb72640471fd910bcb67639c22df9f92470936cddc1ade0e2f2e7dc4f'
@@ -329,6 +131,210 @@ def cleos_sign_test():
     assert(b'signatures' in output)
     assert(b'"signatures": []' not in output)
 
+def cleos_abi_file_test():
+    """Test option --abi-file """
+    token_abi_path = os.path.abspath(os.getcwd() + '/../unittests/contracts/eosio.token/eosio.token.abi')
+    system_abi_path = os.path.abspath(os.getcwd() + '/../unittests/contracts/eosio.system/eosio.system.abi')
+    token_abi_file_arg = 'eosio.token' + ':' + token_abi_path
+    system_abi_file_arg = 'eosio' + ':' + system_abi_path
+
+    # no option --abi-file
+    account = 'eosio.token'
+    action = 'transfer'
+    unpacked_action_data = '{"from":"aaa","to":"bbb","quantity":"10.0000 SYS","memo":"hello"}'
+    cmd = ['./programs/cleos/cleos', 'convert', 'pack_action_data', account, action, unpacked_action_data]
+    outs = None
+    errs = None
+    try:
+        popen=subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        outs, errs = popen.communicate()
+        popen.wait()
+    except subprocess.CalledProcessError as ex:
+        print(ex.output)
+
+    assert(b'Failed to connect to nodeos' in errs)
+
+    # invalid option --abi-file
+    # use URL 127.0.0:12345 to make sure cleos not to connect to any local running nodeos
+    invalid_abi_arg = 'eosio.token' + ' ' + token_abi_path
+    cmd = ['./programs/cleos/cleos', '-u', '127.0.0:12345', '--abi-file', invalid_abi_arg, 'convert', 'pack_action_data', account, action, unpacked_action_data]
+    outs = None
+    errs = None
+    try:
+        popen=subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        outs, errs = popen.communicate()
+        popen.wait()
+    except subprocess.CalledProcessError as ex:
+        print(ex.output)
+
+    assert(b'please specify --abi-file in form of <contract name>:<abi file path>.' in errs)
+
+    # pack token transfer data
+    account = 'eosio.token'
+    action = 'transfer'
+    unpacked_action_data = '{"from":"aaa","to":"bbb","quantity":"10.0000 SYS","memo":"hello"}'
+    packed_action_data = '0000000000008c31000000000000ce39a08601000000000004535953000000000568656c6c6f'
+    cmd = ['./programs/cleos/cleos', '-u','127.0.0:12345', '--abi-file', token_abi_file_arg, 'convert', 'pack_action_data', account, action, unpacked_action_data]
+    output = subprocess.check_output(cmd)
+    actual = output.strip()
+    assert(actual.decode('utf-8') == packed_action_data)
+
+    # unpack token transfer data
+    cmd = ['./programs/cleos/cleos', '-u','127.0.0:12345', '--abi-file', token_abi_file_arg, 'convert', 'unpack_action_data', account, action, packed_action_data]
+    output = subprocess.check_output(cmd)
+    assert(b'"from": "aaa"' in output)
+    assert(b'"to": "bbb"' in output)
+    assert(b'"quantity": "10.0000 SYS"' in output)
+    assert(b'"memo": "hello"' in output)
+
+    # pack account create data
+    account = 'eosio'
+    action = 'newaccount'
+
+    unpacked_action_data = """{
+        "creator": "eosio",
+        "name": "bob",
+        "owner": {
+          "threshold": 1,
+          "keys": [{
+              "key": "EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
+              "weight": 1
+            }
+          ],
+          "accounts": [],
+          "waits": []
+        },
+        "active": {
+          "threshold": 1,
+          "keys": [{
+              "key": "EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
+              "weight": 1
+            }
+          ],
+          "accounts": [],
+          "waits": []
+        }
+    }"""
+
+    cmd = ['./programs/cleos/cleos', '-u','127.0.0:12345', '--abi-file', system_abi_file_arg, 'convert', 'pack_action_data', account, action, unpacked_action_data]
+    packed_action_data = '0000000000ea30550000000000000e3d01000000010002c0ded2bc1f1305fb0faac5e6c03ee3a1924234985427b6167ca569d13df435cf0100000001000000010002c0ded2bc1f1305fb0faac5e6c03ee3a1924234985427b6167ca569d13df435cf01000000'
+    output = subprocess.check_output(cmd)
+    actual = output.strip()
+    assert(actual.decode('utf-8') == packed_action_data)
+
+    # unpack account create data
+    cmd = ['./programs/cleos/cleos', '-u','127.0.0:12345', '--abi-file', system_abi_file_arg, 'convert', 'unpack_action_data', account, action, packed_action_data]
+    output = subprocess.check_output(cmd)
+    assert(b'"creator": "eosio"' in output)
+    assert(b'"name": "bob"' in output)
+
+    # pack transaction
+    unpacked_trx = """{
+        "expiration": "2021-07-18T04:21:14",
+        "ref_block_num": 494,
+        "ref_block_prefix": 2118878731,
+        "max_net_usage_words": 0,
+        "max_cpu_usage_ms": 0,
+        "delay_sec": 0,
+        "context_free_actions": [],
+        "actions": [{
+            "account": "eosio",
+            "name": "newaccount",
+            "authorization": [{
+                "actor": "eosio",
+                "permission": "active"
+                }
+            ],
+            "data": {
+                "creator": "eosio",
+                "name": "bob",
+                "owner": {
+                "threshold": 1,
+                "keys": [{
+                    "key": "EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
+                    "weight": 1
+                    }
+                ],
+                "accounts": [],
+                "waits": []
+                },
+                "active": {
+                "threshold": 1,
+                "keys": [{
+                    "key": "EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
+                    "weight": 1
+                    }
+                ],
+                "accounts": [],
+                "waits": []
+                }
+            },
+            "hex_data": "0000000000ea30550000000000000e3d01000000010002c0ded2bc1f1305fb0faac5e6c03ee3a1924234985427b6167ca569d13df435cf0100000001000000010002c0ded2bc1f1305fb0faac5e6c03ee3a1924234985427b6167ca569d13df435cf01000000"
+            },
+            {
+            "account": "eosio.token",
+            "name": "transfer",
+            "authorization": [{
+                "actor": "aaa",
+                "permission": "active"
+                }
+            ],
+            "data": {
+                "from": "aaa",
+                "to": "bbb",
+                "quantity": "10.0000 SYS",
+                "memo": "hello"
+            },
+            "hex_data": "0000000000008c31000000000000ce39a08601000000000004535953000000000568656c6c6f"
+            }
+        ],
+        "signatures": [
+            "SIG_K1_K3LfbB7ZV2DNBu67iSn3yUMseTdiwoT49gAcwSZVT1QTvGXVHjkcvKqhentCW4FJngZJ1H9gBRSWgo9UPiWEXWHyKpXNCZ"
+        ],
+        "context_free_data": []
+
+    }"""
+
+    expected_output = b'3aacf360ee010b864b7e00000000020000000000ea305500409e9a2264b89a010000000000ea305500000000a8ed3232660000000000ea30550000000000000e3d01000000010002c0ded2bc1f1305fb0faac5e6c03ee3a1924234985427b6167ca569d13df435cf0100000001000000010002c0ded2bc1f1305fb0faac5e6c03ee3a1924234985427b6167ca569d13df435cf0100000000a6823403ea3055000000572d3ccdcd010000000000008c3100000000a8ed3232260000000000008c31000000000000ce39a08601000000000004535953000000000568656c6c6f00'
+    cmd = ['./programs/cleos/cleos', '-u','127.0.0:12345', '--abi-file', system_abi_file_arg, token_abi_file_arg, 'convert', 'pack_transaction', '--pack-action-data', unpacked_trx]
+    outs = None
+    errs = None
+    try:
+        popen=subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        outs, errs = popen.communicate()
+        popen.wait()
+    except subprocess.CalledProcessError as ex:
+        print(ex.output)
+
+    assert(expected_output in outs)
+
+    # unpack transaction
+    packed_trx = """{
+        "signatures": [
+            "SIG_K1_K3LfbB7ZV2DNBu67iSn3yUMseTdiwoT49gAcwSZVT1QTvGXVHjkcvKqhentCW4FJngZJ1H9gBRSWgo9UPiWEXWHyKpXNCZ"
+        ],
+        "compression": "none",
+        "packed_context_free_data": "",
+        "packed_trx": "3aacf360ee010b864b7e00000000020000000000ea305500409e9a2264b89a010000000000ea305500000000a8ed3232660000000000ea30550000000000000e3d01000000010002c0ded2bc1f1305fb0faac5e6c03ee3a1924234985427b6167ca569d13df435cf0100000001000000010002c0ded2bc1f1305fb0faac5e6c03ee3a1924234985427b6167ca569d13df435cf0100000000a6823403ea3055000000572d3ccdcd010000000000008c3100000000a8ed3232260000000000008c31000000000000ce39a08601000000000004535953000000000568656c6c6f00"
+    }"""
+    cmd = ['./programs/cleos/cleos', '-u','127.0.0:12345', '--abi-file', system_abi_file_arg, token_abi_file_arg, 'convert', 'unpack_transaction', '--unpack-action-data', packed_trx]
+    outs = None
+    errs = None
+    try:
+        popen=subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        outs, errs = popen.communicate()
+        popen.wait()
+    except subprocess.CalledProcessError as ex:
+        print(ex.output)
+
+    assert(b'"creator": "eosio"' in outs)
+    assert(b'"name": "bob"' in outs)
+
+    assert(b'"from": "aaa"' in outs)
+    assert(b'"to": "bbb"' in outs)
+    assert(b'"quantity": "10.0000 SYS"' in outs)
+    assert(b'"memo": "hello"' in outs)
+
 nodeos_help_test()
 
 cleos_help_test(['--help'])
@@ -340,3 +346,4 @@ cli11_bugfix_test()
 
 cli11_optional_option_arg_test()
 cleos_sign_test()
+cleos_abi_file_test()
