@@ -10,6 +10,7 @@
 #include <fc/crypto/sha256.hpp>
 #include <fc/crypto/sha512.hpp>
 #include <fc/exception/exception.hpp>
+#include <fc/io/json.hpp>
 
 #undef N
 
@@ -1213,7 +1214,83 @@ void register_callbacks() {
    rhf_t::add<&callbacks::recover_key>("env", "recover_key");
 }
 
-static int run(const char* wasm, const std::vector<std::string>& args) {
+template<typename KeyValueObj>
+static void copy_inline_row(const KeyValueObj& obj, std::vector<char>& data) {
+   data.resize( obj.value.size() );
+   memcpy( data.data(), obj.value.data(), obj.value.size() );
+}
+
+auto get_primary_key_value(const std::string_view& type, const eosio::chain::abi_serializer& abis, bool as_json = true) {
+   return [table_type=std::string{type},abis,as_json](fc::variant& result_var, const auto& obj) {
+      std::vector<char> data;
+      copy_inline_row(obj, data);
+      if (as_json) {
+         bool shorten_abi_errors = true;
+         const fc::microseconds& abi_serializer_max_time = fc::microseconds{10000};
+         result_var = abis.binary_to_variant(table_type, data, eosio::chain::abi_serializer::create_yield_function( abi_serializer_max_time ), shorten_abi_errors );
+      }
+      else {
+         result_var = fc::variant(data);
+      }
+   };
+}
+
+auto get_primary_key_value(fc::variant& result_var, const std::string_view& type, const eosio::chain::abi_serializer& abis, bool as_json = true) {
+   auto get_primary = get_primary_key_value(type, abis, as_json);
+   return [&result_var,get_primary{std::move(get_primary)}](const auto& obj) {
+      return get_primary(result_var, obj);
+   };
+}
+
+auto get_primary_key_value(eosio::chain::name table, const eosio::chain::abi_serializer& abis, bool as_json, const std::optional<bool>& show_payer) {
+   return [abis,table,show_payer,as_json](const auto& obj) -> fc::variant {
+      fc::variant data_var;
+      auto get_prim = get_primary_key_value(data_var, abis.get_table_type(table), abis, as_json);
+      get_prim(obj);
+
+      if( show_payer && *show_payer ) {
+         return fc::mutable_variant_object("data", std::move(data_var))("payer", obj.payer);
+      } else {
+         return data_var;
+      }
+   };
+}
+
+std::vector<fc::variant> get_table_rows( eosio::chain::name code,
+                                          eosio::chain::name scope,
+                                          eosio::chain::name table,
+                                          eosio::chain::controller& control )
+{
+   const fc::microseconds& abi_serializer_max_time = fc::microseconds{10000};
+   auto abis_opt = control.get_abi_serializer(code, eosio::chain::abi_serializer::create_yield_function(abi_serializer_max_time));
+   if (!abis_opt.has_value()) {
+      std::cerr << "Could not create ABI serializer for '" << code.to_string() << "'" << std::endl;
+      return {};
+   }
+   auto abis = abis_opt.value();
+   auto& db = control.db();
+
+   auto u64_low = std::numeric_limits<uint64_t>::lowest();
+   auto u64_max = std::numeric_limits<uint64_t>::max();
+
+   auto get_prim_key = get_primary_key_value(code, abis, true, false);
+
+   std::vector<fc::variant> result;
+   const auto* t_id = db.find<eosio::chain::table_id_object, eosio::chain::by_code_scope_table>(boost::make_tuple(code, scope, table));
+   if( t_id != nullptr ) {
+      const auto& idx = db.get_index<eosio::chain::key_value_index, eosio::chain::by_scope_primary>();
+      auto lb_tup = std::make_tuple( t_id->id, u64_low );
+      auto ub_tup = std::make_tuple( t_id->id, u64_max );
+
+      for (auto row_itr = idx.lower_bound(lb_tup); row_itr != idx.upper_bound( ub_tup ); ++row_itr) {
+         result.push_back(get_prim_key(*row_itr));
+      }
+   }
+
+   return result;
+}
+
+static int run(const char* wasm, const std::vector<std::string>& args, bool coverage) {
    eosio::vm::wasm_allocator wa;
    auto                      code = eosio::vm::read_wasm(wasm);
    backend_t                 backend(code, nullptr);
@@ -1227,6 +1304,40 @@ static int run(const char* wasm, const std::vector<std::string>& args) {
    rhf_t::resolve(backend.get_module());
    backend.initialize(&cb);
    auto returned_stack_elem = backend.call_with_return(cb, "env", "start", 0);
+
+   if(coverage) {
+      const auto u64_low = eosio::chain::name(std::numeric_limits<uint64_t>::lowest());
+      const auto u64_max = eosio::chain::name(std::numeric_limits<uint64_t>::max());
+      const auto funcount_table_name = eosio::chain::name("funcount");
+
+      for (auto& ch : state.chains) {
+         using acct_obj_idx_type = chainbase::get_index_type<eosio::chain::account_object>::type;
+         // for each account, get all "funcount" tables and dump to file
+         const auto& d = ch->control->db();
+         const auto& accts = d.get_index<acct_obj_idx_type>().indices().get<eosio::chain::by_name>();
+
+         for(auto acct_itr = accts.begin(); acct_itr != accts.end(); ++acct_itr) {
+            auto code = acct_itr->name;
+
+            auto table_name = funcount_table_name;
+            auto tbl_lb_tup = std::make_tuple(code, u64_low, table_name);
+            auto tbl_up_tup = std::make_tuple(code, u64_max, table_name);
+
+            const auto& idx = d.get_index<eosio::chain::table_id_multi_index, eosio::chain::by_code_scope_table>();
+            auto tbl_begin_itr = idx.lower_bound( tbl_lb_tup );
+            auto tbl_end_itr = idx.upper_bound( tbl_up_tup );
+
+            for (auto tbl_itr = tbl_begin_itr; tbl_itr != tbl_end_itr; ++tbl_itr) {
+               auto rows = get_table_rows(code, tbl_itr->scope, table_name, *(ch->control));
+               for (auto r : rows) {
+                  auto s = fc::json::to_string(r, fc::time_point::now() + fc::microseconds(100000));
+                  std::cout << s << std::endl;
+               }
+            }
+         }
+      }
+   }
+
    if (returned_stack_elem.has_value()) {
       return returned_stack_elem->to_i32();
    }
@@ -1240,12 +1351,15 @@ int main(int argc, char* argv[]) {
 
    bool show_usage = false;
    bool error      = false;
+   bool coverage   = false;
    int  next_arg   = 1;
    while (next_arg < argc && argv[next_arg][0] == '-') {
       if (!strcmp(argv[next_arg], "-h") || !strcmp(argv[next_arg], "--help"))
          show_usage = true;
       else if (!strcmp(argv[next_arg], "-v") || !strcmp(argv[next_arg], "--verbose"))
          fc::logger::get(DEFAULT_LOGGER).set_log_level(fc::log_level::debug);
+      else if(!strcmp(argv[next_arg], "--coverage"))
+         coverage = true;
       else {
          std::cerr << "unknown option: " << argv[next_arg] << "\n";
          error = true;
@@ -1261,7 +1375,7 @@ int main(int argc, char* argv[]) {
    try {
       std::vector<std::string> args{ argv + next_arg + 1, argv + argc };
       register_callbacks();
-      return run(argv[next_arg], args);
+      return run(argv[next_arg], args, coverage);
    } catch (::assert_exception& e) {
       std::cerr << "tester wasm asserted: " << e.what() << "\n";
    } catch (eosio::vm::exception& e) {
