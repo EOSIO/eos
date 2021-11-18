@@ -482,7 +482,7 @@ class undo_stack {
    void set_revision(uint64_t revision, bool write_now = true) {
       if (state.undo_stack.size() != 0)
          throw exception("cannot set revision while there is an existing undo stack");
-      if (revision > std::numeric_limits<int64_t>::max())
+      if (revision & 0x8000000000000000)
          throw exception("revision to set is too high");
       if (static_cast<int64_t>(revision) < state.revision)
          throw exception("revision cannot decrease");

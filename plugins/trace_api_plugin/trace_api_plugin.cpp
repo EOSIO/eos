@@ -301,7 +301,7 @@ struct trace_api_plugin_impl {
    :common(common) {}
 
    static void set_program_options(appbase::options_description& cli, appbase::options_description& cfg) {
-      auto cfg_options = cfg.add_options();
+      cfg.add_options();
    }
 
    void plugin_initialize(const appbase::variables_map& options) {

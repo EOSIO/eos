@@ -342,6 +342,7 @@ BOOST_AUTO_TEST_CASE( any_auth ) { try {
    const auto spending_pub_key = spending_priv_key.get_public_key();
    const auto bob_spending_priv_key = chain.get_private_key(name("bob"), "spending");
    const auto bob_spending_pub_key = spending_priv_key.get_public_key();
+   (void) bob_spending_priv_key;
 
    chain.set_authority(name("alice"), name("spending"), spending_pub_key, name("active"));
    chain.set_authority(name("bob"), name("spending"), bob_spending_pub_key, name("active"));

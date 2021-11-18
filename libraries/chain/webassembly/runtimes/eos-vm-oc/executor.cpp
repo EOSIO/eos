@@ -216,7 +216,7 @@ void executor::execute(const code_descriptor& code, memory& mem, void* context, 
       timer->set_expiration_callback(nullptr, nullptr);
 
       uint64_t base_pages = mem.size_of_memory_slice_mapping()/memory::stride - 1;
-      if(cb->current_linear_memory_pages > base_pages) {
+      if(cb->current_linear_memory_pages > 0 && static_cast<uint64_t>(cb->current_linear_memory_pages) > base_pages) {
          mprotect(mem.full_page_memory_base() + base_pages * eosio::chain::wasm_constraints::wasm_page_size,
                   (cb->current_linear_memory_pages - base_pages) * eosio::chain::wasm_constraints::wasm_page_size, PROT_NONE);
       }

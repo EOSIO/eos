@@ -133,7 +133,7 @@ reliable_amqp_publisher_impl::~reliable_amqp_publisher_impl() {
          file.set_file_path(data_file_path);
          file.open("wb");
          fc::raw::pack(file, message_deque);
-      } FC_LOG_AND_DROP();
+      } FC_LOG_AND_DROP_ALL();
    }
 }
 

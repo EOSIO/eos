@@ -2990,7 +2990,7 @@ namespace eosio {
       }
 
       auto is_webauthn_sig = []( const fc::crypto::signature& s ) {
-         return s.which() == fc::get_index<fc::crypto::signature::storage_type, fc::crypto::webauthn::signature>();
+         return static_cast<size_t>(s.which()) == fc::get_index<fc::crypto::signature::storage_type, fc::crypto::webauthn::signature>();
       };
       bool has_webauthn_sig = is_webauthn_sig( ptr->producer_signature );
 
@@ -3953,7 +3953,6 @@ namespace eosio {
    bool connection::populate_handshake( handshake_message& hello ) {
       namespace sc = std::chrono;
       hello.network_version = net_version_base + net_version;
-      const auto prev_head_id = hello.head_id;
       uint32_t lib, head;
       std::tie( lib, std::ignore, head,
                 hello.last_irreversible_block_id, std::ignore, hello.head_id ) = my_impl->get_chain_info();

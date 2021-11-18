@@ -1855,7 +1855,7 @@ struct key_converter<IntType, std::enable_if_t<std::is_integral_v<IntType>>> {
 
    static IntType value_from_hex(const std::string& bytes_in_hex) {
       auto unsigned_val = unhex<std::make_unsigned_t<IntType>>(bytes_in_hex);
-      if (unsigned_val > std::numeric_limits<IntType>::max()) {
+      if (unsigned_val > static_cast<decltype(unsigned_val)>(std::numeric_limits<IntType>::max())) {
          return unsigned_val + static_cast<std::make_unsigned_t<IntType>>(std::numeric_limits<IntType>::min());
       } else {
          return unsigned_val + std::numeric_limits<IntType>::min();
@@ -2775,7 +2775,7 @@ void read_write::push_block(read_write::push_block_params_v1&& params, next_func
       chain_plugin::handle_db_exhaustion();
    } catch ( const std::bad_alloc& ) {
       chain_plugin::handle_bad_alloc();
-   } FC_LOG_AND_DROP()
+   } FC_LOG_AND_DROP_ALL()
    next(read_write::push_block_results{});
 }
 
@@ -3314,9 +3314,9 @@ namespace detail {
    struct ram_market_exchange_state_t {
       asset  ignore1;
       asset  ignore2;
-      double ignore3;
+      double ignore3{};
       asset  core_symbol;
-      double ignore4;
+      double ignore4{};
    };
 }
 
