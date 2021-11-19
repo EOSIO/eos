@@ -1234,7 +1234,7 @@ class Node(object):
 
     # pylint: disable=too-many-locals
     # If nodeosPath is equal to None, it will use the existing nodeos path
-    def relaunch(self, chainArg=None, newChain=False, skipGenesis=True, timeout=Utils.systemWaitTimeout, addSwapFlags=None, cachePopen=False, nodeosPath=None, waitForTerm=True):
+    def relaunch(self, chainArg=None, newChain=False, skipGenesis=True, timeout=Utils.systemWaitTimeout, addSwapFlags=None, deleteFlags={}, cachePopen=False, nodeosPath=None, waitForTerm=True):
 
         assert(self.pid is None)
         assert(self.killed)
@@ -1248,14 +1248,26 @@ class Node(object):
         toAddOrSwap=copy.deepcopy(addSwapFlags) if addSwapFlags is not None else {}
         if not newChain:
             skip=False
+            deleteKey=None
+            deleteValue=None
             swapValue=None
             for i in splittedCmd:
                 Utils.Print("\"%s\"" % (i))
                 if skip:
                     skip=False
-                    continue
+                    if type(deleteValue) == str and i != deleteValue:
+                        cmdArr.append(deleteKey)
+                    else:
+                        continue
                 if skipGenesis and ("--genesis-json" == i or "--genesis-timestamp" == i):
                     skip=True
+                    continue
+
+                if i in deleteFlags:
+                    deleteKey = i
+                    deleteValue = deleteFlags[i]
+                    if deleteValue != False:
+                        skip = True
                     continue
 
                 if swapValue is None:
@@ -1482,7 +1494,7 @@ class Node(object):
         return True
 
     def containsPreactivateFeature(self):
-        return containsFeatures(["PREACTIVATE_FEATURE"])
+        return self.containsFeatures(["PREACTIVATE_FEATURE"])
 
     # Return an array of feature digests to be preactivated in a correct order respecting dependencies
     # Require producer_api_plugin

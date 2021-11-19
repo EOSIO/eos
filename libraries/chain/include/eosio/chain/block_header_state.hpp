@@ -233,7 +233,6 @@ struct unpack_block_header_state_derived_visitor : fc::reflector_init_visitor<Cl
       FC_RETHROW_EXCEPTIONS(warn, "Error unpacking field ${field}", ("field", name))
    }
 
- private:
    Stream& s;
 };
 
@@ -242,6 +241,7 @@ struct unpack_object_visitor<Stream, eosio::chain::block_header_state>
     : unpack_block_header_state_derived_visitor<Stream, eosio::chain::block_header_state> {
    using Base = unpack_block_header_state_derived_visitor<Stream, eosio::chain::block_header_state>;
    using Base::Base;
+   using VersionTraits = typename Stream::VersionTraits;
 };
 
 } // namespace detail

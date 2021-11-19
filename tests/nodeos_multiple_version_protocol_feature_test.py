@@ -36,17 +36,17 @@ walletMgr=WalletMgr(True)
 cluster=Cluster(walletd=True)
 cluster.setWalletMgr(walletMgr)
 
-def restartNode(node: Node, chainArg=None, addSwapFlags=None, nodeosPath=None):
+def restartNode(node: Node, chainArg=None, addSwapFlags=None, nodeosPath=None, deleteFlags={}):
     if not node.killed:
         node.kill(signal.SIGTERM)
-    isRelaunchSuccess = node.relaunch(chainArg, addSwapFlags=addSwapFlags,
+    isRelaunchSuccess = node.relaunch(chainArg, addSwapFlags=addSwapFlags, deleteFlags=deleteFlags,
                                       timeout=5, cachePopen=True, nodeosPath=nodeosPath)
     assert isRelaunchSuccess, "Fail to relaunch"
 
 def waitForOneRound():
     time.sleep(24) # We have 4 producers for this test
 
-def setValidityOfActTimeSubjRestriction(node, codename, valid, chainArg=None, nodeosPath=None):
+def setValidityOfActTimeSubjRestriction(node, codename, valid, chainArg=None, nodeosPath=None, deleteFlags={}):
     invalidActTimeSubjRestriction = {
         "earliest_allowed_activation_time": "2030-01-01T00:00:00.000",
     }
@@ -55,7 +55,7 @@ def setValidityOfActTimeSubjRestriction(node, codename, valid, chainArg=None, no
     }
     actTimeSubjRestriction = validActTimeSubjRestriction if valid else invalidActTimeSubjRestriction
     node.modifyBuiltinPFSubjRestrictions(codename, actTimeSubjRestriction)
-    restartNode(node, chainArg=chainArg, nodeosPath=nodeosPath)
+    restartNode(node, chainArg=chainArg, nodeosPath=nodeosPath, deleteFlags=deleteFlags)
 
 def waitUntilBlockBecomeIrr(node, blockNum, timeout=60):
     def hasBlockBecomeIrr():
@@ -79,13 +79,13 @@ try:
     # version 1.7 did not provide a default value for "--last-block-time-offset-us" so this is needed to
     # avoid dropping late blocks
     assert cluster.launch(pnodes=4, totalNodes=4, prodCount=1, totalProducers=4,
-                          extraNodeosArgs=" --plugin eosio::producer_api_plugin ",
+                          extraNodeosArgs=" --plugin eosio::producer_api_plugin --plugin eosio::trace_api_plugin --trace-no-abis",
                           useBiosBootFile=False,
                           specificExtraNodeosArgs={
                              0:"--http-max-response-time-ms 990000",
                              1:"--http-max-response-time-ms 990000",
                              2:"--http-max-response-time-ms 990000",
-                             3:"--last-block-time-offset-us -200000"},
+                             3:"--last-block-time-offset-us -200000 --plugin eosio::history_api_plugin"},
                           onlySetProds=True,
                           pfSetupPolicy=PFSetupPolicy.NONE,
                           alternateVersionLabelsFile=alternateVersionLabelsFile,
@@ -210,10 +210,15 @@ try:
     oldNode.kill(signal.SIGTERM)
     # we need this step to enable node pass through the protocol feature block
     # we disabled it earlier to emulate behavior of old 1.7.0 node that haven't had PREACTIVATE_FEATURE at all.
+    oldNodeDataDir = Utils.getNodeDataDir(oldNodeId)
+    oldNodeReversiblePath = os.path.join(oldNodeDataDir, "blocks/reversible/shared_memory.bin")
+    os.remove(oldNodeReversiblePath)
+    
     setValidityOfActTimeSubjRestriction(oldNode, 
                                         "PREACTIVATE_FEATURE", 
                                         True, 
                                         chainArg="--replay-blockchain",
+                                        deleteFlags={"--plugin" : "eosio::history_api_plugin"},
                                         nodeosPath="programs/nodeos/nodeos")
 
     time.sleep(2) # Give some time to replay

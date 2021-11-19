@@ -20,6 +20,10 @@ namespace eosio { namespace chain {
    const uint32_t fork_database::min_supported_version = 1;
    const uint32_t fork_database::max_supported_version = 2;
 
+   struct forkdb_version_traits{
+      static constexpr uint32_t maximum_version_with_signed_block_v0 = fork_database::min_supported_version;
+   };
+
    // work around block_state::is_valid being private
    inline bool block_state_is_valid( const block_state& bs ) {
       return bs.is_valid();
@@ -126,11 +130,7 @@ namespace eosio { namespace chain {
             // The unpack_strm here is used only to unpack `block_header_state` and `block_state`. However, those two
             // classes are written to unpack based on the snapshot version; therefore,  we orient it to the snapshot version.
 
-            const bool              has_block_header_state_extension = version > min_supported_version;
-            versioned_unpack_stream unpack_strm(
-                ds, has_block_header_state_extension
-                        ? block_header_state::minimum_snapshot_version_with_state_extension
-                        : block_header_state::minimum_snapshot_version_with_state_extension - 1);
+            versioned_unpack_stream<decltype(ds), forkdb_version_traits> unpack_strm(ds, version);
             
             block_header_state bhs;
             fc::raw::unpack( unpack_strm, bhs );

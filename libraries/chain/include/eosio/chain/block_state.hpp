@@ -81,6 +81,29 @@ struct unpack_object_visitor<Stream, eosio::chain::block_state>
    : unpack_block_header_state_derived_visitor<Stream, eosio::chain::block_state> {
    using Base = unpack_block_header_state_derived_visitor<Stream, eosio::chain::block_state>;
    using Base::Base;
+   using VersionTraits = typename Stream::VersionTraits;
+
+   template <typename T, typename C, T(C::*p)>
+   inline void operator()(const char* name) const {
+      using namespace eosio::chain;
+      try {
+         if constexpr (std::is_same_v<signed_block_ptr, std::decay_t<decltype(this->obj.*p)>>){
+            if (Base::s.version <= VersionTraits::maximum_version_with_signed_block_v0){
+               ilog("processing block_state from previous version, reading signed_block_v0 and converting it into signed_block");
+               
+               std::shared_ptr<signed_block_v0> block_v0;
+               fc::raw::unpack(Base::s, block_v0);
+               this->obj.*p = std::make_shared<signed_block>(std::move(*block_v0), true);
+               ilog("block_state.${n} = ${v}", ("n",name)("v",this->obj.*p));
+               return;
+            }
+         }
+
+         Base::template operator()<T,C, p>( name );
+         ilog("block_state.${n} = ${v}", ("n",name)("v",this->obj.*p));
+      }
+      FC_RETHROW_EXCEPTIONS(warn, "Error unpacking field ${field}", ("field", name))
+   }
 };
 
 } // namespace detail
