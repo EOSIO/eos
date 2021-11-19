@@ -1655,8 +1655,6 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
          blocks_to_confirm = (uint16_t)(std::min<uint32_t>(blocks_to_confirm, (uint32_t)(hbs->block_num - hbs->dpos_irreversible_blocknum)));
       }
 
-      abort_block();
-
       auto features_to_activate = chain.get_preactivated_protocol_features();
       if( _pending_block_mode == pending_block_mode::producing && _protocol_features_to_activate.size() > 0 ) {
          bool drop_features_to_activate = false;
@@ -2417,6 +2415,7 @@ void block_only_sync::on_block(eosio::chain::signed_block_ptr block) {
 bool producer_plugin_impl::accept_previous_block_if_signed() {
    
    if (unsigned_block_state && sign_ready.load()) {
+
       auto eptr = sign_fut.get();
       if (eptr) 
          abort_block();
