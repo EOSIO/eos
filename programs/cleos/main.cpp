@@ -3210,8 +3210,7 @@ int main( int argc, char** argv ) {
       }
    });
 
-   auto getSchedule = get_schedule_subcommand{get};
-   (void)getSchedule;
+   get_schedule_subcommand{get};
    auto getTransactionId = get_transaction_id_subcommand{get};
 
    auto getCmd = get->add_subcommand("best", localized("Display message based on account name"));
