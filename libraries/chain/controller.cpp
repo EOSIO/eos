@@ -2631,7 +2631,7 @@ controller::finalize_block(block_state_ptr& bsp, signer_callback_type&& signer_c
    bool wtmsig_enabled = eosio::chain::detail::is_builtin_activated(pfa, pfs, builtin_protocol_feature_t::wtmsig_block_signatures);
 
    return async_thread_pool(my->block_sign_pool.get_executor(),
-                            [&bsp, wtmsig_enabled, signer_callback = std::move(signer_callback),
+                            [bsp, wtmsig_enabled, signer_callback = std::move(signer_callback),
                              continuation = std::move(continuation)]() {
                                std::exception_ptr eptr = nullptr; 
                                try {

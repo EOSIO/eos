@@ -298,6 +298,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
 
          // TODO: need work on the signing failure case
          _subjective_billing.abort_block();
+         unsigned_block_state.reset();
       }
 
       bool on_sync_block(const signed_block_ptr& block, bool check_connectivity) {
@@ -2414,18 +2415,18 @@ void block_only_sync::on_block(eosio::chain::signed_block_ptr block) {
 
 /// @return false only if the previous block signing failed. 
 bool producer_plugin_impl::accept_previous_block_if_signed() {
-
+   
    if (unsigned_block_state && sign_ready.load()) {
-      // `sign_fut.wait_for(std::chrono::seconds(0)) == std::future_status::ready` has been tried to test the
-      // readiness of signing task; however, the performance was terrible. Use atomic<bool> instead. 
       auto eptr = sign_fut.get();
       if (eptr) 
          abort_block();
-      else
+      else {
          chain_plug->chain().on_block_signed(unsigned_block_state);
-      unsigned_block_state.reset();
+         unsigned_block_state.reset();
+      }
       return !eptr;
    }
+
    return true;
 }
 
@@ -2456,7 +2457,7 @@ void producer_plugin_impl::produce_block() {
 
    // idump( (fc::time_point::now() - chain.pending_block_time()) );
    sign_ready = false;
-   sign_fut = chain.finalize_block(
+   sign_fut   = chain.finalize_block(
          unsigned_block_state,
          [relevant_providers = std::move(relevant_providers)](const digest_type& d) {
             auto                   debug_logger = maybe_make_debug_time_logger();
@@ -2468,16 +2469,17 @@ void producer_plugin_impl::produce_block() {
             return sigs;
          },
          [&chain, self = shared_from_this()](std::exception_ptr eptr) {
-            self->sign_ready = true;
             app().post(priority::high, [&chain, self, eptr]() {
                if (self->unsigned_block_state.get()) {                  
-                  if (auto eptr = self->sign_fut.get()) {
+                  if ( eptr ) {
                      self->abort_block();
-                  } else
+                  } else {
                      chain.on_block_signed(self->unsigned_block_state);
-                  self->unsigned_block_state.reset();
+                     self->unsigned_block_state.reset();
+                  }
                }
             });
+            self->sign_ready = true;
          });
 
    if (blockvault != nullptr) {
@@ -2487,6 +2489,7 @@ void producer_plugin_impl::produce_block() {
       sign_fut.get();
       chain.on_block_signed(unsigned_block_state);
       block_state_ptr block_state = std::move(unsigned_block_state);
+      unsigned_block_state.reset();
       blockvault->async_propose_constructed_block(block_state->dpos_irreversible_blocknum,
                                                   block_state->block, [&p](bool b) { p.set_value(b); });
       if (!f.get()) {
