@@ -219,9 +219,10 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       std::optional<scoped_connection>                          _accepted_block_header_connection;
       std::optional<scoped_connection> _irreversible_block_connection;
 
-      std::future<std::exception_ptr>                           signing_done;
+      std::future<std::exception_ptr> sign_fut;
+      std::atomic<bool>               sign_ready;
       eosio::chain::block_state_ptr unsigned_block_state;
-      bool post_commit_previous_block_if_ready();
+      bool accept_previous_block_if_signed();
       /*
        * HACK ALERT
        * Boost timers can be in a state where a handler has not yet executed but is not abortable.
@@ -1714,19 +1715,19 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
          if( !remove_expired_trxs( preprocess_deadline ) )
            return start_block_result::exhausted;
 
-         if (!post_commit_previous_block_if_ready())
+         if (!accept_previous_block_if_signed())
             return start_block_result::failed;
          
          if( !remove_expired_blacklisted_trxs( preprocess_deadline ) )
            return start_block_result::exhausted;
 
-         if (!post_commit_previous_block_if_ready())
+         if (!accept_previous_block_if_signed())
             return start_block_result::failed;
 
          if( !_subjective_billing.remove_expired( _log, chain.pending_block_time(), fc::time_point::now(), preprocess_deadline ) )
             return start_block_result::exhausted;
 
-         if (!post_commit_previous_block_if_ready())
+         if (!accept_previous_block_if_signed())
             return start_block_result::failed;
 
          // limit execution of pending incoming to once per block
@@ -1735,7 +1736,7 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
          if( !process_unapplied_trxs( preprocess_deadline ) )
            return start_block_result::exhausted;
 
-         if (!post_commit_previous_block_if_ready()) 
+         if (!accept_previous_block_if_signed()) 
             return start_block_result::failed;
 
          if (_pending_block_mode == pending_block_mode::producing) {
@@ -1749,7 +1750,7 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
             // may exhaust scheduled_trx_deadline but not preprocess_deadline, exhausted preprocess_deadline checked below
             process_scheduled_and_incoming_trxs(scheduled_trx_deadline,
                                                 pending_incoming_process_limit);
-            if (!post_commit_previous_block_if_ready()) 
+            if (!accept_previous_block_if_signed()) 
                return start_block_result::failed;
          }
 
@@ -2411,9 +2412,13 @@ void block_only_sync::on_block(eosio::chain::signed_block_ptr block) {
    }
 }
 
-bool producer_plugin_impl::post_commit_previous_block_if_ready() {
-   if (unsigned_block_state && signing_done.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
-      auto eptr = signing_done.get();
+/// @return false only if the previous block signing failed. 
+bool producer_plugin_impl::accept_previous_block_if_signed() {
+
+   if (unsigned_block_state && sign_ready.load()) {
+      // `sign_fut.wait_for(std::chrono::seconds(0)) == std::future_status::ready` has been tried to test the
+      // readiness of signing task; however, the performance was terrible. Use atomic<bool> instead. 
+      auto eptr = sign_fut.get();
       if (eptr) 
          abort_block();
       else
@@ -2450,7 +2455,8 @@ void producer_plugin_impl::produce_block() {
    }
 
    // idump( (fc::time_point::now() - chain.pending_block_time()) );
-   signing_done = chain.finalize_block(
+   sign_ready = false;
+   sign_fut = chain.finalize_block(
          unsigned_block_state,
          [relevant_providers = std::move(relevant_providers)](const digest_type& d) {
             auto                   debug_logger = maybe_make_debug_time_logger();
@@ -2462,9 +2468,10 @@ void producer_plugin_impl::produce_block() {
             return sigs;
          },
          [&chain, self = shared_from_this()](std::exception_ptr eptr) {
+            self->sign_ready = true;
             app().post(priority::high, [&chain, self, eptr]() {
                if (self->unsigned_block_state.get()) {                  
-                  if (auto eptr = self->signing_done.get()) {
+                  if (auto eptr = self->sign_fut.get()) {
                      self->abort_block();
                   } else
                      chain.on_block_signed(self->unsigned_block_state);
@@ -2477,7 +2484,7 @@ void producer_plugin_impl::produce_block() {
       std::promise<bool> p;
       std::future<bool>  f = p.get_future();
       // Block vault requires a signed block, just wait until it signed for now.
-      signing_done.get();
+      sign_fut.get();
       chain.on_block_signed(unsigned_block_state);
       block_state_ptr block_state = std::move(unsigned_block_state);
       blockvault->async_propose_constructed_block(block_state->dpos_irreversible_blocknum,
