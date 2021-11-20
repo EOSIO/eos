@@ -309,10 +309,12 @@ code_cache_base::code_cache_base(const boost::filesystem::path data_dir, const e
       _cache_fd = dup(_cache_file_fd);
       EOS_ASSERT(_cache_fd >= 0, database_exception, "failure to open code cache");
       _mapped_size = on_disk_size;
-   }
-   else {
+   } else {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-variable"
       const unsigned _1gb = 1u<<30u;
       const unsigned _2mb = 1u<<21u;
+#pragma GCC diagnostic pop
 
       _populate_on_map = true;
       _mlock_map = (eosvmoc_config.map_mode == chainbase::pinnable_mapped_file::map_mode::locked);

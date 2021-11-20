@@ -34,7 +34,10 @@ memory::memory(uint64_t max_pages, const intrinsic_map_t& intrinsics) {
    }
 
    zeropage_base = mapbase + memory_prologue_size;
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
    fullpage_base = last + memory_prologue_size;
+#pragma GCC diagnostic pop
 
    //layout the intrinsic jump table
    uintptr_t* const intrinsic_jump_table = reinterpret_cast<uintptr_t* const>(zeropage_base - first_intrinsic_offset);
