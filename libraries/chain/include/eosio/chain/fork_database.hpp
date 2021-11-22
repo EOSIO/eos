@@ -54,7 +54,7 @@ namespace eosio { namespace chain {
          void            add( const block_state_ptr& next_block, bool ignore_duplicate = false );
 
          void            remove( const block_id_type& id );
-         bool            is_head_unsigned();
+         bool            is_signing_failed_block_head(uint32_t signing_failed_blocknum);
          void            remove_head();
 
          const block_state_ptr& root()const;

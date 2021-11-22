@@ -183,6 +183,7 @@ struct controller_impl {
    uint32_t                            snapshot_head_block = 0;
    named_thread_pool                   thread_pool;
    named_thread_pool                   block_sign_pool;
+   std::atomic<uint32_t>               signing_failed_blocknum = 0;
    platform_timer                      timer;
    fc::logger*                         deep_mind_logger = nullptr;
 #if defined(EOSIO_EOS_VM_RUNTIME_ENABLED) || defined(EOSIO_EOS_VM_JIT_RUNTIME_ENABLED)
@@ -2088,6 +2089,7 @@ struct controller_impl {
       
       if( pending ) {
          uint32_t block_num = pending->get_block_num();
+         ilog("abortig pending block ${block_num}", ("block_num", block_num));
          auto trxs = pending->extract_trx_metas();
          applied_trxs.insert(applied_trxs.begin(), trxs.begin(), trxs.end());
          pending.reset();
@@ -2095,8 +2097,9 @@ struct controller_impl {
          emit( self.block_abort, block_num );
       }
 
-      if (fork_db.is_head_unsigned()) {
+      if (fork_db.is_signing_failed_block_head(signing_failed_blocknum.load())) {
          auto poped = pop_block();
+         ilog("abortig unsigned block ${block_num}", ("block_num", poped->block_num));
          fork_db.remove_head();
          auto trxs  = poped->extract_trxs_metas();
          applied_trxs.insert(applied_trxs.end(), trxs.begin(), trxs.end());
@@ -2628,15 +2631,18 @@ controller::finalize_block(block_state_ptr& bsp, signer_callback_type&& signer_c
               );
 
    my->pending->_block_stage = completed_block{bsp};
-   bool wtmsig_enabled = eosio::chain::detail::is_builtin_activated(pfa, pfs, builtin_protocol_feature_t::wtmsig_block_signatures);
-
+   bool wtmsig_enabled =
+         eosio::chain::detail::is_builtin_activated(pfa, pfs, builtin_protocol_feature_t::wtmsig_block_signatures);
+   auto& signing_failed_blocknum = my->signing_failed_blocknum;
+   signing_failed_blocknum = 0;
    return async_thread_pool(my->block_sign_pool.get_executor(),
                             [bsp, wtmsig_enabled, signer_callback = std::move(signer_callback),
-                             continuation = std::move(continuation)]() {
+                             continuation = std::move(continuation), &signing_failed_blocknum]() {
                                std::exception_ptr eptr = nullptr; 
                                try {
                                   bsp->sign_and_inject_additional_signatures(signer_callback, wtmsig_enabled);
                                } catch (...) {
+                                  signing_failed_blocknum = bsp->block_num;
                                   eptr = std::current_exception();
                                   fc::unhandled_exception e(FC_LOG_MESSAGE( warn, "sign_and_inject_additional_signatures failure: "), eptr );
                                   wlog("${details}", ("details", e.to_detail_string()));

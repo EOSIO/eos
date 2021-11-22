@@ -464,8 +464,8 @@ namespace eosio { namespace chain {
       }
    }
 
-   bool fork_database::is_head_unsigned()  {
-      return my->head->block && my->head->block->producer_signature == signature_type();
+   bool fork_database::is_signing_failed_block_head(uint32_t signing_failed_blocknum)  {
+      return my->head->block && my->head->block->block_num() == signing_failed_blocknum;
    }
 
    void fork_database::remove_head() {
