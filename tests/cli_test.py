@@ -7,6 +7,8 @@
 import subprocess
 import re
 import os
+import time
+import shutil
 
 
 def nodeos_help_test():
@@ -155,9 +157,9 @@ def cleos_abi_file_test():
     assert(b'Failed to connect to nodeos' in errs)
 
     # invalid option --abi-file
-    # use URL 127.0.0.1:12345 to make sure cleos not to connect to any local running nodeos
+    # use URL http://127.0.0.1:12345 to make sure cleos not to connect to any local running nodeos
     invalid_abi_arg = 'eosio.token' + ' ' + token_abi_path
-    cmd = ['./programs/cleos/cleos', '-u', '127.0.0.1:12345', '--abi-file', invalid_abi_arg, 'convert', 'pack_action_data', account, action, unpacked_action_data]
+    cmd = ['./programs/cleos/cleos', '-u', 'http://127.0.0.1:12345', '--abi-file', invalid_abi_arg, 'convert', 'pack_action_data', account, action, unpacked_action_data]
     outs = None
     errs = None
     try:
@@ -174,13 +176,13 @@ def cleos_abi_file_test():
     action = 'transfer'
     unpacked_action_data = '{"from":"aaa","to":"bbb","quantity":"10.0000 SYS","memo":"hello"}'
     packed_action_data = '0000000000008c31000000000000ce39a08601000000000004535953000000000568656c6c6f'
-    cmd = ['./programs/cleos/cleos', '-u','127.0.0.1:12345', '--abi-file', token_abi_file_arg, 'convert', 'pack_action_data', account, action, unpacked_action_data]
+    cmd = ['./programs/cleos/cleos', '-u','http://127.0.0.1:12345', '--abi-file', token_abi_file_arg, 'convert', 'pack_action_data', account, action, unpacked_action_data]
     output = subprocess.check_output(cmd)
     actual = output.strip()
     assert(actual.decode('utf-8') == packed_action_data)
 
     # unpack token transfer data
-    cmd = ['./programs/cleos/cleos', '-u','127.0.0.1:12345', '--abi-file', token_abi_file_arg, 'convert', 'unpack_action_data', account, action, packed_action_data]
+    cmd = ['./programs/cleos/cleos', '-u','http://127.0.0.1:12345', '--abi-file', token_abi_file_arg, 'convert', 'unpack_action_data', account, action, packed_action_data]
     output = subprocess.check_output(cmd)
     assert(b'"from": "aaa"' in output)
     assert(b'"to": "bbb"' in output)
@@ -216,14 +218,14 @@ def cleos_abi_file_test():
         }
     }"""
 
-    cmd = ['./programs/cleos/cleos', '-u','127.0.0.1:12345', '--abi-file', system_abi_file_arg, 'convert', 'pack_action_data', account, action, unpacked_action_data]
+    cmd = ['./programs/cleos/cleos', '-u','http://127.0.0.1:12345', '--abi-file', system_abi_file_arg, 'convert', 'pack_action_data', account, action, unpacked_action_data]
     packed_action_data = '0000000000ea30550000000000000e3d01000000010002c0ded2bc1f1305fb0faac5e6c03ee3a1924234985427b6167ca569d13df435cf0100000001000000010002c0ded2bc1f1305fb0faac5e6c03ee3a1924234985427b6167ca569d13df435cf01000000'
     output = subprocess.check_output(cmd)
     actual = output.strip()
     assert(actual.decode('utf-8') == packed_action_data)
 
     # unpack account create data
-    cmd = ['./programs/cleos/cleos', '-u','127.0.0.1:12345', '--abi-file', system_abi_file_arg, 'convert', 'unpack_action_data', account, action, packed_action_data]
+    cmd = ['./programs/cleos/cleos', '-u','http://127.0.0.1:12345', '--abi-file', system_abi_file_arg, 'convert', 'unpack_action_data', account, action, packed_action_data]
     output = subprocess.check_output(cmd)
     assert(b'"creator": "eosio"' in output)
     assert(b'"name": "bob"' in output)
@@ -296,7 +298,7 @@ def cleos_abi_file_test():
     }"""
 
     expected_output = b'3aacf360ee010b864b7e00000000020000000000ea305500409e9a2264b89a010000000000ea305500000000a8ed3232660000000000ea30550000000000000e3d01000000010002c0ded2bc1f1305fb0faac5e6c03ee3a1924234985427b6167ca569d13df435cf0100000001000000010002c0ded2bc1f1305fb0faac5e6c03ee3a1924234985427b6167ca569d13df435cf0100000000a6823403ea3055000000572d3ccdcd010000000000008c3100000000a8ed3232260000000000008c31000000000000ce39a08601000000000004535953000000000568656c6c6f00'
-    cmd = ['./programs/cleos/cleos', '-u','127.0.0.1:12345', '--abi-file', system_abi_file_arg, token_abi_file_arg, 'convert', 'pack_transaction', '--pack-action-data', unpacked_trx]
+    cmd = ['./programs/cleos/cleos', '-u','http://127.0.0.1:12345', '--abi-file', system_abi_file_arg, token_abi_file_arg, 'convert', 'pack_transaction', '--pack-action-data', unpacked_trx]
     outs = None
     errs = None
     try:
@@ -317,7 +319,7 @@ def cleos_abi_file_test():
         "packed_context_free_data": "",
         "packed_trx": "3aacf360ee010b864b7e00000000020000000000ea305500409e9a2264b89a010000000000ea305500000000a8ed3232660000000000ea30550000000000000e3d01000000010002c0ded2bc1f1305fb0faac5e6c03ee3a1924234985427b6167ca569d13df435cf0100000001000000010002c0ded2bc1f1305fb0faac5e6c03ee3a1924234985427b6167ca569d13df435cf0100000000a6823403ea3055000000572d3ccdcd010000000000008c3100000000a8ed3232260000000000008c31000000000000ce39a08601000000000004535953000000000568656c6c6f00"
     }"""
-    cmd = ['./programs/cleos/cleos', '-u','127.0.0.1:12345', '--abi-file', system_abi_file_arg, token_abi_file_arg, 'convert', 'unpack_transaction', '--unpack-action-data', packed_trx]
+    cmd = ['./programs/cleos/cleos', '-u','http://127.0.0.1:12345', '--abi-file', system_abi_file_arg, token_abi_file_arg, 'convert', 'unpack_transaction', '--unpack-action-data', packed_trx]
     outs = None
     errs = None
     try:
@@ -334,6 +336,47 @@ def cleos_abi_file_test():
     assert(b'"to": "bbb"' in outs)
     assert(b'"quantity": "10.0000 SYS"' in outs)
     assert(b'"memo": "hello"' in outs)
+
+    # push action token transfer with option `--abi-file`
+    try:
+        data_dir = "./data"
+        cmd = "./programs/nodeos/nodeos -e -p eosio --plugin eosio::producer_plugin --plugin eosio::producer_api_plugin --plugin eosio::chain_api_plugin --plugin eosio::http_plugin --access-control-allow-origin=* --http-validate-host=false " + "--data-dir " + data_dir
+        pNodeos = subprocess.Popen(cmd.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+        time.sleep(10)
+
+        PUBLIC_KEY  = "EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"
+        PRIVATE_KEY = "5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3"
+
+        wallet_name = "my_wallet"
+        cmd = "./programs/cleos/cleos wallet create --name " + wallet_name + " --to-console"
+        subprocess.check_output(cmd.split())
+        cmd = "./programs/cleos/cleos wallet import --name " + wallet_name + " --private-key " + PRIVATE_KEY
+        subprocess.check_output(cmd.split())
+
+        cmd = "./programs/cleos/cleos -u http://127.0.0.1:8888 --no-auto-keosd create account eosio eosio.token " + PUBLIC_KEY
+        subprocess.check_output(cmd.split())
+        cmd = "./programs/cleos/cleos -u http://127.0.0.1:8888 --no-auto-keosd create account eosio alice " + PUBLIC_KEY
+        subprocess.check_output(cmd.split())
+
+        cmd = ['./programs/cleos/cleos', '-u', 'http://127.0.0.1:8888', '--print-request', '--abi-file', token_abi_file_arg, 'push', 'action', 'eosio.token', 'transfer', '[ "eosio.token", "alice", "5.0000 SYS", "m" ]', '-p', 'eosio.token']
+        outs = None
+        errs = None
+        try:
+            popen = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            outs, errs = popen.communicate()
+            popen.wait()
+        except subprocess.CalledProcessError as ex:
+            print(ex.output)
+
+        assert(b'"/v1/chain/get_raw_abi"' not in errs)
+
+    finally:
+        os.kill(pNodeos.pid, 9)
+        shutil.rmtree(data_dir)
+        wallet_file = os.path.expanduser('~') + "/eosio-wallet/" + wallet_name + ".wallet"
+        if os.path.exists(wallet_file):
+            os.remove(wallet_file)
 
 nodeos_help_test()
 
