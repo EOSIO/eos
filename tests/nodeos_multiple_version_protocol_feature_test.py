@@ -36,17 +36,17 @@ walletMgr=WalletMgr(True)
 cluster=Cluster(walletd=True)
 cluster.setWalletMgr(walletMgr)
 
-def restartNode(node: Node, chainArg=None, addSwapFlags=None, nodeosPath=None):
+def restartNode(node: Node, chainArg=None, addSwapFlags=None, nodeosPath=None, deleteFlags={}):
     if not node.killed:
         node.kill(signal.SIGTERM)
-    isRelaunchSuccess = node.relaunch(chainArg, addSwapFlags=addSwapFlags,
+    isRelaunchSuccess = node.relaunch(chainArg, addSwapFlags=addSwapFlags, deleteFlags=deleteFlags,
                                       timeout=5, cachePopen=True, nodeosPath=nodeosPath)
     assert isRelaunchSuccess, "Fail to relaunch"
 
 def waitForOneRound():
     time.sleep(24) # We have 4 producers for this test
 
-def setValidityOfActTimeSubjRestriction(node, codename, valid, chainArg=None, nodeosPath=None):
+def setValidityOfActTimeSubjRestriction(node, codename, valid, chainArg=None, nodeosPath=None, deleteFlags={}):
     invalidActTimeSubjRestriction = {
         "earliest_allowed_activation_time": "2030-01-01T00:00:00.000",
     }
@@ -55,7 +55,7 @@ def setValidityOfActTimeSubjRestriction(node, codename, valid, chainArg=None, no
     }
     actTimeSubjRestriction = validActTimeSubjRestriction if valid else invalidActTimeSubjRestriction
     node.modifyBuiltinPFSubjRestrictions(codename, actTimeSubjRestriction)
-    restartNode(node, chainArg=chainArg, nodeosPath=nodeosPath)
+    restartNode(node, chainArg=chainArg, nodeosPath=nodeosPath, deleteFlags=deleteFlags)
 
 def waitUntilBlockBecomeIrr(node, blockNum, timeout=60):
     def hasBlockBecomeIrr():
@@ -214,6 +214,7 @@ try:
                                         "PREACTIVATE_FEATURE", 
                                         True, 
                                         chainArg="--replay-blockchain",
+                                        deleteFlags={"--plugin" : "eosio::history_api_plugin"},
                                         nodeosPath="programs/nodeos/nodeos")
 
     time.sleep(2) # Give some time to replay

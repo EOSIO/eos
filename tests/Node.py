@@ -1280,18 +1280,25 @@ class Node(object):
         toAddOrSwap=copy.deepcopy(addSwapFlags) if addSwapFlags is not None else {}
         if not newChain:
             skip=False
+            deleteKey=None
+            deleteValue=None
             swapValue=None
             for i in splittedCmd:
                 Utils.Print("\"%s\"" % (i))
                 if skip:
                     skip=False
-                    continue
+                    if type(deleteValue) == str and i != deleteValue:
+                        cmdArr.append(deleteKey)
+                    else:
+                        continue
                 if skipGenesis and ("--genesis-json" == i or "--genesis-timestamp" == i):
                     skip=True
                     continue
 
                 if i in deleteFlags:
-                    if deleteFlags[i] == True:
+                    deleteKey = i
+                    deleteValue = deleteFlags[i]
+                    if deleteValue != False:
                         skip = True
                     continue
 

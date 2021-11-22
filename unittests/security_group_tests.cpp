@@ -84,7 +84,8 @@ BOOST_AUTO_TEST_CASE(test_unpack_legacy_block_state) {
    // make sure we can unpack block_header_state 
    {
       fc::datastream<const char*> in_strm(out_strm.storage().data(), out_strm.storage().size());
-      eosio::chain::versioned_unpack_stream unpack_strm(in_strm, eosio::chain::block_header_state::minimum_snapshot_version_with_state_extension-1);
+      using unpack_stream = eosio::chain::versioned_unpack_stream<std::decay_t<decltype(in_strm)>, eosio::chain::detail::snapshot_version_traits>;
+      unpack_stream unpack_strm(in_strm, eosio::chain::block_header_state::minimum_snapshot_version_with_state_extension-1);
       eosio::chain::block_header_state tmp;
       BOOST_CHECK_NO_THROW(fc::raw::unpack(unpack_strm, tmp));
       BOOST_CHECK_EQUAL(bs->id, tmp.id);
@@ -98,7 +99,8 @@ BOOST_AUTO_TEST_CASE(test_unpack_legacy_block_state) {
    // make sure we can unpack block_state 
    {
       fc::datastream<const char*> in_strm(out_strm.storage().data(), out_strm.storage().size());
-      eosio::chain::versioned_unpack_stream unpack_strm(in_strm, eosio::chain::block_header_state::minimum_snapshot_version_with_state_extension-1);
+      using unpack_stream = eosio::chain::versioned_unpack_stream<std::decay_t<decltype(in_strm)>, eosio::chain::detail::snapshot_version_traits>;
+      unpack_stream unpack_strm(in_strm, eosio::chain::block_header_state::minimum_snapshot_version_with_state_extension-1);
       eosio::chain::block_state tmp;
       BOOST_CHECK_NO_THROW(fc::raw::unpack(unpack_strm, tmp));
       BOOST_CHECK_EQUAL(bs->id, tmp.id);
@@ -130,7 +132,8 @@ BOOST_AUTO_TEST_CASE(test_unpack_new_block_state) {
    // make sure we can unpack block_state 
    {
       fc::datastream<const char*> in_strm(out_strm.storage().data(), out_strm.storage().size());
-      eosio::chain::versioned_unpack_stream unpack_strm(in_strm, eosio::chain::block_header_state::minimum_snapshot_version_with_state_extension);
+      using unpack_stream = eosio::chain::versioned_unpack_stream<std::decay_t<decltype(in_strm)>, eosio::chain::detail::snapshot_version_traits>;
+      unpack_stream unpack_strm(in_strm, eosio::chain::block_header_state::minimum_snapshot_version_with_state_extension);
       eosio::chain::block_state tmp;
       BOOST_CHECK_NO_THROW(fc::raw::unpack(unpack_strm, tmp));
       BOOST_CHECK_EQUAL(bs->id, tmp.id);
@@ -163,7 +166,8 @@ BOOST_AUTO_TEST_CASE(test_snapshot_global_property_object) {
       {
          fc::datastream<const char*>           in_strm(out_strm.storage().data(), out_strm.storage().size());
          uint32_t                              version = 5;
-         eosio::chain::versioned_unpack_stream unpack_strm(in_strm, version);
+         using unpack_stream = eosio::chain::versioned_unpack_stream<std::decay_t<decltype(in_strm)>, eosio::chain::detail::snapshot_version_traits>;
+         unpack_stream unpack_strm(in_strm, version);
 
          eosio::chain::snapshot_global_property_object row;
          BOOST_CHECK_NO_THROW(fc::raw::unpack(unpack_strm, row));
@@ -183,7 +187,8 @@ BOOST_AUTO_TEST_CASE(test_snapshot_global_property_object) {
       // make sure we can unpack snapshot_global_property_object
       {
          fc::datastream<const char*>           in_strm(out_strm.storage().data(), out_strm.storage().size());
-         eosio::chain::versioned_unpack_stream unpack_strm(in_strm, eosio::chain::snapshot_global_property_object::minimum_version_with_extension);
+         using unpack_stream = eosio::chain::versioned_unpack_stream<std::decay_t<decltype(in_strm)>, eosio::chain::detail::snapshot_version_traits>;
+         unpack_stream unpack_strm(in_strm, eosio::chain::snapshot_global_property_object::minimum_version_with_extension);
 
          eosio::chain::snapshot_global_property_object row;
          BOOST_CHECK_NO_THROW(fc::raw::unpack(unpack_strm, row));

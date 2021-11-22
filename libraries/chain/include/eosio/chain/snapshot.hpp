@@ -158,8 +158,13 @@ namespace eosio { namespace chain {
    using snapshot_writer_ptr = std::shared_ptr<snapshot_writer>;
 
    namespace detail {
+      struct snapshot_version_traits{
+         static constexpr uint32_t maximum_version_with_signed_block_v0 = 3;
+         static constexpr uint32_t minimum_version_with_state_extension = 6;
+      };
+
       struct abstract_snapshot_row_reader {
-         virtual void provide(versioned_unpack_stream<std::istream>& in) const = 0;
+         virtual void provide(versioned_unpack_stream<std::istream, snapshot_version_traits>& in) const = 0;
          virtual void provide(const fc::variant&) const = 0;
          virtual std::string row_type_name() const = 0;
       };
@@ -198,7 +203,7 @@ namespace eosio { namespace chain {
          explicit snapshot_row_reader( T& data )
          :data(data) {}
 
-         void provide(versioned_unpack_stream<std::istream>& in) const override {
+         void provide(versioned_unpack_stream<std::istream, snapshot_version_traits>& in) const override {
             row_validation_helper::apply(data, [&in,this](){
                fc::raw::unpack(in, data);
             });

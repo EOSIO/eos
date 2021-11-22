@@ -264,6 +264,8 @@ namespace detail {
 template <typename VersionedStream, typename Class>
 struct unpack_block_header_state_derived_visitor : fc::reflector_init_visitor<Class> {
 
+   using VersionTraits = typename VersionedStream::VersionTraits;
+
    unpack_block_header_state_derived_visitor(Class& _c, VersionedStream& _s)
        : fc::reflector_init_visitor<Class>(_c)
        , s(_s) {}
@@ -272,16 +274,18 @@ struct unpack_block_header_state_derived_visitor : fc::reflector_init_visitor<Cl
    inline void operator()(const char* name) const {
       try {
          if constexpr (std::is_same_v<eosio::chain::block_header_state::state_extension_t,
-                                      std::decay_t<decltype(this->obj.*p)>>)
-            if (s.version < eosio::chain::block_header_state::minimum_snapshot_version_with_state_extension)
+                                      std::decay_t<decltype(this->obj.*p)>>){
+            if (s.version < VersionTraits::minimum_version_with_state_extension){
+               dlog("previous version snapshot or fork_db. skipping state_extension field");
                return;
-
+            }
+         }
          fc::raw::unpack(s, this->obj.*p);
+         dlog("${n} = ${v}", ("class", typeid(Class).name())("n",name)("v",this->obj.*p));
       }
       FC_RETHROW_EXCEPTIONS(warn, "Error unpacking field ${field}", ("field", name))
    }
 
- private:
    VersionedStream& s;
 };
 
@@ -290,6 +294,7 @@ struct unpack_object_visitor<VersionedStream, eosio::chain::block_header_state>
     : unpack_block_header_state_derived_visitor<VersionedStream, eosio::chain::block_header_state> {
    using Base = unpack_block_header_state_derived_visitor<VersionedStream, eosio::chain::block_header_state>;
    using Base::Base;
+   using VersionTraits = typename VersionedStream::VersionTraits;
 };
 
 } // namespace detail

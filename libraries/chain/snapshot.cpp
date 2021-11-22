@@ -328,7 +328,7 @@ void istream_snapshot_reader::set_section( const string& section_name ) {
 }
 
 bool istream_snapshot_reader::read_row( detail::abstract_snapshot_row_reader& row_reader ) {
-   versioned_unpack_stream unpack_strm(snapshot, chain_snapshot_version);
+   versioned_unpack_stream<std::decay_t<decltype(snapshot)>, detail::snapshot_version_traits> unpack_strm(snapshot, chain_snapshot_version);
    row_reader.provide(unpack_strm);
    return ++cur_row < num_rows;
 }
