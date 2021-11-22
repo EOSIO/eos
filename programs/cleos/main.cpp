@@ -3895,7 +3895,7 @@ int main( int argc, char** argv ) {
    std::vector<string> extra_signatures;
    CLI::callback_t extra_sig_opt_callback = [&](CLI::results_t res) {
       vector<string>::iterator itr;
-      for (itr = res.begin(); itr != res.end(); itr++) {
+      for (itr = res.begin(); itr != res.end(); ++itr) {
          extra_signatures.push_back(*itr);
       }
       return true;
@@ -3907,21 +3907,17 @@ int main( int argc, char** argv ) {
 
    trxSubcommand->callback([&] {
       fc::variant trx_var = json_from_file_or_string(trx_to_push);
+      signed_transaction trx;
       try {
-         signed_transaction trx = trx_var.as<signed_transaction>();
-         for (const string& sig : extra_signatures) {
-            trx.signatures.push_back(fc::crypto::signature(sig));
-         }
-         std::cout << fc::json::to_pretty_string( push_transaction( trx, signing_keys_opt.get_keys() )) << std::endl;
+         trx = trx_var.as<signed_transaction>();
       } catch( const std::exception& ) {
          // unable to convert so try via abi
-         signed_transaction trx;
          abi_serializer::from_variant( trx_var, trx, abi_serializer_resolver, abi_serializer::create_yield_function( abi_serializer_max_time ) );
-         for (const string& sig : extra_signatures) {
-            trx.signatures.push_back(fc::crypto::signature(sig));
-         }
-         std::cout << fc::json::to_pretty_string( push_transaction( trx, signing_keys_opt.get_keys() )) << std::endl;
       }
+      for (const string& sig : extra_signatures) {
+         trx.signatures.push_back(fc::crypto::signature(sig));
+      }
+      std::cout << fc::json::to_pretty_string( push_transaction( trx, signing_keys_opt.get_keys() )) << std::endl;
    });
 
    // push transactions
