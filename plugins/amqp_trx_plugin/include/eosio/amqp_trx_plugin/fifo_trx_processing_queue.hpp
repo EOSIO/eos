@@ -230,7 +230,8 @@ public:
 
    /// Should be called on each block finalize from app() thread
    void on_block_stop() {
-      if( started_ && ( allow_speculative_execution || prod_plugin_->is_producing_block() ) ) {
+      if( started_ && ( allow_speculative_execution || prod_plugin_->is_producing_block()
+                        || prod_plugin_->paused() ) ) {
          queue_.pause();
       }
    }
