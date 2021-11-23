@@ -7,8 +7,11 @@ using eosio::chain::packed_transaction;
 using eosio::chain::state_history_exception;
 
 
-void transaction_trace_cache::add_transaction(const transaction_trace_ptr& trace, const packed_transaction_ptr& transaction) {
+void transaction_trace_cache::add_transaction(const transaction_trace_ptr&  trace,
+                                              const packed_transaction_ptr& transaction) {
+   ilog("got transaction ${trx}", ("trx", transaction->id()));
    if (trace->receipt) {
+      ilog("has receipt");
       if (chain::is_onblock(*trace))
          onblock_trace.emplace(trace, transaction);
       else if (trace->failed_dtrx_trace)
