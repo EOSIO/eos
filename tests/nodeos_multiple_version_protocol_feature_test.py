@@ -79,13 +79,13 @@ try:
     # version 1.7 did not provide a default value for "--last-block-time-offset-us" so this is needed to
     # avoid dropping late blocks
     assert cluster.launch(pnodes=4, totalNodes=4, prodCount=1, totalProducers=4,
-                          extraNodeosArgs=" --plugin eosio::producer_api_plugin ",
+                          extraNodeosArgs=" --plugin eosio::producer_api_plugin --plugin eosio::trace_api_plugin --trace-no-abis",
                           useBiosBootFile=False,
                           specificExtraNodeosArgs={
                              0:"--http-max-response-time-ms 990000",
                              1:"--http-max-response-time-ms 990000",
                              2:"--http-max-response-time-ms 990000",
-                             3:"--last-block-time-offset-us -200000"},
+                             3:"--last-block-time-offset-us -200000 --plugin eosio::history_api_plugin"},
                           onlySetProds=True,
                           pfSetupPolicy=PFSetupPolicy.NONE,
                           alternateVersionLabelsFile=alternateVersionLabelsFile,
@@ -154,6 +154,8 @@ try:
     Utils.Print("+++ 1st Node should contain PREACTIVATE FEATURE +++")
     setValidityOfActTimeSubjRestriction(newNodes[1], "PREACTIVATE_FEATURE", False)
     setValidityOfActTimeSubjRestriction(newNodes[2], "PREACTIVATE_FEATURE", False)
+    # emulating =< 1.7.0 version that haven't had PREACTIVATE_FEATURE
+    setValidityOfActTimeSubjRestriction(oldNode,     "PREACTIVATE_FEATURE", False)
 
     for i in range(3):
         Utils.Print("1st node tries activatePreactivateFeature time(s): {}".format(i+1))
@@ -202,12 +204,9 @@ try:
     assert oldNode.getIrreversibleBlockNum() <= libBeforePreactivation, \
            "4th node LIB should be stuck on LIB before PREACTIVATE_FEATURE is activated"
 
-    # Restart old node with newest version
-    # Before we are migrating to new version, use --export-reversible-blocks as the old version
-    # and --import-reversible-blocks with the new version to ensure the compatibility of the reversible blocks
-    # Finally, when we restart the 4th node with the version of nodeos that supports protocol feature,
+    # Kill and restart old node with newest version
+    # When we restart the 4th node with the version of nodeos that supports protocol feature,
     # all nodes should be in sync, and the 4th node will also contain PREACTIVATE_FEATURE
-    portableRevBlkPath = os.path.join(Utils.getNodeDataDir(oldNodeId), "rev_blk_portable_format")
     oldNode.kill(signal.SIGTERM)
     # we need this step to enable node pass through the protocol feature block
     # we disabled it earlier to emulate behavior of old 1.7.0 node that haven't had PREACTIVATE_FEATURE at all.
@@ -218,7 +217,6 @@ try:
                                         deleteFlags={"--plugin" : "eosio::history_api_plugin"},
                                         nodeosPath="programs/nodeos/nodeos")
 
-    restartNode(oldNode, chainArg="--replay", nodeosPath="programs/nodeos/nodeos")
     time.sleep(2) # Give some time to replay
 
     assert areNodesInSync(allNodes), "All nodes should be in sync"
