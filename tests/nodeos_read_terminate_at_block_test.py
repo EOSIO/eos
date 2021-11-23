@@ -137,8 +137,8 @@ def checkReplay(testNode, testNodeArgs):
 
     testNode.relaunch(chainArg="--replay-blockchain", cachePopen=True)
 
-    # Check node exited without error.
-    assert testNode.popenProc.returncode == 0
+    # Wait for node to finish up.
+    time.sleep(10)
 
     # Check for the terminate at block message.
     match = re.search("--terminate-at-block=(\d+)", testNodeArgs)
