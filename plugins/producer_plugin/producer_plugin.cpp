@@ -298,7 +298,6 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
 
          // TODO: need work on the signing failure case
          _subjective_billing.abort_block();
-         unsigned_block_state.reset();
       }
 
       bool on_sync_block(const signed_block_ptr& block, bool check_connectivity) {
@@ -1126,6 +1125,7 @@ void producer_plugin::resume() {
    // re-evaluate that now
    //
    if (my->_pending_block_mode == pending_block_mode::speculating) {
+      ilog("calling abort block");
       my->abort_block();
       fc_ilog(_log, "Producer resumed. Scheduling production.");
       my->schedule_production_loop();
@@ -1168,6 +1168,7 @@ void producer_plugin::update_runtime_options(const runtime_options& options) {
    }
 
    if (check_speculating && my->_pending_block_mode == pending_block_mode::speculating) {
+      ilog("calling abort block");
       my->abort_block();
       my->schedule_production_loop();
    }
@@ -1252,6 +1253,7 @@ producer_plugin::integrity_hash_information producer_plugin::get_integrity_hash(
 
    if (chain.is_building_block()) {
       // abort the pending block
+      ilog("calling abort block");
       my->abort_block();
    } else {
       reschedule.cancel();
@@ -1655,6 +1657,7 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
          blocks_to_confirm = (uint16_t)(std::min<uint32_t>(blocks_to_confirm, (uint32_t)(hbs->block_num - hbs->dpos_irreversible_blocknum)));
       }
 
+      ilog("calling abort block");
       abort_block();
 
       auto features_to_activate = chain.get_preactivated_protocol_features();
@@ -2420,8 +2423,8 @@ bool producer_plugin_impl::accept_previous_block_if_signed() {
       auto eptr = sign_fut.get();
       if (!eptr) {
          chain_plug->chain().on_block_signed(unsigned_block_state);
-         unsigned_block_state.reset();
       }
+      unsigned_block_state.reset();
       return !eptr;
    }
 
@@ -2471,8 +2474,8 @@ void producer_plugin_impl::produce_block() {
                if (self->unsigned_block_state.get()) {                  
                   if (! eptr ) {
                      chain.on_block_signed(self->unsigned_block_state);
-                     self->unsigned_block_state.reset();
                   }
+                  self->unsigned_block_state.reset();
                }
             });
             self->sign_ready = true;
