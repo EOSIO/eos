@@ -9,7 +9,7 @@ using eosio::chain::state_history_exception;
 
 void transaction_trace_cache::add_transaction(const transaction_trace_ptr&  trace,
                                               const packed_transaction_ptr& transaction) {
-   ilog("got transaction ${trx}", ("trx", transaction->id()));
+   ilog("got transaction ${block_num} ${trx}", ("block_num", trace->block_num)("trx", transaction->id()));
    if (trace->receipt) {
       ilog("has receipt");
       if (chain::is_onblock(*trace))
@@ -42,6 +42,7 @@ std::vector<augmented_transaction_trace> transaction_trace_cache::prepare_traces
 }
 
 void transaction_trace_cache::clear() {
+   ilog("clear");
    this->cached_traces.clear();
    this->onblock_trace.reset();
 }
