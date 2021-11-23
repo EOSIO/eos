@@ -126,6 +126,7 @@ namespace eosio { namespace chain {
                        ("min", min_supported_version)
                        ("max", max_supported_version)
             );
+            ilog("forkdb version: ${ver}", ("ver", version));
 
             // The unpack_strm here is used only to unpack `block_header_state` and `block_state`. However, those two
             // classes are written to unpack based on the snapshot version; therefore,  we orient it to the snapshot version.
@@ -137,6 +138,7 @@ namespace eosio { namespace chain {
             reset( bhs );
 
             unsigned_int size; fc::raw::unpack( ds, size );
+            ilog("forkdb file has ${size} blocks", ("size", size));
             for( uint32_t i = 0, n = size.value; i < n; ++i ) {
                block_state s;
                fc::raw::unpack( unpack_strm, s );

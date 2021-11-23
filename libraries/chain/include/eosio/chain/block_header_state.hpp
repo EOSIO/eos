@@ -229,6 +229,7 @@ struct unpack_block_header_state_derived_visitor : fc::reflector_init_visitor<Cl
    inline void operator()(const char* name) const {
       try {
          fc::raw::unpack(s, this->obj.*p);
+         dlog("${n} = ${v}", ("n",name)("v",this->obj.*p));
       }
       FC_RETHROW_EXCEPTIONS(warn, "Error unpacking field ${field}", ("field", name))
    }
