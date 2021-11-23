@@ -72,7 +72,7 @@ try:
     # Create a cluster of 4 nodes, each node has 1 producer. The first 3 nodes use the latest vesion,
     # While the 4th node use the version that doesn't support protocol feature activation (i.e. 1.7.0)
     associatedNodeLabels = {
-        "3": "170"
+        "3": "alt_ver"
     }
     Utils.Print("Alternate Version Labels File is {}".format(alternateVersionLabelsFile))
     assert exists(alternateVersionLabelsFile), "Alternate version labels file does not exist"
