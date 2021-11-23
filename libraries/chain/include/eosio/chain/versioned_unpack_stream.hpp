@@ -14,14 +14,15 @@ namespace eosio { namespace chain {
 /// can be correctly unpacked. 
 ///
 /// 
-template <typename Stream>
+template <typename Stream, typename VersionTraits_>
 struct versioned_unpack_stream {
+   using VersionTraits = VersionTraits_;
 
    versioned_unpack_stream(Stream& stream, uint32_t ver)
        : strm(stream)
        , version(ver) {}
    Stream&     strm;
-   uint32_t    version; 
+   uint32_t    version;
    inline void read(char* data, std::size_t len) { strm.read(data, len); }
    inline auto get(char& c) ->decltype(strm.get(c)) { return strm.get(c); }
 };

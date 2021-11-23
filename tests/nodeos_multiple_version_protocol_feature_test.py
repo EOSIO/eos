@@ -36,17 +36,17 @@ walletMgr=WalletMgr(True)
 cluster=Cluster(walletd=True)
 cluster.setWalletMgr(walletMgr)
 
-def restartNode(node: Node, chainArg=None, addSwapFlags=None, nodeosPath=None):
+def restartNode(node: Node, chainArg=None, addSwapFlags=None, nodeosPath=None, deleteFlags={}):
     if not node.killed:
         node.kill(signal.SIGTERM)
-    isRelaunchSuccess = node.relaunch(chainArg, addSwapFlags=addSwapFlags,
+    isRelaunchSuccess = node.relaunch(chainArg, addSwapFlags=addSwapFlags, deleteFlags=deleteFlags,
                                       timeout=5, cachePopen=True, nodeosPath=nodeosPath)
     assert isRelaunchSuccess, "Fail to relaunch"
 
 def waitForOneRound():
     time.sleep(24) # We have 4 producers for this test
 
-def setValidityOfActTimeSubjRestriction(node, codename, valid):
+def setValidityOfActTimeSubjRestriction(node, codename, valid, chainArg=None, nodeosPath=None, deleteFlags={}):
     invalidActTimeSubjRestriction = {
         "earliest_allowed_activation_time": "2030-01-01T00:00:00.000",
     }
@@ -55,7 +55,7 @@ def setValidityOfActTimeSubjRestriction(node, codename, valid):
     }
     actTimeSubjRestriction = validActTimeSubjRestriction if valid else invalidActTimeSubjRestriction
     node.modifyBuiltinPFSubjRestrictions(codename, actTimeSubjRestriction)
-    restartNode(node)
+    restartNode(node, chainArg=chainArg, nodeosPath=nodeosPath, deleteFlags=deleteFlags)
 
 def waitUntilBlockBecomeIrr(node, blockNum, timeout=60):
     def hasBlockBecomeIrr():
@@ -209,10 +209,14 @@ try:
     # all nodes should be in sync, and the 4th node will also contain PREACTIVATE_FEATURE
     portableRevBlkPath = os.path.join(Utils.getNodeDataDir(oldNodeId), "rev_blk_portable_format")
     oldNode.kill(signal.SIGTERM)
-    # Note, for the following relaunch, these will fail to relaunch immediately (expected behavior of export/import), so the chainArg will not replace the old cmd
-    oldNode.relaunch(chainArg="--export-reversible-blocks {}".format(portableRevBlkPath), timeout=1)
-    oldNode.relaunch(chainArg="--import-reversible-blocks {}".format(portableRevBlkPath), timeout=1, nodeosPath="programs/nodeos/nodeos")
-    os.remove(portableRevBlkPath)
+    # we need this step to enable node pass through the protocol feature block
+    # we disabled it earlier to emulate behavior of old 1.7.0 node that haven't had PREACTIVATE_FEATURE at all.
+    setValidityOfActTimeSubjRestriction(oldNode, 
+                                        "PREACTIVATE_FEATURE", 
+                                        True, 
+                                        chainArg="--replay-blockchain",
+                                        deleteFlags={"--plugin" : "eosio::history_api_plugin"},
+                                        nodeosPath="programs/nodeos/nodeos")
 
     restartNode(oldNode, chainArg="--replay", nodeosPath="programs/nodeos/nodeos")
     time.sleep(2) # Give some time to replay
