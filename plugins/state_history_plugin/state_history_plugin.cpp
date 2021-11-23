@@ -568,7 +568,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       fc_add_tag(ship_accept_span, "block_id", block_state->id);
       fc_add_tag(ship_accept_span, "block_num", block_state->block_num);
       fc_add_tag(ship_accept_span, "block_time", block_state->block->timestamp.to_time_point());
-      
+
       this->store(block_state, ship_accept_span);
 
       sessions.for_each([&block_state, &ship_accept_span](auto& s) {
