@@ -27,6 +27,26 @@ class signature_provider_plugin_impl {
          };
       }
 
+      signature_provider_plugin::signature_provider_type
+      make_delay_key_signature_provider(const std::string& spec_data, const chain::public_key_type& pubkey) const {
+         std::vector<string> params;
+         long delay_ms = 0.0;
+         chain::private_key_type key;
+
+         boost::split(params,spec_data,boost::is_any_of("|"));
+         EOS_ASSERT(params.size() <= 2, chain::plugin_config_exception, "Too many extra fields given to DELAY provider via '|' parameter");
+         if(params.size() == 2) {
+            key = chain::private_key_type(params[0]);
+            EOS_ASSERT(pubkey == key.get_public_key(), chain::plugin_config_exception, "Private key does not match given public key for ${pub}", ("pub", pubkey));
+            delay_ms = std::stol(params[1]);
+         }
+
+         return [key, delay_ms]( const chain::digest_type& digest ) {
+            std::this_thread::sleep_for(std::chrono::milliseconds{delay_ms});
+            return key.sign(digest);
+         };
+      }
+
 #ifdef __APPLE__
       signature_provider_plugin::signature_provider_type
       make_se_signature_provider(const chain::public_key_type pubkey) const {
@@ -99,10 +119,12 @@ void signature_provider_plugin::set_program_options(options_description&, option
 const char* const signature_provider_plugin::signature_provider_help_text() const {
    return "Key=Value pairs in the form <public-key>=<provider-spec>\n"
           "Where:\n"
-          "   <public-key>    \tis a string form of a vaild EOSIO public key\n\n"
+          "   <public-key>    \tis a string form of a valid EOSIO public key\n\n"
           "   <provider-spec> \tis a string in the form <provider-type>:<data>\n\n"
           "   <provider-type> \tis one of the types below\n\n"
           "   KEY:<data>      \tis a string form of a valid EOSIO private key which maps to the provided public key\n\n"
+          "   DELAY:<data>    \tis a string form of a valid EOSIO private key which maps to the provided public key, "
+                               "'data' is in the form <key_material>|<delay_in_fractional_ms>\n\n"
           "   KEOSD:<data>    \tis the URL where keosd is available and the approptiate wallet(s) are unlocked"
 #ifdef __APPLE__
           "\n\n"
@@ -141,6 +163,8 @@ signature_provider_plugin::signature_provider_for_specification(const std::strin
       EOS_ASSERT(pubkey == priv.get_public_key(), chain::plugin_config_exception, "Private key does not match given public key for ${pub}", ("pub", pubkey));
       return std::make_pair(pubkey, my->make_key_signature_provider(priv));
    }
+   else if(spec_type_str == "DELAY")
+      return std::make_pair(pubkey, my->make_delay_key_signature_provider(spec_data, pubkey));
    else if(spec_type_str == "KEOSD")
       return std::make_pair(pubkey, my->make_keosd_signature_provider(spec_data, pubkey));
 #ifdef ENABLE_TPM
