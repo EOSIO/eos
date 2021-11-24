@@ -482,9 +482,13 @@ class undo_stack {
    void set_revision(uint64_t revision, bool write_now = true) {
       if (state.undo_stack.size() != 0)
          throw exception("cannot set revision while there is an existing undo stack");
-      if (revision & 0x8000000000000000)
+      int64_t revision_signed;
+      // casting between signed and unsigned when the value is out of range is undefined behavior,
+      // use memcpy instead. 
+      memcpy(&revision_signed, &revision, sizeof(revision));
+      if (revision_signed < 0)
          throw exception("revision to set is too high");
-      if (static_cast<int64_t>(revision) < state.revision)
+      if (revision_signed < state.revision)
          throw exception("revision cannot decrease");
       state.revision = revision;
       if (write_now)
