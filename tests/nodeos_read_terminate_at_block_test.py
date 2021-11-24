@@ -141,18 +141,16 @@ def checkReplay(testNode, testNodeArgs):
     time.sleep(10)
 
     # Check for the terminate at block message.
-    match = re.search("--terminate-at-block=(\d+)", testNodeArgs)
+    match = re.search(r"--terminate-at-block=(\d+)", testNodeArgs)
     termAtBlock = int(match.group(1))
 
     termMsg = "Reached configured maximum block {}; terminating".format(
         termAtBlock
     )
 
-    with open(testNode.popenProc.errfile.name, 'r') as f:
-        assert termMsg in f.read()
+    assert checkLog(testNode.popenProc.errfile.name, termMsg)
 
 
-# Wrapper function to execute test
 def getBlockNumInfo(testNode):
     head = None
     lib = None
@@ -172,6 +170,26 @@ def getBlockNumInfo(testNode):
 
     assert head and lib, "Could not retrieve head and lib with getInfo()"
     return head, lib
+
+
+def checkLog(log, message, sleepDuration=1, maxAttempt=10):
+    attemptCnt = 0
+    found = False
+
+    while not found and attemptCnt < maxAttempt:
+        try:
+            with open(log, "r") as f:
+                found = message in f.read()
+
+        except OSError:
+            pass
+
+        if not found:
+            time.sleep(sleepDuration)
+
+        attemptCnt = attemptCnt + 1
+
+    return found
 
 
 def checkIrreversible(head, lib):
@@ -198,8 +216,8 @@ try:
     specificNodeosArgs = {
         0 : "--enable-stale-production",
         1 : "--read-mode irreversible --terminate-at-block=250",
-        2 : "--read-mode speculative --terminate-at-block=500",
-        3 : "--read-mode head --terminate-at-block=750",
+        2 : "--read-mode speculative --terminate-at-block=550",
+        3 : "--read-mode head --terminate-at-block=850",
     }
     traceNodeosArgs = " --plugin eosio::trace_api_plugin --trace-no-abis "
 
