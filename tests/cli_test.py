@@ -339,7 +339,7 @@ def cleos_abi_file_test():
 
     # push action token transfer with option `--abi-file`
     try:
-        data_dir = "./data"
+        data_dir = "./taf_data"
         cmd = "./programs/nodeos/nodeos -e -p eosio --plugin eosio::producer_plugin --plugin eosio::producer_api_plugin --plugin eosio::chain_api_plugin --plugin eosio::http_plugin --access-control-allow-origin=* --http-validate-host=false " + "--data-dir " + data_dir
         pNodeos = subprocess.Popen(cmd.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
@@ -348,15 +348,15 @@ def cleos_abi_file_test():
         PUBLIC_KEY  = "EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"
         PRIVATE_KEY = "5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3"
 
-        wallet_name = "my_wallet"
+        wallet_name = "taf_wallet"
         cmd = "./programs/cleos/cleos wallet create --name " + wallet_name + " --to-console"
         subprocess.check_output(cmd.split())
         cmd = "./programs/cleos/cleos wallet import --name " + wallet_name + " --private-key " + PRIVATE_KEY
         subprocess.check_output(cmd.split())
 
-        cmd = "./programs/cleos/cleos -u http://127.0.0.1:8888 --no-auto-keosd create account eosio eosio.token " + PUBLIC_KEY
+        cmd = "./programs/cleos/cleos -u http://127.0.0.1:8888 create account eosio eosio.token " + PUBLIC_KEY
         subprocess.check_output(cmd.split())
-        cmd = "./programs/cleos/cleos -u http://127.0.0.1:8888 --no-auto-keosd create account eosio alice " + PUBLIC_KEY
+        cmd = "./programs/cleos/cleos -u http://127.0.0.1:8888 create account eosio alice " + PUBLIC_KEY
         subprocess.check_output(cmd.split())
 
         cmd = ['./programs/cleos/cleos', '-u', 'http://127.0.0.1:8888', '--print-request', '--abi-file', token_abi_file_arg, 'push', 'action', 'eosio.token', 'transfer', '[ "eosio.token", "alice", "5.0000 SYS", "m" ]', '-p', 'eosio.token']
