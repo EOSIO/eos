@@ -144,7 +144,8 @@ def cleos_abi_file_test():
     account = 'eosio.token'
     action = 'transfer'
     unpacked_action_data = '{"from":"aaa","to":"bbb","quantity":"10.0000 SYS","memo":"hello"}'
-    cmd = ['./programs/cleos/cleos', 'convert', 'pack_action_data', account, action, unpacked_action_data]
+    # use URL http://127.0.0.1:12345 to make sure cleos not to connect to any running nodeos
+    cmd = ['./programs/cleos/cleos', '-u', 'http://127.0.0.1:12345', 'convert', 'pack_action_data', account, action, unpacked_action_data]
     outs = None
     errs = None
     try:
@@ -157,7 +158,6 @@ def cleos_abi_file_test():
     assert(b'Failed to connect to nodeos' in errs)
 
     # invalid option --abi-file
-    # use URL http://127.0.0.1:12345 to make sure cleos not to connect to any local running nodeos
     invalid_abi_arg = 'eosio.token' + ' ' + token_abi_path
     cmd = ['./programs/cleos/cleos', '-u', 'http://127.0.0.1:12345', '--abi-file', invalid_abi_arg, 'convert', 'pack_action_data', account, action, unpacked_action_data]
     outs = None
