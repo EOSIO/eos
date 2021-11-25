@@ -66,9 +66,14 @@ struct amqp_trx_plugin_impl : std::enable_shared_from_this<amqp_trx_plugin_impl>
    std::string amqp_trx_address;
    std::string amqp_trx_queue;
    ack_mode acked = ack_mode::executed;
-   std::map<uint32_t, eosio::amqp_handler::delivery_tag_t> tracked_delivery_tags; // block, highest delivery_tag for block
-   std::string block_uuid;
-   std::set<std::string> tracked_block_uuid_rks;
+
+   struct block_tracking {
+      eosio::amqp_handler::delivery_tag_t tracked_delivery_tag; // highest delivery_tag for block
+      std::string block_uuid;
+      std::set<std::string> tracked_block_uuid_rks;
+   };
+   std::map<uint32_t, block_tracking> tracked_blocks;
+
    uint32_t trx_processing_queue_size = 1000;
    uint32_t trx_retry_interval_us = 500 * 1000; // 500 milliseconds
    uint32_t trx_retry_timeout_us = 60 * 1000 * 1000; // 60 seconds
@@ -121,8 +126,7 @@ struct amqp_trx_plugin_impl : std::enable_shared_from_this<amqp_trx_plugin_impl>
             started_consuming = true;
          }
 
-         block_uuid = boost::uuids::to_string( boost::uuids::random_generator()() );
-         tracked_block_uuid_rks.clear();
+         tracked_blocks[bn] = block_tracking{.block_uuid = boost::uuids::to_string( boost::uuids::random_generator()() )};
          trx_queue_ptr->on_block_start();
       } else {
          if( prod_plugin->paused() && started_consuming ) {
@@ -146,24 +150,23 @@ struct amqp_trx_plugin_impl : std::enable_shared_from_this<amqp_trx_plugin_impl>
 
    void on_block_abort( uint32_t bn ) {
       trx_queue_ptr->on_block_stop();
-      tracked_block_uuid_rks.clear();
-      block_uuid.clear();
+      const auto& itr = tracked_blocks.find(bn);
+      if( itr != tracked_blocks.end() )
+         tracked_blocks.erase(itr);
    }
 
    void on_accepted_block( const chain::block_state_ptr& bsp ) {
-      if( acked == ack_mode::in_block ) {
-         const auto& entry = tracked_delivery_tags.find( bsp->block_num );
-         if( entry != tracked_delivery_tags.end() ) {
-            amqp_trx->ack( entry->second, true );
-            tracked_delivery_tags.erase( entry );
-         }
-      }
       trx_queue_ptr->on_block_stop();
-      for( auto& e : tracked_block_uuid_rks ) {
-         trace_plug.publish_block_uuid( std::move( e ), block_uuid, bsp->id );
+      const auto& entry = tracked_blocks.find( bsp->block_num );
+      if( entry != tracked_blocks.end() ) {
+         if( acked == ack_mode::in_block ) {
+            amqp_trx->ack( entry->second.tracked_delivery_tag, true );
+         }
+         for( auto& e : entry->second.tracked_block_uuid_rks ) {
+            trace_plug.publish_block_uuid( std::move( e ), entry->second.block_uuid, bsp->id );
+         }
+         tracked_blocks.erase(entry);
       }
-      tracked_block_uuid_rks.clear();
-      block_uuid.clear();
    }
 
 private:
@@ -208,6 +211,8 @@ private:
                if( trace->receipt ) {
                   fc_add_tag(trx_span, "status", std::string(trace->receipt->status));
                }
+               auto itr = my->tracked_blocks.find(trace->block_num);
+               EOS_ASSERT(itr != my->tracked_blocks.end(), chain::unknown_block_exception, "amqp_trx_plugin attempted to update tracking for unknown block ${block_num}", ("block_num", trace->block_num));
                if( trace->except ) {
                   fc_add_tag(trx_span, "error", trace->except->to_string());
                   dlog( "accept_transaction ${id} exception: ${e}", ("id", trx->id())("e", trace->except->to_string()) );
@@ -219,14 +224,14 @@ private:
                   if( my->acked == ack_mode::executed ) {
                      my->amqp_trx->ack( delivery_tag );
                   } else if( my->acked == ack_mode::in_block ) {
-                     my->tracked_delivery_tags[trace->block_num] = delivery_tag;
+                     itr->second.tracked_delivery_tag = delivery_tag;
                   }
                   if( !block_uuid_rk.empty() ) {
-                     my->tracked_block_uuid_rks.emplace( std::move( block_uuid_rk ) );
+                     itr->second.tracked_block_uuid_rks.emplace( std::move( block_uuid_rk ) );
                   }
                }
                if( !reply_to.empty() ) {
-                  my->trace_plug.publish_result( std::move(reply_to), std::move(correlation_id), my->block_uuid, trx, trace );
+                  my->trace_plug.publish_result( std::move(reply_to), std::move(correlation_id), itr->second.block_uuid, trx, trace );
                }
             }
          } );
