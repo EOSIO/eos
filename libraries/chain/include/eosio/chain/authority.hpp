@@ -99,7 +99,7 @@ struct key_weight {
    }
 
    friend bool operator < ( const key_weight& lhs, const key_weight& rhs ) {
-      return lhs.key < rhs.key;
+      return tie( lhs.key, lhs.weight ) < tie( rhs.key, rhs.weight );
    }
 };
 
