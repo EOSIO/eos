@@ -3617,6 +3617,17 @@ read_only::get_all_accounts( const get_all_accounts_params& params ) const
    return result;
 }
 
+read_only::get_consensus_parameters_results
+read_only::get_consensus_parameters(const get_consensus_parameters_params& ) const {
+   get_consensus_parameters_results results;
+
+   results.chain_config = db.get_global_properties().configuration;
+   results.kv_database_config = db.get_global_properties().kv_configuration;
+   results.wasm_config = db.get_global_properties().wasm_configuration;
+
+   return results;
+}
+
 } // namespace chain_apis
 
 fc::variant chain_plugin::get_log_trx_trace(const transaction_trace_ptr& trx_trace ) const {
