@@ -277,7 +277,7 @@ add_test(NAME rodeos_multi_ship_kill_clean_restart_idle_unixsocket_test COMMAND 
 set_property(TEST rodeos_multi_ship_kill_clean_restart_idle_unixsocket_test PROPERTY LABELS nonparallelizable_tests)
 
 add_test(NAME rodeos_multi_ship_kill_clean_restart_load_unixsocket_test COMMAND tests/rodeos_multi_ship_kill_restart.py -v --clean-run --dump-error-detail --clean-restart --load-test-enable --unix-socket WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
-set_property(TEST rodeos_multi_ship_kill_clean_restart_load_test PROPERTY LABELS nonparallelizable_tests)
+set_property(TEST rodeos_multi_ship_kill_clean_restart_load_unixsocket_test PROPERTY LABELS nonparallelizable_tests)
 
 if("eos-vm-oc" IN_LIST EOSIO_WASM_RUNTIMES)
 
