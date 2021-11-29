@@ -230,9 +230,6 @@ BOOST_AUTO_TEST_CASE(update_auth_unknown_private_key) {
       TESTER chain;
       chain.create_account(name("alice"));
 
-      // Change owner permission
-      const auto new_owner_priv_key = chain.get_private_key(name("alice"), "new_owner");
-
       // public key with no corresponding private key
       fc::ecc::public_key_data data;
       data.data[0] = 0x80; // not necessary, 0 also works
