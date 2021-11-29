@@ -8,6 +8,7 @@
 #include <eosio/chain/exceptions.hpp>
 #include <eosio/chain/wast_to_wasm.hpp>
 #include <eosio/chain_plugin/chain_plugin.hpp>
+#include <eosio/chain/bit.hpp>
 
 #include <contracts.hpp>
 
@@ -27,23 +28,6 @@ using namespace eosio;
 using namespace eosio::chain;
 using namespace eosio::testing;
 using namespace fc;
-
-template <class To, class From>
-std::enable_if_t<
-    sizeof(To) == sizeof(From) &&
-    std::is_trivially_copyable_v<From> &&
-    std::is_trivially_copyable_v<To>,
-    To>
-// constexpr support needs compiler magic
-bit_cast(const From& src) noexcept
-{
-    static_assert(std::is_trivially_constructible_v<To>,
-        "This implementation additionally requires destination type to be trivially constructible");
- 
-    To dst;
-    std::memcpy(&dst, &src, sizeof(To));
-    return dst;
-}
 
 BOOST_AUTO_TEST_SUITE(get_table_tests)
 
@@ -633,14 +617,14 @@ BOOST_AUTO_TEST_CASE_TEMPLATE( get_table_next_key_test, TESTER_T, backing_store_
    BOOST_REQUIRE(res_4.rows.size() > 0);
    double secdouble_res_value = res_4.rows[0].get_object()["secdouble"].as<double>();
 
-   BOOST_CHECK(bit_cast<float64_t>(secdouble_res_value) == secdouble_expected_value);
+   BOOST_CHECK(std::bit_cast<float64_t>(secdouble_res_value) == secdouble_expected_value);
    BOOST_TEST(res_4.next_key == "7.00000000000000000");
    params.lower_bound = res_4.next_key;
    auto more2_res_4 = plugin.get_table_rows(params);
    float64_t more2_secdouble_expected_value = ui64_to_f64(7);
    BOOST_REQUIRE(more2_res_4.rows.size() > 0);
    double more2_secdouble_res_value = more2_res_4.rows[0].get_object()["secdouble"].as<double>();
-   BOOST_CHECK(bit_cast<float64_t>(more2_secdouble_res_value) == more2_secdouble_expected_value);
+   BOOST_CHECK(std::bit_cast<float64_t>(more2_secdouble_res_value) == more2_secdouble_expected_value);
 
    // float128 secondary key type
    params.key_type = "float128";

@@ -6,6 +6,7 @@
 #include <eosio/chain/webassembly/eos-vm-oc/eos-vm-oc.hpp>
 #include <eosio/chain/webassembly/eos-vm-oc/compile_monitor.hpp>
 #include <eosio/chain/exceptions.hpp>
+#include <eosio/chain/bit.hpp>
 
 #include <boost/iostreams/copy.hpp>
 #include <boost/iostreams/device/file_descriptor.hpp>
@@ -347,7 +348,7 @@ code_cache_base::code_cache_base(const boost::filesystem::path data_dir, const e
       boost::iostreams::file_descriptor_source source(_cache_file_fd, boost::iostreams::never_close_handle);
       boost::iostreams::array_sink sink((char*)load_region.get_address(), load_region.get_size());
       std::streamsize copied = boost::iostreams::copy(source, sink, 1024*1024);
-      EOS_ASSERT(static_cast<size_t>(copied) >= on_disk_size, database_exception, "Failed to preload code cache memory");
+      EOS_ASSERT(std::bit_cast<size_t>(copied) >= on_disk_size, database_exception, "Failed to preload code cache memory");
    }
 
    //load up the previous cache index

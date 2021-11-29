@@ -1855,7 +1855,7 @@ struct key_converter<IntType, std::enable_if_t<std::is_integral_v<IntType>>> {
 
    static IntType value_from_hex(const std::string& bytes_in_hex) {
       auto unsigned_val = unhex<std::make_unsigned_t<IntType>>(bytes_in_hex);
-      if (unsigned_val > static_cast<decltype(unsigned_val)>(std::numeric_limits<IntType>::max())) {
+      if (std::bit_cast<IntType> (unsigned_val) < 0) {
          return unsigned_val + static_cast<std::make_unsigned_t<IntType>>(std::numeric_limits<IntType>::min());
       } else {
          return unsigned_val + std::numeric_limits<IntType>::min();
