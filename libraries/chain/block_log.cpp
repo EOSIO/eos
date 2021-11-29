@@ -1336,8 +1336,8 @@ namespace eosio { namespace chain {
 
       fc::temp_directory temp_dir;
       bfs::path temp_path = temp_dir.path();
-      uint32_t start_block, end_block = 0;
-      uint32_t version;
+      uint32_t start_block=0, end_block = 0;
+      uint32_t version = 0;
 
       bfs::path temp_block_log = temp_path / "blocks.log";
       bfs::path temp_block_index  = temp_path / "blocks.index";
