@@ -27,7 +27,7 @@ from core_symbol import CORE_SYMBOL
 
 args = TestHelper.parse_args({"--host","--port","--prod-count","--defproducera_prvt_key","--defproducerb_prvt_key"
                               ,"--dump-error-details","--dont-launch","--keep-logs","-v","--leave-running","--only-bios","--clean-run"
-                              ,"--sanity-test","--wallet-port","--amqp-address"})
+                              ,"--sanity-test","--wallet-port","--amqp-address", "--signing-delay"})
 server=args.host
 port=args.port
 debug=args.v
@@ -43,6 +43,7 @@ killAll=args.clean_run
 sanityTest=args.sanity_test
 walletPort=args.wallet_port
 amqpAddr=args.amqp_address
+signing_delay=args.signing_delay
 
 Utils.Debug=debug
 localTest=True if server == TestHelper.LOCAL_HOST else False
@@ -74,7 +75,7 @@ try:
                                       1 : " --backing-store=rocksdb" }
         else:
             cluster.createAMQPQueue("trx")
-            specificExtraNodeosArgs={ 0: "--backing-store=chainbase --plugin eosio::amqp_trx_plugin --amqp-trx-address %s" % (amqpAddr),
+            specificExtraNodeosArgs={ 0: "--backing-store=chainbase --plugin eosio::amqp_trx_plugin --amqp-trx-address %s --signing-delay %d" % (amqpAddr, signing_delay),
                                       1 : " --backing-store=rocksdb" }
         if cluster.launch(totalNodes=3, prodCount=prodCount, onlyBios=onlyBios, dontBootstrap=dontBootstrap, specificExtraNodeosArgs=specificExtraNodeosArgs) is False:
             cmdError("launcher")
