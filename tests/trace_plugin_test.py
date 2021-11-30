@@ -2,7 +2,7 @@
 import json
 import time
 import unittest
-import argparse
+import sys
 
 from testUtils import Utils
 from Cluster import Cluster
@@ -106,8 +106,8 @@ class TraceApiPluginTest(unittest.TestCase):
         self.cleanEnv(self, shouldCleanup=False)   # not cleanup to save log in case for further investigation
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Trace api plugin test')
-    parser.add_argument("--signing-delay", type=int, help="signing delay in milliseconds", default=0)
-    args = parser.parse_args()
-    signing_delay = args.signing_delay
+    num_args = len(sys.argv)
+    if num_args > 2 and sys.argv[num_args-2] == "--signing-delay":
+        signing_delay = sys.argv.pop()
+        sys.argv.pop()
     unittest.main()
