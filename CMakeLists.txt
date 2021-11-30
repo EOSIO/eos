@@ -36,6 +36,8 @@ set( KEY_STORE_EXECUTABLE_NAME keosd )
 set( RODEOS_EXECUTABLE_NAME rodeos )
 set( TESTER_EXECUTABLE_NAME eosio-tester )
 
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror -Wno-unused-command-line-argument")
+
 # http://stackoverflow.com/a/18369825
 if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
     if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 8.0)
@@ -45,8 +47,9 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR "${CMAKE_CXX_COMPILER_ID}
     if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 5.0)
         message(FATAL_ERROR "Clang version must be at least 5.0!")
     endif()
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wsign-compare -Wrange-loop-analysis")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wsign-compare -Wrange-loop-analysis -Wno-unknown-warning-option")
 endif()
+
 
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "AppleClang")
   set(CMAKE_VISIBILITY_INLINES_HIDDEN ON)
@@ -109,7 +112,7 @@ if( APPLE AND UNIX )
 # Apple Specific Options Here
     message( STATUS "Configuring EOSIO on macOS" )
     set( CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -Wall -Wno-deprecated-declarations" )
-    set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wno-deprecated-declarations" )
+    set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wno-deprecated-declarations -Wsign-compare" )
 else()
     # Linux Specific Options Here
     message( STATUS "Configuring EOSIO on Linux" )
@@ -121,7 +124,7 @@ else()
 
     if( "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" )
         if( CMAKE_CXX_COMPILER_VERSION VERSION_EQUAL 4.0.0 OR CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 4.0.0 )
-            set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-invalid-partial-specialization" )
+            set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-invalid-partial-specialization -Wsign-compare" )
         endif()
     endif()
 endif()
