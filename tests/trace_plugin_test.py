@@ -2,6 +2,7 @@
 import json
 import time
 import unittest
+import argparse
 
 from testUtils import Utils
 from Cluster import Cluster
@@ -9,6 +10,8 @@ from TestHelper import TestHelper
 from Node import Node
 from WalletMgr import WalletMgr
 from core_symbol import CORE_SYMBOL
+
+signing_delay = 0
 
 class TraceApiPluginTest(unittest.TestCase):
     sleep_s = 1
@@ -29,7 +32,7 @@ class TraceApiPluginTest(unittest.TestCase):
     # start keosd and nodeos
     def startEnv(self) :
         account_names = ["alice", "bob", "charlie"]
-        traceNodeosArgs = " --plugin eosio::trace_api_plugin --trace-no-abis --trace-dir=."
+        traceNodeosArgs = " --plugin eosio::trace_api_plugin --trace-no-abis --trace-dir=. --signing-delay {}".format(signing_delay)
         self.cluster.launch(totalNodes=1, extraNodeosArgs=traceNodeosArgs)
         self.walletMgr.launch()
         testWalletName="testwallet"
@@ -103,4 +106,8 @@ class TraceApiPluginTest(unittest.TestCase):
         self.cleanEnv(self, shouldCleanup=False)   # not cleanup to save log in case for further investigation
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='Trace api plugin test')
+    parser.add_argument("--signing-delay", type=int, help="signing delay in milliseconds", default=0)
+    args = parser.parse_args()
+    signing_delay = args.signing_delay
     unittest.main()
