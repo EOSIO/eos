@@ -33,7 +33,7 @@ import time
 ###############################################################
 
 # Parse command line arguments
-args = TestHelper.parse_args({"-v","--clean-run","--dump-error-details","--leave-running","--keep-logs"})
+args = TestHelper.parse_args({"-v","--clean-run","--dump-error-details","--leave-running","--keep-logs", "--signing-delay"})
 Utils.Debug = args.v
 killAll=args.clean_run
 dumpErrorDetails=args.dump_error_details
@@ -41,6 +41,7 @@ dontKill=args.leave_running
 killEosInstances=not dontKill
 killWallet=not dontKill
 keepLogs=args.keep_logs
+signing_delay=args.signing_delay
 
 walletMgr=WalletMgr(True)
 cluster=Cluster(walletd=True)
@@ -60,7 +61,7 @@ try:
         useBiosBootFile=False,
         loadSystemContract=False,
         specificExtraNodeosArgs={
-            0: "--plugin eosio::state_history_plugin --trace-history --disable-replay-opts --sync-fetch-span 200 --state-history-endpoint 127.0.0.1:8080 --plugin eosio::net_api_plugin --enable-stale-production",
+            0: "--plugin eosio::state_history_plugin --trace-history --disable-replay-opts --sync-fetch-span 200 --state-history-endpoint 127.0.0.1:8080 --plugin eosio::net_api_plugin --enable-stale-production --signing-delay {}".format(signing_delay) ,
             2: "--validation-mode light --p2p-reject-incomplete-blocks 0"})
 
     producerNodeIndex = 0

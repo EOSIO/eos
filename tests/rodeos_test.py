@@ -35,7 +35,7 @@ extraArgs=AppArgs()
 extraArgs.add_bool("--eos-vm-oc-enable", "Use OC for rodeos")
 
 # Parse command line arguments
-args = TestHelper.parse_args({"-v","--clean-run","--dump-error-details","--leave-running","--keep-logs"}, extraArgs)
+args = TestHelper.parse_args({"-v","--clean-run","--dump-error-details","--leave-running","--keep-logs", "--signing-delay"}, extraArgs)
 Utils.Debug = args.v
 killAll=args.clean_run
 dumpErrorDetails=args.dump_error_details
@@ -46,6 +46,7 @@ keepLogs=args.keep_logs
 stateHistoryEndpoint = "127.0.0.1:8080"
 stateHistoryStride = 10
 enableOC=args.eos_vm_oc_enable
+signing_delay=args.signing_delay
 
 loggingFile="logging.json"
 
@@ -186,7 +187,8 @@ try:
             0: ("--plugin eosio::state_history_plugin --trace-history --chain-state-history --disable-replay-opts "
                 "--state-history-stride {0} " 
                 "--state-history-endpoint {1} "
-                "--plugin eosio::net_api_plugin --wasm-runtime eos-vm-jit -l logging.json").format(stateHistoryStride, stateHistoryEndpoint)})
+                "--plugin eosio::net_api_plugin --wasm-runtime eos-vm-jit -l logging.json " 
+                "--signing-delay {2}").format(stateHistoryStride, stateHistoryEndpoint, signing_delay)})
 
     producerNodeIndex = 0
     producerNode = cluster.getNode(producerNodeIndex)

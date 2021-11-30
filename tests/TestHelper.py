@@ -113,6 +113,8 @@ class TestHelper(object):
             parser.add_argument("--sanity-test", help="Validates nodeos and kleos are in path and can be started up.", action='store_true')
         if "--alternate-version-labels-file" in includeArgs:
             parser.add_argument("--alternate-version-labels-file", type=str, help="Provide a file to define the labels that can be used in the test and the path to the version installation associated with that.")
+        if "--signing-delay" in includeArgs:
+            parser.add_argument("--signing-delay", type=int, help="signing delay in milliseconds", default=0)
 
         for arg in applicationSpecificArgs.args:
             if arg.type is not None:
