@@ -9,6 +9,7 @@ import re
 import os
 import time
 import shutil
+import signal
 
 
 def nodeos_help_test():
@@ -329,7 +330,7 @@ def cleos_abi_file_test():
 
         wallet_name = "taf_wallet"
         cmd = "./programs/cleos/cleos wallet create --name " + wallet_name + " --to-console"
-        processCleosCommand(cmd.split())
+        pWallet = subprocess.Popen(cmd.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         cmd = "./programs/cleos/cleos wallet import --name " + wallet_name + " --private-key " + PRIVATE_KEY
         processCleosCommand(cmd.split())
 
@@ -349,7 +350,7 @@ def cleos_abi_file_test():
         cmd = ['./programs/cleos/cleos', 'push', 'action', 'eosio.token', 'issue', '[ "alice", "100.0000 SYS", "memo" ]', '-p', 'alice']
         processCleosCommand(cmd)
 
-        # make a malicious abi file by switch `from` and `to` in eosio.token.abi
+        # make a malicious abi file by switching 'from' and 'to' in eosio.token.abi
         malicious_token_abi_path = os.path.abspath(os.getcwd() + '/../unittests/contracts/eosio.token/malicious.eosio.token.abi')
         shutil.copyfile(token_abi_path, malicious_token_abi_path)
         replaces = [["from", "malicious"], ["to", "from"], ["malicious", "to"]]
@@ -368,18 +369,24 @@ def cleos_abi_file_test():
         # option '--abi-file' makes token still be transferred from alice to bob after setting the malicious abi
         cmd = ['./programs/cleos/cleos', '-u', 'http://127.0.0.1:8888', '--print-request', '--abi-file', token_abi_file_arg, 'push', 'action', 'eosio.token', 'transfer', '[ "alice", "bob", "25.0000 SYS", "m" ]', '-p', 'alice']
         outs, errs = processCleosCommand(cmd)
-        print(outs.strip().decode('utf-8'))
         assert(b'"/v1/chain/get_raw_abi"' not in errs)
         cmd = "./programs/cleos/cleos get currency balance eosio.token alice SYS"
         outs, errs = processCleosCommand(cmd.split())
         assert(outs.strip().decode('utf-8') == "75.0000 SYS")
 
     finally:
-        os.kill(pNodeos.pid, 9)
+
+        if pNodeos.pid:
+            os.kill(pNodeos.pid, signal.SIGKILL)
         shutil.rmtree(data_dir)
+
+        if pWallet.pid:
+            os.kill(pWallet.pid, signal.SIGKILL)
+        subprocess.call(("pkill -9 keosd").split())
         wallet_file = os.path.expanduser('~') + "/eosio-wallet/" + wallet_name + ".wallet"
         if os.path.exists(wallet_file):
             os.remove(wallet_file)
+
         if os.path.exists(malicious_token_abi_path):
             os.remove(malicious_token_abi_path)
 
