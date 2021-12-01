@@ -2109,6 +2109,23 @@ struct controller_impl {
       return applied_trxs;
    }
 
+   void abort_unsigned_block() {
+      if( pending ) {
+         uint32_t block_num = pending->get_block_num();
+         ilog("abortig pending block ${block_num}", ("block_num", block_num));
+         pending.reset();
+         protocol_features.popped_blocks_to( head->block_num );
+         emit( self.block_abort, block_num );
+      }
+      auto db_head = fork_db.head();
+      if (db_head->block && db_head->block->producer_signature == signature_type()) {
+         auto poped = pop_block();
+         ilog("abortig unsigned block ${block_num}", ("block_num", poped->block_num));
+         fork_db.remove_head();
+         emit(self.block_abort, poped->block_num);
+      }
+   }
+
    static checksum256_type calculate_trx_merkle( const deque<transaction_receipt>& trxs ) {
       deque<digest_type> trx_digests;
       for( const auto& a : trxs )
@@ -2665,6 +2682,10 @@ void controller::commit_block() {
 
 deque<transaction_metadata_ptr> controller::abort_block() {
    return my->abort_block();
+}
+
+void controller::abort_unsigned_block() {
+   my->abort_unsigned_block();
 }
 
 boost::asio::io_context& controller::get_thread_pool() {

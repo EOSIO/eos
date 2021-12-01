@@ -1088,6 +1088,7 @@ void producer_plugin::plugin_shutdown() {
    try {
       my->_timer.cancel();
       my->_block_vault_resync.cancel();
+      my->chain_plug->chain().abort_unsigned_block();
    } catch ( const std::bad_alloc& ) {
      chain_plugin::handle_bad_alloc();
    } catch ( const boost::interprocess::bad_alloc& ) {

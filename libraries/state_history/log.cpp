@@ -269,7 +269,7 @@ state_history_log::write_entry_header(const state_history_log_header& header, co
    fc_dlog(logger,"write_entry_header name=${name} block_num=${block_num}",("name", name) ("block_num", block_num));
 
    EOS_ASSERT(_begin_block == _end_block || block_num <= _end_block, chain::state_history_exception,
-              "missed a block in ${name}.log", ("name", name));
+              "missed a block in ${name}.log, block_num=${block_num}, _end_block=${_end_block} ", ("name", name)("block_num", block_num)("_end_block", _end_block));
 
    if (_begin_block != _end_block && block_num > _begin_block) {
       if (block_num == _end_block) {
