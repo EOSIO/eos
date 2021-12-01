@@ -222,9 +222,7 @@ if [[ "$DCMAKE_BUILD_TYPE" != 'Debug' ]]; then
             if [[ ! "$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)" =~ 'macos' ]]; then
                 cat <<EOF
   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Unit Tests"
-    command:
-      - "buildkite-agent artifact download build.tar.gz . --step '$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build' && tar -xzf build.tar.gz"
-      - "./.cicd/test.sh scripts/parallel-test.sh"
+    command: ".cicd/test.sh"
     env:
       IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
       PLATFORM_TYPE: $PLATFORM_TYPE
@@ -241,9 +239,7 @@ EOF
                 cat <<EOF
   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Unit Tests"
     command:
-      - "git clone \$BUILDKITE_REPO eos && cd eos && $GIT_FETCH git checkout -f \$BUILDKITE_COMMIT && git submodule update --init --recursive"
-      - "cd eos && buildkite-agent artifact download build.tar.gz . --step '$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build' && tar -xzf build.tar.gz"
-      - "cd eos && ./.cicd/test.sh scripts/parallel-test.sh"
+      - ".cicd/test.sh"
     plugins:
       - EOSIO/anka#v0.6.1:
           no-volume: true
@@ -279,9 +275,7 @@ EOF
             if [[ ! "$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)" =~ 'macos' ]]; then
                 cat <<EOF
   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - WASM Spec Tests"
-    command:
-      - "buildkite-agent artifact download build.tar.gz . --step '$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build' && tar -xzf build.tar.gz"
-      - "./.cicd/test.sh scripts/wasm-spec-test.sh"
+    command: ".cicd/test.sh"
     env:
       IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
       PLATFORM_TYPE: $PLATFORM_TYPE
@@ -298,9 +292,7 @@ EOF
                 cat <<EOF
   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - WASM Spec Tests"
     command:
-      - "git clone \$BUILDKITE_REPO eos && cd eos && $GIT_FETCH git checkout -f \$BUILDKITE_COMMIT && git submodule update --init --recursive"
-      - "cd eos && buildkite-agent artifact download build.tar.gz . --step '$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build' && tar -xzf build.tar.gz"
-      - "cd eos && ./.cicd/test.sh scripts/wasm-spec-test.sh"
+      - ".cicd/test.sh"
     plugins:
       - EOSIO/anka#v0.6.1:
           no-volume: true
@@ -340,9 +332,7 @@ EOF
                 if [[ ! "$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)" =~ 'macos' ]]; then
                     cat <<EOF
   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - $TEST_NAME"
-    command:
-      - "buildkite-agent artifact download build.tar.gz . --step '$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build' && tar -xzf build.tar.gz"
-      - "./.cicd/test.sh scripts/serial-test.sh $TEST_NAME"
+    command: ".cicd/test.sh"
     env:
       IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
       PLATFORM_TYPE: $PLATFORM_TYPE
@@ -359,9 +349,7 @@ EOF
                 cat <<EOF
   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - $TEST_NAME"
     command:
-      - "git clone \$BUILDKITE_REPO eos && cd eos && $GIT_FETCH git checkout -f \$BUILDKITE_COMMIT && git submodule update --init --recursive"
-      - "cd eos && buildkite-agent artifact download build.tar.gz . --step '$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build' && tar -xzf build.tar.gz"
-      - "cd eos && ./.cicd/test.sh scripts/serial-test.sh $TEST_NAME"
+      - ".cicd/test.sh"
     plugins:
       - EOSIO/anka#v0.6.1:
           no-volume: true
@@ -399,9 +387,7 @@ EOF
                 if [[ ! "$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)" =~ 'macos' ]]; then
                     cat <<EOF
   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - $TEST_NAME"
-    command:
-      - "buildkite-agent artifact download build.tar.gz . --step '$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build' ${BUILD_SOURCE} && tar -xzf build.tar.gz"
-      - "./.cicd/test.sh scripts/long-running-test.sh $TEST_NAME"
+    command: ".cicd/test.sh"
     env:
       IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
       PLATFORM_TYPE: $PLATFORM_TYPE
@@ -418,9 +404,7 @@ EOF
                     cat <<EOF
   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - $TEST_NAME"
     command:
-      - "git clone \$BUILDKITE_REPO eos && cd eos && $GIT_FETCH git checkout -f \$BUILDKITE_COMMIT && git submodule update --init --recursive"
-      - "cd eos && buildkite-agent artifact download build.tar.gz . --step '$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build' ${BUILD_SOURCE} && tar -xzf build.tar.gz"
-      - "cd eos && ./.cicd/test.sh scripts/long-running-test.sh $TEST_NAME"
+      - ".cicd/test.sh"
     plugins:
       - EOSIO/anka#v0.6.1:
           no-volume: true
