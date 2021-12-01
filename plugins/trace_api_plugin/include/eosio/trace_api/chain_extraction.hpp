@@ -53,12 +53,15 @@ private:
           trace->receipt->status != chain::transaction_receipt_header::soft_fail)) {
          return;
       }
-      if( chain::is_onblock( *trace )) {
-         onblock_trace.emplace( cache_trace{trace, t} );
-      } else if( trace->failed_dtrx_trace ) {
-         cached_traces[trace->failed_dtrx_trace->id] = {trace, t};
-      } else {
-         cached_traces[trace->id] = {trace, t};
+      const auto& itr = tracked_blocks.find( trace->block_num );
+      if( itr != tracked_blocks.end() ) {
+         if( chain::is_onblock( *trace )) {
+            itr->second.onblock_trace.emplace( cache_trace{trace, t} );
+         } else if( trace->failed_dtrx_trace ) {
+            itr->second.cached_traces[trace->failed_dtrx_trace->id] = {trace, t};
+         } else {
+            itr->second.cached_traces[trace->id] = {trace, t};
+         }
       }
    }
 
@@ -71,12 +74,14 @@ private:
    }
 
    void on_block_start( uint32_t block_num ) {
-      clear_caches();
+      tracked_blocks[block_num] = block_tracking{};
    }
 
-   void clear_caches() {
-      cached_traces.clear();
-      onblock_trace.reset();
+   void clear_caches( uint32_t block_num ) {
+      const auto& itr = tracked_blocks.find( block_num );
+      if( itr != tracked_blocks.end() ) {
+         tracked_blocks.erase( itr );
+      }
    }
 
    void store_block_trace( const chain::block_state_ptr& block_state ) {
@@ -84,27 +89,29 @@ private:
          using transaction_trace_t = transaction_trace_v2;
 
          auto bt = create_block_trace( block_state );
+         const auto& itr = tracked_blocks.find( block_state->block_num );
 
-         std::vector<transaction_trace_t>& traces = std::get<std::vector<transaction_trace_t>>(bt.transactions);
-         traces.reserve( block_state->block->transactions.size() + 1 );
-         if( onblock_trace )
-            traces.emplace_back( to_transaction_trace<transaction_trace_t>( *onblock_trace ));
-         for( const auto& r : block_state->block->transactions ) {
-            transaction_id_type id;
-            if( std::holds_alternative<transaction_id_type>(r.trx)) {
-               id = std::get<transaction_id_type>(r.trx);
-            } else {
-               id = std::get<packed_transaction>(r.trx).id();
+         if( itr != tracked_blocks.end() ) {
+            std::vector<transaction_trace_t>& traces = std::get<std::vector<transaction_trace_t>>(bt.transactions);
+            traces.reserve( block_state->block->transactions.size() + 1 );
+            if( itr->second.onblock_trace )
+               traces.emplace_back( to_transaction_trace<transaction_trace_t>( *(itr->second.onblock_trace) ));
+            for( const auto& r : block_state->block->transactions ) {
+               transaction_id_type id;
+               if( std::holds_alternative<transaction_id_type>(r.trx)) {
+                  id = std::get<transaction_id_type>(r.trx);
+               } else {
+                  id = std::get<packed_transaction>(r.trx).id();
+               }
+               const auto it = itr->second.cached_traces.find( id );
+               if( it != itr->second.cached_traces.end() ) {
+                  traces.emplace_back( to_transaction_trace<transaction_trace_t>( it->second ));
+               }
             }
-            const auto it = cached_traces.find( id );
-            if( it != cached_traces.end() ) {
-               traces.emplace_back( to_transaction_trace<transaction_trace_t>( it->second ));
-            }
+            clear_caches( block_state->block_num );
+
+            store.append( std::move( bt ) );
          }
-         clear_caches();
-
-         store.append( std::move( bt ) );
-
       } catch( ... ) {
          except_handler( MAKE_EXCEPTION_WITH_CONTEXT( std::current_exception() ) );
       }
@@ -121,9 +128,11 @@ private:
 private:
    StoreProvider                                                store;
    exception_handler                                            except_handler;
-   std::map<transaction_id_type, cache_trace>                   cached_traces;
-   std::optional<cache_trace>                                   onblock_trace;
-
+   struct block_tracking {
+      std::map<transaction_id_type, cache_trace>                cached_traces;
+      std::optional<cache_trace>                                onblock_trace;
+   };
+   std::map<uint32_t, block_tracking>                           tracked_blocks;
 };
 
 }}
