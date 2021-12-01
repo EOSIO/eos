@@ -11,7 +11,6 @@ import time
 import shutil
 import signal
 
-
 def nodeos_help_test():
     """Test that nodeos help contains option descriptions"""
     help_text = subprocess.check_output(["./programs/nodeos/nodeos", "--help"])
@@ -59,6 +58,7 @@ def cli11_optional_option_arg_test():
     output = subprocess.check_output(['./programs/cleos/cleos', '--no-auto-keosd', 'sign',
                                       '-c', chain, '-k', key, '{}'])
     assert(b'signatures' in output)
+
 
 def cleos_sign_test():
     """Test that sign can on both regular and packed transactions"""
@@ -401,4 +401,3 @@ cli11_bugfix_test()
 
 cli11_optional_option_arg_test()
 cleos_sign_test()
-cleos_abi_file_test()
