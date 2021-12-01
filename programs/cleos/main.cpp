@@ -164,6 +164,8 @@ string amqp_address;
 string amqp_reply_to;
 string amqp_queue_name = "trx";
 std::map<name, std::string>  abi_files_override;
+uint64_t push_times = 1;
+std::unique_ptr<eosio::amqp_handler> qp_trx{nullptr};
 
 bool no_verify = false;
 vector<string> headers;
@@ -232,6 +234,7 @@ void add_standard_transaction_options(CLI::App* cmd, string default_permission =
    cmd->add_flag("--use-old-rpc", tx_use_old_rpc, localized("Use old RPC push_transaction, rather than new RPC send_transaction"));
    cmd->add_option("--compression", tx_compression, localized("Compression for transaction 'none' or 'zlib'"))->transform(
          CLI::CheckedTransformer(compression_type_map, CLI::ignore_case));
+   cmd->add_option("--push-times", push_times, localized("Push the action for many times. Default: 1."));
 
    string msg = "An account and permission level to authorize, as in 'account@permission'";
    if(!default_permission.empty())
@@ -404,85 +407,112 @@ void sign_transaction(signed_transaction& trx, fc::variant& required_keys, const
    trx = signed_trx.as<signed_transaction>();
 }
 
-fc::variant push_transaction( signed_transaction& trx, const std::vector<public_key_type>& signing_keys = std::vector<public_key_type>() )
+fc::variant push_transaction( signed_transaction& _trx, const std::vector<public_key_type>& signing_keys = std::vector<public_key_type>() )
 {
    auto info = get_info();
+   while (push_times > 0) {
+      --push_times;
 
-   if (trx.signatures.size() == 0) { // #5445 can't change txn content if already signed
-      trx.expiration = info.head_block_time + tx_expiration;
+      signed_transaction trx { _trx };
+      if (trx.signatures.size() == 0) { // #5445 can't change txn content if already signed
+         trx.expiration = info.head_block_time + tx_expiration;
 
-      // Set tapos, default to last irreversible block if it's not specified by the user
-      block_id_type ref_block_id = info.last_irreversible_block_id;
-      try {
-         fc::variant ref_block;
-         if (!tx_ref_block_num_or_id.empty()) {
-            ref_block = call(get_block_func, fc::mutable_variant_object("block_num_or_id", tx_ref_block_num_or_id));
-            ref_block_id = ref_block["id"].as<block_id_type>();
+         // Set tapos, default to last irreversible block if it's not specified by the user
+         block_id_type ref_block_id = info.last_irreversible_block_id;
+         try {
+            fc::variant ref_block;
+            if (!tx_ref_block_num_or_id.empty()) {
+               ref_block = call(get_block_func,
+                  fc::mutable_variant_object("block_num_or_id",
+                     tx_ref_block_num_or_id));
+               ref_block_id = ref_block["id"].as<block_id_type>();
+            }
+         }EOS_RETHROW_EXCEPTIONS(invalid_ref_block_exception,
+            "Invalid reference block num or id: ${block_num_or_id}",
+            ("block_num_or_id", tx_ref_block_num_or_id));
+         trx.set_reference_block(ref_block_id);
+
+         if (tx_force_unique) {
+            trx.context_free_actions.emplace_back(generate_nonce_action());
          }
-      } EOS_RETHROW_EXCEPTIONS(invalid_ref_block_exception, "Invalid reference block num or id: ${block_num_or_id}", ("block_num_or_id", tx_ref_block_num_or_id));
-      trx.set_reference_block(ref_block_id);
 
-      if (tx_force_unique) {
-         trx.context_free_actions.emplace_back( generate_nonce_action() );
+         trx.max_cpu_usage_ms = tx_max_cpu_usage;
+         trx.max_net_usage_words = (tx_max_net_usage + 7) / 8;
+         trx.delay_sec = delaysec;
       }
 
-      trx.max_cpu_usage_ms = tx_max_cpu_usage;
-      trx.max_net_usage_words = (tx_max_net_usage + 7)/8;
-      trx.delay_sec = delaysec;
-   }
-
-   if (!tx_skip_sign) {
-      fc::variant required_keys;
-      if (signing_keys.size() > 0) {
-         required_keys = fc::variant(signing_keys);
+      if (!tx_skip_sign) {
+         fc::variant required_keys;
+         if (signing_keys.size() > 0) {
+            required_keys = fc::variant(signing_keys);
+         }
+         else {
+            required_keys = determine_required_keys(trx);
+         }
+         sign_transaction(trx, required_keys, info.chain_id);
       }
-      else {
-         required_keys = determine_required_keys(trx);
-      }
-      sign_transaction(trx, required_keys, info.chain_id);
-   }
 
-   packed_transaction::compression_type compression = to_compression_type( tx_compression );
-   if (!tx_dont_broadcast) {
-      if (tx_use_old_rpc) {
-         return call(push_txn_func, packed_transaction_v0(trx, compression));
-      } else {
-         if( !amqp_address.empty() ) {
-            fc::variant result;
-            eosio::transaction_msg msg{packed_transaction( std::move( trx ), true, compression )};
-            auto buf = fc::raw::pack( msg );
-            const auto& tid = std::get<packed_transaction>(msg).id();
-            string id = tid.str();
-            eosio::amqp_handler qp_trx( amqp_address, fc::seconds(5), fc::milliseconds(100), []( const std::string& err ) {
-               std::cerr << "AMQP trx error: " << err << std::endl;
-               exit( 1 );
-            } );
-            result = fc::mutable_variant_object()
-                  ( "transaction_id", id )
-                  ( "status", "submitted" );
-            qp_trx.publish( "", amqp_queue_name, std::move( id ), amqp_reply_to, std::move( buf ) );
-            return result;
+      packed_transaction::compression_type compression = to_compression_type(
+         tx_compression);
+      if (!tx_dont_broadcast) {
+         if (tx_use_old_rpc) {
+            auto res = call(push_txn_func, packed_transaction_v0(trx, compression));
+            if (push_times == 0) return res;
          } else {
-            try {
-               return call( send_txn_func, packed_transaction_v0( trx, compression ) );
-            } catch( chain::missing_chain_api_plugin_exception& ) {
-               std::cerr << "New RPC send_transaction may not be supported. "
-                            "Add flag --use-old-rpc to use old RPC push_transaction instead." << std::endl;
-               throw;
+            if (!amqp_address.empty()) {
+               fc::variant result;
+               eosio::transaction_msg msg { packed_transaction(std::move(trx),
+                  true, compression) };
+               auto buf = fc::raw::pack(msg);
+               const auto &tid = std::get<packed_transaction>(msg).id();
+               string id = tid.str();
+               if (!qp_trx) {
+                  qp_trx = std::unique_ptr<eosio::amqp_handler>(new eosio::amqp_handler(amqp_address, fc::seconds(5),
+                     fc::milliseconds(100), [](const std::string &err) {
+                        std::cerr << "AMQP trx error: " << err << std::endl;
+                        exit(1);
+                     }));
+               }
+               result = fc::mutable_variant_object()
+                  ("transaction_id", id)
+                  ("status", "submitted");
+               qp_trx->publish("", amqp_queue_name, std::move(id), amqp_reply_to,
+                  std::move(buf));
+               if (push_times == 0) return result;
+               else continue;
+            } else {
+               try {
+                  auto res =  call(send_txn_func,
+                     packed_transaction_v0(trx, compression));
+                  if (push_times == 0) return res;
+                  continue;
+               } catch (chain::missing_chain_api_plugin_exception&) {
+                  std::cerr
+                     << "New RPC send_transaction may not be supported. "
+                        "Add flag --use-old-rpc to use old RPC push_transaction instead."
+                     << std::endl;
+                  throw;
+               }
             }
          }
-      }
-   } else {
-      if (!tx_return_packed) {
-         try {
-            fc::variant unpacked_data_trx;
-            abi_serializer::to_variant(trx, unpacked_data_trx, abi_serializer_resolver, abi_serializer::create_yield_function( abi_serializer_max_time ));
-            return unpacked_data_trx;
-         } catch (...) {
-            return fc::variant(trx);
-         }
       } else {
-        return fc::variant(packed_transaction_v0(trx, compression));
+         if (!tx_return_packed) {
+            try {
+               fc::variant unpacked_data_trx;
+               abi_serializer::to_variant(trx, unpacked_data_trx,
+                  abi_serializer_resolver,
+                  abi_serializer::create_yield_function(
+                     abi_serializer_max_time));
+               if (push_times == 0) return unpacked_data_trx;
+               else continue;
+            } catch (...) {
+               if (push_times == 0) return fc::variant(trx);
+               else continue;
+            }
+         } else {
+            if (push_times == 0) return fc::variant(packed_transaction_v0(trx, compression));
+            else continue;
+         }
       }
    }
 }
