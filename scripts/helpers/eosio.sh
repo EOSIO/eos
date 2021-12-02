@@ -287,7 +287,7 @@ function build-clang() {
             execute bash -c "cd ${TEMP_DIR} \
             && rm -rf clang11 \
             && git clone --single-branch --branch $PINNED_COMPILER_BRANCH https://github.com/llvm/llvm-project clang11 \
-            && cd clang13 \
+            && cd clang11 \
             && mkdir build && cd build \
             && ${CMAKE} -G 'Unix Makefiles' -DCMAKE_INSTALL_PREFIX='${CLANG_ROOT}' -DLLVM_ENABLE_PROJECTS='lld;polly;clang;clang-tools-extra;libcxx;libcxxabi;libunwind;compiler-rt' -DLLVM_BUILD_LLVM_DYLIB=ON -DLLVM_ENABLE_RTTI=ON -DLLVM_INCLUDE_DOCS=OFF -DLLVM_TARGETS_TO_BUILD=host -DCMAKE_BUILD_TYPE=Release ${CMAKE_XTRA_FLAGS} ../llvm \
             && make -j${JOBS} \
