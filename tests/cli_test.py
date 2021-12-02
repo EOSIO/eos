@@ -367,7 +367,7 @@ def cleos_abi_file_test():
         processCleosCommand(cmd.split())
 
         # option '--abi-file' makes token still be transferred from alice to bob after setting the malicious abi
-        cmd = ['./programs/cleos/cleos', '-u', 'http://127.0.0.1:8888', '--print-request', '--abi-file', token_abi_file_arg, 'push', 'action', 'eosio.token', 'transfer', '[ "alice", "bob", "25.0000 SYS", "m" ]', '-p', 'alice']
+        cmd = ['./programs/cleos/cleos', '-u', 'http://127.0.0.1:8888', '--print-request', '--abi-file', token_abi_file_arg, 'push', 'action', 'eosio.token', 'transfer', '{ "from":"alice", "to":"bob", "quantity":"25.0000 SYS", "memo":"m" }', '-p', 'alice']
         outs, errs = processCleosCommand(cmd)
         assert(b'"/v1/chain/get_raw_abi"' not in errs)
         cmd = "./programs/cleos/cleos get currency balance eosio.token alice SYS"
