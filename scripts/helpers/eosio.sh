@@ -284,7 +284,7 @@ function build-clang() {
             if [[ $ARCH == "Darwin" ]]; then 
                 export CMAKE_XTRA_FLAGS="-DCOMPILER_RT_INCLUDE_TESTS=0 -DCOMPILER_RT_BUILD_SANITIZERS=0 -DCOMPILER_RT_BUILD_XRAY=0"
             else
-                export CMAKE_XTRA_FLAGS="-DCMAKE_CXX_STANDARD=20"
+                export CMAKE_XTRA_FLAGS="-DCMAKE_CXX_STANDARD=14"
             fi
             execute bash -c "cd ${TEMP_DIR} \
             && rm -rf clang13 \
