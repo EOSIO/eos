@@ -444,8 +444,8 @@ namespace eosio { namespace testing {
                         [&d](const auto& k) { return k.sign(d); });
          signatures = std::move(sigs);
       });
-      signing_done.get();
       control->commit_block();
+      signing_done.get(); // wait until `signatures` and `wtmsig_enabled` are ready  
       control->assign_signatures(bsp, std::move(signatures), wtmsig_enabled);
 
       last_produced_block[control->head_block_state()->header.producer] =

@@ -300,8 +300,9 @@ struct test_chain {
          wtmsig_enabled = block_wtmsig_enabled;
          signatures = std::vector{ producer_key.sign(d) };
       });
-      signing_done.get();
+
       control->commit_block();
+      signing_done.get(); // wait until `signatures` and `wtmsig_enabled` are ready  
       control->assign_signatures(bsp, std::move(signatures), wtmsig_enabled);
    }
 };
