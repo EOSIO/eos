@@ -1494,6 +1494,8 @@ read_only::get_info_results read_only::get_info(const read_only::get_info_params
       db.head_block_id(),
       db.head_block_time(),
       db.head_block_producer(),
+      rm.get_total_cpu_weight(),
+      rm.get_total_net_weight(),
       rm.get_virtual_block_cpu_limit(),
       rm.get_virtual_block_net_limit(),
       rm.get_block_cpu_limit(),
