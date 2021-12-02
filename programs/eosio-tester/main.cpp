@@ -291,14 +291,18 @@ struct test_chain {
    void finish_block() {
       start_if_needed();
       ilog("finish block ${n}", ("n", control->head_block_num()));
+      using signatures_type = std::vector<eosio::chain::signature_type>;
       block_state_ptr bsp;
-      auto signing_done = control->finalize_block(bsp, [&](eosio::chain::digest_type d) { return std::vector{ producer_key.sign(d) }; });
-      control->commit_block();
+      signatures_type signatures;
+      bool            wtmsig_enabled;
 
-      if (auto eptr = signing_done.get())
-         std::rethrow_exception(eptr);
-      else
-         control->on_block_signed(bsp);
+      auto signing_done = control->finalize_block(bsp, [&](eosio::chain::digest_type d, bool block_wtmsig_enabled) {
+         wtmsig_enabled = block_wtmsig_enabled;
+         signatures = std::vector{ producer_key.sign(d) };
+      });
+      signing_done.get();
+      control->commit_block();
+      control->assign_signatures(bsp, std::move(signatures), wtmsig_enabled);
    }
 };
 

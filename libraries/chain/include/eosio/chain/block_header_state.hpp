@@ -149,7 +149,8 @@ struct block_header_state : public detail::block_header_state_common {
    const block_id_type&   prev()const { return header.previous; }
    digest_type            sig_digest()const;
    void                   sign( const signer_callback_type& signer );
-   void                   verify_signee()const;
+   void                   verify_signee() const;
+   void                   assign_signatures(std::vector<signature_type>&& sigs);
 
    const vector<digest_type>& get_new_protocol_feature_activations()const;
 };

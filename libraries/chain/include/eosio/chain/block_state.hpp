@@ -28,8 +28,7 @@ namespace eosio { namespace chain {
 
       block_state() = default;
 
-      void sign_and_inject_additional_signatures(const signer_callback_type& signer,
-                                                 bool wtmsig_enabled);
+      void assign_signatures(std::vector<signature_type>&& sigs, bool wtmsig_enabled);
 
       signed_block_ptr                                    block;
 

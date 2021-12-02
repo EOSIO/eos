@@ -2419,7 +2419,7 @@ controller::controller( const config& cfg, protocol_feature_set&& pfs, const cha
 
 controller::~controller() {
    try {
-      my->abort_block();
+      my->abort_unsigned_block();
    } FC_LOG_AND_DROP();
    /* Shouldn't be needed anymore.
    //close fork_db here, because it can generate "irreversible" signal to this controller,
@@ -2625,8 +2625,9 @@ void controller::start_block( block_timestamp_type when,
                     block_status::incomplete, std::optional<block_id_type>() );
 }
 
-std::future<std::exception_ptr>
-controller::finalize_block(block_state_ptr& bsp, signer_callback_type&& signer_callback, std::function<void(std::exception_ptr ptr)>&& continuation) {
+std::future<void>
+controller::finalize_block(block_state_ptr&                                                      bsp,
+                           std::function<void(const digest_type& digest, bool wtmsig_enabled)>&& sign) {
    validate_db_available_size();
 
    my->finalize_block();
@@ -2648,30 +2649,28 @@ controller::finalize_block(block_state_ptr& bsp, signer_callback_type&& signer_c
               );
 
    my->pending->_block_stage = completed_block{bsp};
-   bool wtmsig_enabled =
-         eosio::chain::detail::is_builtin_activated(pfa, pfs, builtin_protocol_feature_t::wtmsig_block_signatures);
+   
    auto& signing_failed_blocknum = my->signing_failed_blocknum;
-   signing_failed_blocknum = 0;
+   signing_failed_blocknum       = 0;
    return async_thread_pool(my->block_sign_pool.get_executor(),
-                            [bsp, wtmsig_enabled, signer_callback = std::move(signer_callback),
-                             continuation = std::move(continuation), &signing_failed_blocknum]() {
-                               std::exception_ptr eptr = nullptr; 
+                            [block_num = bsp->block_num, digest = bsp->sig_digest(),
+                             wtmsig_enabled = eosio::chain::detail::is_builtin_activated(
+                                 pfa, pfs, builtin_protocol_feature_t::wtmsig_block_signatures),
+                             sign = std::move(sign), &signing_failed_blocknum]() {
                                try {
-                                  bsp->sign_and_inject_additional_signatures(signer_callback, wtmsig_enabled);
-                               } catch (...) {
-                                  signing_failed_blocknum = bsp->block_num;
-                                  eptr = std::current_exception();
-                                  fc::unhandled_exception e(FC_LOG_MESSAGE( warn, "sign_and_inject_additional_signatures failure: "), eptr );
-                                  wlog("${details}", ("details", e.to_detail_string()));
-                               }
-                               if (continuation)
-                                  continuation(eptr);
-                               return eptr;
+                                  sign(digest, wtmsig_enabled);
+                               } FC_LOG_AND_DROP();
                             });
 }
 
-void controller::on_block_signed(block_state_ptr bsp) {
-  my->on_block_signed(bsp);
+void controller::assign_signatures(block_state_ptr bsp, std::vector<signature_type>&& sigs, bool wtmsig_enabled) {
+   try {
+      bsp->assign_signatures(std::move(sigs), wtmsig_enabled);
+      my->on_block_signed(bsp);
+   } catch (...) {
+      my->signing_failed_blocknum = bsp->block_num;
+      throw;
+   }
 }
 
 void controller::commit_block() {
@@ -2682,10 +2681,6 @@ void controller::commit_block() {
 
 deque<transaction_metadata_ptr> controller::abort_block() {
    return my->abort_block();
-}
-
-void controller::abort_unsigned_block() {
-   my->abort_unsigned_block();
 }
 
 boost::asio::io_context& controller::get_thread_pool() {

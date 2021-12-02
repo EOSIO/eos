@@ -219,9 +219,13 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       std::optional<scoped_connection>                          _accepted_block_header_connection;
       std::optional<scoped_connection> _irreversible_block_connection;
 
-      std::future<std::exception_ptr> sign_fut;
+      std::future<void>               sign_fut;
       std::atomic<bool>               sign_ready;
+      std::vector<signature_type>     sigs;
+      bool wtmsig_enabled;
+
       eosio::chain::block_state_ptr unsigned_block_state;
+      bool handle_previous_block();
       bool accept_previous_block_if_signed();
       /*
        * HACK ALERT
@@ -1088,7 +1092,6 @@ void producer_plugin::plugin_shutdown() {
    try {
       my->_timer.cancel();
       my->_block_vault_resync.cancel();
-      my->chain_plug->chain().abort_unsigned_block();
    } catch ( const std::bad_alloc& ) {
      chain_plugin::handle_bad_alloc();
    } catch ( const boost::interprocess::bad_alloc& ) {
@@ -2417,18 +2420,21 @@ void block_only_sync::on_block(eosio::chain::signed_block_ptr block) {
    }
 }
 
+bool producer_plugin_impl::handle_previous_block() {
+   bool result = false;
+   try {
+      chain_plug->chain().assign_signatures(unsigned_block_state, std::move(sigs), wtmsig_enabled);
+      result = true;
+   } LOG_AND_DROP();
+   unsigned_block_state.reset();
+   return result;
+}
+
 /// @return false only if the previous block signing failed. 
 bool producer_plugin_impl::accept_previous_block_if_signed() {
-   
    if (unsigned_block_state && sign_ready.load()) {
-      auto eptr = sign_fut.get();
-      if (!eptr) {
-         chain_plug->chain().on_block_signed(unsigned_block_state);
-      }
-      unsigned_block_state.reset();
-      return !eptr;
+      return handle_previous_block();
    }
-
    return true;
 }
 
@@ -2460,38 +2466,36 @@ void producer_plugin_impl::produce_block() {
    // idump( (fc::time_point::now() - chain.pending_block_time()) );
    sign_ready = false;
    sign_fut   = chain.finalize_block(
-         unsigned_block_state,
-         [relevant_providers = std::move(relevant_providers)](const digest_type& d) {
-            auto                   debug_logger = maybe_make_debug_time_logger();
-            vector<signature_type> sigs;
-            sigs.reserve(relevant_providers.size());
-
-            // sign with all relevant public keys
-            for (const auto& p : relevant_providers) { sigs.emplace_back(p.get()(d)); }
-            return sigs;
-         },
-         [&chain, self = shared_from_this()](std::exception_ptr eptr) {
-            app().post(priority::high, [&chain, self, eptr]() {
-               if (self->unsigned_block_state.get()) {                  
-                  if (! eptr ) {
-                     chain.on_block_signed(self->unsigned_block_state);
-                  }
-                  self->unsigned_block_state.reset();
-               }
-            });
-            self->sign_ready = true;
-         });
+       unsigned_block_state, [relevant_providers = std::move(relevant_providers),
+                              self               = shared_from_this()](const digest_type& d, bool wtmsig_enabled) {
+          auto debug_logger = maybe_make_debug_time_logger();
+          self->sigs.clear();
+          self->wtmsig_enabled = wtmsig_enabled;
+          
+          auto on_exit         = fc::make_scoped_exit([self] {
+             self->sign_ready = true;
+             app().post(priority::high, [self]() {
+                if (self->unsigned_block_state.get()) {
+                   self->handle_previous_block();
+                }
+             });
+          });
+          std::vector<signature_type> signatures;
+          std::transform(relevant_providers.begin(), relevant_providers.end(), std::back_inserter(signatures),
+                         [&d](const auto& p) { return p.get()(d); });
+          self->sigs = std::move(signatures);
+       });
 
    if (blockvault != nullptr) {
       std::promise<bool> p;
       std::future<bool>  f = p.get_future();
       // Block vault requires a signed block, just wait until it signed for now.
       sign_fut.get();
-      chain.on_block_signed(unsigned_block_state);
-      block_state_ptr block_state = std::move(unsigned_block_state);
-      unsigned_block_state.reset();
+      block_state_ptr block_state = unsigned_block_state;
+      if (!handle_previous_block())
+         return;
       blockvault->async_propose_constructed_block(block_state->dpos_irreversible_blocknum,
-                                                  block_state->block, [&p](bool b) { p.set_value(b); });
+                                                block_state->block, [&p](bool b) { p.set_value(b); });
       if (!f.get()) {
          _latest_rejected_block_num = block_state->block->block_num();
          _block_vault_resync.schedule();

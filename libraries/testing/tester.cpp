@@ -432,21 +432,22 @@ namespace eosio { namespace testing {
          }
       });
 
+      using signatures_type = std::vector<signature_type>;
       block_state_ptr bsp;
-      auto signing_done = control->finalize_block( bsp, [&]( digest_type d ) {
-         std::vector<signature_type> result;
-         result.reserve(signing_keys.size());
-         for (const auto& k: signing_keys)
-             result.emplace_back(k.sign(d));
+      signatures_type signatures;
+      bool wtmsig_enabled;
 
-         return result;
-      } );
-
+      auto signing_done = control->finalize_block(bsp, [&](digest_type d, bool block_wtmsig_enabled) {
+         wtmsig_enabled = block_wtmsig_enabled;
+         signatures_type sigs;
+         std::transform(signing_keys.begin(), signing_keys.end(), std::back_inserter(sigs),
+                        [&d](const auto& k) { return k.sign(d); });
+         signatures = std::move(sigs);
+      });
+      signing_done.get();
       control->commit_block();
-      if (auto eptr = signing_done.get())
-         std::rethrow_exception(eptr);
-      else
-         control->on_block_signed(bsp);
+      control->assign_signatures(bsp, std::move(signatures), wtmsig_enabled);
+
       last_produced_block[control->head_block_state()->header.producer] =
           control->head_block_state()->id;
 

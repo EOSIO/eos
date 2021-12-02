@@ -384,9 +384,10 @@ namespace eosio { namespace chain {
    }
 
    void block_header_state::sign( const signer_callback_type& signer ) {
-      auto d = sig_digest();
-      auto sigs = signer( d );
+      assign_signatures(signer( sig_digest() ));
+   }
 
+   void block_header_state::assign_signatures(std::vector<signature_type>&& sigs) {
       EOS_ASSERT(!sigs.empty(), no_block_signatures, "Signer returned no signatures");
       header.producer_signature = sigs.back();
       sigs.pop_back();

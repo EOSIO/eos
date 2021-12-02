@@ -57,9 +57,8 @@ namespace eosio { namespace chain {
    ,_cached_trxs( std::move(trx_metas) )
    {}
 
-  void block_state::sign_and_inject_additional_signatures(const signer_callback_type& signer_callback,
-                                                          bool wtmsig_enabled){
-      sign(signer_callback);  
+   void block_state::assign_signatures(std::vector<signature_type>&& sigs, bool wtmsig_enabled) {
+      block_header_state::assign_signatures(std::move(sigs));  
       block->producer_signature = header.producer_signature;                                           
       if (!additional_signatures.empty()) {
          EOS_ASSERT(wtmsig_enabled, block_validate_exception,
@@ -73,5 +72,4 @@ namespace eosio { namespace chain {
          emplace_extension(block->block_extensions, additional_sigs_eid, fc::raw::pack( additional_signatures ));
       }
    }
-
 } } /// eosio::chain
