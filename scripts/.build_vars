@@ -22,7 +22,7 @@ export BOOST_ROOT=${BOOST_LOCATION:-${SRC_DIR}/boost_${BOOST_VERSION}}
 export BOOST_LINK_LOCATION=${OPT_DIR}/boost
 
 # LLVM
-export LLVM_VERSION=llvmorg-11.0.0
+export LLVM_VERSION=llvmorg-12.0.0
 export LLVM_ROOT=${OPT_DIR}/llvm
 export LLVM_DIR=${LLVM_ROOT}/lib/cmake/llvm
 
@@ -32,8 +32,8 @@ export DOXYGEN_ROOT=${SRC_DIR}/doxygen-${DOXYGEN_VERSION}
 export ENABLE_DOXYGEN=${ENABLE_DOXYGEN:-false}
 
 # CLANG
-export CLANG_ROOT=${OPT_DIR}/clang11
-export PINNED_COMPILER_BRANCH=llvmorg-11.0.0
+export CLANG_ROOT=${OPT_DIR}/clang12
+export PINNED_COMPILER_BRANCH=llvmorg-12.0.0
 export NO_CPP17=${NO_CPP17:-false}
 export PIN_COMPILER=${PIN_COMPILER:-false}
 export BUILD_CLANG=${BUILD_CLANG:-false}
