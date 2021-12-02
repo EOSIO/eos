@@ -283,21 +283,19 @@ function build-clang() {
         if [[ ! -d $CLANG_ROOT ]]; then
             if [[ $ARCH == "Darwin" ]]; then 
                 export CMAKE_XTRA_FLAGS="-DCOMPILER_RT_INCLUDE_TESTS=0 -DCOMPILER_RT_BUILD_SANITIZERS=0 -DCOMPILER_RT_BUILD_XRAY=0"
-            else
-                export CMAKE_XTRA_FLAGS="-DCMAKE_CXX_STANDARD=14"
             fi
             execute bash -c "cd ${TEMP_DIR} \
-            && rm -rf clang13 \
-            && git clone --single-branch --branch $PINNED_COMPILER_BRANCH https://github.com/llvm/llvm-project clang13 \
+            && rm -rf clang11 \
+            && git clone --single-branch --branch $PINNED_COMPILER_BRANCH https://github.com/llvm/llvm-project clang11 \
             && cd clang13 \
             && mkdir build && cd build \
             && ${CMAKE} -G 'Unix Makefiles' -DCMAKE_INSTALL_PREFIX='${CLANG_ROOT}' -DLLVM_ENABLE_PROJECTS='lld;polly;clang;clang-tools-extra;libcxx;libcxxabi;libunwind;compiler-rt' -DLLVM_BUILD_LLVM_DYLIB=ON -DLLVM_ENABLE_RTTI=ON -DLLVM_INCLUDE_DOCS=OFF -DLLVM_TARGETS_TO_BUILD=host -DCMAKE_BUILD_TYPE=Release ${CMAKE_XTRA_FLAGS} ../llvm \
             && make -j${JOBS} \
             && make install"
-            echo " - Clang 10 successfully installed @ ${CLANG_ROOT}"
+            echo " - Clang 11 successfully installed @ ${CLANG_ROOT}"
             echo ""
         else
-            echo " - Clang 10 found @ ${CLANG_ROOT}"
+            echo " - Clang 11 found @ ${CLANG_ROOT}"
             echo ""
         fi
         export CXX=$CPP_COMP
