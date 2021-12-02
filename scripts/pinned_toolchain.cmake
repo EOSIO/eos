@@ -4,7 +4,7 @@ set(CMAKE_CXX_COMPILER_WORKS 1)
 set(CMAKE_C_COMPILER ${OPT_PATH}/clang13/bin/clang)
 set(CMAKE_CXX_COMPILER ${OPT_PATH}/clang13/bin/clang++)
 
-set(CMAKE_CXX_STANDARD_INCLUDE_DIRECTORIES ${OPT_PATH}/clang13/include/c++/v1 /usr/local/include /usr/include)
+set(CMAKE_CXX_STANDARD_INCLUDE_DIRECTORIES ${OPT_PATH}/clang11/include/c++/v1 /usr/local/include /usr/include)
 
 set(CMAKE_C_FLAGS_INIT "-D_FORTIFY_SOURCE=2 -fstack-protector-strong -fpie")
 set(CMAKE_CXX_FLAGS_INIT "-nostdinc++ -D_FORTIFY_SOURCE=2 -fstack-protector-strong -fpie")
