@@ -54,14 +54,15 @@ private:
          return;
       }
       const auto& itr = tracked_blocks.find( trace->block_num );
-      if( itr != tracked_blocks.end() ) {
-         if( chain::is_onblock( *trace )) {
-            itr->second.onblock_trace.emplace( cache_trace{trace, t} );
-         } else if( trace->failed_dtrx_trace ) {
-            itr->second.cached_traces[trace->failed_dtrx_trace->id] = {trace, t};
-         } else {
-            itr->second.cached_traces[trace->id] = {trace, t};
-         }
+      if( itr == tracked_blocks.end() )
+         return;
+      auto& tracked = itr->second;
+      if( chain::is_onblock( *trace )) {
+         tracked.onblock_trace.emplace( cache_trace{trace, t} );
+      } else if( trace->failed_dtrx_trace ) {
+         tracked.cached_traces[trace->failed_dtrx_trace->id] = {trace, t};
+      } else {
+         tracked.cached_traces[trace->id] = {trace, t};
       }
    }
 
@@ -91,27 +92,28 @@ private:
          auto bt = create_block_trace( block_state );
          const auto& itr = tracked_blocks.find( block_state->block_num );
 
-         if( itr != tracked_blocks.end() ) {
-            std::vector<transaction_trace_t>& traces = std::get<std::vector<transaction_trace_t>>(bt.transactions);
-            traces.reserve( block_state->block->transactions.size() + 1 );
-            if( itr->second.onblock_trace )
-               traces.emplace_back( to_transaction_trace<transaction_trace_t>( *(itr->second.onblock_trace) ));
-            for( const auto& r : block_state->block->transactions ) {
-               transaction_id_type id;
-               if( std::holds_alternative<transaction_id_type>(r.trx)) {
-                  id = std::get<transaction_id_type>(r.trx);
-               } else {
-                  id = std::get<packed_transaction>(r.trx).id();
-               }
-               const auto it = itr->second.cached_traces.find( id );
-               if( it != itr->second.cached_traces.end() ) {
-                  traces.emplace_back( to_transaction_trace<transaction_trace_t>( it->second ));
-               }
+         if( itr == tracked_blocks.end() )
+            return;
+         auto& tracked = itr->second;
+         std::vector<transaction_trace_t>& traces = std::get<std::vector<transaction_trace_t>>(bt.transactions);
+         traces.reserve( block_state->block->transactions.size() + 1 );
+         if( tracked.onblock_trace )
+            traces.emplace_back( to_transaction_trace<transaction_trace_t>( *(tracked.onblock_trace) ));
+         for( const auto& r : block_state->block->transactions ) {
+            transaction_id_type id;
+            if( std::holds_alternative<transaction_id_type>(r.trx)) {
+               id = std::get<transaction_id_type>(r.trx);
+            } else {
+               id = std::get<packed_transaction>(r.trx).id();
             }
-            clear_caches( block_state->block_num );
-
-            store.append( std::move( bt ) );
+            const auto it = tracked.cached_traces.find( id );
+            if( it != tracked.cached_traces.end() ) {
+               traces.emplace_back( to_transaction_trace<transaction_trace_t>( it->second ));
+            }
          }
+         clear_caches( block_state->block_num );
+
+         store.append( std::move( bt ) );
       } catch( ... ) {
          except_handler( MAKE_EXCEPTION_WITH_CONTEXT( std::current_exception() ) );
       }

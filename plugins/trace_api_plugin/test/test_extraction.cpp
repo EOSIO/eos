@@ -201,6 +201,10 @@ struct extraction_test_fixture {
       extraction_impl.signal_applied_transaction(trace, ptrx);
    }
 
+   void signal_start_block( const uint32_t block_num ) {
+      extraction_impl.signal_block_start(block_num);
+   }
+
    void signal_accepted_block( const chain::block_state_ptr& bsp ) {
       extraction_impl.signal_accepted_block(bsp);
    }
@@ -225,6 +229,8 @@ BOOST_AUTO_TEST_SUITE(block_extraction)
       auto actt3 = make_action_trace( 2, act3, "bob"_n );
       auto ptrx1 = make_packed_trx( { act1, act2, act3 } );
 
+      uint32_t block_num = 1;
+      signal_start_block( block_num );
       // apply a basic transfer
       signal_applied_transaction(
             make_transaction_trace( ptrx1.id(), 1, 1, chain::transaction_receipt_header::executed,
@@ -232,7 +238,7 @@ BOOST_AUTO_TEST_SUITE(block_extraction)
             std::make_shared<packed_transaction>(ptrx1) );
       
       // accept the block with one transaction
-      auto bsp1 = make_block_state( chain::block_id_type(), 1, 1, "bp.one"_n,
+      auto bsp1 = make_block_state( chain::block_id_type(), block_num, 1, "bp.one"_n,
             { chain::packed_transaction(ptrx1) } );
       signal_accepted_block( bsp1 );
       
@@ -292,7 +298,7 @@ BOOST_AUTO_TEST_SUITE(block_extraction)
          }
       };
 
-      BOOST_REQUIRE_EQUAL(max_lib, 0);
+      BOOST_REQUIRE_EQUAL(max_lib, expected_lib);
       BOOST_REQUIRE(data_log.size() == 1);
       BOOST_REQUIRE(std::holds_alternative<block_trace_v2>(data_log.at(0)));
       BOOST_REQUIRE_EQUAL(std::get<block_trace_v2>(data_log.at(0)), expected_block_trace);
@@ -309,6 +315,8 @@ BOOST_AUTO_TEST_SUITE(block_extraction)
       auto ptrx2 = make_packed_trx( { act2 } );
       auto ptrx3 = make_packed_trx( { act3 } );
 
+      uint32_t block_num = 1;
+      signal_start_block( block_num );
       signal_applied_transaction(
             make_transaction_trace( ptrx1.id(), 1, 1, chain::transaction_receipt_header::executed,
                   { actt1 } ),
@@ -323,7 +331,7 @@ BOOST_AUTO_TEST_SUITE(block_extraction)
             std::make_shared<packed_transaction>( ptrx3 ) );
 
       // accept the block with three transaction
-      auto bsp1 = make_block_state( chain::block_id_type(), 1, 1, "bp.one"_n,
+      auto bsp1 = make_block_state( chain::block_id_type(), block_num, 1, "bp.one"_n,
             { chain::packed_transaction(ptrx1), chain::packed_transaction(ptrx2), chain::packed_transaction(ptrx3) } );
       signal_accepted_block( bsp1 );
 
@@ -407,7 +415,7 @@ BOOST_AUTO_TEST_SUITE(block_extraction)
          expected_transaction_traces
       };
 
-      BOOST_REQUIRE_EQUAL(max_lib, 0);
+      BOOST_REQUIRE_EQUAL(max_lib, expected_lib);
       BOOST_REQUIRE(data_log.size() == 1);
       BOOST_REQUIRE(std::holds_alternative<block_trace_v2>(data_log.at(0)));
       BOOST_REQUIRE_EQUAL(std::get<block_trace_v2>(data_log.at(0)), expected_block_trace);
@@ -429,9 +437,12 @@ BOOST_AUTO_TEST_SUITE(block_extraction)
                                                    { actt2 } );
       onerror_trace->failed_dtrx_trace = transfer_trace;
 
+      uint32_t block_num = 1;
+      signal_start_block( block_num );
+
       signal_applied_transaction( onerror_trace, std::make_shared<packed_transaction>( transfer_trx ) );
 
-      auto bsp1 = make_block_state( chain::block_id_type(), 1, 1, "bp.one"_n,
+      auto bsp1 = make_block_state( chain::block_id_type(), block_num, 1, "bp.one"_n,
             { chain::packed_transaction(transfer_trx) } );
       signal_accepted_block( bsp1 );
 
@@ -473,7 +484,7 @@ BOOST_AUTO_TEST_SUITE(block_extraction)
          expected_transaction_traces
       };
 
-      BOOST_REQUIRE_EQUAL(max_lib, 0);
+      BOOST_REQUIRE_EQUAL(max_lib, expected_lib);
       BOOST_REQUIRE(data_log.size() == 1);
       BOOST_REQUIRE(std::holds_alternative<block_trace_v2>(data_log.at(0)));
       BOOST_REQUIRE_EQUAL(std::get<block_trace_v2>(data_log.at(0)), expected_block_trace);
