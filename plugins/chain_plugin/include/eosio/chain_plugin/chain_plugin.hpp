@@ -123,6 +123,9 @@ public:
       fc::time_point                       head_block_time;
       account_name                         head_block_producer;
 
+      uint64_t                             total_cpu_weight = 0;
+      uint64_t                             total_net_weight = 0;
+
       uint64_t                             virtual_block_cpu_limit = 0;
       uint64_t                             virtual_block_net_limit = 0;
 
@@ -1093,7 +1096,7 @@ FC_REFLECT(eosio::chain_apis::empty, )
 FC_REFLECT(eosio::chain_apis::read_only::get_info_results,
            (server_version)(chain_id)(head_block_num)(last_irreversible_block_num)(last_irreversible_block_id)
            (head_block_id)(head_block_time)(head_block_producer)
-           (virtual_block_cpu_limit)(virtual_block_net_limit)(block_cpu_limit)(block_net_limit)
+           (total_cpu_weight)(total_net_weight)(virtual_block_cpu_limit)(virtual_block_net_limit)(block_cpu_limit)(block_net_limit)
            (server_version_string)(fork_db_head_block_num)(fork_db_head_block_id)(server_full_version_string)
            (last_irreversible_block_time) (first_block_num) )
 FC_REFLECT(eosio::chain_apis::read_only::get_activated_protocol_features_params, (lower_bound)(upper_bound)(limit)(search_by_block_num)(reverse) )
