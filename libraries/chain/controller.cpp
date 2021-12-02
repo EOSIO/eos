@@ -2656,10 +2656,11 @@ controller::finalize_block(block_state_ptr&                                     
                             [block_num = bsp->block_num, digest = bsp->sig_digest(),
                              wtmsig_enabled = eosio::chain::detail::is_builtin_activated(
                                  pfa, pfs, builtin_protocol_feature_t::wtmsig_block_signatures),
-                             sign = std::move(sign), &signing_failed_blocknum]() {
+                             sign = std::move(sign)]() {
                                try {
                                   sign(digest, wtmsig_enabled);
-                               } FC_LOG_AND_DROP();
+                               }
+                               FC_LOG_AND_DROP();
                             });
 }
 

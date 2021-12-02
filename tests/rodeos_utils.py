@@ -30,7 +30,7 @@ import sys
 #
 ###############################################################
 class RodeosCluster(object):
-    def __init__(self, dump_error_details, keep_logs, leave_running, clean_run, unix_socket_option, filterName, filterWasm, enableOC=False, numRodeos=1, numShip=1, timeout=300000):
+    def __init__(self, dump_error_details, keep_logs, leave_running, clean_run, unix_socket_option, filterName, filterWasm, enableOC=False, numRodeos=1, numShip=1, timeout=300000, producerExtraArgs=""):
         Utils.Print("Standing up RodeosCluster -- unix_socket_option {}, enableOC {}, numRodeos {}, numShip {}, timeout {}".format(unix_socket_option, enableOC, numRodeos, numShip, timeout))
 
         self.cluster=Cluster(walletd=True)
@@ -80,6 +80,7 @@ class RodeosCluster(object):
         self.filterWasm = filterWasm
         self.OCArg=["--eos-vm-oc-enable"] if enableOC else []
         self.timeout=timeout
+        self.producerExtraArgs = producerExtraArgs
 
     def __enter__(self):
         self.cluster.setWalletMgr(self.walletMgr)
@@ -90,7 +91,7 @@ class RodeosCluster(object):
 
         self.producerNodeId=0
         # for load testing
-        specificExtraNodeosArgs[self.producerNodeId]="--chain-state-db-size-mb=131072 --plugin eosio::txn_test_gen_plugin --disable-replay-opts "
+        specificExtraNodeosArgs[self.producerNodeId]="--chain-state-db-size-mb=131072 --plugin eosio::txn_test_gen_plugin --disable-replay-opts {} ".format(self.producerExtraArgs)
 
         for i in self.shipNodeIdPortsNodes: # Nodeos args for ship nodes.
             specificExtraNodeosArgs[i]=\
