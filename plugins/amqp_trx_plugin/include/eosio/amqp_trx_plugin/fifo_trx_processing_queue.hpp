@@ -55,7 +55,7 @@ public:
       {
          std::unique_lock<std::mutex> lk(mtx_);
          empty_cv_.wait(lk, [this]() {
-            return (!queue_.empty() && !paused_) || stopped_;
+            return (!queue_.empty() && paused_ <= 0) || stopped_;
          });
          if( stopped_ ) return false;
          t = std::move(queue_.front());
@@ -77,9 +77,6 @@ public:
       {
          std::scoped_lock<std::mutex> lk( mtx_ );
          --paused_;
-         if( paused_ < 0 ) {
-            throw std::logic_error("blocking_queue unpaused when not paused");
-         }
       }
       empty_cv_.notify_all();
    }
@@ -96,7 +93,7 @@ public:
    /// also checks paused flag because a paused queue indicates processing is on-going or explicitly paused
    bool empty() const {
       std::scoped_lock<std::mutex> lk(mtx_);
-      return queue_.empty() && !paused_;
+      return queue_.empty() && paused_ <= 0;
    }
 
    template<typename Lamba>
