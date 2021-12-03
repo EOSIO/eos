@@ -1494,8 +1494,6 @@ read_only::get_info_results read_only::get_info(const read_only::get_info_params
       db.head_block_id(),
       db.head_block_time(),
       db.head_block_producer(),
-      rm.get_total_cpu_weight(),
-      rm.get_total_net_weight(),
       rm.get_virtual_block_cpu_limit(),
       rm.get_virtual_block_net_limit(),
       rm.get_block_cpu_limit(),
@@ -1507,7 +1505,9 @@ read_only::get_info_results read_only::get_info(const read_only::get_info_params
       db.fork_db_pending_head_block_id(),
       app().full_version_string(),
       db.last_irreversible_block_time(),
-      db.get_first_block_num()
+      db.get_first_block_num(),
+      rm.get_total_cpu_weight(),
+      rm.get_total_net_weight()
    };
 }
 
