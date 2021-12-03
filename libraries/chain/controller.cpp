@@ -2102,8 +2102,8 @@ struct controller_impl {
          protocol_features.popped_blocks_to( head->block_num );
          emit( self.block_abort, block_num );
       }
-
-      if (fork_db.is_signing_failed_block_head(signing_failed_blocknum)) {
+      auto db_head = fork_db.head();
+      if (fork_db.is_signing_failed_block_head(signing_failed_blocknum) || (db_head->block && db_head->block->producer_signature == signature_type())) {
          signing_failed_blocknum = 0;
          auto poped = pop_block();
          ilog("abortig unsigned block ${block_num}", ("block_num", poped->block_num));
@@ -2426,7 +2426,7 @@ controller::controller( const config& cfg, protocol_feature_set&& pfs, const cha
 
 controller::~controller() {
    try {
-      my->abort_unsigned_block();
+      my->abort_block();
    } FC_LOG_AND_DROP();
    /* Shouldn't be needed anymore.
    //close fork_db here, because it can generate "irreversible" signal to this controller,
