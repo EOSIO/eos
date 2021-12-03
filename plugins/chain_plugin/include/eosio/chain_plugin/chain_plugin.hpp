@@ -126,9 +126,6 @@ public:
       fc::time_point                       head_block_time;
       account_name                         head_block_producer;
 
-      uint64_t                             total_cpu_weight = 0;
-      uint64_t                             total_net_weight = 0;
-
       uint64_t                             virtual_block_cpu_limit = 0;
       uint64_t                             virtual_block_net_limit = 0;
 
@@ -141,6 +138,8 @@ public:
       std::optional<chain::block_id_type>  fork_db_head_block_id;
       std::optional<string>                server_full_version_string;
       std::optional<fc::time_point>        last_irreversible_block_time;
+      std::optional<uint64_t>              total_cpu_weight;
+      std::optional<uint64_t>              total_net_weight;
    };
    get_info_results get_info(const get_info_params&) const;
 
@@ -1085,9 +1084,9 @@ FC_REFLECT(eosio::chain_apis::empty, )
 FC_REFLECT(eosio::chain_apis::read_only::get_info_results,
            (server_version)(chain_id)(head_block_num)(last_irreversible_block_num)(last_irreversible_block_id)
            (head_block_id)(head_block_time)(head_block_producer)
-           (total_cpu_weight)(total_net_weight)(virtual_block_cpu_limit)(virtual_block_net_limit)(block_cpu_limit)(block_net_limit)
+           (virtual_block_cpu_limit)(virtual_block_net_limit)(block_cpu_limit)(block_net_limit)
            (server_version_string)(fork_db_head_block_num)(fork_db_head_block_id)(server_full_version_string)
-           (last_irreversible_block_time) )
+           (last_irreversible_block_time)(total_cpu_weight)(total_net_weight) )
 FC_REFLECT(eosio::chain_apis::read_only::get_activated_protocol_features_params, (lower_bound)(upper_bound)(limit)(search_by_block_num)(reverse) )
 FC_REFLECT(eosio::chain_apis::read_only::get_activated_protocol_features_results, (activated_protocol_features)(more) )
 FC_REFLECT(eosio::chain_apis::read_only::get_block_params, (block_num_or_id))
