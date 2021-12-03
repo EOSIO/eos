@@ -1,4 +1,3 @@
-#include "eosio/vm/function_traits.hpp"
 #include <eosio/chain/controller.hpp>
 #include <eosio/chain/transaction_context.hpp>
 
@@ -2095,7 +2094,7 @@ struct controller_impl {
       
       if( pending ) {
          uint32_t block_num = pending->get_block_num();
-         ilog("abortig pending block ${block_num}", ("block_num", block_num));
+         dlog("aborting pending block ${block_num}", ("block_num", block_num));
          auto trxs = pending->extract_trx_metas();
          applied_trxs.insert(applied_trxs.begin(), trxs.begin(), trxs.end());
          pending.reset();
@@ -2103,34 +2102,17 @@ struct controller_impl {
          emit( self.block_abort, block_num );
       }
 
-      if (fork_db.is_signing_failed_block_head(signing_failed_blocknum)) {
+      if (fork_db.is_head_block(signing_failed_blocknum)) {
          signing_failed_blocknum = 0;
          auto poped = pop_block();
-         ilog("abortig unsigned block ${block_num}", ("block_num", poped->block_num));
-         fork_db.remove_head();
+         dlog("aborting unsigned block ${block_num}", ("block_num", poped->block_num));
+         fork_db.remove(poped->id);
          auto trxs  = poped->extract_trxs_metas();
          applied_trxs.insert(applied_trxs.end(), trxs.begin(), trxs.end());
          emit(self.block_abort, poped->block_num);
       }
 
       return applied_trxs;
-   }
-
-   void abort_unsigned_block() {
-      if( pending ) {
-         uint32_t block_num = pending->get_block_num();
-         ilog("abortig pending block ${block_num}", ("block_num", block_num));
-         pending.reset();
-         protocol_features.popped_blocks_to( head->block_num );
-         emit( self.block_abort, block_num );
-      }
-      auto db_head = fork_db.head();
-      if (db_head->block && db_head->block->producer_signature == signature_type()) {
-         auto poped = pop_block();
-         ilog("abortig unsigned block ${block_num}", ("block_num", poped->block_num));
-         fork_db.remove_head();
-         emit(self.block_abort, poped->block_num);
-      }
    }
 
    static checksum256_type calculate_trx_merkle( const deque<transaction_receipt>& trxs ) {
@@ -2426,7 +2408,14 @@ controller::controller( const config& cfg, protocol_feature_set&& pfs, const cha
 
 controller::~controller() {
    try {
-      my->abort_unsigned_block();
+      my->abort_block();
+      auto db_head = my->fork_db.head();
+      if (db_head->block && db_head->block->producer_signature == signature_type()) {
+         auto poped = my->pop_block();
+         dlog("remove unsigned block ${block_num}", ("block_num", poped->block_num));
+         my->fork_db.remove(poped->id);
+         my->emit(my->self.block_abort, poped->block_num);
+      }
    } FC_LOG_AND_DROP();
    /* Shouldn't be needed anymore.
    //close fork_db here, because it can generate "irreversible" signal to this controller,
@@ -2641,7 +2630,7 @@ controller::finalize_block(block_state_ptr& bsp, signer_callback_type&& sign) {
    auto& ab = std::get<assembled_block>(my->pending->_block_stage);
 
    auto pfa = ab._pending_block_header_state.prev_activated_protocol_features;
-   auto pfs = my->protocol_features.get_protocol_feature_set();
+   const auto& pfs = my->protocol_features.get_protocol_feature_set();
 
    bsp = std::make_shared<block_state>(
                   std::move( ab._pending_block_header_state ),
@@ -2660,14 +2649,14 @@ controller::finalize_block(block_state_ptr& bsp, signer_callback_type&& sign) {
                             [bsp, my = my.get(), block_num = bsp->block_num, digest = bsp->sig_digest(),
                              wtmsig_enabled = eosio::chain::detail::is_builtin_activated(
                                  pfa, pfs, builtin_protocol_feature_t::wtmsig_block_signatures),
-                             sign = std::move(sign)]() -> std::function<void()> {
-                               std::vector<signature_type> sigs;
+                             sign = std::move(sign)] () -> std::function<void()> {
+                               std::vector<signature_type> signatures;
                                try {
-                                  sigs = sign(digest);
+                                  signatures = sign(digest);
                                }
                                FC_LOG_AND_DROP();
-                               return [bsp, my, sigs = std::move(sigs), wtmsig_enabled]() mutable {
-                                  my->assign_signatures(bsp, std::move(sigs), wtmsig_enabled);
+                               return [bsp, my, signatures = std::move(signatures), wtmsig_enabled]() mutable {
+                                  my->assign_signatures(bsp, std::move(signatures), wtmsig_enabled);
                                };
                             });
 }

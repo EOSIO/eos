@@ -464,21 +464,8 @@ namespace eosio { namespace chain {
       }
    }
 
-   bool fork_database::is_signing_failed_block_head(uint32_t signing_failed_blocknum)  {
-      return my->head->block && my->head->block->block_num() == signing_failed_blocknum;
-   }
-
-   void fork_database::remove_head() {
-      auto itr = my->index.find( my->head->id );
-      auto prev_id = my->head->prev();
-      auto prev_itr = my->index.find( prev_id );
-      if( prev_itr == my->index.end() )
-         return;
-      if( itr != my->index.end() ) {
-         my->index.erase(itr);
-      }
-      my->head = *prev_itr;
-      return;
+   bool fork_database::is_head_block(uint32_t blocknum)  {
+      return my->head->block && my->head->block->block_num() == blocknum;
    }
 
    void fork_database::mark_valid( const block_state_ptr& h ) {

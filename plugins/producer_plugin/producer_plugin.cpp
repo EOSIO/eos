@@ -219,10 +219,10 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       std::optional<scoped_connection>                          _accepted_block_header_connection;
       std::optional<scoped_connection>                          _irreversible_block_connection;
 
-      enum signatures_status_type {
-         signatures_none,
-         signatures_pending,
-         signatures_ready
+      enum class signatures_status_type {
+         none,
+         pending,
+         ready
       };
 
       std::future<std::function<void()>>  assign_signatures_fut;
@@ -302,8 +302,6 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          auto& chain = chain_plug->chain();
 
          _unapplied_transactions.add_aborted(chain.abort_block());
-
-         // TODO: need work on the signing failure case
          _subjective_billing.abort_block();
       }
 
@@ -1719,20 +1717,19 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
       }
 
       try {
-         if (!remove_expired_trxs(preprocess_deadline))
+         if( !remove_expired_trxs( preprocess_deadline ) )
             return start_block_result::exhausted;
-
+         
          if (!assign_block_signatures_if_ready())
             return start_block_result::failed;
-
-         if (!remove_expired_blacklisted_trxs(preprocess_deadline))
+         
+         if( !remove_expired_blacklisted_trxs( preprocess_deadline ) )
             return start_block_result::exhausted;
-
+         
          if (!assign_block_signatures_if_ready())
             return start_block_result::failed;
-
-         if (!_subjective_billing.remove_expired(_log, chain.pending_block_time(), fc::time_point::now(),
-                                                 preprocess_deadline))
+         
+         if( !_subjective_billing.remove_expired( _log, chain.pending_block_time(), fc::time_point::now(), preprocess_deadline ) )
             return start_block_result::exhausted;
 
          if (!assign_block_signatures_if_ready())
@@ -1741,7 +1738,7 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
          // limit execution of pending incoming to once per block
          size_t pending_incoming_process_limit = _unapplied_transactions.incoming_size();
 
-         if (!process_unapplied_trxs(preprocess_deadline))
+         if( !process_unapplied_trxs( preprocess_deadline ) )
             return start_block_result::exhausted;
 
          if (!assign_block_signatures_if_ready())
@@ -1755,11 +1752,10 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
                      fc::time_point::now() + fc::milliseconds(_max_scheduled_transaction_time_per_block_ms)
                );
             }
-            // may exhaust scheduled_trx_deadline but not preprocess_deadline, exhausted preprocess_deadline checked below
-            process_scheduled_and_incoming_trxs(scheduled_trx_deadline,
-                                                pending_incoming_process_limit);
-            if (!assign_block_signatures_if_ready()) 
+            if (!assign_block_signatures_if_ready())
                return start_block_result::failed;
+            // may exhaust scheduled_trx_deadline but not preprocess_deadline, exhausted preprocess_deadline checked below
+            process_scheduled_and_incoming_trxs( scheduled_trx_deadline, pending_incoming_process_limit );
          }
 
          if( app().is_quiting() ) // db guard exception above in LOG_AND_DROP could have called app().quit()
@@ -2344,7 +2340,7 @@ void producer_plugin_impl::schedule_delayed_production_loop(const std::weak_ptr<
 bool producer_plugin_impl::maybe_produce_block() {
    auto reschedule = fc::make_scoped_exit([this] { schedule_production_loop(); });
 
-   if (signatures_status.load() != signatures_none) {
+   if (signatures_status.load() != signatures_status_type::none) {
       return false;
    }
 
@@ -2425,13 +2421,13 @@ bool producer_plugin_impl::assign_block_signatures() {
       assign_signatures_fut.get()();
       result = true;
    } LOG_AND_DROP();
-   signatures_status = signatures_none;
+   signatures_status = signatures_status_type::none;
    return result;
 }
 
 /// @return false only if the previous block signing failed. 
 bool producer_plugin_impl::assign_block_signatures_if_ready() {
-   if (signatures_status.load() == signatures_ready) {
+   if (signatures_status.load() == signatures_status_type::ready) {
       return assign_block_signatures();
    }
    return true;
@@ -2463,12 +2459,12 @@ void producer_plugin_impl::produce_block() {
    }
 
    eosio::chain::block_state_ptr block_state;
-   signatures_status     = signatures_pending;
+   signatures_status     = signatures_status_type::pending;
    assign_signatures_fut = chain.finalize_block(block_state, [relevant_providers = std::move(relevant_providers),
                                                               self = shared_from_this()](const digest_type& d) {
       auto                        debug_logger = maybe_make_debug_time_logger();
       auto                        on_exit      = fc::make_scoped_exit([self] {
-         self->signatures_status = signatures_ready;
+         self->signatures_status = signatures_status_type::ready;
          app().post(priority::high, [self]() { self->assign_block_signatures_if_ready(); });
       });
       std::vector<signature_type> signatures;

@@ -77,6 +77,9 @@ public:
       {
          std::scoped_lock<std::mutex> lk( mtx_ );
          --paused_;
+         if( paused_ < -1 ) {
+            throw std::logic_error("blocking_queue unpaused when not paused");
+         }
       }
       empty_cv_.notify_all();
    }

@@ -100,9 +100,9 @@ signature_provider_plugin::~signature_provider_plugin(){}
 void signature_provider_plugin::set_program_options(options_description&, options_description& cfg) {
    cfg.add_options()("keosd-provider-timeout", boost::program_options::value<int32_t>()->default_value(5),
                      "Limits the maximum time (in milliseconds) that is allowed for sending requests to a keosd "
-                     "provider for signing")("signing-delay",
-                                             boost::program_options::value<uint32_t>()->default_value(0),
-                                             "milliseconds to delay the signature signing when using default signature provider");
+                     "provider for signing")
+                    ("signing-delay", boost::program_options::value<uint32_t>()->default_value(0),
+                     "milliseconds to delay the signature signing when using default signature provider");
 }
 
 const char* const signature_provider_plugin::signature_provider_help_text() const {
