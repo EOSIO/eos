@@ -79,10 +79,7 @@ private:
    }
 
    void clear_caches( uint32_t block_num ) {
-      const auto& itr = tracked_blocks.find( block_num );
-      if( itr != tracked_blocks.end() ) {
-         tracked_blocks.erase( itr );
-      }
+      tracked_blocks.erase( block_num );
    }
 
    void store_block_trace( const chain::block_state_ptr& block_state ) {

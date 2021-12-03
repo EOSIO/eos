@@ -222,9 +222,7 @@ class state_history_traces_log : public state_history_log {
    std::shared_ptr<std::vector<char>> get_log_entry(block_num_type block_num);
 
    void block_start(uint32_t block_num) {
-      auto itr = trace_caches.find(block_num-2);
-      if (itr != trace_caches.end())
-         trace_caches.erase(itr);
+      trace_caches.erase(block_num-2);
    }
 
    void store(const chainbase::database& db, const chain::block_state_ptr& block_state);

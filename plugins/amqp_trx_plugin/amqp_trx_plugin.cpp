@@ -150,9 +150,7 @@ struct amqp_trx_plugin_impl : std::enable_shared_from_this<amqp_trx_plugin_impl>
 
    void on_block_abort( uint32_t bn ) {
       trx_queue_ptr->on_block_stop();
-      const auto& itr = tracked_blocks.find(bn);
-      if( itr != tracked_blocks.end() )
-         tracked_blocks.erase(itr);
+      tracked_blocks.erase(bn);
    }
 
    void on_accepted_block( const chain::block_state_ptr& bsp ) {
