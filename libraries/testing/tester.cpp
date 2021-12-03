@@ -432,11 +432,10 @@ namespace eosio { namespace testing {
          }
       });
 
-      using signatures_type = std::vector<signature_type>;
       block_state_ptr bsp;
       
       auto assign_signatures = control->finalize_block(bsp, [&](digest_type d) {
-         signatures_type sigs;
+         std::vector<signature_type> sigs;
          std::transform(signing_keys.begin(), signing_keys.end(), std::back_inserter(sigs),
                         [&d](const auto& k) { return k.sign(d); });
          return sigs;

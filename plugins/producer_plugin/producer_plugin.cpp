@@ -1132,7 +1132,6 @@ void producer_plugin::resume() {
    // re-evaluate that now
    //
    if (my->_pending_block_mode == pending_block_mode::speculating) {
-      ilog("calling abort block");
       my->abort_block();
       fc_ilog(_log, "Producer resumed. Scheduling production.");
       my->schedule_production_loop();
@@ -1175,7 +1174,6 @@ void producer_plugin::update_runtime_options(const runtime_options& options) {
    }
 
    if (check_speculating && my->_pending_block_mode == pending_block_mode::speculating) {
-      ilog("calling abort block");
       my->abort_block();
       my->schedule_production_loop();
    }
@@ -1260,7 +1258,6 @@ producer_plugin::integrity_hash_information producer_plugin::get_integrity_hash(
 
    if (chain.is_building_block()) {
       // abort the pending block
-      ilog("calling abort block");
       my->abort_block();
    } else {
       reschedule.cancel();
@@ -1664,7 +1661,6 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
          blocks_to_confirm = (uint16_t)(std::min<uint32_t>(blocks_to_confirm, (uint32_t)(hbs->block_num - hbs->dpos_irreversible_blocknum)));
       }
 
-      ilog("calling abort block");
       abort_block();
 
       auto features_to_activate = chain.get_preactivated_protocol_features();
@@ -1723,19 +1719,20 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
       }
 
       try {
-         if( !remove_expired_trxs( preprocess_deadline ) )
-           return start_block_result::exhausted;
-
-         if (!assign_block_signatures_if_ready())
-            return start_block_result::failed;
-         
-         if( !remove_expired_blacklisted_trxs( preprocess_deadline ) )
-           return start_block_result::exhausted;
+         if (!remove_expired_trxs(preprocess_deadline))
+            return start_block_result::exhausted;
 
          if (!assign_block_signatures_if_ready())
             return start_block_result::failed;
 
-         if( !_subjective_billing.remove_expired( _log, chain.pending_block_time(), fc::time_point::now(), preprocess_deadline ) )
+         if (!remove_expired_blacklisted_trxs(preprocess_deadline))
+            return start_block_result::exhausted;
+
+         if (!assign_block_signatures_if_ready())
+            return start_block_result::failed;
+
+         if (!_subjective_billing.remove_expired(_log, chain.pending_block_time(), fc::time_point::now(),
+                                                 preprocess_deadline))
             return start_block_result::exhausted;
 
          if (!assign_block_signatures_if_ready())
@@ -1744,10 +1741,10 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
          // limit execution of pending incoming to once per block
          size_t pending_incoming_process_limit = _unapplied_transactions.incoming_size();
 
-         if( !process_unapplied_trxs( preprocess_deadline ) )
-           return start_block_result::exhausted;
+         if (!process_unapplied_trxs(preprocess_deadline))
+            return start_block_result::exhausted;
 
-         if (!assign_block_signatures_if_ready()) 
+         if (!assign_block_signatures_if_ready())
             return start_block_result::failed;
 
          if (_pending_block_mode == pending_block_mode::producing) {
@@ -2465,23 +2462,20 @@ void producer_plugin_impl::produce_block() {
       _protocol_features_signaled = false;
    }
 
-   eosio::chain::block_state_ptr  block_state;
-   signatures_status = signatures_pending;
-   assign_signatures_fut = chain.finalize_block(
-       block_state, [relevant_providers = std::move(relevant_providers),
-                              self               = shared_from_this()](const digest_type& d) {
-          auto debug_logger = maybe_make_debug_time_logger();
-          auto on_exit      = fc::make_scoped_exit([self] {
-             self->signatures_status = signatures_ready;
-             app().post(priority::high, [self]() {
-                  self->assign_block_signatures_if_ready();
-             });            
-          });
-          std::vector<signature_type> signatures;
-          std::transform(relevant_providers.begin(), relevant_providers.end(), std::back_inserter(signatures),
-                         [&d](const auto& p) { return p.get()(d); });
-          return signatures;
-       });
+   eosio::chain::block_state_ptr block_state;
+   signatures_status     = signatures_pending;
+   assign_signatures_fut = chain.finalize_block(block_state, [relevant_providers = std::move(relevant_providers),
+                                                              self = shared_from_this()](const digest_type& d) {
+      auto                        debug_logger = maybe_make_debug_time_logger();
+      auto                        on_exit      = fc::make_scoped_exit([self] {
+         self->signatures_status = signatures_ready;
+         app().post(priority::high, [self]() { self->assign_block_signatures_if_ready(); });
+      });
+      std::vector<signature_type> signatures;
+      std::transform(relevant_providers.begin(), relevant_providers.end(), std::back_inserter(signatures),
+                     [&d](const auto& p) { return p.get()(d); });
+      return signatures;
+   });
 
    if (blockvault != nullptr) {
       std::promise<bool> p;

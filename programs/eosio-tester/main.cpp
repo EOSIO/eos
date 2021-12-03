@@ -291,10 +291,7 @@ struct test_chain {
    void finish_block() {
       start_if_needed();
       ilog("finish block ${n}", ("n", control->head_block_num()));
-      using signatures_type = std::vector<eosio::chain::signature_type>;
       block_state_ptr bsp;
-      signatures_type signatures;
-      bool            wtmsig_enabled;
 
       auto assign_sigatures = control->finalize_block(bsp, [&](eosio::chain::digest_type d) {
          return std::vector{ producer_key.sign(d) };
