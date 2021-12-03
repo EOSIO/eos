@@ -2655,22 +2655,20 @@ controller::finalize_block(block_state_ptr& bsp, signer_callback_type&& sign) {
               );
 
    my->pending->_block_stage = completed_block{bsp};
-   
+
    return async_thread_pool(my->block_sign_pool.get_executor(),
-                            [bsp, my=my.get(), block_num = bsp->block_num, digest = bsp->sig_digest(),
+                            [bsp, my = my.get(), block_num = bsp->block_num, digest = bsp->sig_digest(),
                              wtmsig_enabled = eosio::chain::detail::is_builtin_activated(
-                                   pfa, pfs, builtin_protocol_feature_t::wtmsig_block_signatures),
-                             sign = std::move(sign)]() {
+                                 pfa, pfs, builtin_protocol_feature_t::wtmsig_block_signatures),
+                             sign = std::move(sign)]() -> std::function<void()> {
                                std::vector<signature_type> sigs;
                                try {
                                   sigs = sign(digest);
                                }
                                FC_LOG_AND_DROP();
-                               std::function<void()> result =
-                                     [bsp, my, sigs = std::move(sigs), wtmsig_enabled]() mutable {
-                                        my->assign_signatures(bsp, std::move(sigs), wtmsig_enabled);
-                                     };
-                               return result;
+                               return [bsp, my, sigs = std::move(sigs), wtmsig_enabled]() mutable {
+                                  my->assign_signatures(bsp, std::move(sigs), wtmsig_enabled);
+                               };
                             });
 }
 
