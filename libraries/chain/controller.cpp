@@ -2116,23 +2116,6 @@ struct controller_impl {
       return applied_trxs;
    }
 
-   void abort_unsigned_block() {
-      if( pending ) {
-         uint32_t block_num = pending->get_block_num();
-         ilog("abortig pending block ${block_num}", ("block_num", block_num));
-         pending.reset();
-         protocol_features.popped_blocks_to( head->block_num );
-         emit( self.block_abort, block_num );
-      }
-      auto db_head = fork_db.head();
-      if (db_head->block && db_head->block->producer_signature == signature_type()) {
-         auto poped = pop_block();
-         ilog("abortig unsigned block ${block_num}", ("block_num", poped->block_num));
-         fork_db.remove_head();
-         emit(self.block_abort, poped->block_num);
-      }
-   }
-
    static checksum256_type calculate_trx_merkle( const deque<transaction_receipt>& trxs ) {
       deque<digest_type> trx_digests;
       for( const auto& a : trxs )
@@ -2426,7 +2409,12 @@ controller::controller( const config& cfg, protocol_feature_set&& pfs, const cha
 
 controller::~controller() {
    try {
-      my->abort_unsigned_block();
+      auto db_head = my->fork_db.head();
+      if (db_head->block && db_head->block->producer_signature == signature_type()) {
+         auto poped = my->pop_block();
+         ilog("remove unsigned block ${block_num}", ("block_num", poped->block_num));
+         my->fork_db.remove_head();
+      }
    } FC_LOG_AND_DROP();
    /* Shouldn't be needed anymore.
    //close fork_db here, because it can generate "irreversible" signal to this controller,
