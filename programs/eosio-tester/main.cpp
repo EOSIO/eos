@@ -296,14 +296,12 @@ struct test_chain {
       signatures_type signatures;
       bool            wtmsig_enabled;
 
-      auto signing_done = control->finalize_block(bsp, [&](eosio::chain::digest_type d, bool block_wtmsig_enabled) {
-         wtmsig_enabled = block_wtmsig_enabled;
-         signatures = std::vector{ producer_key.sign(d) };
+      auto assign_sigatures = control->finalize_block(bsp, [&](eosio::chain::digest_type d) {
+         return std::vector{ producer_key.sign(d) };
       });
 
       control->commit_block();
-      signing_done.get(); // wait until `signatures` and `wtmsig_enabled` are ready  
-      control->assign_signatures(bsp, std::move(signatures), wtmsig_enabled);
+      assign_sigatures.get()();
    }
 };
 

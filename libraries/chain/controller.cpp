@@ -183,7 +183,7 @@ struct controller_impl {
    uint32_t                            snapshot_head_block = 0;
    named_thread_pool                   thread_pool;
    named_thread_pool                   block_sign_pool;
-   std::atomic<uint32_t>               signing_failed_blocknum = 0;
+   uint32_t                            signing_failed_blocknum = 0;
    platform_timer                      timer;
    fc::logger*                         deep_mind_logger = nullptr;
 #if defined(EOSIO_EOS_VM_RUNTIME_ENABLED) || defined(EOSIO_EOS_VM_JIT_RUNTIME_ENABLED)
@@ -1676,9 +1676,15 @@ struct controller_impl {
       pending->push();
    }
 
-   void on_block_signed(block_state_ptr bsp) {
-      log_irreversible();
-      emit(self.accepted_block, bsp);
+   void assign_signatures(block_state_ptr bsp, std::vector<signature_type>&& sigs, bool wtmsig_enabled) {
+      try {
+         bsp->assign_signatures(std::move(sigs), wtmsig_enabled);
+         log_irreversible();
+         emit(self.accepted_block, bsp);
+      } catch (...) {
+         signing_failed_blocknum = bsp->block_num;
+         throw;
+      }
    }
 
    /**
@@ -2097,7 +2103,8 @@ struct controller_impl {
          emit( self.block_abort, block_num );
       }
 
-      if (fork_db.is_signing_failed_block_head(signing_failed_blocknum.load())) {
+      if (fork_db.is_signing_failed_block_head(signing_failed_blocknum)) {
+         signing_failed_blocknum = 0;
          auto poped = pop_block();
          ilog("abortig unsigned block ${block_num}", ("block_num", poped->block_num));
          fork_db.remove_head();
@@ -2625,9 +2632,8 @@ void controller::start_block( block_timestamp_type when,
                     block_status::incomplete, std::optional<block_id_type>() );
 }
 
-std::future<void>
-controller::finalize_block(block_state_ptr&                                                      bsp,
-                           std::function<void(const digest_type& digest, bool wtmsig_enabled)>&& sign) {
+std::future<std::function<void()>>
+controller::finalize_block(block_state_ptr& bsp, signer_callback_type&& sign) {
    validate_db_available_size();
 
    my->finalize_block();
@@ -2650,27 +2656,22 @@ controller::finalize_block(block_state_ptr&                                     
 
    my->pending->_block_stage = completed_block{bsp};
    
-   auto& signing_failed_blocknum = my->signing_failed_blocknum;
-   signing_failed_blocknum       = 0;
    return async_thread_pool(my->block_sign_pool.get_executor(),
-                            [block_num = bsp->block_num, digest = bsp->sig_digest(),
+                            [bsp, my=my.get(), block_num = bsp->block_num, digest = bsp->sig_digest(),
                              wtmsig_enabled = eosio::chain::detail::is_builtin_activated(
-                                 pfa, pfs, builtin_protocol_feature_t::wtmsig_block_signatures),
-                             sign = std::move(sign), &signing_failed_blocknum]() {
+                                   pfa, pfs, builtin_protocol_feature_t::wtmsig_block_signatures),
+                             sign = std::move(sign)]() {
+                               std::vector<signature_type> sigs;
                                try {
-                                  sign(digest, wtmsig_enabled);
-                               } FC_LOG_AND_DROP();
+                                  sigs = sign(digest);
+                               }
+                               FC_LOG_AND_DROP();
+                               std::function<void()> result =
+                                     [bsp, my, sigs = std::move(sigs), wtmsig_enabled]() mutable {
+                                        my->assign_signatures(bsp, std::move(sigs), wtmsig_enabled);
+                                     };
+                               return result;
                             });
-}
-
-void controller::assign_signatures(block_state_ptr bsp, std::vector<signature_type>&& sigs, bool wtmsig_enabled) {
-   try {
-      bsp->assign_signatures(std::move(sigs), wtmsig_enabled);
-      my->on_block_signed(bsp);
-   } catch (...) {
-      my->signing_failed_blocknum = bsp->block_num;
-      throw;
-   }
 }
 
 void controller::commit_block() {

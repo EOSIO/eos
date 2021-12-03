@@ -177,10 +177,9 @@ namespace eosio { namespace chain {
          transaction_trace_ptr push_scheduled_transaction( const transaction_id_type& scheduled, fc::time_point deadline,
                                                            uint32_t billed_cpu_time_us, bool explicit_billed_cpu_time );
 
-         std::future<void>
-         finalize_block(block_state_ptr& bsp, 
-                        std::function<void(const digest_type&, bool wtmsig_enabled)>&& sign);
-         
+         std::future<std::function<void()>>
+         finalize_block(block_state_ptr& bsp, signer_callback_type&& sign);
+
          void commit_block();
          void assign_signatures(block_state_ptr bsp, std::vector<signature_type>&& sigs, bool wtmsig_enabled);
 

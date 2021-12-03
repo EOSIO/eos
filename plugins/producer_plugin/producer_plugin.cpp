@@ -217,16 +217,19 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
 
       std::optional<scoped_connection>                          _accepted_block_connection;
       std::optional<scoped_connection>                          _accepted_block_header_connection;
-      std::optional<scoped_connection> _irreversible_block_connection;
+      std::optional<scoped_connection>                          _irreversible_block_connection;
 
-      std::future<void>               sign_fut;
-      std::atomic<bool>               sign_ready;
-      std::vector<signature_type>     sigs;
-      bool wtmsig_enabled;
+      enum signatures_status_type {
+         signatures_none,
+         signatures_pending,
+         signatures_ready
+      };
 
-      eosio::chain::block_state_ptr unsigned_block_state;
-      bool handle_previous_block();
-      bool accept_previous_block_if_signed();
+      std::future<std::function<void()>>  assign_signatures_fut;
+      std::atomic<signatures_status_type> signatures_status;
+      
+      bool                                assign_block_signatures();
+      bool                                assign_block_signatures_if_ready();
       /*
        * HACK ALERT
        * Boost timers can be in a state where a handler has not yet executed but is not abortable.
@@ -1723,19 +1726,19 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
          if( !remove_expired_trxs( preprocess_deadline ) )
            return start_block_result::exhausted;
 
-         if (!accept_previous_block_if_signed())
+         if (!assign_block_signatures_if_ready())
             return start_block_result::failed;
          
          if( !remove_expired_blacklisted_trxs( preprocess_deadline ) )
            return start_block_result::exhausted;
 
-         if (!accept_previous_block_if_signed())
+         if (!assign_block_signatures_if_ready())
             return start_block_result::failed;
 
          if( !_subjective_billing.remove_expired( _log, chain.pending_block_time(), fc::time_point::now(), preprocess_deadline ) )
             return start_block_result::exhausted;
 
-         if (!accept_previous_block_if_signed())
+         if (!assign_block_signatures_if_ready())
             return start_block_result::failed;
 
          // limit execution of pending incoming to once per block
@@ -1744,7 +1747,7 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
          if( !process_unapplied_trxs( preprocess_deadline ) )
            return start_block_result::exhausted;
 
-         if (!accept_previous_block_if_signed()) 
+         if (!assign_block_signatures_if_ready()) 
             return start_block_result::failed;
 
          if (_pending_block_mode == pending_block_mode::producing) {
@@ -1758,7 +1761,7 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
             // may exhaust scheduled_trx_deadline but not preprocess_deadline, exhausted preprocess_deadline checked below
             process_scheduled_and_incoming_trxs(scheduled_trx_deadline,
                                                 pending_incoming_process_limit);
-            if (!accept_previous_block_if_signed()) 
+            if (!assign_block_signatures_if_ready()) 
                return start_block_result::failed;
          }
 
@@ -2344,8 +2347,7 @@ void producer_plugin_impl::schedule_delayed_production_loop(const std::weak_ptr<
 bool producer_plugin_impl::maybe_produce_block() {
    auto reschedule = fc::make_scoped_exit([this] { schedule_production_loop(); });
 
-   if (unsigned_block_state) {
-      // we have to make sure the previous block has signed
+   if (signatures_status.load() != signatures_none) {
       return false;
    }
 
@@ -2420,20 +2422,20 @@ void block_only_sync::on_block(eosio::chain::signed_block_ptr block) {
    }
 }
 
-bool producer_plugin_impl::handle_previous_block() {
+bool producer_plugin_impl::assign_block_signatures() {
    bool result = false;
    try {
-      chain_plug->chain().assign_signatures(unsigned_block_state, std::move(sigs), wtmsig_enabled);
+      assign_signatures_fut.get()();
       result = true;
    } LOG_AND_DROP();
-   unsigned_block_state.reset();
+   signatures_status = signatures_none;
    return result;
 }
 
 /// @return false only if the previous block signing failed. 
-bool producer_plugin_impl::accept_previous_block_if_signed() {
-   if (unsigned_block_state && sign_ready.load()) {
-      return handle_previous_block();
+bool producer_plugin_impl::assign_block_signatures_if_ready() {
+   if (signatures_status.load() == signatures_ready) {
+      return assign_block_signatures();
    }
    return true;
 }
@@ -2463,36 +2465,28 @@ void producer_plugin_impl::produce_block() {
       _protocol_features_signaled = false;
    }
 
-   // idump( (fc::time_point::now() - chain.pending_block_time()) );
-   sign_ready = false;
-   sign_fut   = chain.finalize_block(
-       unsigned_block_state, [relevant_providers = std::move(relevant_providers),
-                              self               = shared_from_this()](const digest_type& d, bool wtmsig_enabled) {
+   eosio::chain::block_state_ptr  block_state;
+   signatures_status = signatures_pending;
+   assign_signatures_fut = chain.finalize_block(
+       block_state, [relevant_providers = std::move(relevant_providers),
+                              self               = shared_from_this()](const digest_type& d) {
           auto debug_logger = maybe_make_debug_time_logger();
-          self->sigs.clear();
-          self->wtmsig_enabled = wtmsig_enabled;
-          
-          auto on_exit         = fc::make_scoped_exit([self] {
-             self->sign_ready = true;
+          auto on_exit      = fc::make_scoped_exit([self] {
+             self->signatures_status = signatures_ready;
              app().post(priority::high, [self]() {
-                if (self->unsigned_block_state.get()) {
-                   self->handle_previous_block();
-                }
-             });
+                  self->assign_block_signatures_if_ready();
+             });            
           });
           std::vector<signature_type> signatures;
           std::transform(relevant_providers.begin(), relevant_providers.end(), std::back_inserter(signatures),
                          [&d](const auto& p) { return p.get()(d); });
-          self->sigs = std::move(signatures);
+          return signatures;
        });
 
    if (blockvault != nullptr) {
       std::promise<bool> p;
       std::future<bool>  f = p.get_future();
-      // Block vault requires a signed block, just wait until it signed for now.
-      sign_fut.get();
-      block_state_ptr block_state = unsigned_block_state;
-      if (!handle_previous_block())
+      if (!assign_block_signatures())
          return;
       blockvault->async_propose_constructed_block(block_state->dpos_irreversible_blocknum,
                                                 block_state->block, [&p](bool b) { p.set_value(b); });

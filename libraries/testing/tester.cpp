@@ -434,19 +434,15 @@ namespace eosio { namespace testing {
 
       using signatures_type = std::vector<signature_type>;
       block_state_ptr bsp;
-      signatures_type signatures;
-      bool wtmsig_enabled;
-
-      auto signing_done = control->finalize_block(bsp, [&](digest_type d, bool block_wtmsig_enabled) {
-         wtmsig_enabled = block_wtmsig_enabled;
+      
+      auto assign_signatures = control->finalize_block(bsp, [&](digest_type d) {
          signatures_type sigs;
          std::transform(signing_keys.begin(), signing_keys.end(), std::back_inserter(sigs),
                         [&d](const auto& k) { return k.sign(d); });
-         signatures = std::move(sigs);
+         return sigs;
       });
       control->commit_block();
-      signing_done.get(); // wait until `signatures` and `wtmsig_enabled` are ready  
-      control->assign_signatures(bsp, std::move(signatures), wtmsig_enabled);
+      assign_signatures.get()(); 
 
       last_produced_block[control->head_block_state()->header.producer] =
           control->head_block_state()->id;
