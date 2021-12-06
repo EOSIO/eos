@@ -91,15 +91,16 @@ void transactional_amqp_publisher_impl::wait_for_signal(std::shared_ptr<boost::a
    });
 }
 
-transactional_amqp_publisher_impl::transactional_amqp_publisher_impl(const std::string& url, const std::string& exchange,
-                                                                     const fc::microseconds& time_out,
-                                                                     bool dedup,
-                                                                     transactional_amqp_publisher::error_callback_t on_fatal_error)
-  : retrying_connection(ctx, url, fc::microseconds(time_out.count()/2), [this](AMQP::Channel* c){channel_ready(c);}, [this](){channel_failed();})
-  , on_fatal_error(std::move(on_fatal_error))
-  , exchange(exchange)
-  , ack_cond(time_out)
-  , add_dedup_header(dedup)
+transactional_amqp_publisher_impl::transactional_amqp_publisher_impl(
+    const std::string& url, const std::string& exchange, const fc::microseconds& time_out, bool dedup,
+    transactional_amqp_publisher::error_callback_t on_fatal_error)
+    : retrying_connection(
+          ctx, url, fc::microseconds(time_out.count() / 2), [this](AMQP::Channel* c) { channel_ready(c); },
+          [this]() { channel_failed(); })
+    , on_fatal_error(std::move(on_fatal_error))
+    , exchange(exchange)
+    , add_dedup_header(dedup)
+    , ack_cond(time_out)
 {
    thread = std::thread([this]() {
       fc::set_os_thread_name("tamqp");
