@@ -12,12 +12,13 @@ namespace {
    inline static bool is_nan( const float32_t f ) {
       return f32_is_nan( f );
    }
-   inline static bool is_nan( const float64_t f ) {
-      return f64_is_nan( f );
-   }
+   inline static bool is_nan(const float64_t f) { return f64_is_nan(f); }
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-function"
    inline static bool is_nan( const float128_t& f ) {
       return f128_is_nan( f );
    }
+#pragma GCC diagnostic pop
 
    // float binops
    float _eosio_f32_add( float a, float b ) {

@@ -53,11 +53,13 @@ namespace eosio::trace_api {
    template void store_provider::append<block_trace_v2>(const block_trace_v2& bt);
 
    void store_provider::append_lib(uint32_t lib) {
-      fc::cfile index;
+      fc::cfile index, trx_id;
       const uint32_t slice_number = _slice_directory.slice_number(lib);
       _slice_directory.find_or_create_index_slice(slice_number, open_state::write, index);
       auto le = metadata_log_entry { lib_entry_v0 { .lib = lib }};
       append_store(le, index);
+      _slice_directory.find_or_create_trx_id_slice(slice_number, open_state::write, trx_id);
+      append_store(le, trx_id);
       _slice_directory.set_lib(lib);
    }
 
@@ -106,6 +108,8 @@ namespace eosio::trace_api {
          slice_number = 0;
       }
 
+      uint32_t trx_block_num = 0; // number of the block that contains the target trx
+      uint32_t trx_entries = 0;   // number of entries that contain the target trx
       while (true){
          const bool found = _slice_directory.find_trx_id_slice(slice_number, open_state::read, trx_id_file);
          if( !found )
@@ -118,16 +122,31 @@ namespace eosio::trace_api {
          while (offset < end) {
             yield();
             fc::raw::unpack(ds, entry);
-            FC_ASSERT( std::holds_alternative<block_trxs_entry>(entry) == true, "unpacked data should be a block trxs entry" );
-            const auto& trxs_entry = std::get<block_trxs_entry>(entry);
-            for (auto i = 0U; i < trxs_entry.ids.size(); ++i){
-               if (trxs_entry.ids[i] == trx_id)
-                  return trxs_entry.block_num;
+            if (std::holds_alternative<block_trxs_entry>(entry)) {
+               const auto& trxs_entry = std::get<block_trxs_entry>(entry);
+               for (auto i = 0U; i < trxs_entry.ids.size(); ++i) {
+                  if (trxs_entry.ids[i] == trx_id) {
+                     trx_entries++;
+                     trx_block_num = trxs_entry.block_num;
+                  }
+               }
+            } else if (std::holds_alternative<lib_entry_v0>(entry)) {
+               auto lib = std::get<lib_entry_v0>(entry).lib;
+               if (trx_entries > 0 && lib >= trx_block_num) {
+                  return trx_block_num;
+               }
+            } else {
+               FC_ASSERT( false, "unpacked data should be a block_trxs_entry or a lib_entry_v0" );;
             }
             offset = trx_id_file.tellp();
          }
          slice_number++;
       }
+
+      // transaction's block is not irreversible
+      if (trx_entries > 0)
+         return trx_block_num;
+
       return get_block_n{};
    }
 
