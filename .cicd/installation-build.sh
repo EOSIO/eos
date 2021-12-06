@@ -34,7 +34,7 @@ echo '--- :put_litter_in_its_place: Cleaning Up'
 DOCKER_STOP_COMMAND="docker stop 'ci-contracts-builder-$BUILDKITE_PIPELINE_SLUG-$BUILDKITE_BUILD_NUMBER-$UBUNTU_VERSION'"
 echo "$ $DOCKER_STOP_COMMAND"
 eval $DOCKER_STOP_COMMAND
-DOCKER_RM_COMMAND="docker rm 'ci-contracts-builder-$BUILDKITE_PIPELINE_SLUG-$BUILDKITE_BUILD_NUMBER-$UBUNTU_VERSION'"
+DOCKER_RM_COMMAND="docker rm 'ci-contracts-builder-$BUILDKITE_PIPELINE_SLUG-$BUILDKITE_BUILD_NUMBER-$UBUNTU_VERSION' || :"
 echo "$ $DOCKER_RM_COMMAND"
 eval $DOCKER_RM_COMMAND
 echo '--- :white_check_mark: Done!'
