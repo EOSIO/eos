@@ -574,6 +574,11 @@ REGISTER_CF_HOST_FUNCTION(__letf2);
 REGISTER_CF_HOST_FUNCTION(__lttf2);
 REGISTER_CF_HOST_FUNCTION(__unordtf2);
 
+// code coverage API 
+REGISTER_HOST_FUNCTION(coverage_inc_fun_cnt)
+REGISTER_HOST_FUNCTION(coverage_inc_line_cnt)
+REGISTER_HOST_FUNCTION(coverage_dump)
+
 } // namespace webassembly
 } // namespace chain
 } // namespace eosio
