@@ -2,29 +2,27 @@
 set -eo pipefail
 [[ "$ENABLE_INSTALL" == 'true' ]] || echo '--- :evergreen_tree: Configuring Environment'
 . ./.cicd/helpers/general.sh
-if [[ $EOS_CONTRACT_BUILD ]]; then
+if [[ "$BUILDKITE_PIPELINE_SLUG" == 'eosio-contract-build' ]]; then
     [[ "$RAW_PIPELINE_CONFIG" == '' ]] && export RAW_PIPELINE_CONFIG="$1"
     [[ "$RAW_PIPELINE_CONFIG" == '' ]] && export RAW_PIPELINE_CONFIG='pipeline.jsonc'
     [[ "$PIPELINE_CONFIG" == '' ]] && export PIPELINE_CONFIG='pipeline.json'
     # read dependency file
     if [[ -f "$RAW_PIPELINE_CONFIG" ]]; then
         echo 'Reading pipeline configuration file...'
-        cat "$RAW_PIPELINE_CONFIG" | grep -Po '^[^"/]*("((?<=\\).|[^"])*"[^"/]*)*' | jq -c .\"eosio-contract-build\" > "$PIPELINE_CONFIG"
-        CDT_VERSION=$(cat "$PIPELINE_CONFIG" | jq -r '.dependencies."eosio.cdt"')
+        cat "$RAW_PIPELINE_CONFIG" | grep -Po '^[^"/]*("((?<=\\).|[^"])*"[^"/]*)*' | jq -c '.[env.BUILDKITE_PIPELINE_SLUG]' > "$PIPELINE_CONFIG"
+        CDT_VERSION=$(cat "$PIPELINE_CONFIG" | jq -r '.dependencies["eosio.cdt"]')
     else
         echo 'ERROR: No pipeline configuration file or dependencies file found!'
         exit 1
     fi
 
-    if [[ "$BUILDKITE" == 'true' ]]; then
-        CDT_COMMIT=$((curl -s https://api.github.com/repos/EOSIO/eosio.cdt/git/refs/tags/$CDT_VERSION && curl -s https://api.github.com/repos/EOSIO/eosio.cdt/git/refs/heads/$CDT_VERSION) | jq '.object.sha' | sed "s/null//g" | sed "/^$/d" | tr -d '"' | sed -n '1p')
-        test -z "$CDT_COMMIT" && CDT_COMMIT=$(echo $CDT_VERSION | tr -d '"' | tr -d "''" | cut -d ' ' -f 1) # if both searches returned nothing, the version is probably specified by commit hash already
-    fi
+    CDT_COMMIT=$((curl -sSL "https://api.github.com/repos/EOSIO/eosio.cdt/git/refs/tags/$CDT_VERSION" && curl -sSL "https://api.github.com/repos/EOSIO/eosio.cdt/git/refs/heads/$CDT_VERSION") | jq -r '.object.sha // ""' | sed "/^$/d" | sed -n '1p')
+    test -z "$CDT_COMMIT" && CDT_COMMIT=$(echo $CDT_VERSION | tr -d '"' | tr -d "''" | cut -d ' ' -f 1) # if both searches returned nothing, the version is probably specified by commit hash already
 
     echo "Using cdt ${CDT_COMMIT} from \"$CDT_VERSION\"..."
     export CDT_URL="https://eos-public-oss-binaries.s3-us-west-2.amazonaws.com/${CDT_COMMIT:0:7}-eosio.cdt-ubuntu-20.04_amd64.deb"
     export DEOSIO_COMPILE_TEST_CONTRACTS=true
-    CDT_COMMAND="curl -sSf $CDT_URL --output eosio.cdt.deb && apt install ./eosio.cdt.deb"
+    CDT_COMMAND="curl -fsSL \"$CDT_URL\" --output eosio.cdt.deb && apt install ./eosio.cdt.deb"
 fi
 
 mkdir -p "$BUILD_DIR"
@@ -68,7 +66,7 @@ else # Linux
     fi
     CMAKE_COMMAND="cmake \$CMAKE_EXTRAS .."
     MAKE_COMMAND="make -j $JOBS"
-    if [[ $EOS_CONTRACT_BUILD ]]; then
+    if [[ "$BUILDKITE_PIPELINE_SLUG" == 'eosio-contract-build' ]]; then
         BUILD_COMMANDS="echo \"+++ :hammer_and_wrench: Building EOSIO\" && echo \"$CDT_COMMAND\" && eval $CDT_COMMAND && echo \"$ $CMAKE_COMMAND\" && eval $CMAKE_COMMAND && echo \"$ $MAKE_COMMAND\" && eval $MAKE_COMMAND"
     else
         BUILD_COMMANDS="echo \"+++ :hammer_and_wrench: Building EOSIO\" && echo \"$ $CMAKE_COMMAND\" && eval $CMAKE_COMMAND && echo \"$ $MAKE_COMMAND\" && eval $MAKE_COMMAND"
