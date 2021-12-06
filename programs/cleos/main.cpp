@@ -208,6 +208,7 @@ packed_transaction::compression_type to_compression_type( tx_compression_type t 
       case tx_compression_type::zlib: return packed_transaction::compression_type::zlib;
       case tx_compression_type::default_compression: return packed_transaction::compression_type::none;
    }
+   __builtin_unreachable();
 }
 
 void add_standard_transaction_options(CLI::App* cmd, string default_permission = "") {
@@ -3182,7 +3183,7 @@ int main( int argc, char** argv ) {
       }
    });
 
-   auto getSchedule = get_schedule_subcommand{get};
+   get_schedule_subcommand{get};
    auto getTransactionId = get_transaction_id_subcommand{get};
 
    auto getCmd = get->add_subcommand("best", localized("Display message based on account name"));
