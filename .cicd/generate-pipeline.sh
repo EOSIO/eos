@@ -204,6 +204,7 @@ done
       queue: "$BUILDKITE_BUILD_AGENT_QUEUE"
     timeout: ${TIMEOUT:-180}
     skip: ${SKIP_INSTALL}${SKIP_UBUNTU_18_04}${SKIP_LINUX}${SKIP_DOCKER}${SKIP_CONTRACT_BUILDER}
+
   - label: ":docker: Docker - Build and Install on Ubuntu 20.04"
     command: "./.cicd/installation-build.sh"
     env:
@@ -829,6 +830,13 @@ EOF
     agents:
       queue: "$BUILDKITE_BUILD_AGENT_QUEUE"
     skip: ${SKIP_INSTALL}${SKIP_UBUNTU_18_04}${SKIP_LINUX}${SKIP_DOCKER}${SKIP_PACKAGE_BUILDER}${SKIP_PUBLIC_DOCKER}
+    timeout: ${TIMEOUT:-10}
+
+  - label: ":docker: :ubuntu: Docker - Build 20.04 Docker Image"
+    command:  "./.cicd/create-docker-from-binary.sh"
+    agents:
+      queue: "$BUILDKITE_BUILD_AGENT_QUEUE"
+    skip: ${SKIP_INSTALL}${SKIP_UBUNTU_20_04}${SKIP_LINUX}${SKIP_DOCKER}${SKIP_PACKAGE_BUILDER}${SKIP_PUBLIC_DOCKER}
     timeout: ${TIMEOUT:-10}
 EOF
 IFS=$oIFS
