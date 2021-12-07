@@ -24,6 +24,7 @@ compile_commands.json
 moc_*
 *.moc
 .clangd/
+.cache/
 
 genesis.json
 hardfork.hpp
