@@ -2578,6 +2578,7 @@ void controller::start_block( block_timestamp_type when,
                               uint16_t confirm_block_count,
                               const vector<digest_type>& new_protocol_feature_activations )
 {
+   ilog( "start_block called" );
    validate_db_available_size();
 
    if( new_protocol_feature_activations.size() > 0 ) {
