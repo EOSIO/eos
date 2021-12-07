@@ -55,9 +55,9 @@ class PluginHttpTest(unittest.TestCase):
                                                                                    "eosio::chain_api_plugin",
                                                                                    "eosio::http_plugin",
                                                                                    "eosio::db_size_api_plugin")
-        nodeos_flags = (" --data-dir=%s --trace-dir=%s --trace-no-abis --filter-on=%s --access-control-allow-origin=%s "
+        nodeos_flags = (" --data-dir=%s --trace-dir=%s --trace-no-abis --access-control-allow-origin=%s "
                         "--contracts-console --http-validate-host=%s --verbose-http-errors "
-                        "--p2p-peer-address localhost:9011 ") % (self.data_dir, self.data_dir, "\"*\"", "\'*\'", "false")
+                        "--p2p-peer-address localhost:9011 ") % (self.data_dir, self.data_dir, "\'*\'", "false")
         start_nodeos_cmd = ("%s -e -p eosio %s %s ") % (Utils.EosServerPath, nodeos_plugins, nodeos_flags)
         self.nodeos.launchCmd(start_nodeos_cmd, self.node_id)
         time.sleep(self.sleep_s)
