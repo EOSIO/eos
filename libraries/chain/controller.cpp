@@ -2010,7 +2010,7 @@ struct controller_impl {
             fork_db.mark_valid( new_head );
             head = new_head;
          } catch ( const std::exception& e ) {
-            fork_db.remove( new_head->id );
+            fork_db.remove_fork( new_head->id );
             throw;
          }
       } else if( new_head->id != head->id ) {
@@ -2059,7 +2059,7 @@ struct controller_impl {
             if( except ) {
                // ritr currently points to the block that threw
                // Remove the block that threw and all forks built off it.
-               fork_db.remove( (*ritr)->id );
+               fork_db.remove_fork( (*ritr)->id );
 
                // pop all blocks from the bad fork, discarding their transactions
                // ritr base is a forward itr to the last block successfully applied
@@ -2106,7 +2106,7 @@ struct controller_impl {
          signing_failed_blocknum = 0;
          auto poped = pop_block();
          dlog("aborting unsigned block ${block_num}", ("block_num", poped->block_num));
-         fork_db.remove(poped->id);
+         fork_db.remove_head(poped->block_num);
          auto trxs  = poped->extract_trxs_metas();
          applied_trxs.insert(applied_trxs.end(), trxs.begin(), trxs.end());
          emit(self.block_abort, poped->block_num);
@@ -2413,7 +2413,7 @@ controller::~controller() {
       if (db_head->block && db_head->block->producer_signature == signature_type()) {
          auto poped = my->pop_block();
          dlog("remove unsigned block ${block_num}", ("block_num", poped->block_num));
-         my->fork_db.remove(poped->id);
+         my->fork_db.remove_head(poped->block_num);
          my->emit(my->self.block_abort, poped->block_num);
       }
    } FC_LOG_AND_DROP();

@@ -272,7 +272,7 @@ namespace eosio { namespace chain {
 
       // The other blocks to be removed are removed using the remove method so that orphaned branches do not remain in the fork database.
       for( const auto& block_id : blocks_to_remove ) {
-         remove( block_id );
+         remove_fork( block_id );
       }
 
       // Even though fork database no longer needs block or trxs when a block state becomes a root of the tree,
@@ -441,7 +441,7 @@ namespace eosio { namespace chain {
    } /// fetch_branch_from
 
    /// remove all of the invalid forks built off of this id including this id
-   void fork_database::remove( const block_id_type& id ) {
+   void fork_database::remove_fork( const block_id_type& id ) {
       vector<block_id_type> remove_queue{id};
       const auto& previdx = my->index.get<by_prev>();
       const auto head_id = my->head->id;
@@ -466,6 +466,21 @@ namespace eosio { namespace chain {
 
    bool fork_database::is_head_block(uint32_t blocknum)  {
       return my->head->block && my->head->block->block_num() == blocknum;
+   }
+
+   void fork_database::remove_head(uint32_t blocknum) {
+      EOS_ASSERT(is_head_block(blocknum), fork_database_exception, "trying to remove non-head block ${block_num}",
+                 ("blocknum", blocknum));
+      auto itr      = my->index.find(my->head->id);
+      auto prev_id = my->head->prev();
+      auto prev_itr = my->index.find( prev_id );
+      EOS_ASSERT(prev_itr != my->index.end(), fork_database_exception,
+                 "Unable to remove block ${block_num} because no previous block exists", ("blocknum", blocknum));
+      if( itr != my->index.end() ) {
+         my->index.erase(itr);
+      }
+      my->head = *prev_itr;
+      return;
    }
 
    void fork_database::mark_valid( const block_state_ptr& h ) {
