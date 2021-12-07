@@ -144,3 +144,27 @@ steps:
       queue: "automation-eks-eos-builder-fleet"
     timeout: 180
     skip: ${SKIP_UBUNTU_20_04}${SKIP_LINUX}
+
+  - label: ":oracle_linux: Oracle_Linux 8 - Base Image Unpinned"
+    command:
+      - "./.cicd/generate-base-images.sh"
+    env:
+      FORCE_BASE_IMAGE: true
+      IMAGE_TAG: oracle_linux-8-unpinned
+      PLATFORM_TYPE: unpinned
+    agents:
+      queue: "automation-eks-eos-builder-fleet"
+    timeout: 180
+    skip: ${SKIP_ORACLE_LINUX_8}${SKIP_LINUX}    
+
+  - label: ":oracle_linux: Oracle_Linux 8 - Base Image Pinned"
+    command:
+      - "./.cicd/generate-base-images.sh"
+    env:
+      FORCE_BASE_IMAGE: true
+      IMAGE_TAG: oracle_linux-8-pinned
+      PLATFORM_TYPE: pinned
+    agents:
+      queue: "automation-eks-eos-builder-fleet"
+    timeout: 180
+    skip: ${SKIP_ORACLE_LINUX_8}${SKIP_LINUX} 
