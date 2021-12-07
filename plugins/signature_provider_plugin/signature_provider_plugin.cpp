@@ -22,6 +22,7 @@ class signature_provider_plugin_impl {
 
       signature_provider_plugin::signature_provider_type
       make_key_signature_provider(const chain::private_key_type& key) const {
+         ilog( "Beginning block signing with in-memory key" );
          return [key]( const chain::digest_type& digest ) {
             return key.sign(digest);
          };
