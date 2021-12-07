@@ -3462,7 +3462,10 @@ void controller_impl::on_activation<builtin_protocol_feature_t::wasm_code_covera
    db.modify( db.get<protocol_state_object>(), [&]( auto& ps ) {
       add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "coverage_inc_fun_cnt" );
       add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "coverage_inc_line_cnt" );
+      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "coverage_get_fun_cnt" );
+      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "coverage_get_line_cnt" );
       add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "coverage_dump" );
+      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "coverage_reset" );
    } );
 }
 
