@@ -222,8 +222,7 @@ class state_history_traces_log : public state_history_log {
    std::shared_ptr<std::vector<char>> get_log_entry(block_num_type block_num);
 
    void block_start(uint32_t block_num) {
-      // The trace_caches should caches at most 2 blocks, i.e. block_num, and block_num-1. Any block older than block_num-1 can be considered obsolete.
-      trace_caches.erase(block_num-2);
+      trace_caches[block_num].clear();
    }
 
    void store(const chainbase::database& db, const chain::block_state_ptr& block_state);
