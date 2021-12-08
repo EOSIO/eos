@@ -42,6 +42,16 @@ if("eos-vm-oc" IN_LIST EOSIO_WASM_RUNTIMES)
       list(APPEND CHAIN_EOSVMOC_SOURCES webassembly/runtimes/eos-vm-oc/llvmWARshim.cpp)
    endif()
 
+   if (CMAKE_COMPILER_IS_GNUCC AND 
+       CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 9 AND
+       LLVM_VERSION_MAJOR VERSION_EQUAL 7)
+      # llvm7 would cause init-list-lifetime warnings with GCC 9 and above if -Werror is specified
+      set_source_files_properties(webassembly/runtimes/eos-vm-oc/LLVMJIT.cpp
+                                  webassembly/runtimes/eos-vm-oc/LLVMEmitIR.cpp
+                                  webassembly/runtimes/eos-vm-oc/llvmWARshim.cpp
+                                  PROPERTIES COMPILE_FLAGS -Wno-error=init-list-lifetime)
+   endif()
+
    llvm_map_components_to_libnames(LLVM_LIBS support core passes mcjit native orcjit)
    include_directories(${LLVM_INCLUDE_DIRS})
    add_definitions(${LLVM_DEFINITIONS})

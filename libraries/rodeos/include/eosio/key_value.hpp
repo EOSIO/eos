@@ -303,7 +303,7 @@ class kv_table {
 
          uint32_t value_size;
          uint32_t actual_value_size;
-         uint32_t actual_data_size;
+         uint32_t actual_data_size = 0;
          uint32_t offset = 0;
 
          // call once to get the value_size

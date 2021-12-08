@@ -2383,7 +2383,7 @@ controller::controller( const config& cfg, protocol_feature_set&& pfs, const cha
 controller::~controller() {
    try {
       my->abort_block();
-   } FC_LOG_AND_DROP();
+   } FC_LOG_AND_DROP_ALL();
    /* Shouldn't be needed anymore.
    //close fork_db here, because it can generate "irreversible" signal to this controller,
    //in case if read-mode == IRREVERSIBLE, we will apply latest irreversible block
