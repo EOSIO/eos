@@ -279,10 +279,7 @@ constexpr auto intrinsic_table = boost::hana::make_tuple(
    "env.set_output_data"_s,
    "env.coverage_inc_fun_cnt"_s,
    "env.coverage_inc_line_cnt"_s,
-   "env.coverage_get_fun_cnt"_s,
-   "env.coverage_inc_line_cnt"_s,
-   "env.coverage_dump"_s,
-   "env.coverage_reset"_s
+   "env.coverage_dump"_s
 );
 
 }}}
