@@ -358,9 +358,10 @@ class kv_table {
       }
 
       bool valid() const { return itr_stat == status::iterator_ok; }
+      bool is_end() const { return itr == 0 || itr_stat == status::iterator_end; }
 
       int32_t key_compare(key_type kt) const {
-           if (itr == 0 || itr_stat == status::iterator_end) {
+           if (is_end()) {
                return 1;
            } else {
                return index->tbl->environment.kv_it_key_compare(itr, kt.data(), kt.size());
@@ -374,8 +375,8 @@ class kv_table {
       const kv_index* index;
 
       int compare(const iterator_base& b) const {
-         bool a_is_end = !itr || itr_stat == status::iterator_end;
-         bool b_is_end = !b.itr || b.itr_stat == status::iterator_end;
+         bool a_is_end = this->is_end();
+         bool b_is_end = b.is_end();
          if (a_is_end && b_is_end) {
             return 0;
          } else if (a_is_end && b.itr) {
@@ -501,8 +502,8 @@ class kv_table {
         }
 
         int compare(const reverse_iterator& b) const {
-            bool a_is_end = !itr || itr_stat == status::iterator_end;
-            bool b_is_end = !b.itr || b.itr_stat == status::iterator_end;
+            bool a_is_end = this->is_end();
+            bool b_is_end = b.is_end();
             if (a_is_end && b_is_end) {
                 return 0;
             } else if (a_is_end && b.itr) {
@@ -756,7 +757,7 @@ public:
 
            //typename is needed before iterator::status, because iterator::status is a dependent name
            int32_t itr_stat = static_cast<typename iterator::status>(tbl->environment.kv_it_prev(itr, &found_key_size, &found_value_size));
-           return {itr, static_cast<typename iterator::status>(itr_stat), this};
+           return {itr, itr_stat, this};
        }
 
        /**
