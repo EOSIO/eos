@@ -26,8 +26,7 @@ enum class builtin_protocol_feature_t : uint32_t {
    action_return_value,
    kv_database,
    configurable_wasm_limits,
-   blockchain_parameters,
-   wasm_code_coverage
+   blockchain_parameters
 };
 
 struct protocol_feature_subjective_restrictions {
