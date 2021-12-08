@@ -182,6 +182,9 @@ struct test_chain {
    std::unique_ptr<intrinsic_context>                intr_ctx;
    std::set<test_chain_ref*>                         refs;
 
+   std::unordered_map<uint64_t, std::unordered_map<uint32_t, std::unordered_map<uint32_t, uint32_t> > > funcnt_map;
+   std::unordered_map<uint64_t, std::unordered_map<uint32_t, std::unordered_map<uint32_t, uint32_t> > > linecnt_map;
+
    test_chain(const char* snapshot) {
       eosio::chain::genesis_state genesis;
       genesis.initial_timestamp = fc::time_point::from_iso_string("2020-01-01T00:00:00.000");
@@ -1123,6 +1126,83 @@ struct callbacks {
       }
    }
 
+   void coverage_inc_fun_cnt(uint64_t code, uint32_t file_num, uint32_t func_num) {
+       auto &sel_chain = *state.chains[*state.selected_chain_index];
+       auto &code_map = sel_chain.funcnt_map[code];
+       auto &funcnt = code_map[file_num];
+       funcnt[func_num]++;
+   }
+
+   void coverage_inc_line_cnt(uint64_t code, uint32_t file_num, uint32_t line_num) {
+       auto &sel_chain = *state.chains[*state.selected_chain_index];
+       auto &code_map = sel_chain.linecnt_map[code];
+       auto &linecnt = code_map[file_num];
+       linecnt[line_num]++;
+   }
+
+   uint32_t coverage_get_fun_cnt(uint64_t code, uint32_t file_num, uint32_t func_num) {
+       auto &sel_chain = *state.chains[*state.selected_chain_index];
+       auto &code_map = sel_chain.funcnt_map[code];
+       auto &funcnt = code_map[file_num];
+       return funcnt[func_num];
+   }
+
+   uint32_t coverage_get_line_cnt(uint64_t code, uint32_t file_num, uint32_t line_num) {
+       auto &sel_chain = *state.chains[*state.selected_chain_index];
+       auto &code_map = sel_chain.linecnt_map[code];
+       auto &linecnt = code_map[file_num];
+       return linecnt[line_num];
+   }
+
+   void coverage_dump() {
+       auto &sel_chain = *state.chains[*state.selected_chain_index];
+       auto fName = std::string("call-counts.json");
+       std::ofstream out_json_file;
+       out_json_file.open(fName);
+      
+       // dont use auto JSON serialization because 
+       // we want to convert maps to arrays
+       out_json_file << "{\n";
+       out_json_file << "\t\"functions\": {";
+       for (auto code_map : sel_chain.funcnt_map) {
+            auto code_str = eosio::chain::name{code_map.first}.to_string();
+            out_json_file << "\t\t\"" << code_str <<"\": [\n";
+            for (auto funcnt : code_map.second) {
+                auto file_num = funcnt.first;
+                for (auto func : funcnt.second) {
+                    auto func_num = func.first;
+                    auto calls = func.second;
+                    out_json_file << "\t\t\t[" << file_num << ", " << func_num << ", " << calls << "]\n";
+                }
+            }
+            out_json_file << "\t\t]\n";
+       }
+       out_json_file << "\t}\n";
+
+       out_json_file << "\t\"lines\": {";
+       for (auto code_map : sel_chain.linecnt_map) {
+            auto code_str = eosio::chain::name{code_map.first}.to_string();
+            out_json_file << "{ \"" << code_str <<"\"";
+
+            for (auto linecnt : code_map.second) {
+               auto file_num = linecnt.first;
+                for (auto line : linecnt.second) {
+                  auto line_num = line.first;
+                  auto cnt = line.second;
+                  out_json_file << "\t\t\t[" << file_num << ", " << line_num << ", " << cnt << "]\n";
+                }
+            }
+            out_json_file << "]\n";
+       }
+       out_json_file << "\t}\n";
+       out_json_file.close();
+   }
+
+   void coverage_reset() {
+       auto &sel_chain = *state.chains[*state.selected_chain_index];
+       sel_chain.funcnt_map.clear();
+       sel_chain.linecnt_map.clear();
+   }
 
 }; // callbacks
 
@@ -1211,6 +1291,13 @@ void register_callbacks() {
    rhf_t::add<&callbacks::sha512>("env", "sha512");
    rhf_t::add<&callbacks::ripemd160>("env", "ripemd160");
    rhf_t::add<&callbacks::recover_key>("env", "recover_key");
+
+   rhf_t::add<&callbacks::recover_key>("env", "coverage_inc_fun_cnt");
+   rhf_t::add<&callbacks::recover_key>("env", "coverage_inc_line_cnt");
+   rhf_t::add<&callbacks::recover_key>("env", "coverage_get_fun_cnt");
+   rhf_t::add<&callbacks::recover_key>("env", "coverage_get_line_cnt");
+   rhf_t::add<&callbacks::recover_key>("env", "coverage_dump");
+   rhf_t::add<&callbacks::recover_key>("env", "coverage_reset");
 }
 
 static int run(const char* wasm, const std::vector<std::string>& args) {
