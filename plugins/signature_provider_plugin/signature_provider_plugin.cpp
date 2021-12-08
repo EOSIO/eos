@@ -26,8 +26,10 @@ class signature_provider_plugin_impl {
       signature_provider_plugin::signature_provider_type
       make_key_signature_provider(const chain::private_key_type& key) const {
          if (_signing_delay_ms.count() == 0) {
+            ilog( "Beginning block signing with in-memory key" );
             return [key](const chain::digest_type& digest) { return key.sign(digest); };
          } else {
+            ilog( "Beginning block signing with in-memory key" );
             return [key, delay = _signing_delay_ms](const chain::digest_type& digest) {
                std::this_thread::sleep_for(delay);
                return key.sign(digest);
