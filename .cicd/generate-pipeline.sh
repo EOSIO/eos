@@ -75,6 +75,7 @@ for FILE in $(ls "$CICD_DIR/platforms/$PLATFORM_TYPE"); do
     [[ $FILE_NAME =~ 'ubuntu' ]] && export ICON=':ubuntu:'
     [[ $FILE_NAME =~ 'centos' ]] && export ICON=':centos:'
     [[ $FILE_NAME =~ 'macos' ]] && export ICON=':darwin:'
+    [[ $FILE_NAME =~ 'oracle' ]] && export ICON=':oracle_linux:'
     . "$HELPERS_DIR/file-hash.sh" "$CICD_DIR/platforms/$PLATFORM_TYPE/$FILE" # returns HASHED_IMAGE_TAG, etc
     export PLATFORM_SKIP_VAR="SKIP_${PLATFORM_NAME_UPCASE}_${VERSION_MAJOR}${VERSION_MINOR}"
     # Anka Template and Tags
@@ -677,6 +678,34 @@ EOF
     allow_dependency_failure: false
     timeout: ${TIMEOUT:-10}
     skip: ${SKIP_UBUNTU_20_04}${SKIP_PACKAGE_BUILDER}${SKIP_LINUX}
+
+  - label: ":oracle_linux: Oracle_Linux 8 - Package Builder"
+    command:
+      - "buildkite-agent artifact download build.tar.gz . --step ':oracle_linux: Oracle_Linux 8 - Build' && tar -xzf build.tar.gz"
+      - "./.cicd/package.sh"
+    env:
+      IMAGE_TAG: "oracle_linux-8-$PLATFORM_TYPE"
+      PLATFORM_TYPE: $PLATFORM_TYPE
+      OS: "oracle_linux-8" # OS and PKGTYPE required for lambdas
+      PKGTYPE: "rpm"
+    agents:
+      queue: "$BUILDKITE_TEST_AGENT_QUEUE"
+    key: "oracle8pb"
+    timeout: ${TIMEOUT:-10}
+    skip: ${SKIP_ORACLE_LINUX_8}${SKIP_PACKAGE_BUILDER}${SKIP_LINUX}
+
+  - label: ":oracle_linux: Oracle_Linux 8 - Test Package"
+    command:
+      - "buildkite-agent artifact download '*.rpm' . --step ':oracle_linux: Oracle_Linux 8 - Package Builder' --agent-access-token \$\$BUILDKITE_AGENT_ACCESS_TOKEN"
+      - "./.cicd/test-package.docker.sh"
+    env:
+      IMAGE: "oraclelinux:8"
+    agents:
+      queue: "$BUILDKITE_TEST_AGENT_QUEUE"
+    depends_on: "oracle8pb"
+    allow_dependency_failure: false
+    timeout: ${TIMEOUT:-10}
+    skip: ${SKIP_ORACLE_LINUX_8}${SKIP_PACKAGE_BUILDER}${SKIP_LINUX}
 
   - label: ":darwin: macOS 10.15 - Package Builder"
     command:

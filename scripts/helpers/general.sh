@@ -85,6 +85,7 @@ function install-package() {
     # Can't use $SUDO_COMMAND: https://askubuntu.com/questions/953485/where-do-i-find-the-sudo-command-environment-variable
     [[ $CURRENT_USER != "root" ]] && [[ ! -z $SUDO_LOCATION ]] && NEW_SUDO_COMMAND="$SUDO_LOCATION -E"
     ( [[ $NAME =~ "Amazon Linux" ]] || [[ $NAME == "CentOS Linux" ]] ) && eval $EXECUTION_FUNCTION $NEW_SUDO_COMMAND $YUM $OPTIONS install -y $1
+    ( [[ $NAME == "Oracle Linux Server" ]] ) && eval $EXECUTION_FUNCTION $NEW_SUDO_COMMAND $DNF $OPTIONS install -y $1
     ( [[ $NAME =~ "Ubuntu" ]] ) && eval $EXECUTION_FUNCTION $NEW_SUDO_COMMAND $APTGET $OPTIONS install -y $1
   fi
   true # Required; Weird behavior without it
@@ -97,7 +98,7 @@ function group-install-package() {
     ( [[ $2 =~ "--" ]] || [[ $3 =~ "--" ]] ) && OPTIONS="${2}${3}"
     # Can't use $SUDO_COMMAND: https://askubuntu.com/questions/953485/where-do-i-find-the-sudo-command-environment-variable
     [[ $CURRENT_USER != "root" ]] && [[ ! -z $SUDO_LOCATION ]] && NEW_SUDO_COMMAND="$SUDO_LOCATION -E"
-    ( [[ $NAME =~ "Amazon Linux" ]] || [[ $NAME == "CentOS Linux" ]] ) && eval $EXECUTION_FUNCTION $NEW_SUDO_COMMAND $YUM $OPTIONS groupinstall -y '$1'
+    ( [[ $NAME =~ "Amazon Linux" ]] || [[ $NAME == "CentOS Linux" ]] || [[ $NAME == "Oracle Linux" ]] ) && eval $EXECUTION_FUNCTION $NEW_SUDO_COMMAND $YUM $OPTIONS groupinstall -y '$1'
     ( [[ $NAME =~ "Ubuntu" ]] ) && eval $EXECUTION_FUNCTION $NEW_SUDO_COMMAND $APTGET $OPTIONS install -y $1
   fi
   true # Required; Weird behavior without it
@@ -112,7 +113,7 @@ function uninstall-package() {
     ( [[ $2 =~ "--" ]] || [[ $3 =~ "--" ]] ) && OPTIONS="${2}${3}"
     [[ $CURRENT_USER != "root" ]] && [[ ! -z $SUDO_LOCATION ]] && NEW_SUDO_COMMAND="$SUDO_LOCATION -E"
     # Check if the packages exist before uninstalling them. This speeds things up for tests.
-    ( ( [[ $NAME =~ "Amazon Linux" ]] || [[ $NAME == "CentOS Linux" ]] ) && [[ ! -z $(rpm -qa $1) ]] ) && eval $EXECUTION_FUNCTION $NEW_SUDO_COMMAND $YUM $OPTIONS $REMOVE -y $1
+    ( ( [[ $NAME =~ "Amazon Linux" ]] || [[ $NAME == "CentOS Linux" ]] || [[ $NAME == "Oracle Linux" ]]) && [[ ! -z $(rpm -qa $1) ]] ) && eval $EXECUTION_FUNCTION $NEW_SUDO_COMMAND $YUM $OPTIONS $REMOVE -y $1
     ( [[ $NAME =~ "Ubuntu" ]] && $(dpkg -s $1 &>/dev/null) ) && eval $EXECUTION_FUNCTION $NEW_SUDO_COMMAND $APTGET $OPTIONS $REMOVE -y $1
   fi
   true
@@ -203,6 +204,7 @@ function ensure-build-essential() {
     fi
 }
 
+# also handles DNF
 function ensure-yum-packages() {
     ( [[ -z "${1}" ]] || [[ ! -f "${1}" ]] ) && echo "\$1 must be the location of your dependency file!" && exit 1
     DEPS_FILE="${TEMP_DIR}/$(basename ${1})"
@@ -214,8 +216,15 @@ function ensure-yum-packages() {
         _2=("$(echo $2 | sed 's/-qa /-qa\n/g')")
         for ((i = 0; i < ${#_2[@]}; i++)); do echo "${_2[$i]}\n" | sed 's/-qa\\n/-qa/g' >> $DEPS_FILE; done
     fi
+
+    # assume YUM if we are not passed third argument
+    PKG_MGR="YUM"
+    if [[ -n ${3} ]]; then
+        PKG_MGR="DNF"
+    fi
+
     while true; do
-        [[ $NONINTERACTIVE == false ]] && printf "${COLOR_YELLOW}Do you wish to update YUM repositories? (y/n)?${COLOR_NC}" && read -p " " PROCEED
+        [[ $NONINTERACTIVE == false ]] && printf "${COLOR_YELLOW}Do you wish to update ${PKG_MGR} repositories? (y/n)?${COLOR_NC}" && read -p " " PROCEED
         echo ""
         case $PROCEED in
             "" ) echo "What would you like to do?";;
@@ -387,4 +396,8 @@ function ensure-apt-packages() {
         echo ""
     fi
     IFS=$OLDIFS
+}
+
+function ensure-dnf-packages() {
+    YUM=${DNF} && ensure-yum-packages "${1}" "${2}" "DNF"
 }
