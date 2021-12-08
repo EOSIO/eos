@@ -506,6 +506,7 @@ struct controller_impl {
                   "chainbase is at revision ${a}, but chain-kv is at revision ${b}", ("a", db.revision())("b", kv_db.revision()) );
       this->shutdown = shutdown;
       ilog( "Starting initialization from snapshot, this may take a significant amount of time" );
+      bool exception = false;
       try {
          snapshot->validate();
          if( blog.head() ) {
@@ -528,10 +529,14 @@ struct controller_impl {
          init(check_shutdown, true);
       } catch (boost::interprocess::bad_alloc& e) {
          elog( "db storage not configured to have enough storage for the provided snapshot, please increase and retry snapshot" );
-         throw e;
+         shutdown();
+         exception = true;
       }
 
-      ilog( "Finished initialization from snapshot" );
+      if(!exception)
+         ilog ( "Finished initialization from snapshot" );
+      else
+         elog ( "Failed initialization from snapshot" );
    }
 
    void startup(std::function<void()> shutdown, std::function<bool()> check_shutdown, const genesis_state& genesis) {
