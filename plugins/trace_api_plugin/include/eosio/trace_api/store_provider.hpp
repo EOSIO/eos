@@ -11,6 +11,8 @@
 #include <eosio/trace_api/metadata_log.hpp>
 #include <eosio/trace_api/data_log.hpp>
 #include <eosio/trace_api/compressed_file.hpp>
+#include <eosio/chain/combined_database.hpp>
+#include <b1/session/session.hpp>
 
 namespace eosio::trace_api {
    using namespace boost::filesystem;
@@ -183,6 +185,28 @@ namespace eosio::trace_api {
       void find_or_create_slice_pair(uint32_t slice_number, open_state state, fc::cfile& trace, fc::cfile& index);
 
       /**
+       * Find or create a trx id file that contains all the transaction ids and associate block numbers
+       *
+       * @param slice_number : slice number of the requested slice file
+       * @param state : indicate if the file is going to be written to (appended) or read
+       * @param trx_id_file : the cfile
+       * @return the true if file was found (i.e. already existed)
+       */
+      bool find_or_create_trx_id_slice(uint32_t slice_number, open_state state, fc::cfile& trx_id_file) const;
+
+      /**
+       * Find the trx id file
+       *
+       * @param slice_number : slice number of the requested slice file
+       * @param state : indicate if the file is going to be written to (appended) or read
+       * @param trx_id_file : the cfile
+       * @param open_file : indicate if the file should be opened (if found) or not
+       * @return the true if file was found (i.e. already existed), if not found trx_id_file
+       *         is set to the appropriate file, but not open
+       */
+      bool find_trx_id_slice(uint32_t slice_number, open_state state, fc::cfile& trx_id_file, bool open_file = true) const;
+
+      /**
        * set the LIB for maintenance
        * @param lib
        */
@@ -249,6 +273,7 @@ namespace eosio::trace_api {
       template<typename BlockTrace>
       void append(const BlockTrace& bt);
       void append_lib(uint32_t lib);
+      void append_trx_ids(block_trxs_entry tt);
 
       /**
        * Read the trace for a given block
@@ -258,13 +283,14 @@ namespace eosio::trace_api {
        */
       get_block_t get_block(uint32_t block_height, const yield_function& yield= {});
 
+      get_block_n get_trx_block_number(const chain::transaction_id_type& trx_id, std::optional<uint32_t> minimum_irreversible_history_blocks, const yield_function& yield= {});
+
       void start_maintenance_thread( log_handler log ) {
          _slice_directory.start_maintenance_thread( std::move(log) );
       }
       void stop_maintenance_thread() {
          _slice_directory.stop_maintenance_thread();
       }
-
 
       protected:
       /**
@@ -350,6 +376,7 @@ namespace eosio::trace_api {
        *
        */
       void validate_existing_index_slice_file(fc::cfile& index, open_state state);
+
 
       slice_directory _slice_directory;
    };
