@@ -2586,7 +2586,6 @@ void controller::validate_protocol_features( const vector<digest_type>& features
 
 void controller::start_block( block_timestamp_type when, uint16_t confirm_block_count )
 {
-   ilog( "start_block called" );
    validate_db_available_size();
 
    EOS_ASSERT( !my->pending, block_validate_exception, "pending block already exists" );
@@ -2612,6 +2611,7 @@ void controller::start_block( block_timestamp_type when,
                               uint16_t confirm_block_count,
                               const vector<digest_type>& new_protocol_feature_activations )
 {
+   ilog( "start_block called" );
    validate_db_available_size();
 
    if( new_protocol_feature_activations.size() > 0 ) {
