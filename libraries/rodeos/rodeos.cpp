@@ -347,8 +347,9 @@ void rodeos_filter::process(rodeos_db_snapshot& snapshot, const ship_protocol::g
    snapshot.check_write(result);
    chaindb_state chaindb_state;
    db_view_state view_state{ name, *snapshot.db, *snapshot.write_session, snapshot.partition->contract_kv_prefix };
+   coverage_state coverage_state;
    view_state.kv_state.enable_write  = true;
-   filter::callbacks cb{ *filter_state, chaindb_state, view_state };
+   filter::callbacks cb{ *filter_state, chaindb_state, view_state, coverage_state };
    filter_state->max_console_size = 10000;
    filter_state->console.clear();
    filter_state->input_data = bin;

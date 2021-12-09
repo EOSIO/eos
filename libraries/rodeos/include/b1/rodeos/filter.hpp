@@ -10,6 +10,7 @@
 #include <b1/rodeos/callbacks/system.hpp>
 #include <b1/rodeos/callbacks/unimplemented.hpp>
 #include <b1/rodeos/callbacks/unimplemented_filter.hpp>
+#include <b1/rodeos/callbacks/coverage.hpp>
 #ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
 #   include <eosio/chain/webassembly/eos-vm-oc/code_cache.hpp>
 #   include <eosio/chain/webassembly/eos-vm-oc/executor.hpp>
@@ -65,19 +66,23 @@ struct callbacks : b1::rodeos::chaindb_callbacks<callbacks>,
                    b1::rodeos::filter_callbacks<callbacks>,
                    b1::rodeos::memory_callbacks<callbacks>,
                    b1::rodeos::unimplemented_callbacks<callbacks>,
-                   b1::rodeos::system_callbacks<callbacks> {
+                   b1::rodeos::system_callbacks<callbacks>, 
+                   b1::rodeos::coverage_callbacks<callbacks> {
    filter::filter_state&      filter_state;
    b1::rodeos::chaindb_state& chaindb_state;
    b1::rodeos::db_view_state& db_view_state;
+   b1::rodeos::coverage_state& coverage_state;
 
    callbacks(filter::filter_state& filter_state, b1::rodeos::chaindb_state& chaindb_state,
-             b1::rodeos::db_view_state& db_view_state)
-       : filter_state{ filter_state }, chaindb_state{ chaindb_state }, db_view_state{ db_view_state } {}
+             b1::rodeos::db_view_state& db_view_state, b1::rodeos::coverage_state& coverage_state)
+       : filter_state{ filter_state }, chaindb_state{ chaindb_state }, db_view_state{ db_view_state }
+       , coverage_state{ coverage_state } {}
 
    auto& get_state() { return filter_state; }
    auto& get_filter_callback_state() { return filter_state; }
    auto& get_chaindb_state() { return chaindb_state; }
    auto& get_db_view_state() { return db_view_state; }
+   auto& get_coverage_state() { return coverage_state; }
 };
 
 inline void register_callbacks() {
@@ -92,6 +97,7 @@ inline void register_callbacks() {
    b1::rodeos::memory_callbacks<callbacks>::register_callbacks<rhf_t>();
    b1::rodeos::system_callbacks<callbacks>::register_callbacks<rhf_t>();
    b1::rodeos::unimplemented_callbacks<callbacks>::register_callbacks<rhf_t>();
+   b1::rodeos::coverage_callbacks<callbacks>::register_callbacks<rhf_t>();
 }
 
 } // namespace b1::rodeos::filter

@@ -6,6 +6,7 @@
 #include <b1/rodeos/callbacks/crypto.hpp>
 #include <b1/rodeos/callbacks/memory.hpp>
 #include <b1/rodeos/callbacks/unimplemented.hpp>
+#include <b1/rodeos/callbacks/coverage.hpp>
 #include <b1/rodeos/rodeos.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/multi_index/member.hpp>
@@ -72,18 +73,22 @@ struct callbacks : action_callbacks<callbacks>,
                    db_callbacks<callbacks>,
                    memory_callbacks<callbacks>,
                    query_callbacks<callbacks>,
-                   unimplemented_callbacks<callbacks> {
+                   unimplemented_callbacks<callbacks>, 
+                   coverage_callbacks<callbacks> {
    wasm_ql::thread_state& thread_state;
    rodeos::chaindb_state& chaindb_state;
    rodeos::db_view_state& db_view_state;
+   rodeos::coverage_state& coverage_state;
 
    callbacks(wasm_ql::thread_state& thread_state, rodeos::chaindb_state& chaindb_state,
-             rodeos::db_view_state& db_view_state)
-       : thread_state{ thread_state }, chaindb_state{ chaindb_state }, db_view_state{ db_view_state } {}
+             rodeos::db_view_state& db_view_state, rodeos::coverage_state& coverage_state)
+       : thread_state{ thread_state }, chaindb_state{ chaindb_state }, db_view_state{ db_view_state }
+       , coverage_state{ coverage_state } {}
 
    auto& get_state() { return thread_state; }
    auto& get_chaindb_state() { return chaindb_state; }
    auto& get_db_view_state() { return db_view_state; }
+   auto& get_coverage_state() { return coverage_state; }
 };
 
 std::once_flag registered_callbacks;
@@ -99,6 +104,7 @@ void register_callbacks() {
    memory_callbacks<callbacks>::register_callbacks<rhf_t>();
    query_callbacks<callbacks>::register_callbacks<rhf_t>();
    unimplemented_callbacks<callbacks>::register_callbacks<rhf_t>();
+   coverage_callbacks<callbacks>::register_callbacks<rhf_t>();
 }
 
 struct backend_entry {
@@ -273,7 +279,8 @@ void run_action(wasm_ql::thread_state& thread_state, const std::vector<char>& co
    thread_state.block_info.reset();
 
    chaindb_state chaindb_state;
-   callbacks     cb{ thread_state, chaindb_state, db_view_state };
+   coverage_state coverage_state;
+   callbacks     cb{ thread_state, chaindb_state, db_view_state, coverage_state };
    entry->backend->set_wasm_allocator(&thread_state.wa);
 
    try {
