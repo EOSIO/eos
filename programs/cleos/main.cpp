@@ -412,6 +412,8 @@ fc::variant push_transaction( signed_transaction& _trx, const std::vector<public
    auto info = get_info();
    while (push_times > 0) {
       --push_times;
+      std::cerr << "Pushing transaction...\n";
+      std::cerr << push_times << " transactions left.\n\n";
 
       signed_transaction trx { _trx };
       if (trx.signatures.size() == 0) { // #5445 can't change txn content if already signed
@@ -492,7 +494,7 @@ fc::variant push_transaction( signed_transaction& _trx, const std::vector<public
                         "Add flag --use-old-rpc to use old RPC push_transaction instead."
                      << std::endl;
                   throw;
-               } catch (chain::http_request_fail& e) {
+               } catch (fc::exception& e) {
                   if (push_times == 0) throw;
                   else eosio::client::help::print_recognized_errors(e, false);
                }
