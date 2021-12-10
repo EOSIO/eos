@@ -412,8 +412,10 @@ fc::variant push_transaction( signed_transaction& _trx, const std::vector<public
    auto info = get_info();
    while (push_times > 0) {
       --push_times;
-      std::cerr << "Pushing transaction...\n";
-      std::cerr << push_times << " transactions left.\n\n";
+      if (push_times != 0) {
+         std::cerr << "Pushing transaction...\n";
+         std::cerr << push_times << " transactions left.\n\n";
+      }
 
       signed_transaction trx { _trx };
       if (trx.signatures.size() == 0) { // #5445 can't change txn content if already signed
