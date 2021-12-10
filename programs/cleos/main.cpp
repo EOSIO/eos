@@ -494,7 +494,7 @@ fc::variant push_transaction( signed_transaction& _trx, const std::vector<public
                   throw;
                } catch (chain::http_request_fail& e) {
                   if (push_times == 0) throw;
-                  else eosio::client::help::print_recognized_errors(e);
+                  else eosio::client::help::print_recognized_errors(e, false);
                }
             }
          }
