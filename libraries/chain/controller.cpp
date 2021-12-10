@@ -2647,11 +2647,12 @@ controller::finalize_block(block_state_ptr& bsp, signer_callback_type&& sign) {
    my->pending->_block_stage = completed_block{bsp};
 
    return async_thread_pool(my->block_sign_pool.get_executor(),
-                            [bsp, my = my.get(), block_num = bsp->block_num, digest = bsp->sig_digest(),
+                            [bsp, my = my.get(), block_num = bsp->block_num,
                              wtmsig_enabled = eosio::chain::detail::is_builtin_activated(
                                  pfa, pfs, builtin_protocol_feature_t::wtmsig_block_signatures),
                              sign = std::move(sign)] () -> std::function<void()> {
                                std::vector<signature_type> signatures;
+                               auto digest = bsp->sig_digest();
                                try {
                                   signatures = sign(digest);
                                }
