@@ -220,6 +220,17 @@ struct test_chain {
       accepted_block_connection.emplace(
             control->accepted_block.connect([&](const block_state_ptr& p) { on_accepted_block(p); }));
 
+      auto &db = control->mutable_db();
+
+      db.modify( db.get<eosio::chain::protocol_state_object>(), [&]( auto& ps ) {
+         eosio::chain::add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "coverage_inc_fun_cnt" );
+         eosio::chain::add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "coverage_inc_line_cnt" );
+         eosio::chain::add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "coverage_get_fun_cnt" );
+         eosio::chain::add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "coverage_get_line_cnt" );
+         eosio::chain::add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "coverage_dump" );
+         eosio::chain::add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "coverage_reset" );
+      } );
+
       if (snapshot_reader) {
          control->startup([] {}, [] { return false; }, snapshot_reader);
       } else {

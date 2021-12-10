@@ -404,9 +404,9 @@ namespace eosio { namespace chain {
          friend class apply_context;
          friend class transaction_context;
 
-         chainbase::database& mutable_db()const;
-
          std::unique_ptr<controller_impl> my;
+      public:
+         chainbase::database& mutable_db()const;
 
    };
 
