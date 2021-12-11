@@ -220,17 +220,6 @@ struct test_chain {
       accepted_block_connection.emplace(
             control->accepted_block.connect([&](const block_state_ptr& p) { on_accepted_block(p); }));
 
-      auto &db = control->mutable_db();
-
-      db.modify( db.get<eosio::chain::protocol_state_object>(), [&]( auto& ps ) {
-         eosio::chain::add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "coverage_inc_fun_cnt" );
-         eosio::chain::add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "coverage_inc_line_cnt" );
-         eosio::chain::add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "coverage_get_fun_cnt" );
-         eosio::chain::add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "coverage_get_line_cnt" );
-         eosio::chain::add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "coverage_dump" );
-         eosio::chain::add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "coverage_reset" );
-      } );
-
       if (snapshot_reader) {
          control->startup([] {}, [] { return false; }, snapshot_reader);
       } else {
@@ -238,7 +227,17 @@ struct test_chain {
                control, [] {}, [] { return false; }, genesis);
          control->start_block(control->head_block_time() + fc::microseconds(block_interval_us), 0,
                               { *control->get_protocol_feature_manager().get_builtin_digest(
-                                    eosio::chain::builtin_protocol_feature_t::preactivate_feature) });
+                                    eosio::chain::builtin_protocol_feature_t::preactivate_feature) 
+                                 });
+         auto& pfm = control->get_protocol_feature_manager();
+         auto feat = eosio::chain::builtin_protocol_feature_t::wasm_code_coverage;
+         auto wasm_code_coverage_digest = *pfm.get_builtin_digest(feat);
+         uint32_t action_id = 0;         
+         control->preactivate_feature(action_id, wasm_code_coverage_digest);
+         finish_block();
+
+         control->start_block(control->head_block_time() + fc::microseconds(block_interval_us), 0,
+                               { wasm_code_coverage_digest });
       }
    }
 

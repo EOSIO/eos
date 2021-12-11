@@ -62,6 +62,7 @@ set(CHAIN_WEBASSEMBLY_SOURCES
    webassembly/compiler_builtins.cpp
    webassembly/context_free.cpp
    webassembly/console.cpp
+   webassembly/coverage.cpp
    webassembly/crypto.cpp
    webassembly/database.cpp
    webassembly/kv_database.cpp
