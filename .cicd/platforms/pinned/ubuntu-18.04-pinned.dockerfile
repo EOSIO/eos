@@ -42,7 +42,7 @@ RUN git clone --depth 1 --single-branch --branch llvmorg-10.0.0 https://github.c
     make install && \
     cd / && \
     rm -rf /llvm
-# download Boost, apply fix and build
+# download Boost, apply fix for CVE-2016-9840 and build
 RUN curl -LO https://boostorg.jfrog.io/artifactory/main/release/1.72.0/source/boost_1_72_0.tar.bz2 && \
     tar -xjf boost_1_72_0.tar.bz2 && \
     cd boost_1_72_0 && \
