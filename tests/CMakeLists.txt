@@ -157,7 +157,7 @@ if("eos-vm-oc" IN_LIST EOSIO_WASM_RUNTIMES)
    set_property(TEST rodeos_test_eosvmoc PROPERTY LABELS nonparallelizable_tests)
 endif()
 
-add_test(NAME rodeos_idle_test COMMAND tests/rodeos_test.py -v --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+add_test(NAME rodeos_idle_test COMMAND tests/rodeos_idle_test.py -v --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 set_property(TEST rodeos_idle_test PROPERTY LABELS nonparallelizable_tests)
 
 # rodoes restart scenarios: stop/start single node, TCP/IP 

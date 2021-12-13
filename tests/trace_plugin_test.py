@@ -2,6 +2,7 @@
 import json
 import time
 import unittest
+import os
 
 from testUtils import Utils
 from Cluster import Cluster
