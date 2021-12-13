@@ -67,6 +67,10 @@ set_property(GLOBAL PROPERTY CTEST_CUSTOM_TESTS_IGNORE
 add_subdirectory( rodeos )
 
 find_package(OpenSSL REQUIRED)
+
+# Suppress warnings on 3rdParty Library
+add_definitions( -w )
 option(AMQP-CPP_LINUX_TCP CACHE ON)
 add_subdirectory( amqp-cpp EXCLUDE_FROM_ALL )
 target_include_directories(amqpcpp PRIVATE "${OPENSSL_INCLUDE_DIR}")
+remove_definitions( -w )
