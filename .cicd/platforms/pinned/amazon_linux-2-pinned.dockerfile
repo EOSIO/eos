@@ -48,7 +48,7 @@ RUN curl -LO https://boostorg.jfrog.io/artifactory/main/release/1.72.0/source/bo
     tar -xjf boost_1_72_0.tar.bz2 && \
     cd boost_1_72_0 && \
     curl -Lo boost/beast/zlib/detail/inflate_stream.ipp \
-    https://github.com/boostorg/beast/blob/develop/include/boost/beast/zlib/detail/inflate_stream.ipp && \
+    https://raw.githubusercontent.com/boostorg/beast/develop/include/boost/beast/zlib/detail/inflate_stream.ipp && \
     ./bootstrap.sh --with-toolset=clang --prefix=/usr/local && \
     ./b2 toolset=clang cxxflags='-stdlib=libc++ -D__STRICT_ANSI__ -nostdinc++ -I/usr/local/include/c++/v1 -D_FORTIFY_SOURCE=2 -fstack-protector-strong -fpie' linkflags='-stdlib=libc++ -pie' link=static threading=multi --with-iostreams --with-date_time --with-filesystem --with-system --with-program_options --with-chrono --with-test -q -j$(nproc) install && \
     cd / && \
