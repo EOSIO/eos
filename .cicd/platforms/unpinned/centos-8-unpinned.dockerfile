@@ -27,14 +27,17 @@ RUN curl -LO https://github.com/Kitware/CMake/releases/download/v3.18.0/cmake-3.
     ./bootstrap --prefix=/usr/local && \
     make -j$(nproc) && make install && \
     rm -rf cmake-3.18.0.tar.gz cmake-3.18.2
+
 # build boost
-RUN curl -LO https://boostorg.jfrog.io/artifactory/main/release/1.72.0/source/boost_1_72_0.tar.bz2 && \
-    tar -xjf boost_1_72_0.tar.bz2 && \
-    cd boost_1_72_0 && \
+ENV BOOST_VERSION 1_78_0
+ENV BOOST_VERSION_DOT 1.78.0
+RUN curl -LO https://boostorg.jfrog.io/artifactory/main/release/${BOOST_VERSION_DOT}/source/boost_${BOOST_VERSION}.tar.bz2 && \
+    tar -xjf boost_${BOOST_VERSION}.tar.bz2 && \
+    cd boost_${BOOST_VERSION} && \
     ./bootstrap.sh --prefix=/usr/local && \
     ./b2 --with-iostreams --with-date_time --with-filesystem --with-system --with-program_options --with-chrono --with-test -q -j$(nproc) install && \
     cd / && \
-    rm -rf boost_1_72_0.tar.bz2 /boost_1_72_0
+    rm -rf boost_${BOOST_VERSION}.tar.bz2 /boost_${BOOST_VERSION}    
 # install libpq & postgres
 RUN dnf install -y https://download.postgresql.org/pub/repos/yum/reporpms/EL-8-x86_64/pgdg-redhat-repo-latest.noarch.rpm && \
     dnf -qy module disable postgresql && \
