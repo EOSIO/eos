@@ -84,6 +84,10 @@ struct permission_level_weight {
    friend bool operator == ( const permission_level_weight& lhs, const permission_level_weight& rhs ) {
       return tie( lhs.permission, lhs.weight ) == tie( rhs.permission, rhs.weight );
    }
+
+   friend bool operator < ( const permission_level_weight& lhs, const permission_level_weight& rhs ) {
+      return tie( lhs.permission, lhs.weight ) < tie( rhs.permission, rhs.weight );
+   }
 };
 
 struct key_weight {
@@ -92,6 +96,10 @@ struct key_weight {
 
    friend bool operator == ( const key_weight& lhs, const key_weight& rhs ) {
       return tie( lhs.key, lhs.weight ) == tie( rhs.key, rhs.weight );
+   }
+
+   friend bool operator < ( const key_weight& lhs, const key_weight& rhs ) {
+      return tie( lhs.key, lhs.weight ) < tie( rhs.key, rhs.weight );
    }
 };
 
@@ -136,6 +144,10 @@ struct wait_weight {
 
    friend bool operator == ( const wait_weight& lhs, const wait_weight& rhs ) {
       return tie( lhs.wait_sec, lhs.weight ) == tie( rhs.wait_sec, rhs.weight );
+   }
+
+   friend bool operator < ( const wait_weight& lhs, const wait_weight& rhs ) {
+      return tie( lhs.wait_sec, lhs.weight ) < tie( rhs.wait_sec, rhs.weight );
    }
 };
 
@@ -190,6 +202,12 @@ struct authority {
 
    friend bool operator != ( const authority& lhs, const authority& rhs ) {
       return tie( lhs.threshold, lhs.keys, lhs.accounts, lhs.waits ) != tie( rhs.threshold, rhs.keys, rhs.accounts, rhs.waits );
+   }
+
+   void sort_fields () {
+      std::sort(std::begin(keys), std::end(keys));
+      std::sort(std::begin(accounts), std::end(accounts));
+      std::sort(std::begin(waits), std::end(waits));
    }
 };
 

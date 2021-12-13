@@ -52,6 +52,43 @@ namespace eosio::trace_api {
          return detail::response_formatter::process_block(std::get<0>(*data), std::get<1>(*data), data_handler, yield);
       }
 
+      /**
+       * Fetch the trace for a given transaction id and convert it to a fc::variant for conversion to a final format
+       * (eg JSON)
+       *
+       * @param trxid - the transaction id whose trace is requested
+       * @param block_height - the height of the block whose trace contains requested transaction trace
+       * @param yield - a yield function to allow cooperation during long running tasks
+       * @return a properly formatted variant representing the trace for the given transaction id if it exists, an
+       * empty variant otherwise.
+       * @throws yield_exception if a call to `yield` throws.
+       * @throws bad_data_exception when there are issues with the underlying data preventing processing.
+       */
+      fc::variant get_transaction_trace(chain::transaction_id_type trxid, uint32_t block_height, const yield_function& yield = {}){
+         fc::variant result = {};
+         // extract the transaction trace from the block trace
+         auto resp = get_block_trace(block_height, yield);
+         if (!resp.is_null()) {
+            auto& b_mvo = resp.get_object();
+            if (b_mvo.contains("transactions")) {
+               auto& transactions = b_mvo["transactions"];
+               std::string input_id = trxid.str();
+               for (uint32_t i = 0; i < transactions.size(); ++i) {
+                  if (transactions[i].is_null()) continue;
+                  auto& t_mvo = transactions[i].get_object();
+                  if (t_mvo.contains("id")) {
+                     const auto& t_id = t_mvo["id"].get_string();
+                     if (t_id == input_id) {
+                        result = transactions[i];
+                        break;
+                     }
+                  }
+               }
+            }
+         }
+         return result;
+      }
+
    private:
       LogfileProvider logfile_provider;
       DataHandlerProvider data_handler_provider;

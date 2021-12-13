@@ -166,6 +166,7 @@ string wallet_url; //to be set to default_wallet_url in main
 string amqp_address;
 string amqp_reply_to;
 string amqp_queue_name = "trx";
+std::map<name, std::string>  abi_files_override;
 bool no_verify = false;
 vector<string> headers;
 
@@ -356,14 +357,18 @@ auto abi_serializer_resolver = [](const name& account) -> std::optional<abi_seri
   static unordered_map<account_name, std::optional<abi_serializer> > abi_cache;
   auto it = abi_cache.find( account );
   if ( it == abi_cache.end() ) {
-    const auto raw_abi_result = call(get_raw_abi_func, fc::mutable_variant_object("account_name", account));
-    const auto raw_abi_blob = raw_abi_result["abi"].as_blob().data;
 
     std::optional<abi_serializer> abis;
-    if (raw_abi_blob.size() != 0) {
-      abis.emplace(fc::raw::unpack<abi_def>(raw_abi_blob), abi_serializer::create_yield_function( abi_serializer_max_time ));
+    if (abi_files_override.find(account) != abi_files_override.end()) {
+      abis.emplace( fc::json::from_file(abi_files_override[account]).as<abi_def>(), abi_serializer::create_yield_function( abi_serializer_max_time ));
     } else {
-      std::cerr << "ABI for contract " << account.to_string() << " not found. Action data will be shown in hex only." << std::endl;
+      const auto raw_abi_result = call(get_raw_abi_func, fc::mutable_variant_object("account_name", account));
+      const auto raw_abi_blob = raw_abi_result["abi"].as_blob().data;
+      if (raw_abi_blob.size() != 0) {
+        abis.emplace(fc::raw::unpack<abi_def>(raw_abi_blob), abi_serializer::create_yield_function( abi_serializer_max_time ));
+      } else {
+        std::cerr << "ABI for contract " << account.to_string() << " not found. Action data will be shown in hex only." << std::endl;
+      }
     }
     abi_cache.emplace( account, abis );
 
@@ -834,6 +839,7 @@ authority parse_json_authority_or_key(const std::string& authorityJsonOrFile) {
       } EOS_RETHROW_EXCEPTIONS(public_key_type_exception, "Invalid public key: ${public_key}", ("public_key", authorityJsonOrFile))
    } else {
       auto result = parse_json_authority(authorityJsonOrFile);
+      result.sort_fields();
       EOS_ASSERT( eosio::chain::validate(result), authority_type_exception, "Authority failed validation! ensure that keys, accounts, and waits are sorted and that the threshold is valid and satisfiable!");
       return result;
    }
@@ -2594,6 +2600,22 @@ CLI::callback_t header_opt_callback = [](CLI::results_t res) {
    return true;
 };
 
+CLI::callback_t abi_files_overide_callback = [](CLI::results_t account_abis) {
+   for (vector<string>::iterator itr = account_abis.begin(); itr != account_abis.end(); ++itr) {
+      size_t delim = itr->find(":");
+      std::string acct_name, abi_path;
+      if (delim != std::string::npos) {
+         acct_name = itr->substr(0, delim);
+         abi_path = itr->substr(delim + 1);
+      }
+      if (acct_name.length() == 0 || abi_path.length() == 0) {
+         std::cerr << "please specify --abi-file in form of <contract name>:<abi file path>.";
+         return false;
+      }
+      abi_files_override[name(acct_name)] = abi_path;
+   }
+   return true;
+};
 
 int main( int argc, char** argv ) {
 
@@ -2611,6 +2633,9 @@ int main( int argc, char** argv ) {
 
    app.add_option( "-u,--url", default_url, localized( "The http/https URL where ${n} is running", ("n", node_executable_name)), true );
    app.add_option( "--wallet-url", wallet_url, localized("The http/https URL where ${k} is running", ("k", key_store_executable_name)), true );
+
+   app.add_option( "--abi-file", abi_files_overide_callback, localized("In form of <contract name>:<abi file path>, use a local abi file for serialization and deserialization instead of getting the abi data from the blockchain; repeat this option to pass multiple abi files for different contracts"))->type_size(0, 1000);
+
    app.add_option( "--amqp", amqp_address, localized("The ampq URL where AMQP is running amqp://USER:PASSWORD@ADDRESS:PORT"), false )->envname(EOSIO_AMQP_ADDRESS_ENV_VAR);
    app.add_option( "--amqp-queue-name", amqp_queue_name, localized("The ampq queue to send transaction to"), true );
    app.add_option( "--amqp-reply-to", amqp_reply_to, localized("The ampq reply to string"), false );
@@ -3097,7 +3122,7 @@ int main( int argc, char** argv ) {
       std::cout << fc::json::to_pretty_string(call(get_controlled_accounts_func, arg)) << std::endl;
    });
 
-   // get transaction
+   // get transaction (history api plugin)
    string transaction_id_str;
    uint32_t block_num_hint = 0;
    auto getTransaction = get->add_subcommand("transaction", localized("Retrieve a transaction from the blockchain"));
@@ -3109,6 +3134,24 @@ int main( int argc, char** argv ) {
          arg = arg("block_num_hint", block_num_hint);
       }
       std::cout << fc::json::to_pretty_string(call(get_transaction_func, arg)) << std::endl;
+   });
+
+   // get transaction_trace (trace api plugin)
+   auto getTransactionTrace = get->add_subcommand("transaction_trace", localized("Retrieve a transaction from trace logs"));
+   getTransactionTrace->add_option("id", transaction_id_str, localized("ID of the transaction to retrieve"))->required();
+   getTransactionTrace->callback([&] {
+      auto arg= fc::mutable_variant_object( "id", transaction_id_str);
+      std::cout << fc::json::to_pretty_string(call(get_transaction_trace_func, arg)) << std::endl;
+   });
+
+   // get block_trace
+   string blockNum;
+   auto getBlockTrace = get->add_subcommand("block_trace", localized("Retrieve a block from trace logs"));
+   getBlockTrace->add_option("block", blockNum, localized("The number of the block to retrieve"))->required();
+
+   getBlockTrace->callback([&] {
+      auto arg= fc::mutable_variant_object( "block_num", blockNum);
+      std::cout << fc::json::to_pretty_string(call(get_block_trace_func, arg)) << std::endl;
    });
 
    // get actions
