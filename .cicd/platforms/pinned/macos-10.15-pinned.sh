@@ -20,8 +20,8 @@ curl -LO https://boostorg.jfrog.io/artifactory/main/release/1.72.0/source/boost_
 tar -xjf boost_1_72_0.tar.bz2
 cd boost_1_72_0
 # apply patch to fix CVE-2016-9840
-curl -Lo boost/beast/zlib/detail/inflate_stream.ipp \
-    https://raw.githubusercontent.com/boostorg/beast/develop/include/boost/beast/zlib/detail/inflate_stream.ipp
+BEAST_FIX_URL=https://raw.githubusercontent.com/boostorg/beast/3fd090af3b7e69ed7871c64a4b4b86fae45e98da/include/boost/beast/zlib/detail/inflate_stream.ipp
+curl -Lo boost/beast/zlib/detail/inflate_stream.ipp ${BEAST_FIX_URL}
 ./bootstrap.sh --prefix=/usr/local
 sudo -E ./b2 --with-iostreams --with-date_time --with-filesystem --with-system --with-program_options --with-chrono --with-test -q -j$(getconf _NPROCESSORS_ONLN) install
 cd ..
