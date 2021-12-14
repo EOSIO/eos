@@ -1376,9 +1376,6 @@ namespace eosio {
       if( !ec ) {
          my_impl->dispatcher->retry_fetch( shared_from_this() );
       } else if( ec == boost::asio::error::operation_aborted ) {
-         if( !connected() ) {
-            fc_dlog( logger, "fetch timeout was cancelled due to dead connection" );
-         }
       } else {
          fc_elog( logger, "setting timer for fetch request got error ${ec}", ("ec", ec.message() ) );
       }
