@@ -44,10 +44,10 @@ RUN git clone --depth 1 --single-branch --branch llvmorg-10.0.0 https://github.c
     rm -rf /llvm
 # download Boost, apply fix for CVE-2016-9840 and build
 ENV BEAST_FIX_URL https://raw.githubusercontent.com/boostorg/beast/3fd090af3b7e69ed7871c64a4b4b86fae45e98da/include/boost/beast/zlib/detail/inflate_stream.ipp
-RUN curl -LO https://boostorg.jfrog.io/artifactory/main/release/1.72.0/source/boost_1_72_0.tar.bz2 && \
+RUN curl -fsSLO https://boostorg.jfrog.io/artifactory/main/release/1.72.0/source/boost_1_72_0.tar.bz2 && \
     tar -xjf boost_1_72_0.tar.bz2 && \
     cd boost_1_72_0 && \
-    curl -Lo boost/beast/zlib/detail/inflate_stream.ipp ${BEAST_FIX_URL} && \
+    curl -fsSLo boost/beast/zlib/detail/inflate_stream.ipp "${BEAST_FIX_URL}" && \
     ./bootstrap.sh --with-toolset=clang --prefix=/usr/local && \
     ./b2 toolset=clang cxxflags='-stdlib=libc++ -D__STRICT_ANSI__ -nostdinc++ -I/usr/local/include/c++/v1 -D_FORTIFY_SOURCE=2 -fstack-protector-strong -fpie' linkflags='-stdlib=libc++ -pie' link=static threading=multi --with-iostreams --with-date_time --with-filesystem --with-system --with-program_options --with-chrono --with-test -q -j$(nproc) install && \
     cd / && \

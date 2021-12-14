@@ -27,13 +27,13 @@ RUN curl -LO https://github.com/Kitware/CMake/releases/download/v3.16.2/cmake-3.
 # build boost
 ENV BOOST_VERSION 1_78_0
 ENV BOOST_VERSION_DOT 1.78.0
-RUN curl -LO https://boostorg.jfrog.io/artifactory/main/release/${BOOST_VERSION_DOT}/source/boost_${BOOST_VERSION}.tar.bz2 && \
-    tar -xjf boost_${BOOST_VERSION}.tar.bz2 && \
-    cd boost_${BOOST_VERSION} && \
+RUN curl -fsSLO "https://boostorg.jfrog.io/artifactory/main/release/${BOOST_VERSION_DOT}/source/boost_${BOOST_VERSION}.tar.bz2" && \
+    tar -xjf "boost_${BOOST_VERSION}.tar.bz2" && \
+    cd "boost_${BOOST_VERSION}" && \
     ./bootstrap.sh --prefix=/usr/local && \
     ./b2 --with-iostreams --with-date_time --with-filesystem --with-system --with-program_options --with-chrono --with-test -q -j$(nproc) install && \
     cd / && \
-    rm -rf boost_${BOOST_VERSION}.tar.bz2 /boost_${BOOST_VERSION}
+    rm -rf "boost_${BOOST_VERSION}.tar.bz2" "/boost_${BOOST_VERSION}"
 #install libpq
 RUN amazon-linux-extras enable postgresql11 && \
     yum install -y libpq-devel postgresql-server && \
