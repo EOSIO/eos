@@ -37,8 +37,6 @@ set( RODEOS_EXECUTABLE_NAME rodeos )
 set( TESTER_EXECUTABLE_NAME eosio-tester )
 set( CLI_CLIENT_TPM_EXECUTABLE_NAME  cleos_tpm )
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror")
-
 # http://stackoverflow.com/a/18369825
 if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
     if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 8.0)
