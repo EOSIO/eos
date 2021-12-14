@@ -79,6 +79,8 @@ Testing/*
 build.tar.gz
 build/*
 build-debug/*
+node_modules
+package-lock.json
 
 etc/eosio/node_*
 var/lib/node_*
