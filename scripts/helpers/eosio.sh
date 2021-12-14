@@ -221,9 +221,17 @@ function ensure-cmake() {
 
 function ensure-boost() {
     [[ $ARCH == "Darwin" ]] && export CPATH="$(python-config --includes | awk '{print $1}' | cut -dI -f2):$CPATH" # Boost has trouble finding pyconfig.h
-    echo "${COLOR_CYAN}[Ensuring Boost $( echo $BOOST_VERSION | sed 's/_/./g' ) library installation]${COLOR_NC}"
+    BOOST_VERSION_TGT="${BOOST_VERSION}"
+    BOOST_VERSION_MINOR_TGT="${BOOST_VERSION_MINOR}"
+    BOOST_VERSION_PATCH_TGT="${BOOST_VERSION_PATCH}"
+    if $PIN_COMPILER; then
+        BOOST_VERSION_TGT="${BOOST_VERSION_PINNED}"
+        BOOST_VERSION_MINOR_TGT="${BOOST_VERSION_MINOR_PINNED}"
+        BOOST_VERSION_PATCH_TGT="${BOOST_VERSION_PATCH_PINNED}"
+    fi
+    echo "${COLOR_CYAN}[Ensuring Boost $( echo $BOOST_VERSION_TGT | sed 's/_/./g' ) library installation]${COLOR_NC}"
     BOOSTVERSION=$( grep "#define BOOST_VERSION" "$BOOST_ROOT/include/boost/version.hpp" 2>/dev/null | tail -1 | tr -s ' ' | cut -d\  -f3 || true )
-    if [[ "${BOOSTVERSION}" != "${BOOST_VERSION_MAJOR}0${BOOST_VERSION_MINOR}0${BOOST_VERSION_PATCH}" ]]; then
+    if [[ "${BOOSTVERSION}" != "${BOOST_VERSION_MAJOR}0${BOOST_VERSION_MINOR_TGT}0${BOOST_VERSION_PATCH_TGT}" ]]; then
         B2_FLAGS="-q -j${JOBS} --with-iostreams --with-date_time --with-filesystem --with-system --with-program_options --with-chrono --with-test install"
         BOOTSTRAP_FLAGS=""
         if [[ $ARCH == "Linux" ]] && $PIN_COMPILER; then
@@ -232,14 +240,16 @@ function ensure-boost() {
         elif $PIN_COMPILER; then
             local SDKROOT="$(xcrun --sdk macosx --show-sdk-path)"
         fi
+        BEAST_FIX_URL="https://raw.githubusercontent.com/boostorg/beast/3fd090af3b7e69ed7871c64a4b4b86fae45e98da/include/boost/beast/zlib/detail/inflate_stream.ipp"
         execute bash -c "cd $SRC_DIR && \
-        curl -LO https://boostorg.jfrog.io/artifactory/main/release/$BOOST_VERSION_MAJOR.$BOOST_VERSION_MINOR.$BOOST_VERSION_PATCH/source/boost_$BOOST_VERSION.tar.bz2 \
+        curl -fsSLO https://boostorg.jfrog.io/artifactory/main/release/$BOOST_VERSION_MAJOR.$BOOST_VERSION_MINOR_TGT.$BOOST_VERSION_PATCH_TGT/source/boost_$BOOST_VERSION_TGT.tar.bz2 \
         && tar -xjf boost_$BOOST_VERSION.tar.bz2 \
         && cd $BOOST_ROOT \
+        && if "$PIN_COMPILER"; then curl -fsSLo boost/beast/zlib/detail/inflate_stream.ipp "${BEAST_FIX_URL}"; fi \
         && SDKROOT="$SDKROOT" ./bootstrap.sh ${BOOTSTRAP_FLAGS} --prefix=$BOOST_ROOT \
         && SDKROOT="$SDKROOT" ./b2 ${B2_FLAGS} \
         && cd .. \
-        && rm -f boost_$BOOST_VERSION.tar.bz2 \
+        && rm -f boost_$BOOST_VERSION_TGT.tar.bz2 \
         && rm -rf $BOOST_LINK_LOCATION"        
         echo " - Boost library successfully installed @ ${BOOST_ROOT}"
         echo ""
