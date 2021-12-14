@@ -243,7 +243,7 @@ function ensure-boost() {
         BEAST_FIX_URL="https://raw.githubusercontent.com/boostorg/beast/3fd090af3b7e69ed7871c64a4b4b86fae45e98da/include/boost/beast/zlib/detail/inflate_stream.ipp"
         execute bash -c "cd $SRC_DIR && \
         curl -fsSLO https://boostorg.jfrog.io/artifactory/main/release/$BOOST_VERSION_MAJOR.$BOOST_VERSION_MINOR_TGT.$BOOST_VERSION_PATCH_TGT/source/boost_$BOOST_VERSION_TGT.tar.bz2 \
-        && tar -xjf boost_$BOOST_VERSION.tar.bz2 \
+        && tar -xjf boost_$BOOST_VERSION_TGT.tar.bz2 \
         && cd $BOOST_ROOT \
         && if "$PIN_COMPILER"; then curl -fsSLo boost/beast/zlib/detail/inflate_stream.ipp "${BEAST_FIX_URL}"; fi \
         && SDKROOT="$SDKROOT" ./bootstrap.sh ${BOOTSTRAP_FLAGS} --prefix=$BOOST_ROOT \
