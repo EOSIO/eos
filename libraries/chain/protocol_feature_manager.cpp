@@ -230,6 +230,17 @@ Builtin protocol feature: BLOCKCHAIN_PARAMETERS
 
 Allows privileged contracts to get and set subsets of blockchain parameters.
 */
+         (  builtin_protocol_feature_t::wasm_code_coverage, builtin_protocol_feature_spec{
+            "WASM_CODE_COVERAGE",
+            fc::variant("57f673c34b311a0bd9060c3c47ce596e0d9ae827a79b80b629a3f0667b21ccc9").as<digest_type>(),
+            {}
+         } )
+            // SHA256 hash of the raw message below within the comment delimiters (do not modify message below).
+/*
+Builtin protocol feature: WASM_CODE_COVERAGE
+
+Adds coverage_XXX functions to support code coverage.
+*/
    ;
 
 
