@@ -579,6 +579,50 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_restart_with_existing_state_and_truncated_blo
    verify_integrity_hash<SNAPSHOT_SUITE>(*chain.control, *snap_chain.control);
 }
 
+BOOST_AUTO_TEST_CASE_TEMPLATE(test_restart_without_state_and_block_log, SNAPSHOT_SUITE, snapshot_suites)
+{
+   fc::temp_directory temp_dir;
+   auto [config, genesis] = tester::default_config(temp_dir);
+   config.db_map_mode     = pinnable_mapped_file::map_mode::anonymous_shared_memory;   
+   tester chain(config, genesis);
+   const chainbase::bfs::path parent_path = chain.get_config().blog.log_dir.parent_path();
+
+   chain.create_account("snapshot"_n);
+   chain.produce_blocks(1);
+   chain.set_code("snapshot"_n, contracts::snapshot_test_wasm());
+   chain.set_abi("snapshot"_n, contracts::snapshot_test_abi().data());
+   chain.produce_blocks(1);
+   chain.control->abort_block();
+
+   static const int pre_snapshot_block_count = 12;
+
+   for (int itr = 0; itr < pre_snapshot_block_count; itr++) {
+      // increment the contract
+      chain.push_action("snapshot"_n, "increment"_n, "snapshot"_n, mutable_variant_object()
+                        ( "value", 1 )
+                        );
+
+      // produce block
+      chain.produce_block();
+   }
+
+   chain.control->abort_block();
+
+   // create a new snapshot child
+   auto writer = SNAPSHOT_SUITE::get_writer();
+   chain.control->write_snapshot(writer);
+   auto snapshot = SNAPSHOT_SUITE::finalize(writer);
+
+   // create a new child at this snapshot
+   int ordinal = 1;
+   snapshotted_tester snap_chain(chain.get_config(), SNAPSHOT_SUITE::get_reader(snapshot), ordinal++);
+   verify_integrity_hash<SNAPSHOT_SUITE>(*chain.control, *snap_chain.control);
+   auto block = chain.produce_block();
+   chain.control->abort_block();
+   snap_chain.push_block(block);
+   verify_integrity_hash<SNAPSHOT_SUITE>(*chain.control, *snap_chain.control);
+}
+
 BOOST_AUTO_TEST_CASE_TEMPLATE(restart_from_snapshot_do_not_meet_min_initial_block_num, SNAPSHOT_SUITE, snapshot_suites)
 {
    tester chain;

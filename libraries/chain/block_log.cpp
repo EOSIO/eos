@@ -526,6 +526,7 @@ namespace eosio { namespace chain {
          uint32_t                  future_version;
          const size_t              stride;
          static uint32_t           default_version;
+         std::promise<std::tuple<signed_block_ptr, std::vector<char>>> append_promise;
 
          explicit block_log_impl(const block_log::config_type& config);
 
@@ -572,9 +573,11 @@ namespace eosio { namespace chain {
    uint32_t block_log::version() const { return my->preamble.version; }
 
    detail::block_log_impl::block_log_impl(const block_log::config_type& config)
-   : stride( config.stride )
-   {
+       : stride(config.stride) {
 
+      if (stride == 0)
+         return;
+         
       if (!fc::is_directory(config.log_dir))
          fc::create_directories(config.log_dir);
       
@@ -690,7 +693,12 @@ namespace eosio { namespace chain {
       return my->append(b, segment_compression);
    }
 
-   uint64_t detail::block_log_impl::append(const signed_block_ptr& b, packed_transaction::cf_compression_type segment_compression) {
+   uint64_t detail::block_log_impl::append(const signed_block_ptr&                 b,
+                                           packed_transaction::cf_compression_type segment_compression) {
+      if (stride == 0) {
+         head     = b;
+         return 0;
+      }
       try {
          EOS_ASSERT( genesis_written_to_block_log, block_log_append_fail, "Cannot append to block log until the genesis is first written" );
 
@@ -714,6 +722,11 @@ namespace eosio { namespace chain {
    }
 
    uint64_t detail::block_log_impl::append(std::future<std::tuple<signed_block_ptr, std::vector<char>>> f) {
+      if (stride == 0) {
+         head     = std::get<0>(f.get());
+         return 0;
+      }
+
       try {
          EOS_ASSERT( genesis_written_to_block_log, block_log_append_fail, "Cannot append to block log until the genesis is first written" );
 
@@ -743,9 +756,15 @@ namespace eosio { namespace chain {
 
    std::future<std::tuple<signed_block_ptr, std::vector<char>>>
    detail::block_log_impl::create_append_future(boost::asio::io_context& thread_pool, const signed_block_ptr& b, packed_transaction::cf_compression_type segment_compression) {
-      future_version = (b->block_num() % stride == 0) ? block_log::max_supported_version : future_version;
-      std::promise<std::tuple<signed_block_ptr, std::vector<char>>> p;
-      std::future<std::tuple<signed_block_ptr, std::vector<char>>> f = p.get_future();
+      future_version =
+          (stride == 0 || b->block_num() % stride == 0) ? block_log::max_supported_version : future_version;
+
+      if (stride == 0) {
+         append_promise = std::promise<std::tuple<signed_block_ptr, std::vector<char>>> {};
+         append_promise.set_value(std::make_tuple(b, std::vector<char>{}));
+         return append_promise.get_future();
+      }
+      
       return async_thread_pool( thread_pool, [b, version=future_version, segment_compression]() {
          return std::make_tuple(b, create_block_buffer(*b, version, segment_compression));
       } );
@@ -777,21 +796,27 @@ namespace eosio { namespace chain {
 
    void detail::block_log_impl::reset(uint32_t first_bnum, std::variant<genesis_state, chain_id_type>&& chain_context) {
 
-      block_file.open(fc::cfile::truncate_rw_mode);
-      index_file.open(fc::cfile::truncate_rw_mode);
+      if (stride != 0) {
+         block_file.open(fc::cfile::truncate_rw_mode);
+         index_file.open(fc::cfile::truncate_rw_mode);
+      }
 
       future_version           = block_log_impl::default_version;
       preamble.version         = block_log_impl::default_version; 
       preamble.first_block_num = first_bnum;
       preamble.chain_context   = std::move(chain_context);
-      preamble.write_to(block_file);
 
-      flush();
+      if (stride != 0) {
+         preamble.write_to(block_file);
+         flush();
+      }
+
       genesis_written_to_block_log = true;
       static_assert( block_log::max_supported_version > 0, "a version number of zero is not supported" );
    }
 
-   void block_log::reset( const genesis_state& gs, const signed_block_ptr& first_block, packed_transaction::cf_compression_type segment_compression ) {
+   void block_log::reset(const genesis_state& gs, const signed_block_ptr& first_block,
+                         packed_transaction::cf_compression_type segment_compression) {
       my->reset(1, gs);
       append(first_block, segment_compression);
    }

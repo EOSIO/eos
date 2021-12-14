@@ -629,4 +629,47 @@ BOOST_AUTO_TEST_CASE(test_trim_blocklog_front_v3) {
    trim_blocklog_front(3);
 }
 
+
+BOOST_AUTO_TEST_CASE(test_stride_0) {
+   fc::temp_directory temp_dir;
+   auto [config, genesis] = tester::default_config(temp_dir);
+   config.db_map_mode     = pinnable_mapped_file::map_mode::anonymous_shared_memory;   
+   tester chain(config, genesis);
+
+   BOOST_REQUIRE_NO_THROW(chain.produce_blocks(160));
+   auto blocks_dir = chain.get_config().blog.log_dir;
+
+   // when stride is zero, `blocks.log` and `blocks.index` are not generated,
+   // only `reversible` directory is created
+   for (const auto& p : bfs::directory_iterator{blocks_dir} ) {
+      BOOST_CHECK(bfs::is_directory(p.path()));
+   }
+}
+
+BOOST_AUTO_TEST_CASE(test_shared_memory_db_mode) {
+   fc::temp_directory temp_dir;
+   auto [config, genesis] = tester::default_config(temp_dir);
+   config.db_map_mode     = pinnable_mapped_file::map_mode::anonymous_shared_memory;   
+   tester chain(config, genesis);
+
+   BOOST_REQUIRE_NO_THROW(chain.create_account("replay1"_n));
+   BOOST_REQUIRE_NO_THROW(chain.produce_blocks(1));
+   BOOST_REQUIRE_NO_THROW(chain.create_account("replay2"_n));
+   BOOST_REQUIRE_NO_THROW(chain.produce_blocks(1));
+   BOOST_REQUIRE_NO_THROW(chain.create_account("replay3"_n));
+   BOOST_REQUIRE_NO_THROW(chain.produce_blocks(1));
+   BOOST_REQUIRE_NO_THROW(chain.produce_blocks(160));
+
+   BOOST_REQUIRE_NO_THROW(chain.control->get_account("replay1"_n));
+   BOOST_REQUIRE_NO_THROW(chain.control->get_account("replay2"_n));
+   BOOST_REQUIRE_NO_THROW(chain.control->get_account("replay3"_n));
+
+   // when db_map_mode is anonymous_shared_memory, no shared_memory.bin is create under state_dir
+   auto state_dir_itr = bfs::directory_iterator{chain.get_config().state_dir};
+   BOOST_CHECK(bfs::begin(state_dir_itr) == bfs::end(state_dir_itr));
+
+   auto reversible_dir = chain.get_config().blog.log_dir / "reversible";
+   BOOST_CHECK(!bfs::exists(reversible_dir));
+   
+}
 BOOST_AUTO_TEST_SUITE_END()

@@ -389,7 +389,7 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          ("maximum-variable-signature-length", bpo::value<uint32_t>()->default_value(16384u),
           "Subjectively limit the maximum length of variable components in a variable legnth signature to this size in bytes")
          ("database-map-mode", bpo::value<chainbase::pinnable_mapped_file::map_mode>()->default_value(chainbase::pinnable_mapped_file::map_mode::mapped),
-          "Database map mode (\"mapped\", \"heap\", or \"locked\").\n"
+          "Database map mode (\"mapped\", \"heap\", \"locked\", or \"anonymous_shared_memory\").\n"
           "In \"mapped\" mode database is memory mapped as a file.\n"
 #ifndef _WIN32
           "In \"heap\" mode database is preloaded in to swappable memory and will use huge pages if available.\n"
