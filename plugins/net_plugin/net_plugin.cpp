@@ -1547,8 +1547,7 @@ namespace eosio {
    void connection::sync_timeout( boost::system::error_code ec ) {
       if( !ec ) {
          my_impl->sync_master->sync_reassign_fetch( shared_from_this(), benign_other );
-      } else if( ec == boost::asio::error::operation_aborted ) {
-      } else {
+      } else if( ec != boost::asio::error::operation_aborted ) { // don't log on operation_aborted, called on destroy
          peer_elog( this, "setting timer for sync request got error ${ec}", ("ec", ec.message()) );
       }
    }
@@ -1557,8 +1556,7 @@ namespace eosio {
    void connection::fetch_timeout( boost::system::error_code ec ) {
       if( !ec ) {
          my_impl->dispatcher->retry_fetch( shared_from_this() );
-      } else if( ec == boost::asio::error::operation_aborted ) {
-      } else {
+      } else if( ec != boost::asio::error::operation_aborted ) { // don't log on operation_aborted, called on destroy
          peer_elog( this, "setting timer for fetch request got error ${ec}", ("ec", ec.message() ) );
       }
    }
