@@ -247,13 +247,14 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
                }
             };
 
+            auto block = get_block();
             if (block_id) {
                result.this_block  = block_position{block_num, *block_id};
                auto prev_block_id = plugin->get_block_id(block_num - 1);
                if (prev_block_id) 
                   result.prev_block = block_position{block_num - 1, *prev_block_id};
                if (block_req.fetch_block) {
-                  result.block = signed_block_ptr_variant{get_block()};
+                  result.block = signed_block_ptr_variant{block};
                }
                if (block_req.fetch_traces && plugin->trace_log) {
                   result.traces = plugin->trace_log->get_log_entry(block_num);
@@ -261,18 +262,22 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
                if (block_req.fetch_deltas && plugin->chain_state_log) {
                   result.deltas = plugin->chain_state_log->get_log_entry(block_num);
                }
-               set_result_block_header(result, get_block());
+               set_result_block_header(result, block);
             }
             ++block_num;
          }
          if (!result.has_value())
             return;
-         fc_ilog(_log,
-                 "pushing result "
-                 "{\"head\":{\"block_num\":${head}},\"last_irreversible\":{\"block_num\":${last_irr}},\"this_block\":{"
-                 "\"block_num\":${this_block}}} to send queue",
-                 ("head", result.head.block_num)("last_irr", result.last_irreversible.block_num)(
-                     "this_block", result.this_block ? result.this_block->block_num : fc::variant()));
+
+         bool fresh_block = block && fc::time_point::now() - block->timestamp < fc::minutes(5);
+         if( fresh_block || (result.this_block && result.this_block->block_num % 1000 == 0) ) {
+            fc_ilog(_log,
+                  "pushing result "
+                  "{\"head\":{\"block_num\":${head}},\"last_irreversible\":{\"block_num\":${last_irr}},\"this_block\":{"
+                  "\"block_num\":${this_block}}} to send queue",
+                  ("head", result.head.block_num)("last_irr", result.last_irreversible.block_num)(
+                        "this_block", result.this_block ? result.this_block->block_num : fc::variant()));
+         }
          send(std::move(result));
          --block_req.max_messages_in_flight;
          need_to_send_update = block_req.start_block_num <= current &&
