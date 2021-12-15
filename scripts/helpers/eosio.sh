@@ -224,10 +224,12 @@ function ensure-boost() {
     BOOST_VERSION_TGT="${BOOST_VERSION}"
     BOOST_VERSION_MINOR_TGT="${BOOST_VERSION_MINOR}"
     BOOST_VERSION_PATCH_TGT="${BOOST_VERSION_PATCH}"
+    BOOST_ROOT_TGT="${BOOST_ROOT}"
     if $PIN_COMPILER; then
         BOOST_VERSION_TGT="${BOOST_VERSION_PINNED}"
         BOOST_VERSION_MINOR_TGT="${BOOST_VERSION_MINOR_PINNED}"
         BOOST_VERSION_PATCH_TGT="${BOOST_VERSION_PATCH_PINNED}"
+        BOOST_ROOT_TGT="${BOOST_ROOT_PINNED}"
     fi
     echo "${COLOR_CYAN}[Ensuring Boost $( echo $BOOST_VERSION_TGT | sed 's/_/./g' ) library installation]${COLOR_NC}"
     BOOSTVERSION=$( grep "#define BOOST_VERSION" "$BOOST_ROOT/include/boost/version.hpp" 2>/dev/null | tail -1 | tr -s ' ' | cut -d\  -f3 || true )
@@ -244,17 +246,17 @@ function ensure-boost() {
         execute bash -c "cd $SRC_DIR && \
         curl -fsSLO https://boostorg.jfrog.io/artifactory/main/release/$BOOST_VERSION_MAJOR.$BOOST_VERSION_MINOR_TGT.$BOOST_VERSION_PATCH_TGT/source/boost_$BOOST_VERSION_TGT.tar.bz2 \
         && tar -xjf boost_$BOOST_VERSION_TGT.tar.bz2 \
-        && cd $BOOST_ROOT \
+        && cd $BOOST_ROOT_TGT \
         && if "$PIN_COMPILER"; then curl -fsSLo boost/beast/zlib/detail/inflate_stream.ipp "${BEAST_FIX_URL}"; fi \
-        && SDKROOT="$SDKROOT" ./bootstrap.sh ${BOOTSTRAP_FLAGS} --prefix=$BOOST_ROOT \
+        && SDKROOT="$SDKROOT" ./bootstrap.sh ${BOOTSTRAP_FLAGS} --prefix=$BOOST_ROOT_TGT \
         && SDKROOT="$SDKROOT" ./b2 ${B2_FLAGS} \
         && cd .. \
         && rm -f boost_$BOOST_VERSION_TGT.tar.bz2 \
         && rm -rf $BOOST_LINK_LOCATION"        
-        echo " - Boost library successfully installed @ ${BOOST_ROOT}"
+        echo " - Boost library successfully installed @ ${BOOST_ROOT_TGT}"
         echo ""
     else
-        echo " - Boost library found with correct version @ ${BOOST_ROOT}"
+        echo " - Boost library found with correct version @ ${BOOST_ROOT_TGT}"
         echo ""
     fi
 }
