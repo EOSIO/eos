@@ -89,7 +89,7 @@ for FILE in $(ls "$CICD_DIR/platforms/$PLATFORM_TYPE"); do
     elif [[ $FILE_NAME =~ 'macos-10.15' ]]; then
         export ANKA_TEMPLATE_NAME='10.15.5_6C_14G_80G'
     elif [[ $FILE_NAME =~ 'macos-11' ]]; then
-        export ANKA_TEMPLATE_NAME='11.2.1_6C_14G_80G'
+        export ANKA_TEMPLATE_NAME='11.4.0_6C_14G_80G'
     else # Linux
         export ANKA_TAG_BASE=''
         export ANKA_TEMPLATE_NAME=''
@@ -812,7 +812,7 @@ EOF
       - EOSIO/anka#v0.6.1:
           no-volume: true
           inherit-environment-vars: true
-          vm-name: 11.2.0_6C_16G_64G
+          vm-name: 11.4.0_6C_14G_80G
           vm-registry-tag: "clean::cicd::git-ssh::nas::brew::buildkite-agent"
           always-pull: true
           debug: true
