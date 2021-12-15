@@ -24,8 +24,15 @@ struct filter_callbacks {
       tm      t;
       gmtime_r(&sec, &t);
       char s[sizeof("2011-10-08T07:07:09.000000")];
+#if defined(__GNUC__) && !defined(__clang__)
+#   pragma GCC diagnostic push
+#   pragma GCC diagnostic ignored "-Wformat-truncation="
+#endif
       snprintf(s, sizeof(s), "%04d-%02d-%02dT%02d:%02d:%02d.%06d", t.tm_year + 1900, t.tm_mon + 1, t.tm_mday, t.tm_hour,
                t.tm_min, t.tm_sec, usec);
+#if defined(__GNUC__) && !defined(__clang__)
+#   pragma GCC diagnostic pop
+#endif
       derived().append_console(s, strlen(s));
    }
 
