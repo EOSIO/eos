@@ -583,20 +583,6 @@ cat <<EOF
     timeout: ${TIMEOUT:-10}
     skip: ${SKIP_CENTOS_7_7}${SKIP_PACKAGE_BUILDER}${SKIP_LINUX}
 
-  - label: ":centos: CentOS 8 - Package Builder"
-    command:
-      - "buildkite-agent artifact download build.tar.gz . --step ':centos: CentOS 8 - Build' && tar -xzf build.tar.gz"
-      - "./.cicd/package.sh"
-    env:
-      IMAGE_TAG: "centos-8-$PLATFORM_TYPE"
-      PLATFORM_TYPE: $PLATFORM_TYPE
-      OS: "el8" # OS and PKGTYPE required for lambdas
-      PKGTYPE: "rpm"
-    agents:
-      queue: "$BUILDKITE_TEST_AGENT_QUEUE"
-    timeout: ${TIMEOUT:-10}
-    skip: ${SKIP_CENTOS_8}${SKIP_PACKAGE_BUILDER}${SKIP_LINUX}
-
   - label: ":ubuntu: Ubuntu 16.04 - Package Builder"
     command:
       - "buildkite-agent artifact download build.tar.gz . --step ':ubuntu: Ubuntu 16.04 - Build' && tar -xzf build.tar.gz"
@@ -638,32 +624,6 @@ cat <<EOF
       queue: "$BUILDKITE_TEST_AGENT_QUEUE"
     timeout: ${TIMEOUT:-20}
     skip: ${SKIP_UBUNTU_20_04}${SKIP_PACKAGE_BUILDER}${SKIP_LINUX}
-
-  - label: ":darwin: macOS 10.14 - Package Builder"
-    command:
-      - "git clone \$BUILDKITE_REPO eos && cd eos && $GIT_FETCH git checkout -f \$BUILDKITE_COMMIT"
-      - "cd eos && buildkite-agent artifact download build.tar.gz . --step ':darwin: macOS 10.14 - Build' && tar -xzf build.tar.gz"
-      - "cd eos && ./.cicd/package.sh"
-    plugins:
-      - EOSIO/anka#v0.6.1:
-          no-volume: true
-          inherit-environment-vars: true
-          vm-name: 10.14.6_6C_14G_80G
-          vm-registry-tag: "clean::cicd::git-ssh::nas::brew::buildkite-agent"
-          always-pull: true
-          debug: true
-          wait-network: true
-          pre-execute-sleep: 5
-          pre-execute-ping-sleep: github.com
-          failover-registries:
-            - 'registry_1'
-            - 'registry_2'
-      - EOSIO/skip-checkout#v0.1.1:
-          cd: ~
-    agents:
-      - "queue=mac-anka-node-fleet"
-    timeout: ${TIMEOUT:-30}
-    skip: ${SKIP_MACOS_10_14}${SKIP_PACKAGE_BUILDER}${SKIP_MAC}
 
   - label: ":darwin: macOS 10.15 - Package Builder"
     command:
@@ -711,7 +671,7 @@ cat <<EOF
 
   - label: ":beer: Brew Updater"
     command:
-      - "buildkite-agent artifact download eosio.rb . --step ':darwin: macOS 10.14 - Package Builder'"
+      - "buildkite-agent artifact download eosio.rb . --step ':darwin: macOS 10.15 - Package Builder'"
       - "buildkite-agent artifact upload eosio.rb"
     agents:
       queue: "automation-basic-builder-fleet"
