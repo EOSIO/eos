@@ -173,6 +173,7 @@ public:
 
    /// separate run() because of shared_from_this
    void run() {
+      if( !running_ ) throw std::logic_error("restart not supported");
       queue_.pause(); // start paused, on_block_start will unpause
       thread_ = std::thread([self=this->shared_from_this()]() {
          fc::set_os_thread_name( "trxq" );
@@ -211,10 +212,15 @@ public:
       });
    }
 
-   /// shutdown queue processing
-   void stop() {
+   /// Stop queue processing
+   void signal_stop() {
       running_ = false;
       queue_.stop();
+   }
+
+   /// shutdown queue processing
+   void stop() {
+      signal_stop();
       if( thread_.joinable() ) {
          thread_.join();
       }
