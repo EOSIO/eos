@@ -671,7 +671,7 @@ cat <<EOF
 
   - label: ":beer: Brew Updater"
     command:
-      - "buildkite-agent artifact download eosio.rb . --step ':darwin: macOS 10.14 - Package Builder'"
+      - "buildkite-agent artifact download eosio.rb . --step ':darwin: macOS 10.15 - Package Builder'"
       - "buildkite-agent artifact upload eosio.rb"
     agents:
       queue: "automation-basic-builder-fleet"
