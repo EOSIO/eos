@@ -208,6 +208,7 @@ packed_transaction::compression_type to_compression_type( tx_compression_type t 
       case tx_compression_type::zlib: return packed_transaction::compression_type::zlib;
       case tx_compression_type::default_compression: return packed_transaction::compression_type::none;
    }
+   __builtin_unreachable();
 }
 
 void add_standard_transaction_options(CLI::App* cmd, string default_permission = "") {
@@ -808,6 +809,7 @@ authority parse_json_authority_or_key(const std::string& authorityJsonOrFile) {
       } EOS_RETHROW_EXCEPTIONS(public_key_type_exception, "Invalid public key: ${public_key}", ("public_key", authorityJsonOrFile))
    } else {
       auto result = parse_json_authority(authorityJsonOrFile);
+      result.sort_fields();
       EOS_ASSERT( eosio::chain::validate(result), authority_type_exception, "Authority failed validation! ensure that keys, accounts, and waits are sorted and that the threshold is valid and satisfiable!");
       return result;
    }
@@ -3182,7 +3184,7 @@ int main( int argc, char** argv ) {
       }
    });
 
-   auto getSchedule = get_schedule_subcommand{get};
+   get_schedule_subcommand{get};
    auto getTransactionId = get_transaction_id_subcommand{get};
 
    auto getCmd = get->add_subcommand("best", localized("Display message based on account name"));

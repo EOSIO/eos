@@ -17,6 +17,7 @@
 #include <eosio/chain/backing_store/kv_context.hpp>
 #include <eosio/chain/permission_link_object.hpp>
 #include <eosio/to_key.hpp>
+#include <eosio/chain/bit.hpp>
 
 #include <eosio/chain/eosio_contract.hpp>
 #include <eosio/resource_monitor_plugin/resource_monitor_plugin.hpp>
@@ -1751,7 +1752,9 @@ read_only::get_info_results read_only::get_info(const read_only::get_info_params
       db.fork_db_pending_head_block_num(),
       db.fork_db_pending_head_block_id(),
       app().full_version_string(),
-      db.last_irreversible_block_time()
+      db.last_irreversible_block_time(),
+      rm.get_total_cpu_weight(),
+      rm.get_total_net_weight()
    };
 }
 
@@ -2101,7 +2104,7 @@ struct key_converter<IntType, std::enable_if_t<std::is_integral_v<IntType>>> {
 
    static IntType value_from_hex(const std::string& bytes_in_hex) {
       auto unsigned_val = unhex<std::make_unsigned_t<IntType>>(bytes_in_hex);
-      if (unsigned_val > std::numeric_limits<IntType>::max()) {
+      if ( std::bit_cast<IntType>(unsigned_val) < 0) {
          return unsigned_val + static_cast<std::make_unsigned_t<IntType>>(std::numeric_limits<IntType>::min());
       } else {
          return unsigned_val + std::numeric_limits<IntType>::min();
@@ -3525,9 +3528,9 @@ namespace detail {
    struct ram_market_exchange_state_t {
       asset  ignore1;
       asset  ignore2;
-      double ignore3;
+      double ignore3{};
       asset  core_symbol;
-      double ignore4;
+      double ignore4{};
    };
 }
 
