@@ -231,23 +231,24 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
          result.last_irreversible = {chain.last_irreversible_block_num(), chain.last_irreversible_block_id()};
          uint32_t current =
                block_req.irreversible_only ? result.last_irreversible.block_num : result.head.block_num;
+
+         auto& block_num = block_req.start_block_num;
+         auto block_id  = plugin->get_block_id(block_num);
+
+         auto get_block = [&chain, block_num, head_block_state]() -> signed_block_ptr {
+            try {
+               if (head_block_state->block_num == block_num)
+                  return head_block_state->block;
+               return chain.fetch_block_by_number(block_num);
+            } catch (...) {
+               return {};
+            }
+         };
+         auto block = get_block();
+         
          if (block_req.start_block_num <= current &&
              block_req.start_block_num < block_req.end_block_num) {
 
-            auto& block_num = block_req.start_block_num;
-            auto block_id  = plugin->get_block_id(block_num);
-
-            auto get_block = [&chain, block_num, head_block_state]() -> signed_block_ptr {
-               try {
-                  if (head_block_state->block_num == block_num)
-                     return head_block_state->block;
-                  return chain.fetch_block_by_number(block_num);
-               } catch (...) {
-                  return {};
-               }
-            };
-
-            auto block = get_block();
             if (block_id) {
                result.this_block  = block_position{block_num, *block_id};
                auto prev_block_id = plugin->get_block_id(block_num - 1);
