@@ -2,6 +2,8 @@
 set -eo pipefail
 VERSION=1
 brew update
+echo $(brew -v)
+echo $(sw_vers)
 brew install git cmake python libtool libusb graphviz automake wget gmp pkgconfig doxygen openssl jq postgres rabbitmq || :
 # install clang from source
 git clone --single-branch --branch llvmorg-10.0.0 https://github.com/llvm/llvm-project clang10
@@ -15,19 +17,6 @@ rm -rf clang10
 # install boost from source
 curl -LO https://boostorg.jfrog.io/artifactory/main/release/1.72.0/source/boost_1_72_0.tar.bz2
 tar -xjf boost_1_72_0.tar.bz2
-# set enviroment variables
-export LIBRARY_PATH=/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib:$LIBRARY_PATH
-export CPLUS_INCLUDE_PATH=/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include:$CPLUS_INCLUDE_PATH
-export CPLUS_INCLUDE_PATH=/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/c++/v1:$CPLUS_INCLUDE_PATH
-echo $CPLUS_INCLUDE_PATH
-pushd /Library/Developer/CommandLineTools/SDKs
-echo $(ls)
-popd
-pushd /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include
-echo $(ls)
-popd
-pushd /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/c++/v1
-echo $(ls)
 
 cd boost_1_72_0
 ./bootstrap.sh --prefix=/usr/local
