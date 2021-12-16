@@ -219,38 +219,197 @@ namespace eosio { namespace chain { namespace webassembly {
       });
    }
    
+   enum {
+      max_block_net_usage_id,
+      target_block_net_usage_pct_id,
+      max_transaction_net_usage_id,
+      base_per_transaction_net_usage_id,
+      net_usage_leeway_id,
+      context_free_discount_net_usage_num_id,
+      context_free_discount_net_usage_den_id,
+      max_block_cpu_usage_id,
+      target_block_cpu_usage_pct_id,
+      max_transaction_cpu_usage_id,
+      min_transaction_cpu_usage_id,
+      max_transaction_lifetime_id,
+      deferred_trx_expiration_window_id,
+      max_transaction_delay_id,
+      max_inline_action_size_id,
+      max_inline_action_depth_id,
+      max_authority_depth_id,
+      max_action_return_value_size_id
+   };
+
+   inline std::variant<uint16_t, uint32_t, uint64_t> __get_data_by_id(uint32_t id, const chain::chain_config & cfg){
+      std::variant<uint16_t, uint32_t, uint64_t> data;
+        switch (id){
+         case max_block_net_usage_id:
+            data = cfg.max_block_net_usage;
+            break;
+         case target_block_net_usage_pct_id:
+            data = cfg.target_block_net_usage_pct;
+            break;
+         case max_transaction_net_usage_id:
+            data = cfg.max_transaction_net_usage;
+            break;
+         case base_per_transaction_net_usage_id:
+            data = cfg.base_per_transaction_net_usage;
+            break;
+         case net_usage_leeway_id:
+            data = cfg.net_usage_leeway;
+            break;
+         case context_free_discount_net_usage_num_id:
+            data = cfg.context_free_discount_net_usage_num;
+            break;
+         case context_free_discount_net_usage_den_id:
+            data = cfg.context_free_discount_net_usage_den;
+            break;
+         case max_block_cpu_usage_id:
+            data = cfg.max_block_cpu_usage;
+            break;
+         case target_block_cpu_usage_pct_id:
+            data = cfg.target_block_cpu_usage_pct;
+            break;
+         case max_transaction_cpu_usage_id:
+            data = cfg.max_transaction_cpu_usage;
+            break;
+         case min_transaction_cpu_usage_id:
+            data = cfg.min_transaction_cpu_usage;
+            break;
+         case max_transaction_lifetime_id:
+            data = cfg.max_transaction_lifetime;
+            break;
+         case deferred_trx_expiration_window_id:
+            data = cfg.deferred_trx_expiration_window;
+            break;
+         case max_transaction_delay_id:
+            data = cfg.max_transaction_delay;
+            break;
+         case max_inline_action_size_id:
+            data = cfg.max_inline_action_size;
+            break;
+         case max_inline_action_depth_id:
+            data = cfg.max_inline_action_depth;
+            break;
+         case max_authority_depth_id:
+            data = cfg.max_authority_depth;
+            break;
+         case max_action_return_value_size_id:
+            data = cfg.max_action_return_value_size;
+            break;
+      }
+      return data;
+   }
+
    uint32_t interface::get_parameters_packed( span<const char> packed_parameter_ids, span<char> packed_parameters) const{
       datastream<const char*> ds_ids( packed_parameter_ids.data(), packed_parameter_ids.size() );
 
       chain::chain_config cfg = context.control.get_global_properties().configuration;
-      std::vector<fc::unsigned_int> ids;
-      fc::raw::unpack(ds_ids, ids);
-      const config_range config_range(cfg, std::move(ids), {context.control});
-      
-      auto size = fc::raw::pack_size( config_range );
-      if( packed_parameters.size() == 0 ) return size;
-
-      EOS_ASSERT(size <= packed_parameters.size(),
+      std::vector<uint32_t> ids;
+      uint32_t size;
+      fc::raw::unpack(ds_ids, size);
+      for(uint32_t i = 0; i < size; ++i){
+         uint32_t id;
+         fc::raw::unpack(ds_ids, id);
+         ids.push_back(id);
+      }
+      const int estimate_params_buff_size = 256;
+      char paras_buff[estimate_params_buff_size];
+      datastream<char*> ds_paras( paras_buff, sizeof(paras_buff) );
+      fc::raw::pack(ds_paras, size);
+      for( auto  id : ids){
+         uint32_t _id = id;
+         std::variant<uint16_t, uint32_t, uint64_t>  var = __get_data_by_id(id, cfg);
+         fc::raw::pack(ds_paras, _id);
+         fc::raw::pack(ds_paras, var);
+      }
+      // if no output buffer, return the the least output buffer size required.
+      if( packed_parameters.size() == 0 ) return ds_paras.tellp();
+      EOS_ASSERT(ds_paras.tellp() <= packed_parameters.size(),
                  chain::config_parse_error,
-                 "get_parameters_packed: buffer size is smaller than ${size}", ("size", size));
+                 "get_parameters_packed: output buffer size is smaller than ${size}", ("size", ds_paras.tellp()));
       
-      datastream<char*> ds( packed_parameters.data(), size );
-      fc::raw::pack( ds, config_range );
-      return size;
+      std::memcpy(packed_parameters.data(), paras_buff, ds_paras.tellp());
+      return ds_paras.tellp();
+   }
+
+   inline void __set_parameter_id_data(chain::chain_config & cfg, uint32_t id, const std::variant<uint16_t, uint32_t, uint64_t> & data){
+      switch (id){
+         case max_block_net_usage_id:
+            cfg.max_block_net_usage = std::get<uint64_t>(data);
+            break;
+         case target_block_net_usage_pct_id:
+            cfg.target_block_net_usage_pct = std::get<uint32_t>(data);
+            break;
+         case max_transaction_net_usage_id:
+            cfg.max_transaction_net_usage = std::get<uint32_t>(data);
+            break;
+         case base_per_transaction_net_usage_id:
+            cfg.base_per_transaction_net_usage = std::get<uint32_t>(data);
+            break;
+         case net_usage_leeway_id:
+            cfg.net_usage_leeway = std::get<uint32_t>(data);
+            break;
+         case context_free_discount_net_usage_num_id:
+            cfg.context_free_discount_net_usage_num = std::get<uint32_t>(data);
+            break;
+         case context_free_discount_net_usage_den_id:
+            cfg.context_free_discount_net_usage_den = std::get<uint32_t>(data);
+            break;
+         case max_block_cpu_usage_id:
+            cfg.max_block_cpu_usage = std::get<uint32_t>(data);
+            break;
+         case target_block_cpu_usage_pct_id:
+            cfg.target_block_cpu_usage_pct = std::get<uint32_t>(data);
+            break;
+         case max_transaction_cpu_usage_id:
+            cfg.max_transaction_cpu_usage = std::get<uint32_t>(data);
+            break;
+         case min_transaction_cpu_usage_id:
+            cfg.min_transaction_cpu_usage = std::get<uint32_t>(data);
+            break;
+         case max_transaction_lifetime_id:
+            cfg.max_transaction_lifetime = std::get<uint32_t>(data);
+            break;
+         case deferred_trx_expiration_window_id:
+            cfg.deferred_trx_expiration_window = std::get<uint32_t>(data);
+            break;
+         case max_transaction_delay_id:
+            cfg.max_transaction_delay = std::get<uint32_t>(data);
+            break;
+         case max_inline_action_size_id:
+            cfg.max_inline_action_size = std::get<uint32_t>(data);
+            break;
+         case max_inline_action_depth_id:
+            cfg.max_inline_action_depth  = std::get<uint16_t>(data);
+            break;
+         case max_authority_depth_id:
+            cfg.max_authority_depth = std::get<uint16_t>(data);
+            break;
+         case max_action_return_value_size_id:
+            cfg.max_action_return_value_size = std::get<uint32_t>(data);
+            break;
+      }
    }
 
    void interface::set_parameters_packed( span<const char> packed_parameters ){
       datastream<const char*> ds( packed_parameters.data(), packed_parameters.size() );
-
       chain::chain_config cfg = context.control.get_global_properties().configuration;
-      config_range config_range(cfg, {context.control});
 
-      fc::raw::unpack(ds, config_range);
+      uint32_t size;
+      fc::raw::unpack(ds, size);
+      for(uint32_t i = 0; i < size; ++i){
+         uint32_t id;
+         fc::raw::unpack(ds, id);
+         std::variant<uint16_t, uint32_t, uint64_t>  var;
+         fc::raw::unpack(ds, var);
+         __set_parameter_id_data(cfg, id, var);
+      }
       
-      config_range.config.validate();
+      cfg.validate();
       context.db.modify( context.control.get_global_properties(),
          [&]( auto& gprops ) {
-              gprops.configuration = config_range.config;
+              gprops.configuration = cfg;
       });
    }
 
