@@ -224,12 +224,6 @@ public:
                      p.set_value();
                   } catch(...) {}
                } );
-               cb.onError( [&](const char* message) {
-                  elog( "Error on stop: ${m}", ("m", message) );
-                  try {
-                     p.set_value();
-                  } catch(...) {}
-               } );
             } else {
                p.set_value();
             }
