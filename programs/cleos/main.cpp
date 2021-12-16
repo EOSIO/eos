@@ -462,6 +462,7 @@ fc::variant push_transaction( signed_transaction& trx, const std::vector<public_
                   ( "transaction_id", id )
                   ( "status", "submitted" );
             qp_trx.publish( "", amqp_queue_name, std::move( id ), amqp_reply_to, std::move( buf ) );
+            std::this_thread::sleep_for(1000ms); // test if closing before send
             return result;
          } else {
             try {
