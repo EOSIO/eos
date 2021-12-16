@@ -97,8 +97,7 @@ def startNode(nodeIndex, account):
     run('mkdir -p ' + dir)
     otherOpts = ''.join(list(map(lambda i: '    --p2p-peer-address localhost:' + str(9000 + i), range(nodeIndex))))
     if not nodeIndex: otherOpts += (
-        '    --plugin eosio::history_plugin'
-        '    --plugin eosio::history_api_plugin'
+        '    --plugin eosio::trace_api_plugin --trace-no-abis '
     )
     cmd = (
         args.nodeos +

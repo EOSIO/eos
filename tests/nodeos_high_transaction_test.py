@@ -81,16 +81,18 @@ try:
     cluster.cleanup()
     Print("Stand up cluster")
 
+    traceNodeosArgs = " --plugin eosio::trace_api_plugin --trace-no-abis "
     if not amqpAddr:
         launched = cluster.launch(pnodes=totalProducerNodes,
                                   totalNodes=totalNodes, totalProducers=totalProducers,
-                                  useBiosBootFile=False, topo="ring")
+                                  useBiosBootFile=False, topo="ring",
+                                  extraNodeosArgs=traceNodeosArgs)
     else:
         cluster.createAMQPQueue("trx")
         launched = cluster.launch(pnodes=totalProducerNodes,
                                   totalNodes=totalNodes, totalProducers=totalProducers,
                                   useBiosBootFile=False, topo="ring",
-                                  extraNodeosArgs=" --plugin eosio::amqp_trx_plugin --amqp-trx-address %s --amqp-trx-speculative-execution --amqp-trx-ack-mode=executed" % amqpAddr)
+                                  extraNodeosArgs=" --plugin eosio::amqp_trx_plugin --amqp-trx-address %s --amqp-trx-speculative-execution --amqp-trx-ack-mode=executed %s" % (amqpAddr, traceNodeosArgs))
     if launched is False:
         Utils.cmdError("launcher")
         Utils.errorExit("Failed to stand up eos cluster.")
@@ -188,7 +190,7 @@ try:
                     node.waitForTransInBlock(transId, timeout = args.transaction_time_delta)
                     continue
 
-            lastIrreversibleBlockNum = trans["last_irreversible_block"]
+            lastIrreversibleBlockNum = node.getIrreversibleBlockNum()
             blockNum = Node.getTransBlockNum(trans)
             assert blockNum is not None, Print("ERROR: could not retrieve block num from transId: %s, trans: %s" % (transId, json.dumps(trans, indent=2)))
             block = node.getBlock(blockNum)

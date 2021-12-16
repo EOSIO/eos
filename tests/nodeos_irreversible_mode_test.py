@@ -152,6 +152,7 @@ try:
    TestHelper.printSystemInfo("BEGIN")
    cluster.killall(allInstances=killAll)
    cluster.cleanup()
+   traceNodeosArgs = " --plugin eosio::trace_api_plugin --trace-no-abis "
    cluster.launch(
       prodCount=numOfProducers,
       totalProducers=numOfProducers,
@@ -159,6 +160,7 @@ try:
       pnodes=1,
       useBiosBootFile=False,
       topo="mesh",
+      extraNodeosArgs=traceNodeosArgs,
       specificExtraNodeosArgs={
          0:"--enable-stale-production",
          4:"--read-mode irreversible",
