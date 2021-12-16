@@ -635,9 +635,11 @@ struct controller_impl {
                "attempting to undo pending changes",
                ("db",db.revision())("head",head->block_num) );
       }
+      ilog("before kv_db.undo");
       while( db.revision() > head->block_num ) {
          kv_db.undo();
       }
+      ilog("after kv_db.undo");
 
       protocol_features.init( db );
 
@@ -722,9 +724,13 @@ struct controller_impl {
          fc_dlog(*dm_logger, "ABIDUMP END");
       }
 
+      ilog("before replay");
+
       if( last_block_num > head->block_num ) {
          replay( check_shutdown ); // replay any irreversible and reversible blocks ahead of current head
       }
+
+      ilog("after replay");
 
       if( check_shutdown() ) return;
 
@@ -742,6 +748,8 @@ struct controller_impl {
             maybe_switch_forks( pending_head, controller::block_status::complete, forked_branch_callback{}, trx_meta_cache_lookup{} );
          }
       }
+
+      ilog("controller_impl::init done");
    }
 
    ~controller_impl() {
