@@ -2446,8 +2446,7 @@ BOOST_AUTO_TEST_CASE(abi_account_name_in_eosio_abi)
    }
    )=====";
 
-   auto abi = eosio_contract_abi(fc::json::from_string(repeat_abi).as<abi_def>());
-   auto is_type_exception = [](fc::assert_exception const & e) -> bool { return e.to_detail_string().find("abi.types.size") != std::string::npos; };
+   eosio_contract_abi(fc::json::from_string(repeat_abi).as<abi_def>());
 
 } FC_LOG_AND_RETHROW() }
 

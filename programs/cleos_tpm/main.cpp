@@ -210,6 +210,7 @@ packed_transaction::compression_type to_compression_type( tx_compression_type t 
       case tx_compression_type::zlib: return packed_transaction::compression_type::zlib;
       case tx_compression_type::default_compression: return packed_transaction::compression_type::none;
    }
+   __builtin_unreachable();
 }
 
 void add_standard_transaction_options(CLI::App* cmd, string default_permission = "") {
@@ -806,6 +807,7 @@ authority parse_json_authority_or_key(const std::string& authorityJsonOrFile) {
       } EOS_RETHROW_EXCEPTIONS(public_key_type_exception, "Invalid public key: ${public_key}", ("public_key", authorityJsonOrFile))
    } else {
       auto result = parse_json_authority(authorityJsonOrFile);
+      result.sort_fields();
       EOS_ASSERT( eosio::chain::validate(result), authority_type_exception, "Authority failed validation! ensure that keys, accounts, and waits are sorted and that the threshold is valid and satisfiable!");
       return result;
    }
@@ -3139,7 +3141,7 @@ int main( int argc, char** argv ) {
       }
    });
 
-   auto getSchedule = get_schedule_subcommand{get};
+   get_schedule_subcommand{get};
    auto getTransactionId = get_transaction_id_subcommand{get};
 
    auto getCmd = get->add_subcommand("best", localized("Display message based on account name"));
@@ -3852,21 +3854,32 @@ int main( int argc, char** argv ) {
 
    // push transaction
    string trx_to_push;
+   std::vector<string> extra_signatures;
+   CLI::callback_t extra_sig_opt_callback = [&](CLI::results_t res) {
+      vector<string>::iterator itr;
+      for (itr = res.begin(); itr != res.end(); ++itr) {
+         extra_signatures.push_back(*itr);
+      }
+      return true;
+   };
    auto trxSubcommand = push->add_subcommand("transaction", localized("Push an arbitrary JSON transaction"));
    trxSubcommand->add_option("transaction", trx_to_push, localized("The JSON string or filename defining the transaction to push"))->required();
+   trxSubcommand->add_option("--signature", extra_sig_opt_callback, localized("append a signature to the transaction; repeat this option to append multiple signatures"))->type_size(0, 1000);
    add_standard_transaction_options_plus_signing(trxSubcommand);
 
    trxSubcommand->callback([&] {
       fc::variant trx_var = json_from_file_or_string(trx_to_push);
+      signed_transaction trx;
       try {
-         signed_transaction trx = trx_var.as<signed_transaction>();
-         std::cout << fc::json::to_pretty_string( push_transaction( trx, signing_keys_opt.get_keys() )) << std::endl;
+         trx = trx_var.as<signed_transaction>();
       } catch( const std::exception& ) {
          // unable to convert so try via abi
-         signed_transaction trx;
          abi_serializer::from_variant( trx_var, trx, abi_serializer_resolver, abi_serializer::create_yield_function( abi_serializer_max_time ) );
-         std::cout << fc::json::to_pretty_string( push_transaction( trx, signing_keys_opt.get_keys() )) << std::endl;
       }
+      for (const string& sig : extra_signatures) {
+         trx.signatures.push_back(fc::crypto::signature(sig));
+      }
+      std::cout << fc::json::to_pretty_string( push_transaction( trx, signing_keys_opt.get_keys() )) << std::endl;
    });
 
    // push transactions

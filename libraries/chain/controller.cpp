@@ -2416,7 +2416,7 @@ controller::~controller() {
          my->fork_db.remove_head(poped->block_num);
          my->emit(my->self.block_abort, poped->block_num);
       }
-   } FC_LOG_AND_DROP();
+   } FC_LOG_AND_DROP_ALL();
    /* Shouldn't be needed anymore.
    //close fork_db here, because it can generate "irreversible" signal to this controller,
    //in case if read-mode == IRREVERSIBLE, we will apply latest irreversible block

@@ -225,13 +225,18 @@ namespace eosio { namespace chain { namespace backing_store { namespace db_key_v
 
    eosio::session::shared_bytes create_full_key_prefix(const eosio::session::shared_bytes& full_key, end_of_prefix prefix_end) {
       auto calc_extension = [](end_of_prefix prefix_end) {
-         switch (prefix_end) {
-            case end_of_prefix::pre_type: return std::size_t(0);
-            case end_of_prefix::at_type: return std::size_t(1);
-            case end_of_prefix::at_prim_to_sec_type: return std::size_t(2);
-            case end_of_prefix::at_prim_to_sec_primary_key: return 2 + sizeof(uint64_t);
-         }
-      };
+       switch (prefix_end) {
+       case end_of_prefix::pre_type:
+         return std::size_t(0);
+       case end_of_prefix::at_type:
+         return std::size_t(1);
+       case end_of_prefix::at_prim_to_sec_type:
+         return std::size_t(2);
+       case end_of_prefix::at_prim_to_sec_primary_key:
+         return 2 + sizeof(uint64_t);
+       }
+       __builtin_unreachable();
+     };
       const std::size_t extension_size = calc_extension(prefix_end);
       const std::size_t full_prefix_size = db_key_value_format::detail::prefix_size<eosio::session::shared_bytes>() + extension_size;
       EOS_ASSERT( full_prefix_size < full_key.size(), db_rocksdb_invalid_operation_exception,

@@ -160,7 +160,7 @@ struct witness_trx_plugin_impl {
          file.set_file_path(trx_witness_path);
          file.open("wb");
          fc::raw::pack(file, sig_action_data_waiting_on_catch_up);
-      } FC_LOG_AND_DROP();
+      } FC_LOG_AND_DROP_ALL();
    }
 };
 

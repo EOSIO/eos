@@ -78,6 +78,23 @@ class PluginHttpTest(unittest.TestCase):
         ret_json = Utils.runCmdReturnJson(invalid_cmd)
         self.assertEqual(ret_json["code"], 400)
 
+        # get_consensus_parameters without parameter
+        default_cmd = cmd_base + "get_consensus_parameters"
+        ret_json = Utils.runCmdReturnJson(default_cmd)
+        self.assertIn("chain_config", ret_json)
+        self.assertIn("kv_database_config", ret_json)
+        self.assertIn("wasm_config", ret_json)
+        # get_consensus_parameters with empty content parameter
+        empty_content_cmd = default_cmd + self.http_post_str + self.empty_content_str
+        ret_json = Utils.runCmdReturnJson(empty_content_cmd)
+        self.assertIn("chain_config", ret_json)
+        self.assertIn("kv_database_config", ret_json)
+        self.assertIn("wasm_config", ret_json)
+        # get_consensus_parameters with invalid parameter
+        invalid_cmd = default_cmd + self.http_post_str + self.http_post_invalid_param
+        ret_json = Utils.runCmdReturnJson(invalid_cmd)
+        self.assertEqual(ret_json["code"], 400)
+
         # get_activated_protocol_features without parameter
         default_cmd = cmd_base + "get_activated_protocol_features"
         ret_json = Utils.runCmdReturnJson(default_cmd)

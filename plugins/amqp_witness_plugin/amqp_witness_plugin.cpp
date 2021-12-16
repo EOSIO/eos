@@ -18,7 +18,6 @@ struct amqp_witness_plugin_impl {
 amqp_witness_plugin::amqp_witness_plugin() : my(new amqp_witness_plugin_impl()) {}
 
 void amqp_witness_plugin::set_program_options(options_description& cli, options_description& cfg) {
-   auto default_priv_key = eosio::chain::private_key_type::regenerate<fc::ecc::private_key_shim>(fc::sha256::hash(std::string("witness")));
 
    cfg.add_options()
          ("witness-amqp-server", boost::program_options::value<string>()->default_value(my->amqp_server)->notifier([this](const string& v) {

@@ -37,6 +37,8 @@ set( RODEOS_EXECUTABLE_NAME rodeos )
 set( TESTER_EXECUTABLE_NAME eosio-tester )
 set( CLI_CLIENT_TPM_EXECUTABLE_NAME  cleos_tpm )
 
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror")
+
 # http://stackoverflow.com/a/18369825
 if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
     if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 8.0)
@@ -46,7 +48,7 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR "${CMAKE_CXX_COMPILER_ID}
     if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 5.0)
         message(FATAL_ERROR "Clang version must be at least 5.0!")
     endif()
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wsign-compare -Wrange-loop-analysis")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wsign-compare -Wrange-loop-analysis -Wno-unused-command-line-argument")
 endif()
 
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "AppleClang")
@@ -223,7 +225,7 @@ configure_file(${CMAKE_SOURCE_DIR}/libraries/softfloat/COPYING.txt
                ${CMAKE_BINARY_DIR}/licenses/eosio/LICENSE.softfloat COPYONLY)
 configure_file(${CMAKE_SOURCE_DIR}/libraries/wasm-jit/LICENSE
                ${CMAKE_BINARY_DIR}/licenses/eosio/LICENSE.wavm COPYONLY)
-configure_file(${CMAKE_SOURCE_DIR}/libraries/fc/secp256k1/upstream/COPYING
+configure_file(${CMAKE_SOURCE_DIR}/libraries/fc/secp256k1/secp256k1/COPYING
                ${CMAKE_BINARY_DIR}/licenses/eosio/LICENSE.secp256k1 COPYONLY)
 configure_file(${CMAKE_SOURCE_DIR}/libraries/fc/include/fc/crypto/webauthn_json/license.txt
                ${CMAKE_BINARY_DIR}/licenses/eosio/LICENSE.rapidjson COPYONLY)
@@ -245,7 +247,7 @@ file(DOWNLOAD https://raw.githubusercontent.com/jtv/libpqxx/master/COPYING
 install(FILES LICENSE DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/licenses/eosio/ COMPONENT base)
 install(FILES libraries/softfloat/COPYING.txt DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/licenses/eosio/ RENAME LICENSE.softfloat COMPONENT base)
 install(FILES libraries/wasm-jit/LICENSE DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/licenses/eosio/ RENAME LICENSE.wavm COMPONENT base)
-install(FILES libraries/fc/secp256k1/upstream/COPYING DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/licenses/eosio/ RENAME LICENSE.secp256k1 COMPONENT base)
+install(FILES libraries/fc/secp256k1/secp256k1/COPYING DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/licenses/eosio/ RENAME LICENSE.secp256k1 COMPONENT base)
 install(FILES libraries/fc/include/fc/crypto/webauthn_json/license.txt DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/licenses/eosio/ RENAME LICENSE.rapidjson COMPONENT base)
 install(FILES libraries/fc/src/network/LICENSE.go DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/licenses/eosio/ COMPONENT base)
 install(FILES libraries/yubihsm/LICENSE DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/licenses/eosio/ RENAME LICENSE.yubihsm COMPONENT base)
