@@ -216,22 +216,22 @@ public:
          // drain amqp queue
          std::promise<void> stop_promise;
          auto future = stop_promise.get_future();
-         boost::asio::post( thread_pool_.get_executor(), [&]() {
+         boost::asio::post( thread_pool_.get_executor(), [&, p{std::move(stop_promise)}]() mutable {
             if( channel_ && channel_->usable() ) {
                auto& cb = channel_->close();
                cb.onFinalize( [&]() {
                   try {
-                     stop_promise.set_value();
+                     p.set_value();
                   } catch(...) {}
                } );
                cb.onError( [&](const char* message) {
                   elog( "Error on stop: ${m}", ("m", message) );
                   try {
-                     stop_promise.set_value();
+                     p.set_value();
                   } catch(...) {}
                } );
             } else {
-               stop_promise.set_value();
+               p.set_value();
             }
          } );
          future.wait_for(std::chrono::seconds( 10 ));
