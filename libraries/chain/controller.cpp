@@ -239,10 +239,10 @@ struct controller_impl {
     self(s),
     db( cfg.state_dir,
         cfg.read_only ? database::read_only : database::read_write,
-        cfg.state_size, false, cfg.db_map_mode ),
+        cfg.state_size, cfg.db_on_dirty, cfg.db_map_mode ),
     reversible_blocks( cfg.blog.log_dir/config::reversible_blocks_dir_name,
         cfg.read_only ? database::read_only : database::read_write,
-        cfg.reversible_cache_size, false, cfg.db_map_mode ),
+        cfg.reversible_cache_size, cfg.db_on_dirty, cfg.db_map_mode ),
     kv_db(cfg.backing_store == backing_store_type::CHAINBASE
           ? combined_database(db, cfg.persistent_storage_mbytes_batch)
           : combined_database(db, cfg)), 

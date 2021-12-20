@@ -633,7 +633,7 @@ BOOST_AUTO_TEST_CASE(test_trim_blocklog_front_v3) {
 BOOST_AUTO_TEST_CASE(test_stride_0) {
    fc::temp_directory temp_dir;
    auto [config, genesis] = tester::default_config(temp_dir);
-   config.db_map_mode     = pinnable_mapped_file::map_mode::anonymous_shared_memory;   
+   config.blog.stride = 0; 
    tester chain(config, genesis);
 
    BOOST_REQUIRE_NO_THROW(chain.produce_blocks(160));
@@ -646,10 +646,11 @@ BOOST_AUTO_TEST_CASE(test_stride_0) {
    }
 }
 
-BOOST_AUTO_TEST_CASE(test_shared_memory_db_mode) {
+
+BOOST_AUTO_TEST_CASE(test_db_on_dirty) {
    fc::temp_directory temp_dir;
    auto [config, genesis] = tester::default_config(temp_dir);
-   config.db_map_mode     = pinnable_mapped_file::map_mode::anonymous_shared_memory;   
+   config.db_map_mode = pinnable_mapped_file::map_mode::heap;
    tester chain(config, genesis);
 
    BOOST_REQUIRE_NO_THROW(chain.create_account("replay1"_n));
@@ -664,12 +665,16 @@ BOOST_AUTO_TEST_CASE(test_shared_memory_db_mode) {
    BOOST_REQUIRE_NO_THROW(chain.control->get_account("replay2"_n));
    BOOST_REQUIRE_NO_THROW(chain.control->get_account("replay3"_n));
 
-   // when db_map_mode is anonymous_shared_memory, no shared_memory.bin is create under state_dir
-   auto state_dir_itr = bfs::directory_iterator{chain.get_config().state_dir};
-   BOOST_CHECK(bfs::begin(state_dir_itr) == bfs::end(state_dir_itr));
+   {
+      // the database will be dirty because `chain` is not closed.
+      BOOST_REQUIRE_THROW(tester from_state_chain(config, genesis), std::system_error);
+   }
 
-   auto reversible_dir = chain.get_config().blog.log_dir / "reversible";
-   BOOST_CHECK(!bfs::exists(reversible_dir));
+   config.db_on_dirty = pinnable_mapped_file::on_dirty_mode::delete_on_dirty;
+   tester from_state_chain(config, genesis);
+   BOOST_REQUIRE_NO_THROW(from_state_chain.control->get_account("replay1"_n));
+   BOOST_REQUIRE_NO_THROW(from_state_chain.control->get_account("replay2"_n));
+   BOOST_REQUIRE_NO_THROW(from_state_chain.control->get_account("replay3"_n));
    
 }
 BOOST_AUTO_TEST_SUITE_END()

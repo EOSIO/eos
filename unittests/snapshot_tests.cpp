@@ -583,9 +583,8 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_restart_without_state_and_block_log, SNAPSHOT
 {
    fc::temp_directory temp_dir;
    auto [config, genesis] = tester::default_config(temp_dir);
-   config.db_map_mode     = pinnable_mapped_file::map_mode::anonymous_shared_memory;   
+   config.blog.stride = 0; 
    tester chain(config, genesis);
-   const chainbase::bfs::path parent_path = chain.get_config().blog.log_dir.parent_path();
 
    chain.create_account("snapshot"_n);
    chain.produce_blocks(1);
@@ -613,9 +612,15 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_restart_without_state_and_block_log, SNAPSHOT
    chain.control->write_snapshot(writer);
    auto snapshot = SNAPSHOT_SUITE::finalize(writer);
 
+   {
+      // the database will be dirty because `chain` is not closed.
+      BOOST_REQUIRE_THROW(tester from_state_chain(config, genesis), std::system_error);
+   }
+
    // create a new child at this snapshot
    int ordinal = 1;
-   snapshotted_tester snap_chain(chain.get_config(), SNAPSHOT_SUITE::get_reader(snapshot), ordinal++);
+   config.db_on_dirty = pinnable_mapped_file::on_dirty_mode::delete_on_dirty;
+   snapshotted_tester snap_chain(config, SNAPSHOT_SUITE::get_reader(snapshot), ordinal++);
    verify_integrity_hash<SNAPSHOT_SUITE>(*chain.control, *snap_chain.control);
    auto block = chain.produce_block();
    chain.control->abort_block();

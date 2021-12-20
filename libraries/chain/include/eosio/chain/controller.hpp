@@ -109,7 +109,8 @@ namespace eosio { namespace chain {
             db_read_mode             read_mode              = db_read_mode::SPECULATIVE;
             validation_mode          block_validation_mode  = validation_mode::FULL;
 
-            pinnable_mapped_file::map_mode db_map_mode      = pinnable_mapped_file::map_mode::mapped;
+            pinnable_mapped_file::map_mode      db_map_mode = pinnable_mapped_file::map_mode::mapped;
+            pinnable_mapped_file::on_dirty_mode db_on_dirty = pinnable_mapped_file::on_dirty_mode::throw_on_dirty;
 
             flat_set<account_name>   resource_greylist;
             flat_set<account_name>   trusted_producers;

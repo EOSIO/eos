@@ -389,12 +389,17 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          ("maximum-variable-signature-length", bpo::value<uint32_t>()->default_value(16384u),
           "Subjectively limit the maximum length of variable components in a variable legnth signature to this size in bytes")
          ("database-map-mode", bpo::value<chainbase::pinnable_mapped_file::map_mode>()->default_value(chainbase::pinnable_mapped_file::map_mode::mapped),
-          "Database map mode (\"mapped\", \"heap\", \"locked\", or \"anonymous_shared_memory\").\n"
+          "Database map mode (\"mapped\", \"heap\", or \"locked\").\n"
           "In \"mapped\" mode database is memory mapped as a file.\n"
 #ifndef _WIN32
           "In \"heap\" mode database is preloaded in to swappable memory and will use huge pages if available.\n"
           "In \"locked\" mode database is preloaded, locked in to memory, and will use huge pages if available.\n"
 #endif
+         )
+         ("database-on-dirty", bpo::value<std::string>()->default_value("exit"),
+         "Database on dirty mode (\exit\" or \"delete\").\n"
+         "In \"exit\" mode the program will exit with error code when database is dirty.\n"
+         "In \"delete\" mode database is delete if it is dirty.\n"
          )
 
 #ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
@@ -1213,6 +1218,17 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 
       my->chain_config->db_map_mode = options.at("database-map-mode").as<pinnable_mapped_file::map_mode>();
 
+      auto db_on_dirty = options.at("database-on-dirty").as<std::string>();
+      if (db_on_dirty == "exit")
+         my->chain_config->db_on_dirty = pinnable_mapped_file::on_dirty_mode::throw_on_dirty;
+      else if (db_on_dirty == "delete")
+         my->chain_config->db_on_dirty = pinnable_mapped_file::on_dirty_mode::delete_on_dirty;
+      else {
+         EOS_ASSERT(true, plugin_config_exception, "${db_on_dirty} is not a valid database-on-dirty option",
+                    ("db_on_dirty", db_on_dirty));
+      }
+
+
 #ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
       if( options.count("eos-vm-oc-cache-size-mb") )
          my->chain_config->eosvmoc_config.cache_size = options.at( "eos-vm-oc-cache-size-mb" ).as<uint64_t>() * 1024u * 1024u;
@@ -1499,7 +1515,7 @@ bool chain_plugin::recover_reversible_blocks( const fc::path& db_dir, uint32_t c
    std::optional<chainbase::database> old_reversible;
 
    try {
-      old_reversible = chainbase::database( backup_dir, database::read_only, 0, true );
+      old_reversible = chainbase::database( backup_dir, database::read_only, 0, pinnable_mapped_file::on_dirty_mode::allow_dirty );
    } catch (const std::runtime_error &) {
       // since we are allowing for dirty, it must be incompatible
       ilog( "Did not recover any reversible blocks since reversible database incompatible");
@@ -1611,7 +1627,7 @@ bool chain_plugin::import_reversible_blocks( const fc::path& reversible_dir,
 
 bool chain_plugin::export_reversible_blocks( const fc::path& reversible_dir,
                                              const fc::path& reversible_blocks_file ) {
-   chainbase::database  reversible( reversible_dir, database::read_only, 0, true );
+   chainbase::database  reversible( reversible_dir, database::read_only, 0, pinnable_mapped_file::on_dirty_mode::allow_dirty );
    std::fstream         reversible_blocks;
    reversible_blocks.open( reversible_blocks_file.generic_string().c_str(), std::ios::out | std::ios::binary );
 
