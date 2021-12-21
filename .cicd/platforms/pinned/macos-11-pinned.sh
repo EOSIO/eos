@@ -1,6 +1,7 @@
 #!/bin/bash
 set -eo pipefail
 VERSION=1
+export SDKROOT="$(xcrun --sdk macosx --show-sdk-path)"
 brew update
 brew install git cmake python libtool libusb graphviz automake wget gmp pkgconfig doxygen openssl jq postgres rabbitmq || :
 # install clang from source
@@ -15,7 +16,6 @@ rm -rf clang10
 # install boost from source
 curl -LO https://boostorg.jfrog.io/artifactory/main/release/1.72.0/source/boost_1_72_0.tar.bz2
 tar -xjf boost_1_72_0.tar.bz2
-export LIBRARY_PATH=/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib:$LIBRARY_PATH
 export CPLUS_INCLUDE_PATH=/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include:$CPLUS_INCLUDE_PATH
 export CPLUS_INCLUDE_PATH=/Library/Developer/CommandLineTools/usr/include/c++/v1:$CPLUS_INCLUDE_PATH
 cd boost_1_72_0
