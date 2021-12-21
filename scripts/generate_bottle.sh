@@ -5,10 +5,16 @@ VERS=`sw_vers -productVersion | awk '/10\.14\..*/{print $0}'`
 if [[ -z "$VERS" ]]; then
    VERS=`sw_vers -productVersion | awk '/10\.15.*/{print $0}'`
    if [[ -z $VERS ]]; then
-      echo "Error, unsupported OS X version"
-      exit -1
+      VERS=`sw_vers -productVersion | awk '/11\.4.*/{print $0}'`
+      if [[ -z $VERS ]]; then
+         echo "Error, unsupported OS X version"
+         exit -1
+      else
+         MAC_VERSION="BigSur"
+      fi
+   else
+      MAC_VERSION="catalina"
    fi
-   MAC_VERSION="catalina"
 else
    MAC_VERSION="mojave"
 fi
