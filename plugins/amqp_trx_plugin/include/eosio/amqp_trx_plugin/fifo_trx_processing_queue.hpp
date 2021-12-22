@@ -257,7 +257,7 @@ public:
       auto future = chain::transaction_metadata::start_recover_keys( trx, sig_thread_pool_, chain_id_, max_trx_cpu_usage,
                                                                      transaction_metadata::trx_type::input,
                                                                      configured_subjective_signature_length_limit_ );
-      q_item i{ .delivery_tag = delivery_tag, .trx = std::move(trx), .fut = std::move(future), .next = std::move(next) };
+      q_item i{ .delivery_tag = delivery_tag, .trx = trx, .fut = std::move(future), .next = std::move(next) };
       if( !queue_.push( std::move( i ) ) ) {
          ilog( "Queue stopped, unable to process transaction ${id}, not ack'ed to AMQP", ("id", trx->id()) );
       }
