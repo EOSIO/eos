@@ -214,18 +214,18 @@ public:
    void stop() {
       if( first_connect_.un_set() ) {
          // drain amqp queue
-         std::promise<void> stop_promise;
-         auto future = stop_promise.get_future();
-         boost::asio::post( thread_pool_.get_executor(), [&, p{std::move(stop_promise)}]() mutable {
-            if( channel_ && channel_->usable() ) {
-               auto& cb = channel_->close();
-               cb.onFinalize( [&]() {
+         auto stop_promise = std::make_shared<std::promise<void>>(); // make_shared needed because onFinalize takes a std::function
+         auto future = stop_promise->get_future();
+         boost::asio::post( thread_pool_.get_executor(), [me=this, p{std::move(stop_promise)}]() mutable {
+            if( me->channel_ && me->channel_->usable() ) {
+               auto& cb = me->channel_->close();
+               cb.onFinalize( [pr{std::move(p)}]() mutable {
                   try {
-                     p.set_value();
+                     pr->set_value();
                   } catch(...) {}
                } );
             } else {
-               p.set_value();
+               p->set_value();
             }
          } );
          future.wait_for(std::chrono::seconds( 10 ));
