@@ -58,15 +58,6 @@ void amqp_trace_plugin_impl::publish_error( std::string routing_key, std::string
    FC_LOG_AND_DROP()
 }
 
-// called on application thread
-void amqp_trace_plugin_impl::on_applied_transaction( const chain::transaction_trace_ptr& trace,
-                                                     const chain::packed_transaction_ptr& t ) {
-   try {
-      publish_result( std::string{}, std::string{}, std::string{}, t, trace );
-   }
-   FC_LOG_AND_DROP()
-}
-
 // called from application thread
 void amqp_trace_plugin_impl::publish_result( std::string routing_key,
                                              std::string correlation_id,
