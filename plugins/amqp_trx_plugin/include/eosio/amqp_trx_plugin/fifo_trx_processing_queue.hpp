@@ -88,6 +88,7 @@ public:
    void stop() {
       mtx_.lock();
       stopped_ = true;
+      queue_.clear();
       mtx_.unlock();
       empty_cv_.notify_all();
       full_cv_.notify_all();
