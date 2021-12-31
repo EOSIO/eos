@@ -50,6 +50,9 @@ namespace eosio { namespace trace_api {
      fc::unsigned_int                           net_usage_words;
      std::vector<chain::signature_type>         signatures = {};
      chain::transaction_header                  trx_header = {};
+     uint32_t                                   block_num = {};
+     chain::block_timestamp_type                block_time = chain::block_timestamp_type(0);
+     std::optional<chain::block_id_type>        producer_block_id = {};
   };
 
   struct block_trace_v0 {
@@ -85,6 +88,11 @@ namespace eosio { namespace trace_api {
       chain::packed_transaction_ptr       trx;
   };
 
+  struct block_trxs_entry {
+      std::vector<chain::transaction_id_type> ids;
+      uint32_t block_num = 0;
+  };
+
 } }
 
 FC_REFLECT(eosio::trace_api::authorization_trace_v0, (account)(permission))
@@ -92,7 +100,8 @@ FC_REFLECT(eosio::trace_api::action_trace_v0, (global_sequence)(receiver)(accoun
 FC_REFLECT_DERIVED(eosio::trace_api::action_trace_v1, (eosio::trace_api::action_trace_v0),(return_value))
 FC_REFLECT(eosio::trace_api::transaction_trace_v0, (id)(actions))
 FC_REFLECT_DERIVED(eosio::trace_api::transaction_trace_v1, (eosio::trace_api::transaction_trace_v0), (status)(cpu_usage_us)(net_usage_words)(signatures)(trx_header))
-FC_REFLECT(eosio::trace_api::transaction_trace_v2, (id)(actions)(status)(cpu_usage_us)(net_usage_words)(signatures)(trx_header))
+FC_REFLECT(eosio::trace_api::transaction_trace_v2, (id)(actions)(status)(cpu_usage_us)(net_usage_words)(signatures)(trx_header)(block_num)(block_time)(producer_block_id))
 FC_REFLECT(eosio::trace_api::block_trace_v0, (id)(number)(previous_id)(timestamp)(producer)(transactions))
 FC_REFLECT_DERIVED(eosio::trace_api::block_trace_v1, (eosio::trace_api::block_trace_v0), (transaction_mroot)(action_mroot)(schedule_version)(transactions_v1))
 FC_REFLECT(eosio::trace_api::block_trace_v2, (id)(number)(previous_id)(timestamp)(producer)(transaction_mroot)(action_mroot)(schedule_version)(transactions))
+FC_REFLECT(eosio::trace_api::block_trxs_entry, (ids)(block_num))

@@ -257,7 +257,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
                result.deltas = plugin->chain_state_log->get_log_entry(to_send_block_num);
                fc_add_tag(send_update_span, "deltas_size", result.deltas.data_size());
             }
-            set_result_block_header(result, get_block());
+            set_result_block_header(result, block);
          }
          ++to_send_block_num;
          

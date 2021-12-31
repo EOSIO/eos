@@ -154,7 +154,7 @@ class Node(object):
             cntxt.index(0)
             return cntxt.add("block_num")
 
-        # or what the history plugin returns
+        # or what the trace api plugin returns
         return cntxt.add("block_num")
 
 
@@ -272,11 +272,14 @@ class Node(object):
         assert(isinstance(transId, str))
         exitOnErrorForDelayed=not delayedRetry and exitOnError
         timeout=3
-        cmdDesc="get transaction"
+        if self.cmd and self.cmd.find("--plugin eosio::history_api_plugin") != -1:
+            cmdDesc="get transaction"
+        else:
+            cmdDesc="get transaction_trace"
         cmd="%s %s" % (cmdDesc, transId)
         msg="(transaction id=%s)" % (transId);
         for i in range(0,(int(60/timeout) - 1)):
-            trans=self.processCleosCmd(cmd, cmdDesc, silentErrors=silentErrors, exitOnError=exitOnErrorForDelayed, exitMsg=msg)
+            trans=self.processCleosCmd(cmd, cmdDesc, silentErrors=True, exitOnError=exitOnErrorForDelayed, exitMsg=msg)
             if trans is not None or not delayedRetry:
                 return trans
             if Utils.Debug: Utils.Print("Could not find transaction with id %s, delay and retry" % (transId))
@@ -325,8 +328,12 @@ class Node(object):
         refBlockNum=None
         key=""
         try:
-            key="[trx][trx][ref_block_num]"
-            refBlockNum=trans["trx"]["trx"]["ref_block_num"]
+            if self.cmd and self.cmd.find("--plugin eosio::history_api_plugin") != -1:
+                key="[trx][trx][ref_block_num]"
+                refBlockNum=trans["trx"]["trx"]["ref_block_num"]
+            else:
+                key="[transaction][transaction_header][ref_block_num]"
+                refBlockNum=trans["transaction_header"]["ref_block_num"]
             refBlockNum=int(refBlockNum)+1
         except (TypeError, ValueError, KeyError) as _:
             Utils.Print("transaction%s not found. Transaction: %s" % (key, trans))

@@ -99,7 +99,7 @@ class RodeosCluster(object):
             if self.unix_socket_option:
                 specificExtraNodeosArgs[i]+="--state-history-unix-socket-path ship{}.sock".format(i)
 
-        if self.cluster.launch(pnodes=1, totalNodes=self.totalNodes, totalProducers=1, useBiosBootFile=False, specificExtraNodeosArgs=specificExtraNodeosArgs) is False:
+        if self.cluster.launch(pnodes=1, totalNodes=self.totalNodes, totalProducers=1, useBiosBootFile=False, specificExtraNodeosArgs=specificExtraNodeosArgs, extraNodeosArgs=" --plugin eosio::trace_api_plugin --trace-no-abis ") is False:
             Utils.cmdError("launcher")
             Utils.errorExit("Failed to stand up eos cluster.")
 

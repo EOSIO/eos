@@ -50,6 +50,7 @@ try:
     # The bootstrap process has created account_object and code_object (by uploading the bios contract),
     # key_value_object (token creation), protocol_state_object (preactivation feature), and permission_object
     # (automatically taken care by the automatically generated eosio account)
+    traceNodeosArgs = " --plugin eosio::trace_api_plugin --trace-no-abis "
     assert cluster.launch(
         pnodes=1,
         prodCount=1,
@@ -57,6 +58,7 @@ try:
         totalNodes=2,
         useBiosBootFile=False,
         loadSystemContract=False,
+        extraNodeosArgs=traceNodeosArgs,
         specificExtraNodeosArgs={
             1:"--read-mode irreversible --plugin eosio::producer_api_plugin"})
 

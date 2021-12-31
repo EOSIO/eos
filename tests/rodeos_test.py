@@ -183,6 +183,7 @@ try:
         totalNodes=1,
         useBiosBootFile=False,
         loadSystemContract=False,
+        extraNodeosArgs=" --plugin eosio::trace_api_plugin --trace-no-abis ",
         specificExtraNodeosArgs={
             0: ("--plugin eosio::state_history_plugin --trace-history --chain-state-history --disable-replay-opts "
                 "--state-history-stride {0} " 

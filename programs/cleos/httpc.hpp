@@ -104,7 +104,10 @@ namespace eosio { namespace client { namespace http {
    const string get_required_keys = chain_func_base + "/get_required_keys";
 
    const string history_func_base = "/v1/history";
+   const string trace_api_func_base = "/v1/trace_api";
    const string get_actions_func = history_func_base + "/get_actions";
+   const string get_transaction_trace_func = trace_api_func_base + "/get_transaction_trace";
+   const string get_block_trace_func = trace_api_func_base + "/get_block";
    const string get_transaction_func = history_func_base + "/get_transaction";
    const string get_key_accounts_func = history_func_base + "/get_key_accounts";
    const string get_controlled_accounts_func = history_func_base + "/get_controlled_accounts";
