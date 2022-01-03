@@ -106,7 +106,7 @@ struct amqp_trx_plugin_impl : std::enable_shared_from_this<amqp_trx_plugin_impl>
          return;
       } FC_LOG_AND_DROP()
 
-      amqp_trx->reject( delivery_tag );
+      amqp_trx->reject( delivery_tag, false, false );
    }
 
    void on_block_start( uint32_t bn ) {
@@ -124,6 +124,22 @@ struct amqp_trx_plugin_impl : std::enable_shared_from_this<amqp_trx_plugin_impl>
          block_uuid = boost::uuids::to_string( boost::uuids::random_generator()() );
          tracked_block_uuid_rks.clear();
          trx_queue_ptr->on_block_start();
+      } else {
+         if( prod_plugin->paused() && started_consuming ) {
+            ilog("Stopping consuming amqp messages during on_block_start");
+            amqp_trx->stop_consume([](const std::string& consumer_tag){
+               dlog("Stopped consuming from amqp tag: ${t}", ("t", consumer_tag));
+            });
+            started_consuming = false;
+            const bool clear = true;
+            amqp_handler::delivery_tag_t delivery_tag = 0;
+            trx_queue_ptr->for_each_delivery_tag([&](const amqp_handler::delivery_tag_t& i_delivery_tag){
+               delivery_tag = i_delivery_tag;
+            }, clear);
+            const bool multiple = true;
+            const bool requeue = true;
+            if(delivery_tag != 0) amqp_trx->reject(delivery_tag, multiple, requeue);
+         }
       }
 
    }
@@ -158,6 +174,7 @@ private:
                         const std::string& correlation_id,
                         std::string block_uuid_rk,
                         chain::packed_transaction_ptr trx ) {
+      static_assert(std::is_same_v<amqp_handler::delivery_tag_t, uint64_t>, "fifo_trx_processing_queue assumes delivery_tag is an uint64_t");
       const auto& tid = trx->id();
       dlog( "received packed_transaction ${id}", ("id", tid) );
 
@@ -165,7 +182,7 @@ private:
       auto trx_span = fc_create_span(trx_trace, "AMQP Received");
       fc_add_tag(trx_span, "trx_id", tid);
 
-      trx_queue_ptr->push( trx,
+      trx_queue_ptr->push( trx, delivery_tag,
                 [my=shared_from_this(), token=fc_get_token(trx_trace),
                  delivery_tag, reply_to, correlation_id, block_uuid_rk=std::move(block_uuid_rk), trx]
                 (const std::variant<fc::exception_ptr, chain::transaction_trace_ptr>& result) mutable {
@@ -226,9 +243,12 @@ amqp_trx_plugin::~amqp_trx_plugin() {}
 
 void amqp_trx_plugin::set_program_options(options_description& cli, options_description& cfg) {
    auto op = cfg.add_options();
-   op("amqp-trx-address", bpo::value<std::string>(),
+   op("amqp-trx-address", bpo::value<std::string>()->default_value(std::getenv(EOSIO_AMQP_ADDRESS_ENV_VAR) ? std::getenv(EOSIO_AMQP_ADDRESS_ENV_VAR) : ""),
       "AMQP address: Format: amqp://USER:PASSWORD@ADDRESS:PORT\n"
-      "Will consume from amqp-trx-queue-name (amqp-trx-queue-name) queue.");
+      "Will consume from amqp-trx-queue-name (amqp-trx-queue-name) queue.\n"
+      "If --amqp-trx-address is not specified, will use the value from the environment variable "
+      EOSIO_AMQP_ADDRESS_ENV_VAR
+      ".");
    op("amqp-trx-queue-name", bpo::value<std::string>()->default_value("trx"),
       "AMQP queue to consume transactions from, must already exist.");
    op("amqp-trx-queue-size", bpo::value<uint32_t>()->default_value(my->trx_processing_queue_size),
@@ -350,17 +370,24 @@ void amqp_trx_plugin::plugin_shutdown() {
    try {
       dlog( "shutdown.." );
 
+      if( my->trx_queue_ptr ) {
+         // Need to stop processing from queue since amqp_handler can be paused waiting on queue to empty.
+         // Without this it is possible for the amqp_trx->stop() to hang forever waiting on the trx_queue.
+         my->trx_queue_ptr->signal_stop();
+      }
+
       if( my->amqp_trx ) {
          my->amqp_trx->stop();
       }
 
+      dlog( "stopping fifo queue" );
       if( my->trx_queue_ptr ) {
          my->trx_queue_ptr->stop();
       }
 
       dlog( "exit amqp_trx_plugin" );
    }
-   FC_CAPTURE_AND_RETHROW()
+   FC_LOG_AND_DROP()
 }
 
 void amqp_trx_plugin::handle_sighup() {

@@ -1505,7 +1505,9 @@ read_only::get_info_results read_only::get_info(const read_only::get_info_params
       db.fork_db_pending_head_block_id(),
       app().full_version_string(),
       db.last_irreversible_block_time(),
-      db.get_first_block_num()
+      db.get_first_block_num(),
+      rm.get_total_cpu_weight(),
+      rm.get_total_net_weight()
    };
 }
 
@@ -1855,7 +1857,7 @@ struct key_converter<IntType, std::enable_if_t<std::is_integral_v<IntType>>> {
 
    static IntType value_from_hex(const std::string& bytes_in_hex) {
       auto unsigned_val = unhex<std::make_unsigned_t<IntType>>(bytes_in_hex);
-      if (unsigned_val > std::numeric_limits<IntType>::max()) {
+      if (std::bit_cast<IntType> (unsigned_val) < 0) {
          return unsigned_val + static_cast<std::make_unsigned_t<IntType>>(std::numeric_limits<IntType>::min());
       } else {
          return unsigned_val + std::numeric_limits<IntType>::min();
@@ -2775,7 +2777,7 @@ void read_write::push_block(read_write::push_block_params_v1&& params, next_func
       chain_plugin::handle_db_exhaustion();
    } catch ( const std::bad_alloc& ) {
       chain_plugin::handle_bad_alloc();
-   } FC_LOG_AND_DROP()
+   } FC_LOG_AND_DROP_ALL()
    next(read_write::push_block_results{});
 }
 
@@ -3315,9 +3317,9 @@ namespace detail {
    struct ram_market_exchange_state_t {
       asset  ignore1;
       asset  ignore2;
-      double ignore3;
+      double ignore3{};
       asset  core_symbol;
-      double ignore4;
+      double ignore4{};
    };
 }
 
@@ -3358,29 +3360,28 @@ eosio::chain::backing_store_type read_only::get_backing_store() const {
 
 } // namespace chain_apis
 
-fc::variant chain_plugin::get_entire_trx_trace(const transaction_trace_ptr& trx_trace )const {
-
-    fc::variant pretty_output;
-    try {
-        abi_serializer::to_variant(trx_trace, pretty_output,
-                                   chain_apis::make_resolver(chain(), abi_serializer::create_yield_function(get_abi_serializer_max_time())),
-                                   abi_serializer::create_yield_function(get_abi_serializer_max_time()));
-     } catch (...) {
-        pretty_output = trx_trace;
-    }
-    return pretty_output;
+fc::variant chain_plugin::get_log_trx_trace(const transaction_trace_ptr& trx_trace ) const {
+   fc::variant pretty_output;
+   try {
+      abi_serializer::to_log_variant(trx_trace, pretty_output,
+                                     chain_apis::make_resolver(chain(), abi_serializer::create_yield_function(get_abi_serializer_max_time())),
+                                     abi_serializer::create_yield_function(get_abi_serializer_max_time()));
+   } catch (...) {
+      pretty_output = trx_trace;
+   }
+   return pretty_output;
 }
 
-fc::variant chain_plugin::get_entire_trx(const transaction& trx) const {
-    fc::variant pretty_output;
-    try {
-        abi_serializer::to_variant(trx, pretty_output,
-                                   chain_apis::make_resolver(chain(), abi_serializer::create_yield_function(get_abi_serializer_max_time())),
-                                   abi_serializer::create_yield_function(get_abi_serializer_max_time()));
-    } catch (...) {
-        pretty_output = trx;
-    }
-    return pretty_output;
+fc::variant chain_plugin::get_log_trx(const transaction& trx) const {
+   fc::variant pretty_output;
+   try {
+      abi_serializer::to_log_variant(trx, pretty_output,
+                                     chain_apis::make_resolver(chain(), abi_serializer::create_yield_function(get_abi_serializer_max_time())),
+                                     abi_serializer::create_yield_function(get_abi_serializer_max_time()));
+   } catch (...) {
+      pretty_output = trx;
+   }
+   return pretty_output;
 }
 
 } // namespace eosio

@@ -24,6 +24,7 @@ compile_commands.json
 moc_*
 *.moc
 .clangd/
+.cache/
 
 genesis.json
 hardfork.hpp
@@ -78,6 +79,8 @@ Testing/*
 build.tar.gz
 build/*
 build-debug/*
+node_modules
+package-lock.json
 
 etc/eosio/node_*
 var/lib/node_*
@@ -85,5 +88,6 @@ var/lib/node_*
 .idea/
 *.iws
 .DS_Store
+node_modules/*
 
 !*.swagger.*

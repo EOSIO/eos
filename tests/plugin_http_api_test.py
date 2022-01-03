@@ -4,6 +4,8 @@ import os
 import shutil
 import time
 import unittest
+import socket
+import re
 
 from testUtils import Utils
 from testUtils import Account
@@ -45,7 +47,7 @@ class PluginHttpTest(unittest.TestCase):
         self.createDataDir(self)
         self.keosd.launch()
         nodeos_plugins = (" --plugin %s --plugin %s --plugin %s --plugin %s --plugin %s --plugin %s --plugin %s --plugin %s "
-                          " --plugin %s --plugin %s --plugin %s --plugin %s ") % ( "eosio::trace_api_plugin",
+                          " --plugin %s --plugin %s ") % ( "eosio::trace_api_plugin",
                                                                                    "eosio::test_control_api_plugin",
                                                                                    "eosio::test_control_plugin",
                                                                                    "eosio::net_plugin",
@@ -54,12 +56,10 @@ class PluginHttpTest(unittest.TestCase):
                                                                                    "eosio::producer_api_plugin",
                                                                                    "eosio::chain_api_plugin",
                                                                                    "eosio::http_plugin",
-                                                                                   "eosio::db_size_api_plugin",
-                                                                                   "eosio::history_plugin",
-                                                                                   "eosio::history_api_plugin")
-        nodeos_flags = (" --data-dir=%s --trace-dir=%s --trace-no-abis --filter-on=%s --access-control-allow-origin=%s "
+                                                                                   "eosio::db_size_api_plugin")
+        nodeos_flags = (" --data-dir=%s --trace-dir=%s --trace-no-abis --access-control-allow-origin=%s "
                         "--contracts-console --http-validate-host=%s --verbose-http-errors "
-                        "--p2p-peer-address localhost:9011 ") % (self.data_dir, self.data_dir, "\"*\"", "\'*\'", "false")
+                        "--p2p-peer-address localhost:9011 ") % (self.data_dir, self.data_dir, "\'*\'", "false")
         start_nodeos_cmd = ("%s -e -p eosio %s %s ") % (Utils.EosServerPath, nodeos_plugins, nodeos_flags)
         self.nodeos.launchCmd(start_nodeos_cmd, self.node_id)
         time.sleep(self.sleep_s)
@@ -778,92 +778,6 @@ class PluginHttpTest(unittest.TestCase):
         ret_json = Utils.runCmdReturnJson(valid_cmd)
         self.assertEqual(ret_json["code"], 500)
 
-    # test all history api
-    def test_HistoryApi(self) :
-        cmd_base = self.base_node_cmd_str + "history/"
-
-        # get_actions with empty parameter
-        default_cmd = cmd_base + "get_actions"
-        ret_json = Utils.runCmdReturnJson(default_cmd)
-        self.assertEqual(ret_json["code"], 400)
-        self.assertEqual(ret_json["error"]["code"], 3200006)
-        # get_actions with empty content parameter
-        empty_content_cmd = default_cmd + self.http_post_str + self.empty_content_str
-        ret_json = Utils.runCmdReturnJson(empty_content_cmd)
-        self.assertEqual(ret_json["code"], 400)
-        self.assertEqual(ret_json["error"]["code"], 3200006)
-        # get_actions with invalid parameter
-        invalid_cmd = default_cmd + self.http_post_str + self.http_post_invalid_param
-        ret_json = Utils.runCmdReturnJson(invalid_cmd)
-        self.assertEqual(ret_json["code"], 400)
-        self.assertEqual(ret_json["error"]["code"], 3200006)
-        # get_actions with valid parameter
-        valid_cmd = default_cmd + self.http_post_str + ("'{\"account_name\":\"test\", \"pos\":-1, \"offset\":2}'")
-        ret_json = Utils.runCmdReturnJson(valid_cmd)
-        self.assertIn("last_irreversible_block", ret_json)
-
-        # get_transaction with empty parameter
-        default_cmd = cmd_base + "get_transaction"
-        ret_json = Utils.runCmdReturnJson(default_cmd)
-        self.assertEqual(ret_json["code"], 400)
-        self.assertEqual(ret_json["error"]["code"], 3200006)
-        # get_transaction with empty content parameter
-        empty_content_cmd = default_cmd + self.http_post_str + self.empty_content_str
-        ret_json = Utils.runCmdReturnJson(empty_content_cmd)
-        self.assertEqual(ret_json["code"], 400)
-        self.assertEqual(ret_json["error"]["code"], 3200006)
-        # get_transaction with invalid parameter
-        invalid_cmd = default_cmd + self.http_post_str + self.http_post_invalid_param
-        ret_json = Utils.runCmdReturnJson(invalid_cmd)
-        self.assertEqual(ret_json["code"], 400)
-        self.assertEqual(ret_json["error"]["code"], 3200006)
-        # get_transaction with valid parameter
-        valid_cmd = default_cmd + self.http_post_str + ("'{\"id\":\"test\", \"block_num_hint\":1}'")
-        ret_json = Utils.runCmdReturnJson(valid_cmd)
-        # no transaction, so 500 error being sent back instead
-        self.assertEqual(ret_json["code"], 500)
-        self.assertEqual(ret_json["error"]["code"], 3010009)
-
-        # get_key_accounts with empty parameter
-        default_cmd = cmd_base + "get_key_accounts"
-        ret_json = Utils.runCmdReturnJson(default_cmd)
-        self.assertEqual(ret_json["code"], 400)
-        self.assertEqual(ret_json["error"]["code"], 3200006)
-        # get_key_accounts with empty content parameter
-        empty_content_cmd = default_cmd + self.http_post_str + self.empty_content_str
-        ret_json = Utils.runCmdReturnJson(empty_content_cmd)
-        self.assertEqual(ret_json["code"], 400)
-        self.assertEqual(ret_json["error"]["code"], 3200006)
-        # get_key_accounts with invalid parameter
-        invalid_cmd = default_cmd + self.http_post_str + self.http_post_invalid_param
-        ret_json = Utils.runCmdReturnJson(invalid_cmd)
-        self.assertEqual(ret_json["code"], 400)
-        self.assertEqual(ret_json["error"]["code"], 3200006)
-        # get_key_accounts with valid parameter
-        valid_cmd = default_cmd + self.http_post_str + ("'{\"public_key\":\"EOS6FxXbikY5ZUN9qEdeLbEYLKZzJwRYRr2PuC3rqfSu67LvhPARi\"}'")
-        ret_json = Utils.runCmdReturnJson(valid_cmd)
-        self.assertIn("account_names", ret_json)
-
-        # get_controlled_accounts with empty parameter
-        default_cmd = cmd_base + "get_controlled_accounts"
-        ret_json = Utils.runCmdReturnJson(default_cmd)
-        self.assertEqual(ret_json["code"], 400)
-        self.assertEqual(ret_json["error"]["code"], 3200006)
-        # get_controlled_accounts with empty content parameter
-        empty_content_cmd = default_cmd + self.http_post_str + self.empty_content_str
-        ret_json = Utils.runCmdReturnJson(empty_content_cmd)
-        self.assertEqual(ret_json["code"], 400)
-        self.assertEqual(ret_json["error"]["code"], 3200006)
-        # get_controlled_accounts with invalid parameter
-        invalid_cmd = default_cmd + self.http_post_str + self.http_post_invalid_param
-        ret_json = Utils.runCmdReturnJson(invalid_cmd)
-        self.assertEqual(ret_json["code"], 400)
-        self.assertEqual(ret_json["error"]["code"], 3200006)
-        # get_controlled_accounts with valid parameter
-        valid_cmd = default_cmd + self.http_post_str + ("'{\"controlling_account\":\"test\"}'")
-        ret_json = Utils.runCmdReturnJson(valid_cmd)
-        self.assertIn("controlled_accounts", ret_json)
-
     # test all net api
     def test_NetApi(self) :
         cmd_base = self.base_node_cmd_str + "net/"
@@ -1545,6 +1459,24 @@ class PluginHttpTest(unittest.TestCase):
         self.assertEqual(ret_json["code"], 404)
         self.assertEqual(ret_json["error"]["code"], 0)
 
+        # get_transaction_trace with empty parameter
+        default_cmd = cmd_base + "get_transaction_trace"
+        ret_json = Utils.runCmdReturnJson(default_cmd)
+        self.assertEqual(ret_json["code"], 400)
+        # get_transaction_trace with empty content parameter
+        empty_content_cmd = default_cmd + self.http_post_str + self.empty_content_str
+        ret_json = Utils.runCmdReturnJson(empty_content_cmd)
+        self.assertEqual(ret_json["code"], 400)
+        # get_transaction_trace with invalid parameter
+        invalid_cmd = default_cmd + self.http_post_str + self.http_post_invalid_param
+        ret_json = Utils.runCmdReturnJson(invalid_cmd)
+        self.assertEqual(ret_json["code"], 400)
+        # get_transaction_trace with valid parameter, a valid id length [8, 64]
+        valid_cmd = default_cmd + self.http_post_str + ("'{\"id\":\"12345678\"}'")
+        ret_json = Utils.runCmdReturnJson(valid_cmd)
+        self.assertEqual(ret_json["code"], 404)
+        self.assertEqual(ret_json["error"]["code"], 0)
+
     # test all db_size api
     def test_DbSizeApi(self) :
         cmd_base = self.base_node_cmd_str + "db_size/"
@@ -1587,6 +1519,96 @@ class PluginHttpTest(unittest.TestCase):
         ret_json = Utils.runCmdReturnJson(invalid_cmd)
         self.assertEqual(ret_json["code"], 400)
 
+    def test_multipleRequests(self):
+        """Test keep-alive ability of HTTP plugin.  Handle multiple requests in a single session"""
+        host = self.nodeos.host
+        port = self.nodeos.port
+        addr = (host, port)
+        body1 = '{ "block_num_or_id": "1" }\r\n' 
+        body2 = '{ "block_num_or_id": "2" }\r\n' 
+        body3 = '{ "block_num_or_id": "3" }\r\n' 
+        api_call = "/v1/chain/get_block"
+        req1 = Utils.makeHTTPReqStr(host, str(port), api_call, body1, True)
+        req2 = Utils.makeHTTPReqStr(host, str(port), api_call, body2, True)
+        req3 = Utils.makeHTTPReqStr(host, str(port), api_call, body3, False)
+
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.settimeout(5)
+        try:
+            sock.connect(addr)
+        except Exception as e:
+            print(f"unable to connect to {host}:{port}")
+            print(e)
+            Utils.errorExit("Failed to connect to nodeos.")
+
+        enc = "utf-8"
+        sock.settimeout(3)
+        maxMsgSize = 2048
+        resp1_data, resp2_data, resp3_data = None, None, None
+        try:
+            # send first request
+            Utils.Print('sending request 1')
+            sock.send(bytes(req1, enc))
+            resp1_data = Utils.readSocketDataStr(sock, maxMsgSize, enc)
+            Utils.Print('resp1_data= \n', resp1_data)
+
+            # send second request
+            Utils.Print('sending request 2')
+            sock.send(bytes(req2, enc))
+            resp2_data = Utils.readSocketDataStr(sock, maxMsgSize, enc)
+            Utils.Print('resp2_data= \n', resp2_data)
+
+            # send third request
+            Utils.Print('sending request 3')
+            sock.send(bytes(req3, enc))
+            resp3_data = Utils.readSocketDataStr(sock, maxMsgSize, enc)
+            Utils.Print('resp3_data= \n', resp3_data)
+
+            
+            # wait for socket to close
+            time.sleep(0.5)
+            # send request 2 again.  this should fail because request 3 has "Connection: close" in header
+            Utils.Print('sending request 2 again')
+            try: 
+                sock.settimeout(3)
+                sock.send(bytes(req2, enc))
+                d = sock.recv(64)
+                if(len(d) > 0):
+                    Utils.errorExit('Socket still open after "Connection: close" in header')
+            except Exception as e:
+                pass
+
+            Utils.Print("Socket connection closed as expected")
+
+        except Exception as e:
+            Utils.Print(e)
+            Utils.errorExit("Failed to send/receive on socket")
+
+        # extract response body 
+        resp1_json, resp2_json, resp3_json = None, None, None
+        try:
+            (hdr, resp1_json) = re.split('\r\n\r\n', resp1_data)
+            (hdr, resp2_json) = re.split('\r\n\r\n', resp2_data)
+            (hdr, resp3_json) = re.split('\r\n\r\n', resp3_data)
+        except Exception as e:
+            Utils.Print(e)
+            Utils.errorExit("Improper HTTP response(s)") 
+
+        resp1, resp2, resp3 = None, None, None
+        try:
+            resp1 = json.loads(resp1_json)
+            resp2 = json.loads(resp2_json)
+            resp3 = json.loads(resp3_json)
+        except Exception as e:
+            Utils.Print(e)
+            Utils.errorExit("Could not parse JSON response")
+        
+        self.assertIn('block_num', resp1)
+        self.assertIn('block_num', resp2)
+        self.assertIn('block_num', resp3)
+        self.assertEqual(resp1['block_num'], 1)
+        self.assertEqual(resp2['block_num'], 2)
+        self.assertEqual(resp3['block_num'], 3)
 
     @classmethod
     def setUpClass(self):

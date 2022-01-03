@@ -207,6 +207,19 @@ namespace eosio { namespace chain {
       return ends_with(type, "[]");
    }
 
+   bool abi_serializer::is_szarray(const string_view& type)const {
+      auto pos1 = type.find_last_of('[');
+      auto pos2 = type.find_last_of(']');
+      if(pos1 == string_view::npos || pos2 == string_view::npos) return false;
+      auto pos = pos1 + 1;
+      if(pos == pos2) return false;
+      while(pos < pos2) {
+         if( ! (type[pos] >= '0' && type[pos] <= '9') ) return false;
+         ++pos;
+      }
+      return true;
+   }
+
    bool abi_serializer::is_optional(const string_view& type)const {
       return ends_with(type, "?");
    }
@@ -223,6 +236,8 @@ namespace eosio { namespace chain {
    std::string_view abi_serializer::fundamental_type(const std::string_view& type)const {
       if( is_array(type) ) {
          return type.substr(0, type.size()-2);
+      } else if (is_szarray (type) ){
+         return type.substr(0, type.find_last_of('['));
       } else if ( is_optional(type) ) {
          return type.substr(0, type.size()-1);
       } else {
@@ -360,7 +375,21 @@ namespace eosio { namespace chain {
 
          }
          auto h1 = ctx.push_to_path( impl::field_path_item{ .parent_struct_itr = s_itr, .field_ordinal = i } );
-         obj( field.name, _binary_to_variant(resolve_type( extension ? _remove_bin_extension(field.type) : field.type ), stream, ctx) );
+         auto field_type = resolve_type( extension ? _remove_bin_extension(field.type) : field.type );
+         auto v = _binary_to_variant(field_type, stream, ctx);
+         if( ctx.is_logging() && v.is_string() && field_type == "bytes" ) {
+            fc::mutable_variant_object sub_obj;
+            auto size = v.get_string().size() / 2; // half because it is in hex
+            sub_obj( "size", size );
+            if( size > impl::hex_log_max_size ) {
+               sub_obj( "trimmed_hex", v.get_string().substr( 0, impl::hex_log_max_size*2 ) );
+            } else {
+               sub_obj( "hex", std::move( v ) );
+            }
+            obj( field.name, std::move(sub_obj) );
+         } else {
+            obj( field.name, std::move(v) );
+         }
       }
    }
 

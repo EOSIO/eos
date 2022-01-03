@@ -225,6 +225,41 @@ try {
 
 } FC_LOG_AND_RETHROW() }
 
+BOOST_AUTO_TEST_CASE(update_auth_unknown_private_key) {
+   try {
+      TESTER chain;
+      chain.create_account(name("alice"));
+
+      // public key with no corresponding private key
+      fc::ecc::public_key_data data;
+      data.data[0] = 0x80; // not necessary, 0 also works
+      fc::sha256 hash = fc::sha256::hash("unknown key");
+      std::memcpy(&data.data[1], hash.data(), hash.data_size() );
+      fc::ecc::public_key_shim shim(data);
+      fc::crypto::public_key new_owner_pub_key(std::move(shim));
+
+      chain.set_authority(name("alice"), name("owner"), authority(new_owner_pub_key), {});
+      chain.produce_blocks();
+
+      // Ensure the permission is updated
+      permission_object::id_type owner_id;
+      {
+         auto obj = chain.find<permission_object, by_owner>(boost::make_tuple(name("alice"), name("owner")));
+         BOOST_TEST(obj != nullptr);
+         BOOST_TEST(obj->owner == name("alice"));
+         BOOST_TEST(obj->name == name("owner"));
+         BOOST_TEST(obj->parent == 0);
+         owner_id = obj->id;
+         auto auth = obj->auth.to_authority();
+         BOOST_TEST(auth.threshold == 1u);
+         BOOST_TEST(auth.keys.size() == 1u);
+         BOOST_TEST(auth.accounts.size() == 0u);
+         BOOST_TEST(auth.keys[0].key == new_owner_pub_key);
+         BOOST_TEST(auth.keys[0].weight == 1);
+      }
+   } FC_LOG_AND_RETHROW()
+}
+
 BOOST_AUTO_TEST_CASE(link_auths) { try {
    TESTER chain;
 
@@ -340,7 +375,6 @@ BOOST_AUTO_TEST_CASE( any_auth ) { try {
 
    const auto spending_priv_key = chain.get_private_key(name("alice"), "spending");
    const auto spending_pub_key = spending_priv_key.get_public_key();
-   const auto bob_spending_priv_key = chain.get_private_key(name("bob"), "spending");
    const auto bob_spending_pub_key = spending_priv_key.get_public_key();
 
    chain.set_authority(name("alice"), name("spending"), spending_pub_key, name("active"));

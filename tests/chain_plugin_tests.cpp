@@ -157,6 +157,8 @@ BOOST_FIXTURE_TEST_CASE( get_info, TESTER ) try {
    BOOST_TEST(*info.fork_db_head_block_id == control->fork_db_pending_head_block_id());
    BOOST_TEST(*info.server_full_version_string == app().full_version_string());
    BOOST_TEST(*info.last_irreversible_block_time == control->last_irreversible_block_time());
+   BOOST_TEST(*info.total_cpu_weight == control->get_resource_limits_manager().get_total_cpu_weight());
+   BOOST_TEST(*info.total_net_weight == control->get_resource_limits_manager().get_total_net_weight());
 
    produce_blocks(1);
 

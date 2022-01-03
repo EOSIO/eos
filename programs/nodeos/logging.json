@@ -46,16 +46,6 @@
         "host": "host_name"
       },
       "enabled": true
-    },{
-      "name": "zip",
-      "type": "zipkin",
-      "args": {
-        "endpoint": "http://127.0.0.1:9411",
-        "path": "/api/v2/spans",
-        "service_name": "nodeos",
-        "timeout_us": 200000
-      },
-      "enabled": true
     }
   ],
   "loggers": [{
@@ -66,14 +56,6 @@
       "appenders": [
         "stderr",
         "net"
-      ]
-    },{
-      "name": "zipkin",
-      "level": "debug",
-      "enabled": true,
-      "additivity": false,
-      "appenders": [
-        "zip"
       ]
     },{
       "name": "net_plugin_impl",
@@ -129,7 +111,7 @@
         "stderr",
         "net"
       ]
-  },{
+    },{
       "name": "transaction_trace_failure",
       "level": "info",
       "enabled": true,
@@ -138,7 +120,16 @@
         "stderr",
         "net"
       ]
-  },{
+    },{
+      "name": "transaction",
+      "level": "info",
+      "enabled": true,
+      "additivity": false,
+      "appenders": [
+        "stderr",
+        "net"
+      ]
+    },{
       "name": "state_history",
       "level": "debug",
       "enabled": true,

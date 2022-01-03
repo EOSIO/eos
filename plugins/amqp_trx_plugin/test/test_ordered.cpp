@@ -79,6 +79,8 @@ struct mock_producer_plugin {
       return true;
    }
 
+   void log_failed_transaction(const transaction_id_type& trx_id, const packed_transaction_ptr& trx, const char* reason) const {}
+
    std::deque<std::pair<chain::transaction_metadata_ptr, producer_plugin::next_function<chain::transaction_trace_ptr>>> unapplied_trxs_;
    std::deque<chain::transaction_metadata_ptr> trxs_;
 };
@@ -113,7 +115,7 @@ BOOST_AUTO_TEST_CASE(order_mock_producer_plugin) {
    for( size_t i = 0; i < 42; ++i ) {
       auto ptrx = make_unique_trx(chain_id);
       trxs.push_back( ptrx );
-      queue->push( ptrx,
+      queue->push( ptrx, 0,
                    [ptrx, &next_calls, &next_trx_match]( const std::variant<fc::exception_ptr, chain::transaction_trace_ptr>& result ) {
          if( std::get<chain::transaction_trace_ptr>(result)->id != ptrx->id() ) {
             next_trx_match = false;

@@ -46,7 +46,7 @@ def restartNode(node: Node, chainArg=None, addSwapFlags=None, nodeosPath=None):
 def waitForOneRound():
     time.sleep(24) # We have 4 producers for this test
 
-def setValidityOfActTimeSubjRestriction(node, codename, valid):
+def setValidityOfActTimeSubjRestriction(node, codename, valid, chainArg=None, nodeosPath=None):
     invalidActTimeSubjRestriction = {
         "earliest_allowed_activation_time": "2030-01-01T00:00:00.000",
     }
@@ -55,7 +55,7 @@ def setValidityOfActTimeSubjRestriction(node, codename, valid):
     }
     actTimeSubjRestriction = validActTimeSubjRestriction if valid else invalidActTimeSubjRestriction
     node.modifyBuiltinPFSubjRestrictions(codename, actTimeSubjRestriction)
-    restartNode(node)
+    restartNode(node, chainArg=chainArg, nodeosPath=nodeosPath)
 
 def waitUntilBlockBecomeIrr(node, blockNum, timeout=60):
     def hasBlockBecomeIrr():
@@ -72,20 +72,20 @@ try:
     # Create a cluster of 4 nodes, each node has 1 producer. The first 3 nodes use the latest vesion,
     # While the 4th node use the version that doesn't support protocol feature activation (i.e. 1.7.0)
     associatedNodeLabels = {
-        "3": "170"
+        "3": "alt_ver"
     }
     Utils.Print("Alternate Version Labels File is {}".format(alternateVersionLabelsFile))
     assert exists(alternateVersionLabelsFile), "Alternate version labels file does not exist"
     # version 1.7 did not provide a default value for "--last-block-time-offset-us" so this is needed to
     # avoid dropping late blocks
     assert cluster.launch(pnodes=4, totalNodes=4, prodCount=1, totalProducers=4,
-                          extraNodeosArgs=" --plugin eosio::producer_api_plugin ",
+                          extraNodeosArgs=" --plugin eosio::producer_api_plugin --plugin eosio::trace_api_plugin --trace-no-abis",
                           useBiosBootFile=False,
                           specificExtraNodeosArgs={
                              0:"--http-max-response-time-ms 990000",
                              1:"--http-max-response-time-ms 990000",
                              2:"--http-max-response-time-ms 990000",
-                             3:"--last-block-time-offset-us -200000"},
+                             3:"--last-block-time-offset-us -200000 --plugin eosio::history_api_plugin"},
                           onlySetProds=True,
                           pfSetupPolicy=PFSetupPolicy.NONE,
                           alternateVersionLabelsFile=alternateVersionLabelsFile,
@@ -154,6 +154,8 @@ try:
     Utils.Print("+++ 1st Node should contain PREACTIVATE FEATURE +++")
     setValidityOfActTimeSubjRestriction(newNodes[1], "PREACTIVATE_FEATURE", False)
     setValidityOfActTimeSubjRestriction(newNodes[2], "PREACTIVATE_FEATURE", False)
+    # emulating =< 1.7.0 version that haven't had PREACTIVATE_FEATURE
+    setValidityOfActTimeSubjRestriction(oldNode,     "PREACTIVATE_FEATURE", False)
 
     for i in range(3):
         Utils.Print("1st node tries activatePreactivateFeature time(s): {}".format(i+1))
@@ -202,19 +204,18 @@ try:
     assert oldNode.getIrreversibleBlockNum() <= libBeforePreactivation, \
            "4th node LIB should be stuck on LIB before PREACTIVATE_FEATURE is activated"
 
-    # Restart old node with newest version
-    # Before we are migrating to new version, use --export-reversible-blocks as the old version
-    # and --import-reversible-blocks with the new version to ensure the compatibility of the reversible blocks
-    # Finally, when we restart the 4th node with the version of nodeos that supports protocol feature,
+    # Kill and restart old node with newest version
+    # When we restart the 4th node with the version of nodeos that supports protocol feature,
     # all nodes should be in sync, and the 4th node will also contain PREACTIVATE_FEATURE
-    portableRevBlkPath = os.path.join(Utils.getNodeDataDir(oldNodeId), "rev_blk_portable_format")
     oldNode.kill(signal.SIGTERM)
-    # Note, for the following relaunch, these will fail to relaunch immediately (expected behavior of export/import), so the chainArg will not replace the old cmd
-    oldNode.relaunch(chainArg="--export-reversible-blocks {}".format(portableRevBlkPath), timeout=1)
-    oldNode.relaunch(chainArg="--import-reversible-blocks {}".format(portableRevBlkPath), timeout=1, nodeosPath="programs/nodeos/nodeos")
-    os.remove(portableRevBlkPath)
+    # we need this step to enable node pass through the protocol feature block
+    # we disabled it earlier to emulate behavior of old 1.7.0 node that haven't had PREACTIVATE_FEATURE at all.
+    setValidityOfActTimeSubjRestriction(oldNode, 
+                                        "PREACTIVATE_FEATURE", 
+                                        True, 
+                                        chainArg="--replay-blockchain",
+                                        nodeosPath="programs/nodeos/nodeos")
 
-    restartNode(oldNode, chainArg="--replay", nodeosPath="programs/nodeos/nodeos")
     time.sleep(2) # Give some time to replay
 
     assert areNodesInSync(allNodes), "All nodes should be in sync"

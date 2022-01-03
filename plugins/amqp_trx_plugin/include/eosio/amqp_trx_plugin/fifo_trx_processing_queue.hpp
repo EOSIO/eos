@@ -88,6 +88,7 @@ public:
    void stop() {
       mtx_.lock();
       stopped_ = true;
+      queue_.clear();
       mtx_.unlock();
       empty_cv_.notify_all();
       full_cv_.notify_all();
@@ -97,6 +98,18 @@ public:
    bool empty() const {
       std::scoped_lock<std::mutex> lk(mtx_);
       return queue_.empty() && !paused_;
+   }
+
+   template<typename Lamba>
+   void for_each(Lamba cb, bool clear) {
+      {
+         std::scoped_lock<std::mutex> lk( mtx_ );
+         for( const auto& i : queue_ ) {
+            cb(i);
+         }
+         if( clear ) queue_.clear();
+      }
+      if( clear ) full_cv_.notify_one();
    }
 
 private:
@@ -120,6 +133,8 @@ class fifo_trx_processing_queue : public std::enable_shared_from_this<fifo_trx_p
 
 private:
    struct q_item {
+      uint64_t delivery_tag = 0;
+      chain::packed_transaction_ptr trx;
       chain::recover_keys_future fut;
       producer_plugin::next_function<chain::transaction_trace_ptr> next;
    };
@@ -159,6 +174,7 @@ public:
 
    /// separate run() because of shared_from_this
    void run() {
+      if( !running_ ) throw std::logic_error("restart not supported");
       queue_.pause(); // start paused, on_block_start will unpause
       thread_ = std::thread([self=this->shared_from_this()]() {
          fc::set_os_thread_name( "trxq" );
@@ -166,10 +182,14 @@ public:
             try {
                q_item i;
                if( self->queue_.pop_and_pause(i) ) {
+                  auto exception_handler = [&i, &prod_plugin=self->prod_plugin_](fc::exception_ptr ex) {
+                     prod_plugin->log_failed_transaction(i.trx->id(), i.trx, ex->what());
+                     i.next(ex);
+                  };
                   chain::transaction_metadata_ptr trx_meta;
                   try {
                      trx_meta = i.fut.get();
-                  } CATCH_AND_CALL(i.next);
+                  } CATCH_AND_CALL(exception_handler);
 
                   if( trx_meta ) {
                      dlog( "posting trx: ${id}", ("id", trx_meta->id()) );
@@ -193,10 +213,15 @@ public:
       });
    }
 
-   /// shutdown queue processing
-   void stop() {
+   /// Stop queue processing
+   void signal_stop() {
       running_ = false;
       queue_.stop();
+   }
+
+   /// shutdown queue processing
+   void stop() {
+      signal_stop();
       if( thread_.joinable() ) {
          thread_.join();
       }
@@ -217,15 +242,23 @@ public:
       }
    }
 
+   template<typename Lambda>
+   void for_each_delivery_tag(Lambda cb, bool clear) {
+      queue_.for_each(
+            [&cb](const q_item& i){
+               cb(i.delivery_tag);
+         }, clear);
+   }
+
    /// thread-safe
    /// queue a trx to be processed. transactions are processed in the order pushed
    /// next function is called from the app() thread
-   void push(const chain::packed_transaction_ptr& trx, producer_plugin::next_function<chain::transaction_trace_ptr> next) {
+   void push(chain::packed_transaction_ptr trx, uint64_t delivery_tag, producer_plugin::next_function<chain::transaction_trace_ptr> next) {
       fc::microseconds max_trx_cpu_usage = prod_plugin_->get_max_transaction_time();
       auto future = chain::transaction_metadata::start_recover_keys( trx, sig_thread_pool_, chain_id_, max_trx_cpu_usage,
                                                                      transaction_metadata::trx_type::input,
                                                                      configured_subjective_signature_length_limit_ );
-      q_item i{ std::move(future), std::move(next) };
+      q_item i{ .delivery_tag = delivery_tag, .trx = trx, .fut = std::move(future), .next = std::move(next) };
       if( !queue_.push( std::move( i ) ) ) {
          ilog( "Queue stopped, unable to process transaction ${id}, not ack'ed to AMQP", ("id", trx->id()) );
       }

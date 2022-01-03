@@ -22,12 +22,30 @@ using tcp    = boost::asio::ip::tcp;
 using unixs  = boost::asio::local::stream_protocol;
 namespace ws = boost::beast::websocket;
 
-extern const char* const state_history_plugin_abi;
+/* Prior to boost 1.70, if socket type is not boost::asio::ip::tcp::socket nor boost::asio::ssl::stream beast requires
+   an overload of async_teardown. This has been improved in 1.70+ to support any basic_stream_socket<> out of the box
+   which includes unix sockets. */
+#if BOOST_VERSION < 107000
+namespace boost::beast::websocket {
+template<typename TeardownHandler>
+void async_teardown(role_type, unixs::socket& sock, TeardownHandler&& handler) {
+   boost::system::error_code ec;
+   sock.close(ec);
+   boost::asio::post(boost::asio::get_associated_executor(handler, sock.get_executor()), [h=std::move(handler),ec]() mutable {
+      h(ec);
+   });
+}
+}
+#endif
 
 namespace eosio {
 using namespace chain;
 using namespace state_history;
 using boost::signals2::scoped_connection;
+
+namespace ship_protocol {
+extern const char* const ship_abi;
+}
 
 static appbase::abstract_plugin& _state_history_plugin = app().register_plugin<state_history_plugin>();
 
@@ -240,13 +258,14 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
             }
          };
 
+         auto block = get_block();
          if (block_id) {
             result.this_block  = block_position{to_send_block_num, *block_id};
             auto prev_block_id = plugin->get_block_id(to_send_block_num - 1);
             if (prev_block_id) 
                result.prev_block = block_position{to_send_block_num - 1, *prev_block_id};
             if (block_req.fetch_block) {
-                  result.block = signed_block_ptr_variant{get_block()};
+                  result.block = signed_block_ptr_variant{block};
             }
             if (block_req.fetch_traces && plugin->trace_log) {
                result.traces = plugin->trace_log->get_log_entry(to_send_block_num);
@@ -256,14 +275,17 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
                result.deltas = plugin->chain_state_log->get_log_entry(to_send_block_num);
                fc_add_tag(send_update_span, "deltas_size", result.deltas.data_size());
             }
-            set_result_block_header(result, get_block());
+            set_result_block_header(result, block);
          }
          ++to_send_block_num;
          
-         fc_ilog(_log, "pushing result {\"head\":{\"block_num\":${head}},\"last_irreversible\":{\"block_num\":${last_irr}},\"this_block\":{\"block_num\":${this_block}, \"id\": ${id}}} to send queue", 
-               ("head", result.head.block_num)("last_irr", result.last_irreversible.block_num)
-               ("this_block", result.this_block ? result.this_block->block_num : fc::variant())
-               ("id", block_id ? block_id->_hash[3] : 0 ));
+         bool fresh_block = block && fc::time_point::now() - block->timestamp < fc::minutes(5);
+         if( fresh_block || (result.this_block && result.this_block->block_num % 1000 == 0) ) {
+            fc_ilog(_log, "pushing result {\"head\":{\"block_num\":${head}},\"last_irreversible\":{\"block_num\":${last_irr}},\"this_block\":{\"block_num\":${this_block}, \"id\": ${id}}} to send queue", 
+                  ("head", result.head.block_num)("last_irr", result.last_irreversible.block_num)
+                  ("this_block", result.this_block ? result.this_block->block_num : fc::variant())
+                  ("id", block_id ? block_id->_hash[3] : 0 ));
+         }
 
          derived_session().send(std::move(result), fc_get_token(send_update_span));
          --block_req.max_messages_in_flight;
@@ -316,7 +338,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
             self->callback(ec, "async_accept", [self] {
                self->socket_stream.binary(false);
                self->socket_stream.async_write(
-                   boost::asio::buffer(state_history_plugin_abi, strlen(state_history_plugin_abi)),
+                   boost::asio::buffer(ship_protocol::ship_abi, strlen(ship_protocol::ship_abi)),
                    [self](boost::system::error_code ec, size_t) {
                       self->callback(ec, "async_write", [self] {
                          self->socket_stream.binary(true);

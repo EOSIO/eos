@@ -4,10 +4,10 @@
 #include <IR/Validate.h>
 #include <WAST/WAST.h>
 #include <WASM/WASM.h>
-#include <Runtime/Runtime.h>
 #include <sstream>
 #include <iomanip>
 #include <fc/exception/exception.hpp>
+#include <fc/scoped_exit.hpp>
 #include <eosio/chain/exceptions.hpp>
 
 namespace eosio { namespace chain {
@@ -57,21 +57,5 @@ namespace eosio { namespace chain {
       }
 
    } FC_CAPTURE_AND_RETHROW( (wast) ) }  /// wast_to_wasm
-
-   std::string     wasm_to_wast( const std::vector<uint8_t>& wasm, bool strip_names ) {
-      return wasm_to_wast( wasm.data(), wasm.size(), strip_names );
-   } /// wasm_to_wast
-
-   std::string     wasm_to_wast( const uint8_t* data, uint64_t size, bool strip_names ) 
-   { try {
-       IR::Module module;
-       Serialization::MemoryInputStream stream((const U8*)data,size);
-       WASM::serialize(stream,module);
-       if(strip_names)
-          module.userSections.clear();
-        // Print the module to WAST.
-       return WAST::print(module);
-   } FC_CAPTURE_AND_RETHROW() } /// wasm_to_wast
-
 
 } } // eosio::chain

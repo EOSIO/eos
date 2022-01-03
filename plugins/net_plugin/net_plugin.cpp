@@ -168,6 +168,12 @@ namespace eosio {
       void sync_update_expected( const connection_ptr& c, const block_id_type& blk_id, uint32_t blk_num, bool blk_applied );
       void recv_handshake( const connection_ptr& c, const handshake_message& msg );
       void sync_recv_notice( const connection_ptr& c, const notice_message& msg );
+      inline std::unique_lock<std::mutex> locked_sync_mutex() {
+         return std::unique_lock<std::mutex>(sync_mtx);
+      }
+      inline void reset_last_requested_num(const std::unique_lock<std::mutex>& lock) {
+         sync_last_requested_num = 0;
+      }
    };
 
    class dispatch_manager {
@@ -452,8 +458,9 @@ namespace eosio {
    constexpr uint16_t proto_pruned_types = 3;        // supports new signed_block & packed_transaction types
    constexpr uint16_t heartbeat_interval = 4;        // supports configurable heartbeat interval
    constexpr uint16_t dup_goaway_resolution = 5;     // support peer address based duplicate connection resolution
+   constexpr uint16_t dup_node_id_goaway = 6;        // support peer node_id based duplicate connection resolution
 
-   constexpr uint16_t net_version = dup_goaway_resolution;
+   constexpr uint16_t net_version = dup_node_id_goaway;
 
    /**
     * Index by start_block_num
@@ -1767,8 +1774,7 @@ namespace eosio {
    void connection::sync_timeout( boost::system::error_code ec ) {
       if( !ec ) {
          my_impl->sync_master->sync_reassign_fetch( shared_from_this(), benign_other );
-      } else if( ec == boost::asio::error::operation_aborted ) {
-      } else {
+      } else if( ec != boost::asio::error::operation_aborted ) { // don't log on operation_aborted, called on destroy
          peer_elog( this, "setting timer for sync request got error ${ec}", ("ec", ec.message()) );
       }
    }
@@ -1777,11 +1783,7 @@ namespace eosio {
    void connection::fetch_timeout( boost::system::error_code ec ) {
       if( !ec ) {
          my_impl->dispatcher->retry_fetch( shared_from_this() );
-      } else if( ec == boost::asio::error::operation_aborted ) {
-         if( !connected() ) {
-            peer_dlog( this, "fetch timeout was cancelled due to dead connection" );
-         }
-      } else {
+      } else if( ec != boost::asio::error::operation_aborted ) { // don't log on operation_aborted, called on destroy
          peer_elog( this, "setting timer for fetch request got error ${ec}", ("ec", ec.message() ) );
       }
    }
@@ -1855,12 +1857,12 @@ namespace eosio {
          sync_source.reset();
       }
       if( !c ) return;
-      if( !closing && c->current() ) {
+      if( !closing ) {
          std::lock_guard<std::mutex> g_conn( c->conn_mtx );
          if( c->last_handshake_recv.last_irreversible_block_num > sync_known_lib_num ) {
             sync_known_lib_num = c->last_handshake_recv.last_irreversible_block_num;
          }
-      } else if ( closing ) {
+      } else {
          // Closing connection, therefore its view of LIB can no longer be considered as we will no longer be connected.
          // Determine current LIB of remaining peers as our sync_known_lib_num.
          uint32_t highest_lib_num = 0;
@@ -1875,14 +1877,12 @@ namespace eosio {
 
          // if closing the connection we are currently syncing from, then reset our last requested and next expected.
          if( c == sync_source ) {
-            sync_last_requested_num = 0;
+            reset_last_requested_num(g);
             uint32_t head_blk_num = 0;
             std::tie( std::ignore, head_blk_num, std::ignore, std::ignore, std::ignore, std::ignore ) = my_impl->get_chain_info();
             sync_next_expected_num = head_blk_num + 1;
             request_next_chunk( std::move(g) );
          }
-      } else {
-         peer_elog( c, "sync_reset_lib_num called on non-current connection" );
       }
    }
 
@@ -1963,7 +1963,7 @@ namespace eosio {
       if( !sync_source || !sync_source->current() || sync_source->is_transactions_only_connection() ) {
          fc_elog( logger, "Unable to continue syncing at this time");
          sync_known_lib_num = lib_block_num;
-         sync_last_requested_num = 0;
+         reset_last_requested_num(g_sync);
          set_state( in_sync ); // probably not, but we can't do anything else
          return;
       }
@@ -2048,7 +2048,7 @@ namespace eosio {
 
       if( c == sync_source ) {
          c->cancel_sync(reason);
-         sync_last_requested_num = 0;
+         reset_last_requested_num(g);
          request_next_chunk( std::move(g) );
       }
    }
@@ -2232,14 +2232,15 @@ namespace eosio {
    // called from connection strand
    void sync_manager::rejected_block( const connection_ptr& c, uint32_t blk_num ) {
       c->block_status_monitor_.rejected();
+      std::unique_lock<std::mutex> g( sync_mtx );
+      reset_last_requested_num(g);
       if( c->block_status_monitor_.max_events_violated()) {
          peer_wlog( c, "block ${bn} not accepted, closing connection", ("bn", blk_num) );
-         std::unique_lock<std::mutex> g( sync_mtx );
-         sync_last_requested_num = 0;
          sync_source.reset();
          g.unlock();
          c->close();
       } else {
+         g.unlock();
          c->send_handshake();
       }
    }
@@ -2969,6 +2970,7 @@ namespace eosio {
             peer_ilog( this, "received block ${n} less than ${which}lib ${lib}",
                        ("n", blk_num)("which", blk_num < last_sent_lib ? "sent " : "")
                        ("lib", blk_num < last_sent_lib ? last_sent_lib : lib) );
+            my_impl->sync_master->reset_last_requested_num(my_impl->sync_master->locked_sync_mutex());
             enqueue( (sync_request_message) {0, 0} );
             send_handshake();
             cancel_wait();
@@ -2991,7 +2993,7 @@ namespace eosio {
       }
 
       auto is_webauthn_sig = []( const fc::crypto::signature& s ) {
-         return s.which() == fc::get_index<fc::crypto::signature::storage_type, fc::crypto::webauthn::signature>();
+         return static_cast<size_t>(s.which()) == fc::get_index<fc::crypto::signature::storage_type, fc::crypto::webauthn::signature>();
       };
       bool has_webauthn_sig = is_webauthn_sig( ptr->producer_signature );
 
@@ -3171,6 +3173,10 @@ namespace eosio {
       peer_dlog( this, "received handshake gen ${g}, lib ${lib}, head ${head}",
                  ("g", msg.generation)("lib", msg.last_irreversible_block_num)("head", msg.head_num) );
 
+      std::unique_lock<std::mutex> g_conn( conn_mtx );
+      last_handshake_recv = msg;
+      g_conn.unlock();
+
       connecting = false;
       if (msg.generation == 1) {
          if( msg.node_id == my_impl->node_id) {
@@ -3195,9 +3201,9 @@ namespace eosio {
                if(check.get() == this)
                   continue;
                std::unique_lock<std::mutex> g_check_conn( check->conn_mtx );
-               fc_dlog( logger, "dup check ${l} =? ${r}",
-                        ("l", check->last_handshake_recv.p2p_address)("r", msg.p2p_address) );
-               if(check->connected() && check->last_handshake_recv.p2p_address == msg.p2p_address) {
+               fc_dlog( logger, "dup check: connected ${c}, ${l} =? ${r}",
+                        ("c", check->connected())("l", check->last_handshake_recv.node_id)("r", msg.node_id) );
+               if(check->connected() && check->last_handshake_recv.node_id == msg.node_id) {
                   if (net_version < dup_goaway_resolution || msg.network_version < dup_goaway_resolution) {
                      // It's possible that both peers could arrive here at relatively the same time, so
                      // we need to avoid the case where they would both tell a different connection to go away.
@@ -3208,8 +3214,18 @@ namespace eosio {
                      g_check_conn.unlock();
                      if (msg.time + c_time <= check_time)
                         continue;
-                  } else if (my_impl->p2p_address < msg.p2p_address) {
-                     // only the connection from lower p2p_address to higher p2p_address will be considered as a duplicate, 
+                  } else if (net_version < dup_node_id_goaway || msg.network_version < dup_node_id_goaway) {
+                     if (my_impl->p2p_address < msg.p2p_address) {
+                        fc_dlog( logger, "my_impl->p2p_address '${lhs}' < msg.p2p_address '${rhs}'",
+                                 ("lhs", my_impl->p2p_address)( "rhs", msg.p2p_address ) );
+                        // only the connection from lower p2p_address to higher p2p_address will be considered as a duplicate,
+                        // so there is no chance for both connections to be closed
+                        continue;
+                     }
+                  } else if (my_impl->node_id < msg.node_id) {
+                     fc_dlog( logger, "not duplicate, my_impl->node_id '${lhs}' < msg.node_id '${rhs}'",
+                              ("lhs", my_impl->node_id)("rhs", msg.node_id) );
+                     // only the connection from lower node_id to higher node_id will be considered as a duplicate,
                      // so there is no chance for both connections to be closed
                      continue; 
                   }
@@ -3292,9 +3308,6 @@ namespace eosio {
          }
       }
 
-      std::unique_lock<std::mutex> g_conn( conn_mtx );
-      last_handshake_recv = msg;
-      g_conn.unlock();
       my_impl->sync_master->recv_handshake( shared_from_this(), msg );
    }
 
@@ -3943,7 +3956,6 @@ namespace eosio {
    bool connection::populate_handshake( handshake_message& hello ) {
       namespace sc = std::chrono;
       hello.network_version = net_version_base + net_version;
-      const auto prev_head_id = hello.head_id;
       uint32_t lib, head;
       std::tie( lib, std::ignore, head,
                 hello.last_irreversible_block_id, std::ignore, hello.head_id ) = my_impl->get_chain_info();

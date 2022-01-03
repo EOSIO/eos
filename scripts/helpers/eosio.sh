@@ -16,6 +16,8 @@ if [[ $NAME =~ "Amazon Linux" ]] || [[ $NAME == "CentOS Linux" ]]; then
     if ! YUM=$( command -v yum 2>/dev/null ); then echo "${COLOR_RED}YUM must be installed to compile EOSIO${COLOR_NC}" && exit 1; fi
 elif [[ $NAME == "Ubuntu" ]]; then
     if ! APTGET=$( command -v apt-get 2>/dev/null ); then echo "${COLOR_RED}APT-GET must be installed to compile EOSIO${COLOR_NC}" && exit 1; fi
+elif [[ $NAME == "Oracle Linux Server" ]]; then
+    if ! DNF=$( command -v dnf 2>/dev/null ); then echo "${COLOR_RED}DNF must be installed to compile EOSIO${COLOR_NC}" && exit 1; fi
 fi
 
 # Obtain dependency versions; Must come first in the script
@@ -130,7 +132,7 @@ function print_supported_linux_distros_and_exit() {
 
 function ensure-compiler() {
     # Support build-essentials on ubuntu
-    if [[ $NAME == "CentOS Linux" ]] || ( $PIN_COMPILER && ( [[ $VERSION_ID == "18.04" ]] || [[ $VERSION_ID == "20.04" ]] ) ); then
+    if [[ $NAME == "CentOS Linux" ]] || [[ $NAME == "Oracle Linux Server" ]] || ( $PIN_COMPILER && ( [[ $VERSION_ID == "18.04" ]] || [[ $VERSION_ID == "20.04" ]] ) ); then
         export CXX=${CXX:-'g++'}
         export CC=${CC:-'gcc'}
     fi
