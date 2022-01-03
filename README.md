@@ -55,7 +55,6 @@ We support the following CMake options:
 -DCMAKE_C_COMPILER_LAUNCHER=ccache      Speed up builds
 -DCMAKE_BUILD_TYPE=DEBUG                Debug builds
 -DDISABLE_WASM_SPEC_TESTS=yes           Speed up builds and skip many tests
--DCMAKE_TARGET_MESSAGES=no              Turn noise down a notch
 -DCMAKE_INSTALL_PREFIX=/foo/bar         Where to install to
 -GNinja                                 Use ninja instead of make
                                         (faster on high-core-count machines)
