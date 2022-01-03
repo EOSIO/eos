@@ -1,7 +1,6 @@
 add_library(amqp
         reliable_amqp_publisher.cpp
         retrying_amqp_connection.cpp
-        transactional_amqp_publisher.cpp
         util.cpp
         )
 target_include_directories(amqp PUBLIC include)
