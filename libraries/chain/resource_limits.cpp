@@ -350,6 +350,16 @@ void resource_limits_manager::process_block_usage(uint32_t block_num) {
 
 }
 
+uint64_t resource_limits_manager::get_total_cpu_weight() const {
+   const auto& state = _db.get<resource_limits_state_object>();
+   return state.total_cpu_weight;
+}
+
+uint64_t resource_limits_manager::get_total_net_weight() const {
+   const auto& state = _db.get<resource_limits_state_object>();
+   return state.total_net_weight;
+}
+
 uint64_t resource_limits_manager::get_virtual_block_cpu_limit() const {
    const auto& state = _db.get<resource_limits_state_object>();
    return state.virtual_cpu_limit;
