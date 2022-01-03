@@ -1,26 +1,26 @@
 [submodule "libraries/chainbase"]
 	path = libraries/chainbase
-	url = https://github.com/eosio/chainbase
+	url = https://github.com/eosnetworkfoundation/mandel-chainbase
         ignore = dirty
 [submodule "libraries/appbase"]
 	path = libraries/appbase
-	url = https://github.com/eosio/appbase
+	url = https://github.com/eosnetworkfoundation/mandel-appbase
         ignore = dirty
 [submodule "libraries/softfloat"]
 	path = libraries/softfloat
-	url = https://github.com/eosio/berkeley-softfloat-3
+	url = https://github.com/eosnetworkfoundation/mandel-berkeley-softfloat-3
 [submodule "libraries/fc"]
 	path = libraries/fc
-	url = https://github.com/EOSIO/fc
+	url = https://github.com/eosnetworkfoundation/mandel-fc
 [submodule "libraries/wabt"]
 	path = libraries/wabt
-	url = https://github.com/EOSIO/wabt
+	url = https://github.com/eosnetworkfoundation/mandel-wabt
 [submodule "libraries/yubihsm"]
 	path = libraries/yubihsm
 	url = https://github.com/Yubico/yubihsm-shell
 [submodule "libraries/eos-vm"]
 	path = libraries/eos-vm
-	url = https://github.com/eosio/eos-vm
+	url = https://github.com/eosnetworkfoundation/mandel-eos-vm
 [submodule "eosio-wasm-spec-tests"]
 	path = eosio-wasm-spec-tests
-	url = https://github.com/EOSIO/eosio-wasm-spec-tests
+	url = https://github.com/eosnetworkfoundation/mandel-eosio-wasm-spec-tests
