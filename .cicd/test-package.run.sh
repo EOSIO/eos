@@ -12,7 +12,7 @@ elif [[ $(yum --version 2>/dev/null) ]]; then # RHEL family packaging
     perform 'yum check-update || :'
     perform 'yum install -y /eos/*.rpm'
 elif [[ $(brew --version 2>/dev/null) ]]; then # homebrew packaging
-    perform 'brew update'
+    perform 'brew upgrade'
     perform 'mkdir homebrew-eosio'
     perform 'git init homebrew-eosio'
     perform 'cp *.rb homebrew-eosio'
