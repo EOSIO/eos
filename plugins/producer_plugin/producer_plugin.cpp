@@ -10,7 +10,6 @@
 
 #include <fc/io/json.hpp>
 #include <fc/log/logger_config.hpp>
-#include <fc/smart_ref_impl.hpp>
 #include <fc/scoped_exit.hpp>
 
 #include <boost/asio.hpp>
@@ -793,7 +792,7 @@ make_keosd_signature_provider(const std::shared_ptr<producer_plugin_impl>& impl,
    if(boost::algorithm::starts_with(url_str, "unix://"))
       //send the entire string after unix:// to http_plugin. It'll auto-detect which part
       // is the unix socket path, and which part is the url to hit on the server
-      keosd_url = fc::url("unix", url_str.substr(7), ostring(), ostring(), ostring(), ostring(), ovariant_object(), fc::optional<uint16_t>());
+      keosd_url = fc::url("unix", url_str.substr(7), ostring(), ostring(), ostring(), ostring(), ovariant_object(), std::optional<uint16_t>());
    else
       keosd_url = fc::url(url_str);
    std::weak_ptr<producer_plugin_impl> weak_impl = impl;

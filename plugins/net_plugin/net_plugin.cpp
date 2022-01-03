@@ -2497,7 +2497,7 @@ namespace eosio {
             fc::raw::unpack( ds, *ptr );
 
             auto is_webauthn_sig = []( const fc::crypto::signature& s ) {
-               return s.which() == fc::crypto::signature::storage_type::position<fc::crypto::webauthn::signature>();
+               return s.which() == fc::get_index<fc::crypto::signature::storage_type, fc::crypto::webauthn::signature>();
             };
             bool has_webauthn_sig = is_webauthn_sig( ptr->producer_signature );
 
