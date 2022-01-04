@@ -1,5 +1,4 @@
 #include <eosio/chain_plugin/chain_plugin.hpp>
-#include <eosio/chain_plugin/blockvault_sync_strategy.hpp>
 #include <eosio/chain/fork_database.hpp>
 #include <eosio/chain/block_log.hpp>
 #include <eosio/chain/exceptions.hpp>
@@ -21,7 +20,6 @@
 
 #include <eosio/chain/eosio_contract.hpp>
 #include <eosio/resource_monitor_plugin/resource_monitor_plugin.hpp>
-#include <eosio/blockvault_client_plugin/blockvault_client_plugin.hpp>
 
 #include <chainbase/environment.hpp>
 
@@ -180,7 +178,6 @@ public:
    ,applied_transaction_channel(app().get_channel<channels::applied_transaction>())
    ,incoming_block_channel(app().get_channel<incoming::channels::block>())
    ,incoming_block_sync_method(app().get_method<incoming::methods::block_sync>())
-   ,incoming_blockvault_sync_method(app().get_method<incoming::methods::blockvault_sync>())
    ,incoming_transaction_async_method(app().get_method<incoming::methods::transaction_async>())
    {}
 
@@ -212,7 +209,6 @@ public:
 
    // retained references to methods for easy calling
    incoming::methods::block_sync::method_type&        incoming_block_sync_method;
-   incoming::methods::blockvault_sync::method_type&        incoming_blockvault_sync_method;
    incoming::methods::transaction_async::method_type& incoming_transaction_async_method;
 
    // method provider handles
@@ -230,18 +226,10 @@ public:
    std::optional<scoped_connection>                                   applied_transaction_connection;
 
    std::optional<chain_apis::account_query_db>                        _account_query_db;
-
-   void do_non_snapshot_startup(std::function<void()> shutdown, std::function<bool()> check_shutdown) {
-       if (genesis) {
-           chain->startup(shutdown, check_shutdown, *genesis);
-       }else {
-           chain->startup(shutdown, check_shutdown);
-       }
-   }
 };
 
 chain_plugin::chain_plugin()
-   : my(new chain_plugin_impl()) {
+:my(new chain_plugin_impl()) {
    app().register_config_type<eosio::chain::db_read_mode>();
    app().register_config_type<eosio::chain::validation_mode>();
    app().register_config_type<eosio::chain::backing_store_type>();
@@ -1358,18 +1346,15 @@ void chain_plugin::plugin_startup()
    try {
       auto shutdown = [](){ return app().quit(); };
       auto check_shutdown = [](){ return app().is_quiting(); };
-      auto bvc_plug = app().find_plugin<blockvault_client_plugin>();
-      auto blockvault_instance = bvc_plug ? bvc_plug->get() : nullptr;
-      if (nullptr != blockvault_instance) {
-          eosio::blockvault::blockvault_sync_strategy<chain_plugin_impl> bss(blockvault_instance, *my, shutdown, check_shutdown);
-          bss.do_sync();
-      } else if (my->snapshot_path) {
+      if (my->snapshot_path) {
          auto infile = std::ifstream(my->snapshot_path->generic_string(), (std::ios::in | std::ios::binary));
          auto reader = std::make_shared<istream_snapshot_reader>(infile);
          my->chain->startup(shutdown, check_shutdown, reader);
          infile.close();
+      } else if( my->genesis ) {
+         my->chain->startup(shutdown, check_shutdown, *my->genesis);
       } else {
-         my->do_non_snapshot_startup(shutdown, check_shutdown);
+         my->chain->startup(shutdown, check_shutdown);
       }
    } catch (const database_guard_exception& e) {
       log_guard_exception(e);

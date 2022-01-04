@@ -147,15 +147,6 @@
         "stderr",
         "net"
       ]
-    },{
-      "name": "blockvault_client_plugin",
-      "level": "debug",
-      "enabled": true,
-      "additivity": false,
-      "appenders": [
-        "stderr",
-        "net"
-      ]
     }
   ]
 }

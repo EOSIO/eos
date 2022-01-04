@@ -8,7 +8,6 @@ Plugins extend the core functionality implemented in `nodeos`. Some plugins are 
 
 For information on specific plugins, just select from the list below:
 
-* [`blockvault_client_plugin`](blockvault_client_plugin/index.md)
 * [`chain_api_plugin`](chain_api_plugin/index.md)
 * [`chain_plugin`](chain_plugin/index.md)
 * [`db_size_api_plugin`](db_size_api_plugin/index.md)
