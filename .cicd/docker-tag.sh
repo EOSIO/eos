@@ -22,11 +22,21 @@ echo '+++ :label: Tagging Container(s)'
 for REGISTRY in ${CONTRACT_REGISTRIES[*]}; do
     if [[ ! -z "$REGISTRY" ]]; then
         echo "Tagging for registry $REGISTRY."
-        DOCKER_TAG_COMMAND="docker tag '$IMAGE' '$REGISTRY:$PREFIX-$SANITIZED_BRANCH'"
+        if [[ "$PLATFORM_TYPE" == 'unpinned' ]] ; then
+            DOCKER_TAG_COMMAND="docker tag '$IMAGE' '$REGISTRY:$PREFIX-$SANITIZED_BRANCH'"
+            echo "$ $DOCKER_TAG_COMMAND"
+            eval $DOCKER_TAG_COMMAND
+            if [[ ! -z "$SANITIZED_TAG" && "$SANITIZED_BRANCH" != "$SANITIZED_TAG" ]]; then
+                DOCKER_TAG_COMMAND="docker tag '$IMAGE' '$REGISTRY:$PREFIX-$SANITIZED_TAG'"
+                echo "$ $DOCKER_TAG_COMMAND"
+                eval $DOCKER_TAG_COMMAND
+            fi
+        fi
+        DOCKER_TAG_COMMAND="docker tag '$IMAGE' '$REGISTRY:$PREFIX-$SANITIZED_BRANCH-$PLATFORM_TYPE'"
         echo "$ $DOCKER_TAG_COMMAND"
         eval $DOCKER_TAG_COMMAND
         if [[ ! -z "$SANITIZED_TAG" && "$SANITIZED_BRANCH" != "$SANITIZED_TAG" ]]; then
-            DOCKER_TAG_COMMAND="docker tag '$IMAGE' '$REGISTRY:$PREFIX-$SANITIZED_TAG'"
+            DOCKER_TAG_COMMAND="docker tag '$IMAGE' '$REGISTRY:$PREFIX-$SANITIZED_TAG-$PLATFORM_TYPE'"
             echo "$ $DOCKER_TAG_COMMAND"
             eval $DOCKER_TAG_COMMAND
         fi
@@ -37,11 +47,21 @@ echo '+++ :arrow_up: Pushing Container(s)'
 for REGISTRY in ${CONTRACT_REGISTRIES[*]}; do
     if [[ ! -z "$REGISTRY" ]]; then
         echo "Pushing to '$REGISTRY'."
-        DOCKER_PUSH_COMMAND="docker push '$REGISTRY:$PREFIX-$SANITIZED_BRANCH'"
+        if [[ "$PLATFORM_TYPE" == 'unpinned' ]] ; then
+            DOCKER_PUSH_COMMAND="docker push '$REGISTRY:$PREFIX-$SANITIZED_BRANCH'"
+            echo "$ $DOCKER_PUSH_COMMAND"
+            eval $DOCKER_PUSH_COMMAND
+            if [[ ! -z "$SANITIZED_TAG" && "$SANITIZED_BRANCH" != "$SANITIZED_TAG" ]]; then
+                DOCKER_PUSH_COMMAND="docker push '$REGISTRY:$PREFIX-$SANITIZED_TAG'"
+                echo "$ $DOCKER_PUSH_COMMAND"
+                eval $DOCKER_PUSH_COMMAND
+            fi
+        fi
+        DOCKER_PUSH_COMMAND="docker push '$REGISTRY:$PREFIX-$SANITIZED_BRANCH-$PLATFORM_TYPE'"
         echo "$ $DOCKER_PUSH_COMMAND"
         eval $DOCKER_PUSH_COMMAND
         if [[ ! -z "$SANITIZED_TAG" && "$SANITIZED_BRANCH" != "$SANITIZED_TAG" ]]; then
-            DOCKER_PUSH_COMMAND="docker push '$REGISTRY:$PREFIX-$SANITIZED_TAG'"
+            DOCKER_PUSH_COMMAND="docker push '$REGISTRY:$PREFIX-$SANITIZED_TAG-$PLATFORM_TYPE'"
             echo "$ $DOCKER_PUSH_COMMAND"
             eval $DOCKER_PUSH_COMMAND
         fi
@@ -63,8 +83,16 @@ for REGISTRY in ${CONTRACT_REGISTRIES[*]}; do
             echo "$ $DOCKER_RMI_COMMAND"
             eval $DOCKER_RMI_COMMAND
         fi
+        DOCKER_RMI_COMMAND="docker rmi '$REGISTRY:$PREFIX-$SANITIZED_BRANCH-$PLATFORM_TYPE' || :"
+        echo "$ $DOCKER_RMI_COMMAND"
+        eval $DOCKER_RMI_COMMAND
         DOCKER_RMI_COMMAND="docker rmi '$REGISTRY:$PREFIX-$BUILDKITE_COMMIT-$PLATFORM_TYPE' || :"
         echo "$ $DOCKER_RMI_COMMAND"
         eval $DOCKER_RMI_COMMAND
+        if [[ ! -z "$SANITIZED_TAG" && "$SANITIZED_BRANCH" != "$SANITIZED_TAG" ]]; then
+            DOCKER_RMI_COMMAND="docker rmi '$REGISTRY:$PREFIX-$SANITIZED_TAG-$PLATFORM_TYPE' || :"
+            echo "$ $DOCKER_RMI_COMMAND"
+            eval $DOCKER_RMI_COMMAND
+        fi
     fi
 done
