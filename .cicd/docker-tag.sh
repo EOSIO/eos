@@ -7,10 +7,10 @@ SANITIZED_BRANCH="$(sanitize "$BUILDKITE_BRANCH")"
 echo "Branch '$BUILDKITE_BRANCH' sanitized as '$SANITIZED_BRANCH'."
 SANITIZED_TAG="$(sanitize "$BUILDKITE_TAG")"
 [[ -z "$SANITIZED_TAG" ]] || echo "Branch '$BUILDKITE_TAG' sanitized as '$SANITIZED_TAG'."
-echo '$ echo ${#CONTRACT_REGISTRIES[*]} # array length'
-echo ${#CONTRACT_REGISTRIES[*]}
-echo '$ echo ${CONTRACT_REGISTRIES[*]} # array'
-echo ${CONTRACT_REGISTRIES[*]}
+echo '$ echo ${#CONTRACT_REGISTRIES[@]} # array length'
+echo ${#CONTRACT_REGISTRIES[@]}
+echo '$ echo ${CONTRACT_REGISTRIES[@]} # array'
+echo ${CONTRACT_REGISTRIES[@]}
 export IMAGE="${MIRROR_REGISTRY:-$DOCKERHUB_CI_REGISTRY}:$PREFIX-$BUILDKITE_COMMIT-$PLATFORM_TYPE"
 # pull
 echo '+++ :arrow_down: Pulling Container(s)'
@@ -19,7 +19,7 @@ echo "$ $DOCKER_PULL_COMMAND"
 eval $DOCKER_PULL_COMMAND
 # tag
 echo '+++ :label: Tagging Container(s)'
-for REGISTRY in ${CONTRACT_REGISTRIES[*]}; do
+for REGISTRY in ${CONTRACT_REGISTRIES[@]}; do
     if [[ ! -z "$REGISTRY" ]]; then
         echo "Tagging for registry $REGISTRY."
         if [[ "$PLATFORM_TYPE" == 'unpinned' ]] ; then
@@ -44,7 +44,7 @@ for REGISTRY in ${CONTRACT_REGISTRIES[*]}; do
 done
 # push
 echo '+++ :arrow_up: Pushing Container(s)'
-for REGISTRY in ${CONTRACT_REGISTRIES[*]}; do
+for REGISTRY in ${CONTRACT_REGISTRIES[@]}; do
     if [[ ! -z "$REGISTRY" ]]; then
         echo "Pushing to '$REGISTRY'."
         if [[ "$PLATFORM_TYPE" == 'unpinned' ]] ; then
@@ -69,7 +69,7 @@ for REGISTRY in ${CONTRACT_REGISTRIES[*]}; do
 done
 # cleanup
 echo '--- :put_litter_in_its_place: Cleaning Up'
-for REGISTRY in ${CONTRACT_REGISTRIES[*]}; do
+for REGISTRY in ${CONTRACT_REGISTRIES[@]}; do
     if [[ ! -z "$REGISTRY" ]]; then
         echo "Cleaning up from $REGISTRY."
         DOCKER_RMI_COMMAND="docker rmi '$REGISTRY:$PREFIX-$SANITIZED_BRANCH' || :"
