@@ -701,8 +701,8 @@ EOF
   - label: ":docker: Docker - Label Container with Git Branch and Git Tag"
     command: .cicd/docker-tag.sh
     env:
-      IMAGE_TAG: "ubuntu-18.04-unpinned"
-      PLATFORM_TYPE: "unpinned"
+      IMAGE_TAG: "ubuntu-18.04-$PLATFORM_TYPE"
+      PLATFORM_TYPE: $PLATFORM_TYPE
     agents:
       queue: "$BUILDKITE_BUILD_AGENT_QUEUE"
     timeout: ${TIMEOUT:-10}
