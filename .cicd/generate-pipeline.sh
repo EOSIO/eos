@@ -912,10 +912,13 @@ EOF
       buildkite-agent artifact download eosio.rb . --step ':darwin: macOS 10.15 - Package Builder'
       mv eosio.rb eosio_catalina.rb
       buildkite-agent artifact upload eosio_catalina.rb
+      buildkite-agent artifact download eosio.rb . --step ':darwin: macOS 11 - Package Builder'
+      mv eosio.rb eosio_bigsur.rb
+      buildkite-agent artifact upload eosio_bigsur.rb
     agents:
       queue: "automation-basic-builder-fleet"
     timeout: ${TIMEOUT:-5}
-    skip: ${SKIP_PACKAGE_BUILDER}${SKIP_MAC}${SKIP_MACOS_10_14}${SKIP_MACOS_10_15}
+    skip: ${SKIP_PACKAGE_BUILDER}${SKIP_MAC}${SKIP_MACOS_10_14}${SKIP_MACOS_10_15}${SKIP_MACOS_11}
 
   - label: ":docker: :ubuntu: Docker - Build 18.04 Docker Image"
     command:  "./.cicd/create-docker-from-binary.sh"
