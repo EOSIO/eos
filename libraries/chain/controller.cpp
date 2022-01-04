@@ -27,6 +27,7 @@
 #include <eosio/chain/platform_timer.hpp>
 
 #include <chainbase/chainbase.hpp>
+#include <eosio/vm/allocator.hpp>
 #include <fc/io/json.hpp>
 #include <fc/log/logger_config.hpp>
 #include <fc/scoped_exit.hpp>

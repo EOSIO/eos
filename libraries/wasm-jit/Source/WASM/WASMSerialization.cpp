@@ -179,7 +179,9 @@ namespace WASM
 {
 	using namespace IR;
 	using namespace Serialization;
-	
+
+	bool check_limits = true;
+
 	enum
 	{
 		magicNumber=0x6d736100, // "\0asm"
@@ -490,9 +492,9 @@ namespace WASM
 		serializeVarUInt32(bodyStream,numLocalSets);
 
 		constexpr size_t max_size = eosio::chain::wasm_constraints::maximum_code_size;
-		if (numBodyBytes >= max_size)
+		if (numBodyBytes >= max_size && WASM::check_limits)
 			throw FatalSerializationException(std::string("Function body too large"));
-		if (numLocalSets >= 1024)
+		if (numLocalSets >= 1024 && WASM::check_limits)
 			throw FatalSerializationException(std::string("too many local sets"));
 		size_t locals_accum = 0;
 
@@ -501,7 +503,7 @@ namespace WASM
 			LocalSet localSet;
 			serialize(bodyStream,localSet);
 			locals_accum += localSet.num*4;
-			if( locals_accum > eosio::chain::wasm_constraints::maximum_func_local_bytes )
+			if( locals_accum > eosio::chain::wasm_constraints::maximum_func_local_bytes && WASM::check_limits )
 				throw FatalSerializationException( "too many locals" );
 
 			for(Uptr index = 0;index < localSet.num;++index) { functionDef.nonParameterLocalTypes.push_back(localSet.type); }
@@ -593,7 +595,7 @@ namespace WASM
 							throw FatalSerializationException("invalid import function type index");
 						}
 						module.functions.imports.push_back({{functionTypeIndex},std::move(moduleName),std::move(exportName)});
-						if (module.functions.imports.size() >= max_size)
+						if (module.functions.imports.size() >= max_size && WASM::check_limits)
 							throw FatalSerializationException(std::string("Too many function imports"));
 						break;
 					}
@@ -602,7 +604,7 @@ namespace WASM
 						TableType tableType;
 						serialize(sectionStream,tableType);
 						module.tables.imports.push_back({tableType,std::move(moduleName),std::move(exportName)});
-						if (module.functions.imports.size() >= max_size)
+						if (module.functions.imports.size() >= max_size && WASM::check_limits)
 							throw FatalSerializationException(std::string("Too many table imports"));
 						break;
 					}
@@ -611,7 +613,7 @@ namespace WASM
 						MemoryType memoryType;
 						serialize(sectionStream,memoryType);
 						module.memories.imports.push_back({memoryType,std::move(moduleName),std::move(exportName)});
-						if (module.functions.imports.size() >= max_size)
+						if (module.functions.imports.size() >= max_size && WASM::check_limits)
 							throw FatalSerializationException(std::string("Too many memory imports"));
 						break;
 					}
@@ -620,7 +622,7 @@ namespace WASM
 						GlobalType globalType;
 						serialize(sectionStream,globalType);
 						module.globals.imports.push_back({globalType,std::move(moduleName),std::move(exportName)});
-						if (module.functions.imports.size() >= max_size)
+						if (module.functions.imports.size() >= max_size && WASM::check_limits)
 							throw FatalSerializationException(std::string("Too many global imports"));
 						break;
 					}
@@ -679,7 +681,7 @@ namespace WASM
 				// try to get a serialization exception before making a huge allocation for malformed input.
 				module.functions.defs.clear();
 				constexpr size_t max_size = eosio::chain::wasm_constraints::maximum_section_elements;
-				if ( numFunctions >= max_size )
+				if ( numFunctions >= max_size && WASM::check_limits )
 					throw FatalSerializationException(std::string("Too many function defs"));
 				for(Uptr functionIndex = 0;functionIndex < numFunctions;++functionIndex)
 				{

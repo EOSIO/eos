@@ -24,6 +24,7 @@ void run_compile(wrapped_fd&& response_sock, wrapped_fd&& wasm_code) noexcept { 
 
    Module module;
    Serialization::MemoryInputStream stream(wasm.data(), wasm.size());
+   WASM::scoped_skip_checks no_check;
    WASM::serialize(stream, module);
    module.userSections.clear();
    wasm_injections::wasm_binary_injection<false> injector(module);
@@ -54,7 +55,7 @@ void run_compile(wrapped_fd&& response_sock, wrapped_fd&& wasm_code) noexcept { 
    if(module.memories.size())
       result_message.starting_memory_pages = module.memories.defs.at(0).type.size.min;
 
-   std::vector<uint8_t> prologue(memory::cb_offset); //getting the control block offset gets us as large as table+globals as possible
+   std::vector<uint8_t> prologue(module.globals.defs.size() * 8); // Large enough to handle all mutable globals
    std::vector<uint8_t>::iterator prologue_it = prologue.end();
 
    //set up mutable globals
@@ -85,18 +86,18 @@ void run_compile(wrapped_fd&& response_sock, wrapped_fd&& wasm_code) noexcept { 
       int64_t func;    //>= 0 means offset to code in wasm; < 0 means intrinsic call at offset address
    };
 
-   if(module.tables.size())
-      prologue_it -= sizeof(table_entry) * module.tables.defs[0].type.size.min;
-
    for(const TableSegment& table_segment : module.tableSegments) {
-      struct table_entry* table_index_0 = (struct table_entry*)&*prologue_it;
+      struct table_entry* table_index_0 = (struct table_entry*)(code.code.data() + code.table_offset);
 
-      if(table_segment.baseOffset.i32 > module.tables.defs[0].type.size.min)
+      if(static_cast<uint64_t>(table_segment.baseOffset.i32) > module.tables.defs[0].type.size.min)
+         return;
+
+      if(static_cast<uint64_t>(table_segment.baseOffset.i32) > module.tables.defs[0].type.size.min)
          return;
 
       for(Uptr i = 0; i < table_segment.indices.size(); ++i) {
          const Uptr function_index = table_segment.indices[i];
-         const long int effective_table_index = table_segment.baseOffset.i32 + i;
+         const uint64_t effective_table_index = table_segment.baseOffset.i32 + i;
 
          if(effective_table_index >= module.tables.defs[0].type.size.min)
             return;
@@ -153,8 +154,8 @@ void run_compile_trampoline(int fd) {
       auto [success, message, fds] = read_message_with_fds(fd);
       if(!success)
          break;
-
-      if(!message.contains<compile_wasm_message>() || fds.size() != 2) {
+      
+      if(!std::holds_alternative<compile_wasm_message>(message) || fds.size() != 2) {
          std::cerr << "EOS VM OC compile trampoline got unexpected message; ignoring" << std::endl;
          continue;
       }

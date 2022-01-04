@@ -9,6 +9,7 @@
 #include <eosio/chain/transaction_context.hpp>
 #include <eosio/chain/exceptions.hpp>
 #include <eosio/chain/types.hpp>
+#include <eosio/chain/global_property_object.hpp>
 
 #include <fc/scoped_exit.hpp>
 
@@ -17,6 +18,7 @@
 #include <asm/prctl.h>
 #include <sys/prctl.h>
 #include <sys/syscall.h>
+#include <sys/mman.h>
 
 #if defined(__has_feature)
 #if __has_feature(shadow_call_stack)
@@ -72,7 +74,7 @@ notus:
 
 static intrinsic grow_memory_intrinsic EOSVMOC_INTRINSIC_INIT_PRIORITY("eosvmoc_internal.grow_memory", IR::FunctionType::get(IR::ResultType::i32,{IR::ValueType::i32,IR::ValueType::i32}),
   (void*)&eos_vm_oc_grow_memory,
-  boost::hana::index_if(intrinsic_table, ::boost::hana::equal.to(BOOST_HANA_STRING("eosvmoc_internal.grow_memory"))).value()
+  std::integral_constant<std::size_t, find_intrinsic_index("eosvmoc_internal.grow_memory")>::value
 );
 
 //This is effectively overriding the eosio_exit intrinsic in wasm_interface
@@ -81,7 +83,7 @@ static void eosio_exit(int32_t code) {
    __builtin_unreachable();
 }
 static intrinsic eosio_exit_intrinsic("env.eosio_exit", IR::FunctionType::get(IR::ResultType::none,{IR::ValueType::i32}), (void*)&eosio_exit,
-  boost::hana::index_if(intrinsic_table, ::boost::hana::equal.to(BOOST_HANA_STRING("env.eosio_exit"))).value()
+  std::integral_constant<std::size_t, find_intrinsic_index("env.eosio_exit")>::value
 );
 
 static void throw_internal_exception(const char* const s) {
@@ -93,7 +95,7 @@ static void throw_internal_exception(const char* const s) {
 #define DEFINE_EOSVMOC_TRAP_INTRINSIC(module,name) \
 	void name(); \
 	static intrinsic name##Function EOSVMOC_INTRINSIC_INIT_PRIORITY(#module "." #name,IR::FunctionType::get(),(void*)&name, \
-     boost::hana::index_if(intrinsic_table, ::boost::hana::equal.to(BOOST_HANA_STRING(#module "." #name))).value() \
+     std::integral_constant<std::size_t, find_intrinsic_index(#module "." #name)>::value \
    ); \
 	void name()
 
@@ -147,20 +149,42 @@ executor::executor(const code_cache_base& cc) {
    mapping_is_executable = true;
 }
 
-void executor::execute(const code_descriptor& code, const memory& mem, apply_context& context) {
+void executor::execute(const code_descriptor& code, memory& mem, apply_context& context) {
    if(mapping_is_executable == false) {
       mprotect(code_mapping, code_mapping_size, PROT_EXEC|PROT_READ);
       mapping_is_executable = true;
    }
 
+   uint64_t max_call_depth = eosio::chain::wasm_constraints::maximum_call_depth+1;
+   uint64_t max_pages = eosio::chain::wasm_constraints::maximum_linear_memory/eosio::chain::wasm_constraints::wasm_page_size;
+   stack.reset(max_call_depth);
+   EOS_ASSERT(code.starting_memory_pages <= (int)max_pages, wasm_execution_error, "Initial memory out of range");
+
    //prepare initial memory, mutable globals, and table data
    if(code.starting_memory_pages > 0 ) {
-      arch_prctl(ARCH_SET_GS, (unsigned long*)(mem.zero_page_memory_base()+code.starting_memory_pages*memory::stride));
+      uint64_t initial_page_offset = std::min(static_cast<std::size_t>(code.starting_memory_pages), mem.size_of_memory_slice_mapping()/memory::stride - 1);
+      if(initial_page_offset < static_cast<uint64_t>(code.starting_memory_pages)) {
+         mprotect(mem.full_page_memory_base() + initial_page_offset * eosio::chain::wasm_constraints::wasm_page_size,
+                  (code.starting_memory_pages - initial_page_offset) * eosio::chain::wasm_constraints::wasm_page_size, PROT_READ | PROT_WRITE);
+      }
+      arch_prctl(ARCH_SET_GS, (unsigned long*)(mem.zero_page_memory_base()+initial_page_offset*memory::stride));
       memset(mem.full_page_memory_base(), 0, 64u*1024u*code.starting_memory_pages);
    }
    else
       arch_prctl(ARCH_SET_GS, (unsigned long*)mem.zero_page_memory_base());
-   memcpy(mem.full_page_memory_base() - code.initdata_prologue_size, code_mapping + code.initdata_begin, code.initdata_size);
+
+   void* globals;
+   if(code.initdata_prologue_size > memory::max_prologue_size) {
+      globals_buffer.resize(code.initdata_prologue_size);
+      memcpy(globals_buffer.data(), code_mapping + code.initdata_begin, code.initdata_prologue_size);
+      memcpy(mem.full_page_memory_base() - memory::max_prologue_size,
+             code_mapping + code.initdata_begin + code.initdata_prologue_size - memory::max_prologue_size,
+             code.initdata_size - code.initdata_prologue_size + memory::max_prologue_size);
+      globals = globals_buffer.data() + globals_buffer.size();
+   } else {
+      memcpy(mem.full_page_memory_base() - code.initdata_prologue_size, code_mapping + code.initdata_begin, code.initdata_size);
+      globals = mem.full_page_memory_base();
+   }
 
    control_block* const cb = mem.get_control_block();
    cb->magic = signal_sentinel;
@@ -171,14 +195,16 @@ void executor::execute(const code_descriptor& code, const memory& mem, apply_con
    cb->ctx = &context;
    executors_exception_ptr = nullptr;
    cb->eptr = &executors_exception_ptr;
-   cb->current_call_depth_remaining = eosio::chain::wasm_constraints::maximum_call_depth+2;
+   cb->current_call_depth_remaining = max_call_depth + 1;
    cb->current_linear_memory_pages = code.starting_memory_pages;
+   cb->max_linear_memory_pages = max_pages;
    cb->first_invalid_memory_address = code.starting_memory_pages*64*1024;
    cb->full_linear_memory_start = (char*)mem.full_page_memory_base();
    cb->jmp = &executors_sigjmp_buf;
    cb->bounce_buffers = &executors_bounce_buffers;
    cb->running_code_base = (uintptr_t)(code_mapping + code.code_begin);
    cb->is_running = true;
+   cb->globals = globals;
 
    context.trx_context.transaction_timer.set_expiration_callback([](void* user) {
       executor* self = (executor*)user;
@@ -187,28 +213,36 @@ void executor::execute(const code_descriptor& code, const memory& mem, apply_con
    }, this);
    context.trx_context.checktime(); //catch any expiration that might have occurred before setting up callback
 
-   auto cleanup = fc::make_scoped_exit([cb, &tt=context.trx_context.transaction_timer](){
+   auto cleanup = fc::make_scoped_exit([cb, &tt=context.trx_context.transaction_timer, &mem=mem](){
       cb->is_running = false;
       cb->bounce_buffers->clear();
       tt.set_expiration_callback(nullptr, nullptr);
+
+      uint64_t base_pages = mem.size_of_memory_slice_mapping()/memory::stride - 1;
+      if(cb->current_linear_memory_pages > base_pages) {
+         mprotect(mem.full_page_memory_base() + base_pages * eosio::chain::wasm_constraints::wasm_page_size,
+                  (cb->current_linear_memory_pages - base_pages) * eosio::chain::wasm_constraints::wasm_page_size, PROT_NONE);
+      }
    });
 
    void(*apply_func)(uint64_t, uint64_t, uint64_t) = (void(*)(uint64_t, uint64_t, uint64_t))(cb->running_code_base + code.apply_offset);
 
    switch(sigsetjmp(*cb->jmp, 0)) {
       case 0:
-         code.start.visit(overloaded {
-            [&](const no_offset&) {},
-            [&](const intrinsic_ordinal& i) {
-               void(*start_func)() = (void(*)())(*(uintptr_t*)((uintptr_t)mem.zero_page_memory_base() - memory::first_intrinsic_offset - i.ordinal*8));
-               start_func();
-            },
-            [&](const code_offset& offs) {
-               void(*start_func)() = (void(*)())(cb->running_code_base + offs.offset);
-               start_func();
-            }
+         stack.run([&]{
+            std::visit(overloaded {
+               [&](const no_offset&) {},
+               [&](const intrinsic_ordinal& i) {
+                  void(*start_func)() = (void(*)())(*(uintptr_t*)((uintptr_t)mem.zero_page_memory_base() - memory::first_intrinsic_offset - i.ordinal*8));
+                  start_func();
+               },
+               [&](const code_offset& offs) {
+                  void(*start_func)() = (void(*)())(cb->running_code_base + offs.offset);
+                  start_func();
+               }
+            }, code.start);
+            apply_func(context.get_receiver().to_uint64_t(), context.get_action().account.to_uint64_t(), context.get_action().name.to_uint64_t());
          });
-         apply_func(context.get_receiver().to_uint64_t(), context.get_action().account.to_uint64_t(), context.get_action().name.to_uint64_t());
          break;
       //case 1: clean eosio_exit
       case EOSVMOC_EXIT_CHECKTIME_FAIL:

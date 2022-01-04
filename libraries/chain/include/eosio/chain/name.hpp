@@ -13,7 +13,7 @@ namespace fc {
 } // fc
 
 namespace eosio::chain {
-   static constexpr uint64_t char_to_symbol( char c ) {
+   inline constexpr uint64_t char_to_symbol( char c ) {
       if( c >= 'a' && c <= 'z' )
          return (c - 'a') + 6;
       if( c >= '1' && c <= '5' )
@@ -21,10 +21,10 @@ namespace eosio::chain {
       return 0;
    }
 
-   static constexpr uint64_t string_to_uint64_t( std::string_view str ) {
+   inline constexpr uint64_t string_to_uint64_t( std::string_view str ) {
       uint64_t n = 0;
       int i = 0;
-      for ( ; str[i] && i < 12; ++i) {
+      for ( ; i < str.size() && i < 12; ++i) {
          // NOTE: char_to_symbol() returns char type, and without this explicit
          // expansion to uint64 type, the compilation fails at the point of usage
          // of string_to_name(), where the usage requires constant (compile time) expression.
@@ -34,7 +34,7 @@ namespace eosio::chain {
       // The for-loop encoded up to 60 high bits into uint64 'name' variable,
       // if (strlen(str) > 12) then encode str[12] into the low (remaining)
       // 4 bits of 'name'
-      if (i == 12)
+      if (i < str.size() && i == 12)
          n |= char_to_symbol(str[12]) & 0x0F;
       return n;
    }
@@ -81,10 +81,25 @@ namespace eosio::chain {
    // to its 5-bit slot starting with the highest slot for the first char.
    // The 13th char, if str is long enough, is encoded into 4-bit chunk
    // and placed in the lowest 4 bits. 64 = 12 * 5 + 4
-   static constexpr name string_to_name( std::string_view str )
+   inline constexpr name string_to_name( std::string_view str )
    {
       return name( string_to_uint64_t( str ) );
    }
+
+   inline namespace literals {
+#if defined(__clang__)
+# pragma clang diagnostic push
+# pragma clang diagnostic ignored "-Wgnu-string-literal-operator-template"
+#endif
+      template <typename T, T... Str>
+      inline constexpr name operator""_n() {
+         constexpr const char buf[] = {Str...};
+         return name{std::integral_constant<uint64_t, string_to_uint64_t(std::string_view{buf, sizeof(buf)})>::value};
+      }
+#if defined(__clang__)
+# pragma clang diagnostic pop
+#endif
+   } // namespace literals
 
 #define N(X) eosio::chain::string_to_name(#X)
 

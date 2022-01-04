@@ -59,6 +59,10 @@ namespace LLVMJIT
 		return "wasmFunc" + std::to_string(functionDefIndex);
 	}
 
+	const char* getTableSymbolName() {
+		return "wasmTable";
+	}
+
 	bool getFunctionIndexFromExternalName(const char* externalName,Uptr& outFunctionDefIndex)
 	{
 		const char wasmFuncPrefix[] = "wasmFunc";
@@ -130,7 +134,7 @@ namespace LLVMJIT
 		std::vector<llvm::Function*> functionDefs;
 		std::vector<size_t> importedFunctionOffsets;
 		std::vector<llvm::Constant*> globals;
-		llvm::Constant* defaultTablePointer;
+		llvm::GlobalVariable* defaultTablePointer;
 		llvm::Constant* defaultTableMaxElementIndex;
 		llvm::Constant* defaultMemoryBase;
 		llvm::Constant* depthCounter;
@@ -746,7 +750,8 @@ namespace LLVMJIT
 				"eosvmoc_internal.indirect_call_oob",FunctionType::get(),{});
 
 			// Load the type for this table entry.
-			auto functionTypePointerPointer = CreateInBoundsGEPWAR(irBuilder, moduleContext.defaultTablePointer, functionIndexZExt, emitLiteral((U32)0));
+			auto tablePointer = CreateInBoundsGEPWAR(irBuilder, moduleContext.defaultTablePointer, emitLiteral(0), emitLiteral(0));
+			auto functionTypePointerPointer = CreateInBoundsGEPWAR(irBuilder, tablePointer, functionIndexZExt, emitLiteral((U32)0));
 			auto functionTypePointer = irBuilder.CreateLoad(functionTypePointerPointer);
 			auto llvmCalleeType = emitLiteralPointer(calleeType,llvmI8PtrType);
 			
@@ -760,7 +765,7 @@ namespace LLVMJIT
 			//If the WASM only contains table elements to function definitions internal to the wasm, we can take a
 			// simple and approach
 			if(moduleContext.tableOnlyHasDefinedFuncs) {
-				auto functionPointerPointer = CreateInBoundsGEPWAR(irBuilder, moduleContext.defaultTablePointer, functionIndexZExt, emitLiteral((U32)1));
+				auto functionPointerPointer = CreateInBoundsGEPWAR(irBuilder, tablePointer, functionIndexZExt, emitLiteral((U32)1));
 				auto functionInfo = irBuilder.CreateLoad(functionPointerPointer);  //offset of code
 				llvm::Value* running_code_start = irBuilder.CreateLoad(emitLiteralPointer((void*)OFFSET_OF_CONTROL_BLOCK_MEMBER(running_code_base), llvmI64Type->getPointerTo(256)));
 				llvm::Value* offset_from_start = irBuilder.CreateAdd(running_code_start, functionInfo);
@@ -771,7 +776,7 @@ namespace LLVMJIT
 				if(calleeType->ret != ResultType::none) { push(result); }
 			}
 			else {
-				auto functionPointerPointer = CreateInBoundsGEPWAR(irBuilder, moduleContext.defaultTablePointer, functionIndexZExt, emitLiteral((U32)1));
+				auto functionPointerPointer = CreateInBoundsGEPWAR(irBuilder, tablePointer, functionIndexZExt, emitLiteral((U32)1));
 				auto functionInfo = irBuilder.CreateLoad(functionPointerPointer);  //offset of code
 
 				auto is_intrnsic = irBuilder.CreateICmpSLT(functionInfo, typedZeroConstants[(Uptr)ValueType::i64]);
@@ -824,18 +829,28 @@ namespace LLVMJIT
 			auto value = irBuilder.CreateBitCast(pop(),localPointers[imm.variableIndex]->getType()->getPointerElementType());
 			irBuilder.CreateStore(value,localPointers[imm.variableIndex]);
 		}
+		llvm::Value* get_mutable_global_ptr(llvm::Value* global) {
+			if(global->getType()->isStructTy()) {
+			llvm::Value* globalsBasePtr = irBuilder.CreateExtractValue(global, 0);
+			        return CreateInBoundsGEPWAR(irBuilder, irBuilder.CreateLoad(globalsBasePtr), irBuilder.CreateExtractValue(global, 1));
+			} else if(global->getType()->isPointerTy()) {
+			        return global;
+			} else {
+			        return nullptr;
+			}
+	        }
 		void tee_local(GetOrSetVariableImm<false> imm)
 		{
 			WAVM_ASSERT_THROW(imm.variableIndex < localPointers.size());
 			auto value = irBuilder.CreateBitCast(getTopValue(),localPointers[imm.variableIndex]->getType()->getPointerElementType());
-			irBuilder.CreateStore(value,localPointers[imm.variableIndex]);
+			irBuilder.CreateStore(value,get_mutable_global_ptr(localPointers[imm.variableIndex]));
 		}
 		
 		void get_global(GetOrSetVariableImm<true> imm)
 		{
 			WAVM_ASSERT_THROW(imm.variableIndex < moduleContext.globals.size());
-			if(moduleContext.globals[imm.variableIndex]->getType()->isPointerTy())
-				push(irBuilder.CreateLoad(moduleContext.globals[imm.variableIndex]));
+			if(auto* p = get_mutable_global_ptr(moduleContext.globals[imm.variableIndex]))
+				push(irBuilder.CreateLoad(p));
 			else
 				push(moduleContext.globals[imm.variableIndex]);
 		}
@@ -843,7 +858,7 @@ namespace LLVMJIT
 		{
 			WAVM_ASSERT_THROW(imm.variableIndex < moduleContext.globals.size());
 			auto value = irBuilder.CreateBitCast(pop(),moduleContext.globals[imm.variableIndex]->getType()->getPointerElementType());
-			irBuilder.CreateStore(value,moduleContext.globals[imm.variableIndex]);
+			irBuilder.CreateStore(value,get_mutable_global_ptr(moduleContext.globals[imm.variableIndex]));
 		}
 
 		//
@@ -1253,11 +1268,19 @@ namespace LLVMJIT
 			importedFunctionOffsets.push_back(ie.ordinal);
 		}
 
-		int current_prologue = -8;
+		intptr_t current_prologue = -8;
 
 		for(const GlobalDef& global : module.globals.defs) {
 			if(global.type.isMutable) {
-				globals.push_back(emitLiteralPointer((void*)current_prologue,asLLVMType(global.type.valueType)->getPointerTo(256)));
+			        if(current_prologue >= -(int)memory::max_prologue_size) {
+				        globals.push_back(emitLiteralPointer((void*)current_prologue,asLLVMType(global.type.valueType)->getPointerTo(256)));
+			        } else {
+			                auto baseType = asLLVMType(global.type.valueType)->getPointerTo()->getPointerTo(256);
+				        auto basePtr = emitLiteralPointer((void*)OFFSET_OF_CONTROL_BLOCK_MEMBER(globals), baseType);
+				        auto structTy = llvm::StructType::get(context, {baseType, llvmI64Type});
+				        I64 typeSize = IR::getTypeBitWidth(global.type.valueType)/8;
+				        globals.push_back(llvm::ConstantStruct::get(structTy, {basePtr, emitLiteral((I64)current_prologue/typeSize)}));
+			        }
 				current_prologue -= 8;
 			}
 			else {
@@ -1272,12 +1295,12 @@ namespace LLVMJIT
 		}
 
 		if(module.tables.size()) {
-			current_prologue -= 8; //now pointing to LAST element
-			current_prologue -= 16*(module.tables.defs[0].type.size.min-1); //now pointing to FIRST element
 			auto tableElementType = llvm::StructType::get(context,{llvmI8PtrType, llvmI64Type});
-			defaultTablePointer = emitLiteralPointer((void*)current_prologue,tableElementType->getPointerTo(256));
+			llvm::Type* tableArrayTy = llvm::ArrayType::get(tableElementType, module.tables.defs[0].type.size.min);
+			defaultTablePointer = new llvm::GlobalVariable(*llvmModule, tableArrayTy, true, llvm::GlobalValue::ExternalLinkage, llvm::ConstantAggregateZero::get(tableArrayTy), getTableSymbolName());
+			defaultTablePointer->setVisibility(llvm::GlobalValue::ProtectedVisibility); // Don't use the GOT.
+			defaultTablePointer->setExternallyInitialized(true);
 			defaultTableMaxElementIndex = emitLiteral((U64)module.tables.defs[0].type.size.min);
-
 			for(const TableSegment& table_segment : module.tableSegments)
 				for(Uptr i = 0; i < table_segment.indices.size(); ++i)
 					if(table_segment.indices[i] < module.functions.imports.size())

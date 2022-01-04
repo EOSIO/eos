@@ -29,11 +29,6 @@ void data_segments_injection_visitor::inject( Module& m ) {
 }
 void data_segments_injection_visitor::initializer() {
 }
-void max_memory_injection_visitor::inject( Module& m ) {
-   if(m.memories.defs.size() && m.memories.defs[0].type.size.max > maximum_linear_memory/wasm_page_size)
-      m.memories.defs[0].type.size.max = maximum_linear_memory/wasm_page_size;
-}
-void max_memory_injection_visitor::initializer() {}
 
 int32_t  call_depth_check_and_insert_checktime::global_idx = -1;
 uint32_t instruction_counter::icnt = 0;
