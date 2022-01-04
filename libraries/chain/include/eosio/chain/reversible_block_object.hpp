@@ -16,9 +16,10 @@ namespace eosio { namespace chain {
       shared_string  packedblock;
 
       void set_block( const signed_block_ptr& b ) {
-         packedblock.resize( fc::raw::pack_size( *b ) );
-         fc::datastream<char*> ds( packedblock.data(), packedblock.size() );
-         fc::raw::pack( ds, *b );
+         packedblock.resize_and_fill( fc::raw::pack_size( *b ), [&b](char* data, std::size_t size) {
+            fc::datastream<char*> ds( data, size );
+            fc::raw::pack( ds, *b );
+         });
       }
 
       signed_block_ptr get_block()const {

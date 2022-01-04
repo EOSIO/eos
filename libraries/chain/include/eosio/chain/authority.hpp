@@ -111,9 +111,11 @@ struct shared_key_weight {
          },
          [&](const fc::crypto::webauthn::public_key& wa) {
             size_t psz = fc::raw::pack_size(wa);
-            shared_string wa_ss(psz, boost::container::default_init, std::move(allocator));
-            fc::datastream<char*> ds(wa_ss.data(), wa_ss.size());
-            fc::raw::pack(ds, wa);
+            shared_string wa_ss(std::move(allocator));
+            wa_ss.resize_and_fill( psz, [&wa]( char* data, std::size_t sz ) {
+               fc::datastream<char*> ds(data, sz);
+               fc::raw::pack(ds, wa);
+            });
 
             return shared_key_weight(std::move(wa_ss), k.weight);
          }

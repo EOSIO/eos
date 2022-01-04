@@ -287,11 +287,9 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          ("database-map-mode", bpo::value<chainbase::pinnable_mapped_file::map_mode>()->default_value(chainbase::pinnable_mapped_file::map_mode::mapped),
           "Database map mode (\"mapped\", \"heap\", or \"locked\").\n"
           "In \"mapped\" mode database is memory mapped as a file.\n"
-          "In \"heap\" mode database is preloaded in to swappable memory.\n"
-#ifdef __linux__
-          "In \"locked\" mode database is preloaded, locked in to memory, and optionally can use huge pages.\n"
-#else
-          "In \"locked\" mode database is preloaded and locked in to memory.\n"
+#ifndef _WIN32
+          "In \"heap\" mode database is preloaded in to swappable memory and will use huge pages if available.\n"
+          "In \"locked\" mode database is preloaded, locked in to memory, and will use huge pages if available.\n"
 #endif
          )
 #ifdef __linux__
@@ -1052,10 +1050,6 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
       }
 
       my->chain_config->db_map_mode = options.at("database-map-mode").as<pinnable_mapped_file::map_mode>();
-#ifdef __linux__
-      if( options.count("database-hugepage-path") )
-         my->chain_config->db_hugepage_paths = options.at("database-hugepage-path").as<std::vector<std::string>>();
-#endif
 
 #ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
       if( options.count("eos-vm-oc-cache-size-mb") )

@@ -302,10 +302,10 @@ struct controller_impl {
     self(s),
     db( cfg.state_dir,
         cfg.read_only ? database::read_only : database::read_write,
-        cfg.state_size, false, cfg.db_map_mode, cfg.db_hugepage_paths ),
+        cfg.state_size, false, cfg.db_map_mode ),
     reversible_blocks( cfg.blocks_dir/config::reversible_blocks_dir_name,
         cfg.read_only ? database::read_only : database::read_write,
-        cfg.reversible_cache_size, false, cfg.db_map_mode, cfg.db_hugepage_paths ),
+        cfg.reversible_cache_size, false, cfg.db_map_mode ),
     blog( cfg.blocks_dir ),
     fork_db( cfg.state_dir ),
     wasmif( cfg.wasm_runtime, cfg.eosvmoc_tierup, db, cfg.state_dir, cfg.eosvmoc_config ),
@@ -1005,8 +1005,7 @@ struct controller_impl {
          if( name == config::system_account_name ) {
             // The initial eosio ABI value affects consensus; see  https://github.com/EOSIO/eos/issues/7794
             // TODO: This doesn't charge RAM; a fix requires a consensus upgrade.
-            a.abi.resize(sizeof(eosio_abi_bin));
-            memcpy(a.abi.data(), eosio_abi_bin, sizeof(eosio_abi_bin));
+            a.abi.assign(eosio_abi_bin, sizeof(eosio_abi_bin));
          }
       });
       db.create<account_metadata_object>([&](auto & a) {
