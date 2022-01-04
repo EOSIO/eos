@@ -4,7 +4,7 @@
     "types": [
         {
             "new_type_name": "mp_uint16",
-            "type": "pair_uint16_uint16[]"
+            "type": "mpair_uint16_uint16[]"
         },
         {
             "new_type_name": "op_struc",
@@ -47,6 +47,104 @@
             ]
         },
         {
+            "name": "mpair_uint16_mp_uint16",
+            "base": "",
+            "fields": [
+                {
+                    "name": "key",
+                    "type": "uint16"
+                },
+                {
+                    "name": "value",
+                    "type": "mp_uint16"
+                }
+            ]
+        },
+        {
+            "name": "mpair_uint16_op_uint16",
+            "base": "",
+            "fields": [
+                {
+                    "name": "key",
+                    "type": "uint16"
+                },
+                {
+                    "name": "value",
+                    "type": "op_uint16"
+                }
+            ]
+        },
+        {
+            "name": "mpair_uint16_pr_uint16",
+            "base": "",
+            "fields": [
+                {
+                    "name": "key",
+                    "type": "uint16"
+                },
+                {
+                    "name": "value",
+                    "type": "pr_uint16"
+                }
+            ]
+        },
+        {
+            "name": "mpair_uint16_set_uint16",
+            "base": "",
+            "fields": [
+                {
+                    "name": "key",
+                    "type": "uint16"
+                },
+                {
+                    "name": "value",
+                    "type": "set_uint16"
+                }
+            ]
+        },
+        {
+            "name": "mpair_uint16_tup_uint16",
+            "base": "",
+            "fields": [
+                {
+                    "name": "key",
+                    "type": "uint16"
+                },
+                {
+                    "name": "value",
+                    "type": "tup_uint16"
+                }
+            ]
+        },
+        {
+            "name": "mpair_uint16_uint16",
+            "base": "",
+            "fields": [
+                {
+                    "name": "key",
+                    "type": "uint16"
+                },
+                {
+                    "name": "value",
+                    "type": "uint16"
+                }
+            ]
+        },
+        {
+            "name": "mpair_uint16_vec_uint16",
+            "base": "",
+            "fields": [
+                {
+                    "name": "key",
+                    "type": "uint16"
+                },
+                {
+                    "name": "value",
+                    "type": "vec_uint16"
+                }
+            ]
+        },
+        {
             "name": "mystruct",
             "base": "",
             "fields": [
@@ -65,11 +163,11 @@
             "base": "",
             "fields": [
                 {
-                    "name": "key",
+                    "name": "first",
                     "type": "uint16"
                 },
                 {
-                    "name": "value",
+                    "name": "second",
                     "type": "mp_uint16"
                 }
             ]
@@ -79,11 +177,11 @@
             "base": "",
             "fields": [
                 {
-                    "name": "key",
+                    "name": "first",
                     "type": "uint16"
                 },
                 {
-                    "name": "value",
+                    "name": "second",
                     "type": "op_uint16"
                 }
             ]
@@ -93,11 +191,11 @@
             "base": "",
             "fields": [
                 {
-                    "name": "key",
+                    "name": "first",
                     "type": "uint16"
                 },
                 {
-                    "name": "value",
+                    "name": "second",
                     "type": "pr_uint16"
                 }
             ]
@@ -107,11 +205,11 @@
             "base": "",
             "fields": [
                 {
-                    "name": "key",
+                    "name": "first",
                     "type": "uint16"
                 },
                 {
-                    "name": "value",
+                    "name": "second",
                     "type": "set_uint16"
                 }
             ]
@@ -121,11 +219,11 @@
             "base": "",
             "fields": [
                 {
-                    "name": "key",
+                    "name": "first",
                     "type": "uint16"
                 },
                 {
-                    "name": "value",
+                    "name": "second",
                     "type": "tup_uint16"
                 }
             ]
@@ -135,11 +233,11 @@
             "base": "",
             "fields": [
                 {
-                    "name": "key",
+                    "name": "first",
                     "type": "uint16"
                 },
                 {
-                    "name": "value",
+                    "name": "second",
                     "type": "uint16"
                 }
             ]
@@ -163,11 +261,11 @@
             "base": "",
             "fields": [
                 {
-                    "name": "key",
+                    "name": "first",
                     "type": "uint16"
                 },
                 {
-                    "name": "value",
+                    "name": "second",
                     "type": "vec_uint16"
                 }
             ]
@@ -250,27 +348,27 @@
                 },
                 {
                     "name": "mst",
-                    "type": "pair_uint16_set_uint16[]"
+                    "type": "mpair_uint16_set_uint16[]"
                 },
                 {
                     "name": "mv",
-                    "type": "pair_uint16_vec_uint16[]"
+                    "type": "mpair_uint16_vec_uint16[]"
                 },
                 {
                     "name": "mo",
-                    "type": "pair_uint16_op_uint16[]"
+                    "type": "mpair_uint16_op_uint16[]"
                 },
                 {
                     "name": "mm",
-                    "type": "pair_uint16_mp_uint16[]"
+                    "type": "mpair_uint16_mp_uint16[]"
                 },
                 {
                     "name": "mp",
-                    "type": "pair_uint16_pr_uint16[]"
+                    "type": "mpair_uint16_pr_uint16[]"
                 },
                 {
                     "name": "mt",
-                    "type": "pair_uint16_tup_uint16[]"
+                    "type": "mpair_uint16_tup_uint16[]"
                 },
                 {
                     "name": "pst",
@@ -340,7 +438,7 @@
                 },
                 {
                     "name": "mm",
-                    "type": "pair_uint16_mp_uint16[]"
+                    "type": "mpair_uint16_mp_uint16[]"
                 }
             ]
         },
@@ -354,7 +452,7 @@
                 },
                 {
                     "name": "mo",
-                    "type": "pair_uint16_op_uint16[]"
+                    "type": "mpair_uint16_op_uint16[]"
                 }
             ]
         },
@@ -368,7 +466,7 @@
                 },
                 {
                     "name": "mp",
-                    "type": "pair_uint16_pr_uint16[]"
+                    "type": "mpair_uint16_pr_uint16[]"
                 }
             ]
         },
@@ -382,7 +480,7 @@
                 },
                 {
                     "name": "mst",
-                    "type": "pair_uint16_set_uint16[]"
+                    "type": "mpair_uint16_set_uint16[]"
                 }
             ]
         },
@@ -396,7 +494,7 @@
                 },
                 {
                     "name": "mt",
-                    "type": "pair_uint16_tup_uint16[]"
+                    "type": "mpair_uint16_tup_uint16[]"
                 }
             ]
         },
@@ -410,7 +508,7 @@
                 },
                 {
                     "name": "mv",
-                    "type": "pair_uint16_vec_uint16[]"
+                    "type": "mpair_uint16_vec_uint16[]"
                 }
             ]
         },
