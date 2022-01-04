@@ -8,6 +8,9 @@
 
 namespace b1::rodeos {
 
+std::unordered_map<uint64_t, std::unordered_map<uint32_t, std::unordered_map<uint32_t, uint32_t> > > funcnt_map;
+std::unordered_map<uint64_t, std::unordered_map<uint32_t, std::unordered_map<uint32_t, uint32_t> > > linecnt_map;
+
 namespace ship_protocol = eosio::ship_protocol;
 
 using ship_protocol::get_blocks_result_base;
