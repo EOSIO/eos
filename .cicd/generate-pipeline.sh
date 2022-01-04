@@ -48,7 +48,6 @@ for FILE in $(ls "$CICD_DIR/platforms/$PLATFORM_TYPE"); do
     ( [[ $SKIP_LINUX == true ]] && [[ ! $FILE =~ 'macos' ]] ) && continue
     # use pinned or unpinned, not both sets of platform files
     if [[ $PINNED == false ]]; then
-        export SKIP_CONTRACT_BUILDER=${SKIP_CONTRACT_BUILDER:-true}
         export SKIP_PACKAGE_BUILDER=${SKIP_PACKAGE_BUILDER:-true}
     fi
     export FILE_NAME="$(echo "$FILE" | awk '{split($0,a,/\.(d|s)/); print a[1] }')"
