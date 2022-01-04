@@ -73,8 +73,6 @@ class Utils:
     DataDir="var/lib/"
     ConfigDir="etc/eosio/"
 
-    TimeFmt='%Y-%m-%dT%H:%M:%S.%f'
-
     @staticmethod
     def Print(*args, **kwargs):
         stackDepth=len(inspect.stack())-2
@@ -156,10 +154,21 @@ class Utils:
 
     @staticmethod
     def checkOutput(cmd, ignoreError=False):
+        popen = Utils.delayedCheckOutput(cmd)
+        return Utils.checkDelayedOutput(popen, cmd, ignoreError=ignoreError)
+
+    @staticmethod
+    def delayedCheckOutput(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE):
         if (isinstance(cmd, list)):
-            popen=subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            popen=subprocess.Popen(cmd, stdout=stdout, stderr=stderr)
         else:
-            popen=subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+            popen=subprocess.Popen(cmd, stdout=stdout, stderr=stderr, shell=True)
+        return popen
+
+    @staticmethod
+    def checkDelayedOutput(popen, cmd, ignoreError=False):
+        assert isinstance(popen, subprocess.Popen)
+        assert isinstance(cmd, (str,list))
         (output,error)=popen.communicate()
         Utils.CheckOutputDeque.append((output,error,cmd))
         if popen.returncode != 0 and not ignoreError:
@@ -215,6 +224,12 @@ class Utils:
         return False if ret is None else ret
 
     @staticmethod
+    def waitForBoolWithArg(lam, arg, timeout=None, sleepTime=3, reporter=None):
+        myLam = lambda: True if lam(arg, timeout) else None
+        ret=Utils.waitForObj(myLam, timeout, sleepTime, reporter=reporter)
+        return False if ret is None else ret
+
+    @staticmethod
     def filterJsonObjectOrArray(data):
         firstObjIdx=data.find('{')
         lastObjIdx=data.rfind('}')
@@ -256,7 +271,6 @@ class Utils:
     def runCmdReturnStr(cmd, trace=False):
         cmdArr=shlex.split(cmd)
         return Utils.runCmdArrReturnStr(cmdArr)
-
 
     @staticmethod
     def runCmdArrReturnStr(cmdArr, trace=False):

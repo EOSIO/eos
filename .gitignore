@@ -87,3 +87,6 @@ var/lib/node_*
 .DS_Store
 
 !*.swagger.*
+
+node_modules
+package-lock.json

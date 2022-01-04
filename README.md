@@ -30,6 +30,7 @@ apt-get update && apt-get install   \
         libusb-1.0-0-dev            \
         libzstd-dev                 \
         llvm-11-dev                 \
+        npm                         \
         ninja-build                 \
         pkg-config                  \
         time
@@ -66,6 +67,7 @@ I highly recommend the ccache options. They don't speed up the first clean build
 
 ```
 cd build
+npm install
 
 # Runs parallelizable tests in parallel. This runs much faster when
 # -DDISABLE_WASM_SPEC_TESTS=yes is used.
