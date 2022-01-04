@@ -10,7 +10,7 @@ if [[ -z "$VERS" ]]; then
          echo "Error, unsupported OS X version"
          exit -1
       else
-         MAC_VERSION="BigSur"
+         MAC_VERSION="bigsur"
       fi
    else
       MAC_VERSION="catalina"
