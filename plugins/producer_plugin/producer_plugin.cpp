@@ -338,6 +338,11 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
             return false;
          }
 
+         if (_block_vault_resync.is_pending() && _producers.count( block->producer ) > 0 ) {
+            // Cancel any pending resync from blockvault if we received any blocks from the same logical producer
+            _block_vault_resync.cancel();
+         }
+
          const auto& id = block_id ? *block_id : block->calculate_id();
          auto blk_num = block->block_num();
 
@@ -375,12 +380,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
             }, [this]( const transaction_id_type& id ) {
                return _unapplied_transactions.get_trx( id );
             } );
-
             if ( blockvault != nullptr ) {
-               if (_block_vault_resync.is_pending() && _producers.count( block->producer ) > 0 ) {
-                  // Cancel any pending resync from blockvault if we received any blocks from the same logical producer
-                  _block_vault_resync.cancel();
-               }
                blockvault->async_append_external_block(blk_state->dpos_irreversible_blocknum, blk_state->block, [](bool){});
             }
          } catch ( const guard_exception& e ) {
@@ -1062,7 +1062,6 @@ void producer_plugin::plugin_startup()
 void producer_plugin::plugin_shutdown() {
    try {
       my->_timer.cancel();
-      my->_block_vault_resync.cancel();
    } catch ( const std::bad_alloc& ) {
      chain_plugin::handle_bad_alloc();
    } catch ( const boost::interprocess::bad_alloc& ) {
