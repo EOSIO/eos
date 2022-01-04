@@ -130,28 +130,10 @@ enum class pending_block_mode {
    speculating
 };
 
-class producer_plugin_impl;
-class block_only_sync : public blockvault::sync_callback {
-   producer_plugin_impl*       _impl;
-   boost::asio::deadline_timer _start_sync_timer;
-   bool                        _pending = false;
-
- public:
-   block_only_sync(producer_plugin_impl* impl, boost::asio::io_service& io)
-       : _impl(impl), _start_sync_timer(io) {}
-
-   bool is_pending() const { return _pending; }
-   void cancel() { _start_sync_timer.cancel(); }
-   void schedule();
-   void on_snapshot(const char* snapshot_filename) override;
-   void on_block(eosio::chain::signed_block_ptr block) override;
-};
-
 class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin_impl> {
    public:
       producer_plugin_impl(boost::asio::io_service& io)
       :_timer(io)
-      ,_block_vault_resync(this, io)
       ,_transaction_ack_channel(app().get_channel<compat::channels::transaction_ack>())
       {
       }
@@ -176,7 +158,6 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       std::map<chain::public_key_type, signature_provider_type> _signature_providers;
       std::set<chain::account_name>                             _producers;
       boost::asio::deadline_timer                               _timer;
-      block_only_sync                                           _block_vault_resync;
       using producer_watermark = std::pair<uint32_t, block_timestamp_type>;
       std::map<chain::account_name, producer_watermark>         _producer_watermarks;
       pending_block_mode                                        _pending_block_mode = pending_block_mode::speculating;
@@ -2346,46 +2327,6 @@ static auto maybe_make_debug_time_logger() -> std::optional<decltype(make_debug_
    }
 }
 
-void block_only_sync::schedule() {
-   if (!_pending) {
-      // wait one second to see if we can actually get the block from net plugin before we try to resync from block vault
-      _start_sync_timer.expires_from_now(boost::posix_time::seconds(1));
-      _pending = true;
-      _start_sync_timer.async_wait(app().get_priority_queue().wrap(
-          priority::high, [this, weak_impl = _impl->weak_from_this()](const boost::system::error_code& ec) {
-             auto shared_impl = weak_impl.lock();
-             auto impl        = shared_impl.get();
-             if (impl && !ec) {
-                auto id = impl->chain_plug->chain().last_irreversible_block_id();
-                fc_dlog(_log, "Attempt to resync from block vault");
-                try {
-                  impl->blockvault->sync(&id, *this);
-                } catch( fc::exception& er ) {
-                   fc_wlog(_log, "Attempting to resync from blockvault encountered ${details}; the node must restart to "
-                        "continue!",
-                        ("details", er.to_detail_string()));
-                   app().quit();
-                }
-             }
-             this->_pending = false;
-          }));
-   }
-}
-
-void block_only_sync::on_snapshot(const char*) {
-   EOS_THROW(producer_exception, "a snapshot");
-}
-
-void block_only_sync::on_block(eosio::chain::signed_block_ptr block) {
-   try {
-      bool connectivity_check = false; // use false right now, should investigate further after 3.0 rc
-      _impl->on_sync_block(block, connectivity_check);
-   }
-   catch (const unlinkable_block_exception&) {
-      fc_dlog(_log, "got unlinkable block ${num} from block vault", ("num", block->block_num()));
-   }
-}
-
 void producer_plugin_impl::produce_block() {
    //ilog("produce_block ${t}", ("t", fc::time_point::now())); // for testing _produce_time_offset_us
    EOS_ASSERT(_pending_block_mode == pending_block_mode::producing, producer_exception, "called produce_block while not actually producing");
@@ -2431,7 +2372,6 @@ void producer_plugin_impl::produce_block() {
                                                   pending_blk_state->block, [&p](bool b) { p.set_value(b); });
       if (!f.get()) {
          _latest_rejected_block_num = pending_blk_state->block->block_num();
-         _block_vault_resync.schedule();
          EOS_ASSERT(false, block_validation_error, "Block rejected by block vault");
       }
 
