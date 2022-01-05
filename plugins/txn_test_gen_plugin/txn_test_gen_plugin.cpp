@@ -35,6 +35,32 @@ FC_REFLECT(eosio::detail::txn_test_gen_status, (status));
 
 namespace eosio {
 
+const abi_def& eosio_token_contract_abi_def() {
+   static abi_def result;
+   if (result.version.empty()) {
+      if(const char* env_p = std::getenv("EOSIO_TOKEN_DIR")) {
+         std::string s;                                                                        
+         fc::read_file_contents(fc::path(env_p)/ "eosio.token.abi", s);
+         result = fc::json::from_string(s.data()).as<abi_def>();
+      } else
+         result = fc::json::from_string(contracts::eosio_token_abi().data()).as<abi_def>();
+   }
+   return result;
+}
+
+const std::vector<uint8_t>& eosio_token_contract_wasm() {
+   static std::vector<uint8_t> result;
+   if (result.empty()) {
+      if(const char* env_p = std::getenv("EOSIO_TOKEN_DIR")) {
+         std::string s;                                                                        
+         fc::read_file_contents(fc::path(env_p)/ "eosio.token.wasm", s);
+         result.assign(s.begin(), s.end());
+      } else
+         result = contracts::eosio_token_wasm();
+   }
+   return result;
+}
+
 static appbase::abstract_plugin& _txn_test_gen_plugin = app().register_plugin<txn_test_gen_plugin>();
 
 using namespace eosio::chain;
@@ -138,13 +164,13 @@ struct txn_test_gen_plugin_impl {
       try {
          name creator(init_name);
 
-         abi_def currency_abi_def = fc::json::from_string(contracts::eosio_token_abi().data()).as<abi_def>();
+         abi_def currency_abi_def = eosio_token_contract_abi_def();
 
          controller& cc = app().get_plugin<chain_plugin>().chain();
          auto chainid = app().get_plugin<chain_plugin>().get_chain_id();
          auto abi_serializer_max_time = app().get_plugin<chain_plugin>().get_abi_serializer_max_time();
 
-         abi_serializer eosio_token_serializer{fc::json::from_string(contracts::eosio_token_abi().data()).as<abi_def>(),
+         abi_serializer eosio_token_serializer{eosio_token_contract_abi_def(),
                                                abi_serializer::create_yield_function( abi_serializer_max_time )};
 
          fc::crypto::private_key txn_test_receiver_A_priv_key = fc::crypto::private_key::regenerate(fc::sha256(std::string(64, 'a')));
@@ -191,7 +217,7 @@ struct txn_test_gen_plugin_impl {
          {
             signed_transaction trx;
 
-            vector<uint8_t> wasm = contracts::eosio_token_wasm();
+            auto& wasm = eosio_token_contract_wasm();
 
             setcode handler;
             handler.account = newaccountT;
@@ -202,7 +228,7 @@ struct txn_test_gen_plugin_impl {
             {
                setabi handler;
                handler.account = newaccountT;
-               handler.abi = fc::raw::pack(json::from_string(contracts::eosio_token_abi().data()).as<abi_def>());
+               handler.abi = fc::raw::pack(eosio_token_contract_abi_def());
                trx.actions.emplace_back( vector<chain::permission_level>{{newaccountT,name("active")}}, handler);
             }
 
@@ -288,7 +314,7 @@ struct txn_test_gen_plugin_impl {
 
       controller& cc = app().get_plugin<chain_plugin>().chain();
       auto abi_serializer_max_time = app().get_plugin<chain_plugin>().get_abi_serializer_max_time();
-      abi_serializer eosio_token_serializer{fc::json::from_string(contracts::eosio_token_abi().data()).as<abi_def>(), abi_serializer::create_yield_function( abi_serializer_max_time )};
+      abi_serializer eosio_token_serializer{eosio_token_contract_abi_def(), abi_serializer::create_yield_function( abi_serializer_max_time )};
       //create the actions here
       act_a_to_b.account = newaccountT;
       act_a_to_b.name = "transfer"_n;
