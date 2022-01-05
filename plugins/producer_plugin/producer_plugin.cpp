@@ -14,6 +14,7 @@
 #include <fc/io/json.hpp>
 #include <fc/log/logger_config.hpp>
 #include <fc/scoped_exit.hpp>
+#include <fc/log/trace.hpp>
 
 #include <boost/asio.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
@@ -164,9 +165,9 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       bool remove_expired_trxs( const fc::time_point& deadline );
       bool block_is_exhausted() const;
       bool remove_expired_blacklisted_trxs( const fc::time_point& deadline );
-      bool process_unapplied_trxs( const fc::time_point& deadline );
-      void process_scheduled_and_incoming_trxs( const fc::time_point& deadline, size_t& pending_incoming_process_limit );
-      bool process_incoming_trxs( const fc::time_point& deadline, size_t& pending_incoming_process_limit );
+      bool process_unapplied_trxs( const fc::time_point& deadline, std::optional<fc::zipkin_span>& parent_span );
+      void process_scheduled_and_incoming_trxs( const fc::time_point& deadline, size_t& pending_incoming_process_limit, std::optional<fc::zipkin_span>& parent_span );
+      bool process_incoming_trxs( const fc::time_point& deadline, size_t& pending_incoming_process_limit, std::optional<fc::zipkin_span>& parent_span );
 
       boost::program_options::variables_map _options;
       bool     _production_enabled                 = false;
@@ -218,6 +219,9 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       std::optional<scoped_connection>                          _accepted_block_connection;
       std::optional<scoped_connection>                          _accepted_block_header_connection;
       std::optional<scoped_connection>                          _irreversible_block_connection;
+
+      std::map<uint32_t, std::optional<::fc::zipkin_span>>      _block_traces;
+      std::map<uint32_t, uint64_t>                              _incoming_trxs_aggregate_us; 
 
       /*
        * HACK ALERT
@@ -289,9 +293,10 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
 
       void abort_block() {
          auto& chain = chain_plug->chain();
-
+         auto span = fc_create_span(_block_traces[chain.head_block_num()], "abort_block");
          _unapplied_transactions.add_aborted( chain.abort_block() );
          _subjective_billing.abort_block();
+         fc_add_tag(span, "_unapplied_transactions_size", _unapplied_transactions.size());
       }
 
       bool on_sync_block(const signed_block_ptr& block, bool check_connectivity) {
@@ -449,6 +454,13 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
 
       void on_incoming_transaction_async(const packed_transaction_ptr& trx, bool persist_until_expired, next_function<transaction_trace_ptr> next) {
          chain::controller& chain = chain_plug->chain();
+         uint32_t block_num  = chain.head_block_state()->block_num;
+
+         auto on_exit = fc::make_scoped_exit([this, start = fc::time_point::now(), block_num]() {
+            auto elapsed = (fc::time_point::now() - start).count();
+            _incoming_trxs_aggregate_us[block_num] += elapsed;
+         });
+         
          const auto max_trx_time_ms = _max_transaction_time_ms.load();
          fc::microseconds max_trx_cpu_usage = max_trx_time_ms < 0 ? fc::microseconds::maximum() : fc::milliseconds( max_trx_time_ms );
 
@@ -456,10 +468,16 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
                 chain.get_chain_id(), fc::microseconds( max_trx_cpu_usage ), chain.configured_subjective_signature_length_limit() );
 
          boost::asio::post(_thread_pool->get_executor(), [self = this, future{std::move(future)}, persist_until_expired,
-                                                          next{std::move(next)}, trx]() mutable {
+                                                          next{std::move(next)}, trx, block_num]() mutable {
             if( future.valid() ) {
                future.wait();
-               app().post( priority::low, [self, future{std::move(future)}, persist_until_expired, next{std::move( next )}, trx{std::move(trx)}]() mutable {
+               app().post(priority::low, [self, future{std::move(future)}, persist_until_expired, next{std::move(next)},
+                                          trx{std::move(trx)}, block_num]() mutable {
+                  auto on_exit = fc::make_scoped_exit([self, start = fc::time_point::now(), block_num]() {
+                     auto elapsed = (fc::time_point::now() - start).count();
+                     self->_incoming_trxs_aggregate_us[block_num] += elapsed;
+                  });
+
                   auto exception_handler = [self, &next, trx{std::move(trx)}](fc::exception_ptr ex) {
                      fc_dlog(_trx_failed_trace_log, "[TRX_TRACE] Speculative execution is REJECTING tx: ${txid}, auth: ${a} : ${why} ",
                             ("txid", trx->id())("a",trx->get_transaction().first_authorizer())("why",ex->what()));
@@ -1001,8 +1019,11 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
             return my->on_sync_block(block, check_connectivity);
    });
 
-   my->_incoming_transaction_async_provider = app().get_method<incoming::methods::transaction_async>().register_provider(
-         [this](const packed_transaction_ptr& trx, bool persist_until_expired, next_function<transaction_trace_ptr> next) -> void {
+   my->_incoming_transaction_async_provider =
+       app().get_method<incoming::methods::transaction_async>().register_provider(
+           [this](const packed_transaction_ptr& trx, bool persist_until_expired,
+                  next_function<transaction_trace_ptr> next) -> void {
+      
       return my->on_incoming_transaction_async(trx, persist_until_expired, next );
    });
 
@@ -1535,6 +1556,8 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
       return start_block_result::waiting_for_block;
 
    const auto& hbs = chain.head_block_state();
+   auto [trace_itr, _]  = _block_traces.try_emplace(hbs->block_num, "producer_plugin_block");
+   auto start_block_span = fc_create_span(trace_itr->second,"start_block");
 
    if( chain.get_terminate_at_block() > 0 && chain.get_terminate_at_block() < hbs->block_num ) {
       ilog("Reached configured maximum block ${num}; terminating", ("num", chain.get_terminate_at_block()));
@@ -1715,8 +1738,8 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
 
          // limit execution of pending incoming to once per block
          size_t pending_incoming_process_limit = _unapplied_transactions.incoming_size();
-
-         if( !process_unapplied_trxs( preprocess_deadline ) )
+         
+         if( !process_unapplied_trxs( preprocess_deadline, start_block_span ) )
             return start_block_result::exhausted;
 
          if (_pending_block_mode == pending_block_mode::producing) {
@@ -1728,7 +1751,7 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
                );
             }
             // may exhaust scheduled_trx_deadline but not preprocess_deadline, exhausted preprocess_deadline checked below
-            process_scheduled_and_incoming_trxs( scheduled_trx_deadline, pending_incoming_process_limit );
+            process_scheduled_and_incoming_trxs( scheduled_trx_deadline, pending_incoming_process_limit, start_block_span );
          }
 
          if( app().is_quiting() ) // db guard exception above in LOG_AND_DROP could have called app().quit()
@@ -1736,7 +1759,7 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
          if (preprocess_deadline <= fc::time_point::now() || block_is_exhausted()) {
             return start_block_result::exhausted;
          } else {
-            if( !process_incoming_trxs( preprocess_deadline, pending_incoming_process_limit ) )
+            if( !process_incoming_trxs( preprocess_deadline, pending_incoming_process_limit, start_block_span ) )
                return start_block_result::exhausted;
             return start_block_result::succeeded;
          }
@@ -1932,8 +1955,9 @@ private:
 
 } // anonymous namespace
 
-bool producer_plugin_impl::process_unapplied_trxs( const fc::time_point& deadline )
-{
+bool producer_plugin_impl::process_unapplied_trxs(const fc::time_point&           deadline,
+                                                  std::optional<fc::zipkin_span>& parent_span) {
+   auto process_unapplied_trxs_span = fc_create_span(parent_span, "process_unapplied_trxs_span");
    bool exhausted = false;
    if( !_unapplied_transactions.empty() ) {
       account_failures account_fails;
@@ -2035,13 +2059,21 @@ bool producer_plugin_impl::process_unapplied_trxs( const fc::time_point& deadlin
 
       fc_dlog( _log, "Processed ${m} of ${n} previously applied transactions, Applied ${applied}, Failed/Dropped ${failed}",
                ("m", num_processed)( "n", unapplied_trxs_size )("applied", num_applied)("failed", num_failed) );
+
+      fc_add_tag(process_unapplied_trxs_span, "processed", num_processed);
+      fc_add_tag(process_unapplied_trxs_span, "unapplied_trxs_size", unapplied_trxs_size);
+      fc_add_tag(process_unapplied_trxs_span, "applied", num_applied);
+      fc_add_tag(process_unapplied_trxs_span, "failed", num_failed);
+   
       account_fails.report();
    }
    return !exhausted;
 }
 
-void producer_plugin_impl::process_scheduled_and_incoming_trxs( const fc::time_point& deadline, size_t& pending_incoming_process_limit )
-{
+void producer_plugin_impl::process_scheduled_and_incoming_trxs(const fc::time_point& deadline,
+                                                               size_t&               pending_incoming_process_limit,
+                                                               std::optional<fc::zipkin_span>& parent_span) {
+   auto process_scheduled_and_incoming_trxs_span = fc_create_span(parent_span, "process_scheduled_and_incoming_trxs");
    // scheduled transactions
    int num_applied = 0;
    int num_failed = 0;
@@ -2148,8 +2180,9 @@ void producer_plugin_impl::process_scheduled_and_incoming_trxs( const fc::time_p
    }
 }
 
-bool producer_plugin_impl::process_incoming_trxs( const fc::time_point& deadline, size_t& pending_incoming_process_limit )
-{
+bool producer_plugin_impl::process_incoming_trxs(const fc::time_point& deadline, size_t& pending_incoming_process_limit,
+                                                 std::optional<fc::zipkin_span>& parent_span) {
+   auto process_incoming_trxs_span = fc_create_span(parent_span, "process_incoming_trxs");
    bool exhausted = false;
    if( pending_incoming_process_limit ) {
       size_t processed = 0;
@@ -2174,6 +2207,8 @@ bool producer_plugin_impl::process_incoming_trxs( const fc::time_point& deadline
          }
       }
       fc_dlog( _log, "Processed ${n} pending transactions, ${p} left", ("n", processed)("p", _unapplied_transactions.incoming_size()) );
+      fc_add_tag(process_incoming_trxs_span, "processed", processed);
+      fc_add_tag(process_incoming_trxs_span, "left", _unapplied_transactions.incoming_size());
    }
    return !exhausted;
 }
@@ -2390,6 +2425,14 @@ void producer_plugin_impl::produce_block() {
    //ilog("produce_block ${t}", ("t", fc::time_point::now())); // for testing _produce_time_offset_us
    EOS_ASSERT(_pending_block_mode == pending_block_mode::producing, producer_exception, "called produce_block while not actually producing");
    chain::controller& chain = chain_plug->chain();
+   auto head_block_state = chain.head_block_state();
+   uint32_t block_num  = head_block_state->block_num;
+
+   auto trace = std::move(_block_traces.extract(block_num).mapped());
+   fc_add_tag(trace, "incoming_transactions_aggregate_us", _incoming_trxs_aggregate_us.extract(block_num).mapped());
+   fc_add_tag(trace, "num_transactions", head_block_state->block->transactions.size());
+   auto produce_block_span = fc_create_span(trace, "produce_block");
+
    EOS_ASSERT(chain.is_building_block(), missing_pending_block_state, "pending_block_state does not exist but it should, another plugin may have corrupted it");
 
    const auto& auth = chain.pending_block_signing_authority();
@@ -2411,30 +2454,33 @@ void producer_plugin_impl::produce_block() {
       _protocol_features_signaled = false;
    }
 
-   //idump( (fc::time_point::now() - chain.pending_block_time()) );
-   block_state_ptr pending_blk_state = chain.finalize_block( [&]( const digest_type& d ) {
-      auto debug_logger = maybe_make_debug_time_logger();
-      vector<signature_type> sigs;
-      sigs.reserve(relevant_providers.size());
+   {
+      auto finalize_block_span = fc_create_span(produce_block_span, "finalize_block_span");
+     //idump( (fc::time_point::now() - chain.pending_block_time()) );
+      block_state_ptr pending_blk_state = chain.finalize_block([&](const digest_type& d) {
+         auto debug_logger = maybe_make_debug_time_logger();
+         vector<signature_type> sigs;
+         sigs.reserve(relevant_providers.size());
 
-      // sign with all relevant public keys
-      for (const auto& p : relevant_providers) {
-         sigs.emplace_back(p.get()(d));
+         // sign with all relevant public keys
+         for (const auto& p : relevant_providers) {
+            sigs.emplace_back(p.get()(d));
+         }
+         return sigs;
+      });
+   
+
+      if ( blockvault != nullptr ) {
+         std::promise<bool> p;
+         std::future<bool> f = p.get_future();
+         blockvault->async_propose_constructed_block(pending_blk_state->dpos_irreversible_blocknum,
+                                                   pending_blk_state->block, [&p](bool b) { p.set_value(b); });
+         if (!f.get()) {
+            _latest_rejected_block_num = pending_blk_state->block->block_num();
+            _block_vault_resync.schedule();
+            EOS_ASSERT(false, block_validation_error, "Block rejected by block vault");
+         }
       }
-      return sigs;
-   } );
-
-   if ( blockvault != nullptr ) {
-      std::promise<bool> p;
-      std::future<bool> f = p.get_future();
-      blockvault->async_propose_constructed_block(pending_blk_state->dpos_irreversible_blocknum,
-                                                  pending_blk_state->block, [&p](bool b) { p.set_value(b); });
-      if (!f.get()) {
-         _latest_rejected_block_num = pending_blk_state->block->block_num();
-         _block_vault_resync.schedule();
-         EOS_ASSERT(false, block_validation_error, "Block rejected by block vault");
-      }
-
    }
 
    chain.commit_block();
