@@ -728,13 +728,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
    ilog("initializing chain plugin");
 
    try {
-      if (options.count("telemetry-url")) {
-         fc::zipkin_config::init( options["telemetry-url"].as<std::string>(),
-                                  options["telemetry-service-name"].as<std::string>(),
-                                  options["telemetry-timeout-us"].as<uint32_t>(),
-                                  options["telemetry-retry-interval-us"].as<uint32_t>(),
-                                  options["telemetry-wait-timeout-seconds"].as<uint32_t>());
-      }
+      
       try {
          genesis_state gs; // Check if EOSIO_ROOT_KEY is bad
       } catch ( const std::exception& ) {
@@ -1258,7 +1252,13 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          my->chain->enable_deep_mind( &_deep_mind_log );
       }
 
-      
+      if (options.count("telemetry-url")) {
+         fc::zipkin_config::init( options["telemetry-url"].as<std::string>(),
+                                  options["telemetry-service-name"].as<std::string>(),
+                                  options["telemetry-timeout-us"].as<uint32_t>(),
+                                  options["telemetry-retry-interval-us"].as<uint32_t>(),
+                                  options["telemetry-wait-timeout-seconds"].as<uint32_t>());
+      }
 
 
       // set up method providers
@@ -3208,7 +3208,7 @@ void read_write::send_transaction(const read_write::send_transaction_params_v1& 
       fc_add_tag(trx_span, "method", "send_transaction");
 
       app().get_method<incoming::methods::transaction_async>()(input_trx, true, false, false,
-            [this, token=trx_trace.get_token(), input_trx, next]
+            [this, token=fc_get_token(trx_trace), input_trx, next]
             (const std::variant<fc::exception_ptr, transaction_trace_ptr>& result) -> void {
          auto trx_span = fc_create_span_from_token(token, "Processed");
          fc_add_tag(trx_span, "trx_id", input_trx->id());
@@ -3578,7 +3578,7 @@ void read_only::push_ro_transaction(const read_only::push_ro_transaction_params&
       fc_add_tag(trx_span, "method", "send_transaction");
 
       app().get_method<incoming::methods::transaction_async>()(input_trx, true, true, static_cast<const bool>(params.return_failure_traces),
-            [this, token=trx_trace.get_token(), input_trx, params, next]
+            [this, token=fc_get_token(trx_trace), input_trx, params, next]
             (const std::variant<fc::exception_ptr, transaction_trace_ptr>& result) -> void {
          auto trx_span = fc_create_span_from_token(token, "Processed");
          fc_add_tag(trx_span, "trx_id", input_trx->id());
