@@ -1557,7 +1557,8 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
 
    const auto& hbs = chain.head_block_state();
    auto [trace_itr, _]  = _block_traces.try_emplace(hbs->block_num, "producer_plugin_block");
-   auto start_block_span = fc_create_span(trace_itr->second,"start_block");
+   auto start_block_span = fc_create_span(trace_itr->second, "start_block");
+   _incoming_trxs_aggregate_us[hbs->block_num] = 0;
 
    if( chain.get_terminate_at_block() > 0 && chain.get_terminate_at_block() < hbs->block_num ) {
       ilog("Reached configured maximum block ${num}; terminating", ("num", chain.get_terminate_at_block()));
@@ -2429,7 +2430,8 @@ void producer_plugin_impl::produce_block() {
    uint32_t block_num  = head_block_state->block_num;
 
    auto trace = std::move(_block_traces.extract(block_num).mapped());
-   fc_add_tag(trace, "incoming_transactions_aggregate_us", _incoming_trxs_aggregate_us.extract(block_num).mapped());
+   uint64_t trxs_aggregate_us = _incoming_trxs_aggregate_us.extract(block_num).mapped();
+   fc_add_tag(trace, "incoming_transactions_aggregate_us", trxs_aggregate_us);
    fc_add_tag(trace, "num_transactions", head_block_state->block->transactions.size());
    auto produce_block_span = fc_create_span(trace, "produce_block");
 
