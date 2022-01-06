@@ -189,7 +189,7 @@ string U64Str(uint64_t i)
 
 string U128Str(unsigned __int128 i)
 {
-   return fc::variant(fc::uint128_t(i)).get_string();
+   return fc::variant(fc::uint128(i)).get_string();
 }
 
 template <typename T>

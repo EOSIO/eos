@@ -1181,7 +1181,7 @@ class console_api : public context_aware_api {
             else
                val_magnitude = static_cast<unsigned __int128>(val);
 
-            fc::uint128_t v(val_magnitude>>64, static_cast<uint64_t>(val_magnitude) );
+            fc::uint128 v(val_magnitude>>64, static_cast<uint64_t>(val_magnitude) );
 
             string s;
             if( is_negative ) {
@@ -1195,7 +1195,7 @@ class console_api : public context_aware_api {
 
       void printui128(const unsigned __int128& val) {
          if ( !ignore ) {
-            fc::uint128_t v(val>>64, static_cast<uint64_t>(val) );
+            fc::uint128 v(val>>64, static_cast<uint64_t>(val) );
             context.console_append(fc::variant(v).get_string());
          }
       }
@@ -1499,7 +1499,7 @@ class transaction_api : public context_aware_api {
       }
 
       bool cancel_deferred( const unsigned __int128& val ) {
-         fc::uint128_t sender_id(val>>64, uint64_t(val) );
+         fc::uint128 sender_id(val>>64, uint64_t(val) );
          return context.cancel_deferred_transaction( (unsigned __int128)sender_id );
       }
 };
@@ -1548,7 +1548,7 @@ class compiler_builtins : public context_aware_api {
       :context_aware_api(ctx,true){}
 
       void __ashlti3(__int128& ret, uint64_t low, uint64_t high, uint32_t shift) {
-         fc::uint128_t i(high, low);
+         fc::uint128 i(high, low);
          i <<= shift;
          ret = (unsigned __int128)i;
       }
@@ -1562,13 +1562,13 @@ class compiler_builtins : public context_aware_api {
       }
 
       void __lshlti3(__int128& ret, uint64_t low, uint64_t high, uint32_t shift) {
-         fc::uint128_t i(high, low);
+         fc::uint128 i(high, low);
          i <<= shift;
          ret = (unsigned __int128)i;
       }
 
       void __lshrti3(__int128& ret, uint64_t low, uint64_t high, uint32_t shift) {
-         fc::uint128_t i(high, low);
+         fc::uint128 i(high, low);
          i >>= shift;
          ret = (unsigned __int128)i;
       }
@@ -1744,12 +1744,12 @@ class compiler_builtins : public context_aware_api {
          ret = ui64_to_f128( a );
       }
       double __floattidf( uint64_t l, uint64_t h ) {
-         fc::uint128_t v(h, l);
+         fc::uint128 v(h, l);
          unsigned __int128 val = (unsigned __int128)v;
          return ___floattidf( *(__int128*)&val );
       }
       double __floatuntidf( uint64_t l, uint64_t h ) {
-         fc::uint128_t v(h, l);
+         fc::uint128 v(h, l);
          return ___floatuntidf( (unsigned __int128)v );
       }
       int ___cmptf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb, int return_value_if_nan ) {

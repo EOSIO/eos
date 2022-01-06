@@ -20,7 +20,7 @@ struct shared_public_key {
             public_key_storage = k1r1;
          },
          [&](const shared_string& wa) {
-            fc::datastream ds(wa.data(), wa.size());
+            fc::datastream<const char*> ds(wa.data(), wa.size());
             fc::crypto::webauthn::public_key pub;
             fc::raw::unpack(ds, pub);
             public_key_storage = pub;
@@ -53,21 +53,21 @@ struct shared_public_key {
    }
 
    friend bool operator==(const shared_public_key& l, const public_key_type& r) {
-      if(l.pubkey.which() != r._storage.which())
+      if(l.pubkey.which() != r._storage.index())
          return false;
 
       return l.pubkey.visit<bool>(overloaded {
          [&](const fc::ecc::public_key_shim& k1) {
-            return k1._data == r._storage.get<fc::ecc::public_key_shim>()._data;
+            return k1._data == std::get<fc::ecc::public_key_shim>(r._storage)._data;
          },
          [&](const fc::crypto::r1::public_key_shim& r1) {
-            return r1._data == r._storage.get<fc::crypto::r1::public_key_shim>()._data;
+            return r1._data == std::get<fc::crypto::r1::public_key_shim>(r._storage)._data;
          },
          [&](const shared_string& wa) {
-            fc::datastream ds(wa.data(), wa.size());
+            fc::datastream<const char*> ds(wa.data(), wa.size());
             fc::crypto::webauthn::public_key pub;
             fc::raw::unpack(ds, pub);
-            return pub == r._storage.get<fc::crypto::webauthn::public_key>();
+            return pub == std::get<fc::crypto::webauthn::public_key>(r._storage);
          }
       });
    }
@@ -105,7 +105,7 @@ struct shared_key_weight {
    }
 
    static shared_key_weight convert(chainbase::allocator<char> allocator, const key_weight& k) {
-      return k.key._storage.visit<shared_key_weight>(overloaded {
+      return std::visit(overloaded {
          [&](const auto& k1r1) {
             return shared_key_weight(k1r1, k.weight);
          },
@@ -117,7 +117,7 @@ struct shared_key_weight {
 
             return shared_key_weight(std::move(wa_ss), k.weight);
          }
-      });
+      }, k.key._storage);
    }
 
    shared_public_key key;
