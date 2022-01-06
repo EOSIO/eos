@@ -18,10 +18,6 @@ add_subdirectory(login_plugin)
 add_subdirectory(test_control_plugin)
 add_subdirectory(test_control_api_plugin)
 add_subdirectory(amqp_trx_plugin)
-option(ENABLE_BLOCK_VAULT_CLIENT "Enable blockvault_client_plugin" ON)
-if (ENABLE_BLOCK_VAULT_CLIENT)
-   add_subdirectory(blockvault_client_plugin)
-endif()
 
 # Forward variables to top level so packaging picks them up
 set(CPACK_DEBIAN_PACKAGE_DEPENDS ${CPACK_DEBIAN_PACKAGE_DEPENDS} PARENT_SCOPE)

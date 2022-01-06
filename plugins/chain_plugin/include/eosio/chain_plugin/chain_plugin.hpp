@@ -10,7 +10,7 @@
 #include <eosio/chain/transaction.hpp>
 #include <eosio/chain/abi_serializer.hpp>
 #include <eosio/chain/plugin_interface.hpp>
-#include <eosio/chain/types.hpp>
+#include <eosio/chain/trace.hpp>
 #include <eosio/chain/types.hpp>
 #include <eosio/chain/fixed_bytes.hpp>
 #include <eosio/chain/backing_store/kv_context.hpp>
@@ -25,7 +25,6 @@
 #include <eosio/chain_plugin/account_query_db.hpp>
 
 #include <fc/static_variant.hpp>
-#include <eosio/blockvault_client_plugin/blockvault_client_plugin.hpp>
 
 namespace fc { class variant; }
 
@@ -1050,7 +1049,7 @@ public:
 
 class chain_plugin : public plugin<chain_plugin> {
 public:
-   APPBASE_PLUGIN_REQUIRES((blockvault_client_plugin))
+   APPBASE_PLUGIN_REQUIRES()
 
    chain_plugin();
    virtual ~chain_plugin();
@@ -1089,7 +1088,7 @@ public:
    bool account_queries_enabled() const;
 
    // return variant of trace for logging, trace is modified to minimize log output
-   fc::variant get_log_trx_trace(const transaction_trace_ptr& trx_trace) const;
+   fc::variant get_log_trx_trace(const chain::transaction_trace_ptr& trx_trace) const;
    // return variant of trx for logging, trace is modified to minimize log output
    fc::variant get_log_trx(const transaction& trx) const;
 

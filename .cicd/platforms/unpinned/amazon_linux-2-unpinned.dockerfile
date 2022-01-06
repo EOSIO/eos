@@ -34,17 +34,6 @@ RUN curl -fsSLO "https://boostorg.jfrog.io/artifactory/main/release/${BOOST_VERS
     ./b2 --with-iostreams --with-date_time --with-filesystem --with-system --with-program_options --with-chrono --with-test -q -j$(nproc) install && \
     cd / && \
     rm -rf "boost_${BOOST_VERSION}.tar.bz2" "/boost_${BOOST_VERSION}"
-#install libpq
-RUN amazon-linux-extras enable postgresql11 && \
-    yum install -y libpq-devel postgresql-server && \
-    yum clean all && rm -rf /var/cache/yum
-#build libpqxx
-RUN curl -L https://github.com/jtv/libpqxx/archive/7.2.1.tar.gz | tar zxvf - && \
-    cd  libpqxx-7.2.1  && \
-    cmake -DSKIP_BUILD_TEST=ON -DPostgreSQL_TYPE_INCLUDE_DIR=/usr/include/libpq -DCMAKE_BUILD_TYPE=Release -S . -B build && \
-    cmake --build build && cmake --install build && \
-    cd .. && rm -rf libpqxx-7.2.1
-ENV PKG_CONFIG_PATH=/usr/local/lib64/pkgconfig
 # install nvm
 RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.0/install.sh | bash
 # load nvm in non-interactive shells
@@ -54,5 +43,3 @@ RUN echo 'export NVM_DIR="$HOME/.nvm"' > ~/.bashrc && \
 RUN bash -c '. ~/.bashrc; nvm install --lts=dubnium' && \
     ln -s "/root/.nvm/versions/node/$(ls -p /root/.nvm/versions/node | sort -Vr | head -1)bin/node" /usr/local/bin/node && \
     ln -s "/root/.nvm/versions/node/$(ls -p /root/.nvm/versions/node | sort -Vr | head -1)bin/npm" /usr/local/bin/npm
-# setup Postgress
-RUN su - postgres -c "/usr/bin/initdb" 

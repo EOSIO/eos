@@ -8,8 +8,7 @@ RUN yum update -y && \
     yum --enablerepo=extras install -y which git autoconf automake libtool make bzip2 doxygen \
     graphviz bzip2-devel openssl-devel gmp-devel ocaml \
     python python-devel rh-python36 file libusbx-devel \
-    libcurl-devel patch vim-common jq llvm-toolset-7.0-llvm-devel llvm-toolset-7.0-llvm-static \
-    glibc-locale-source glibc-langpack-en && \
+    libcurl-devel patch vim-common jq llvm-toolset-7.0-llvm-devel llvm-toolset-7.0-llvm-static && \
     yum clean all && rm -rf /var/cache/yum
 # install erlang and rabbitmq
 RUN curl -s https://packagecloud.io/install/repositories/rabbitmq/erlang/script.rpm.sh | bash && \
@@ -40,19 +39,6 @@ RUN curl -fsSLO "https://boostorg.jfrog.io/artifactory/main/release/${BOOST_VERS
     ./b2 --with-iostreams --with-date_time --with-filesystem --with-system --with-program_options --with-chrono --with-test -q -j$(nproc) install && \
     cd / && \
     rm -rf "boost_${BOOST_VERSION}.tar.bz2" "/boost_${BOOST_VERSION}"
-#install libpq postgresql-server
-RUN yum install -y https://download.postgresql.org/pub/repos/yum/reporpms/EL-7-x86_64/pgdg-redhat-repo-latest.noarch.rpm && \
-    yum install -y postgresql13-devel postgresql13-server && \
-    yum clean all && rm -rf /var/cache/yum
-ENV PostgreSQL_ROOT=/usr/pgsql-13   
-ENV PKG_CONFIG_PATH=/usr/pgsql-13/lib/pkgconfig:/usr/local/lib64/pkgconfig
-#build libpqxx
-RUN curl -L https://github.com/jtv/libpqxx/archive/7.2.1.tar.gz | tar zxvf - && \
-    cd  libpqxx-7.2.1  && \
-    source /opt/rh/devtoolset-8/enable && \
-    cmake -DSKIP_BUILD_TEST=ON  -DCMAKE_BUILD_TYPE=Release -S . -B build && \
-    cmake --build build && cmake --install build && \
-    cd .. && rm -rf libpqxx-7.2.1
 # install nvm
 RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.0/install.sh | bash
 # load nvm in non-interactive shells
@@ -65,6 +51,3 @@ RUN bash -c '. ~/.bashrc; nvm install --lts=dubnium' && \
     ln -s "/root/.nvm/versions/node/$(ls -p /root/.nvm/versions/node | sort -Vr | head -1)bin/node" /usr/local/bin/node
 RUN yum install -y nodejs && \
     yum clean all && rm -rf /var/cache/yum
-# setup Postgress
-RUN localedef -c -f UTF-8 -i en_US en_US.UTF-8 && \
-    su - postgres -c "/usr/pgsql-13/bin/initdb" 
