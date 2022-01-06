@@ -10,7 +10,7 @@
 #include <eosio/chain/transaction.hpp>
 #include <eosio/chain/abi_serializer.hpp>
 #include <eosio/chain/plugin_interface.hpp>
-#include <eosio/chain/types.hpp>
+#include <eosio/chain/trace.hpp>
 #include <eosio/chain/types.hpp>
 #include <eosio/chain/fixed_bytes.hpp>
 #include <eosio/chain/backing_store/kv_context.hpp>
@@ -25,7 +25,6 @@
 #include <eosio/chain_plugin/account_query_db.hpp>
 
 #include <fc/static_variant.hpp>
-#include <eosio/blockvault_client_plugin/blockvault_client_plugin.hpp>
 
 namespace fc { class variant; }
 
@@ -143,6 +142,7 @@ public:
       std::optional<fc::time_point>        last_irreversible_block_time;
       std::optional<uint64_t>              total_cpu_weight;
       std::optional<uint64_t>              total_net_weight;
+      std::optional<uint32_t>              first_block_num;
    };
    get_info_results get_info(const get_info_params&) const;
 
@@ -1067,7 +1067,7 @@ public:
 
 class chain_plugin : public plugin<chain_plugin> {
 public:
-   APPBASE_PLUGIN_REQUIRES((blockvault_client_plugin))
+   APPBASE_PLUGIN_REQUIRES()
 
    chain_plugin();
    virtual ~chain_plugin();
@@ -1084,21 +1084,6 @@ public:
    
    bool accept_block( const chain::signed_block_ptr& block, const chain::block_id_type& id );
    void accept_transaction(const chain::packed_transaction_ptr& trx, chain::plugin_interface::next_function<chain::transaction_trace_ptr> next);
-
-   static bool recover_reversible_blocks( const fc::path& db_dir,
-                                          uint32_t cache_size,
-                                          std::optional<fc::path> new_db_dir = std::optional<fc::path>(),
-                                          uint32_t truncate_at_block = 0
-                                        );
-
-   static bool import_reversible_blocks( const fc::path& reversible_dir,
-                                         uint32_t cache_size,
-                                         const fc::path& reversible_blocks_file
-                                       );
-
-   static bool export_reversible_blocks( const fc::path& reversible_dir,
-                                        const fc::path& reversible_blocks_file
-                                       );
 
    // Only call this after plugin_initialize()!
    controller& chain();
@@ -1121,7 +1106,7 @@ public:
    bool account_queries_enabled() const;
 
    // return variant of trace for logging, trace is modified to minimize log output
-   fc::variant get_log_trx_trace(const transaction_trace_ptr& trx_trace) const;
+   fc::variant get_log_trx_trace(const chain::transaction_trace_ptr& trx_trace) const;
    // return variant of trx for logging, trace is modified to minimize log output
    fc::variant get_log_trx(const transaction& trx) const;
 
@@ -1141,7 +1126,7 @@ FC_REFLECT(eosio::chain_apis::read_only::get_info_results,
            (head_block_id)(head_block_time)(head_block_producer)
            (virtual_block_cpu_limit)(virtual_block_net_limit)(block_cpu_limit)(block_net_limit)
            (server_version_string)(fork_db_head_block_num)(fork_db_head_block_id)(server_full_version_string)
-           (last_irreversible_block_time)(total_cpu_weight)(total_net_weight) )
+           (last_irreversible_block_time)(total_cpu_weight)(total_net_weight)(first_block_num) )
 FC_REFLECT(eosio::chain_apis::read_only::get_activated_protocol_features_params, (lower_bound)(upper_bound)(limit)(search_by_block_num)(reverse) )
 FC_REFLECT(eosio::chain_apis::read_only::get_activated_protocol_features_results, (activated_protocol_features)(more) )
 FC_REFLECT(eosio::chain_apis::read_only::get_block_params, (block_num_or_id))

@@ -114,7 +114,6 @@ struct state_history_config {
    bfs::path archive_dir;
    uint32_t  stride             = UINT32_MAX;
    uint32_t  max_retained_files = 10;
-   uint32_t  num_buffered_entries = 2;
    fc::logger* logger             = nullptr;
 };
 
@@ -162,7 +161,7 @@ class state_history_log {
  private:
 
    std::thread                                                              thr;
-   uint32_t                                                                 num_buffered_entries;
+   uint32_t                                                                 num_buffered_entries = 2;
    std::atomic<bool>                                                        write_thread_has_exception = false;
    std::exception_ptr                                                       eptr;
    boost::asio::io_context                                                  ctx;
@@ -172,14 +171,17 @@ class state_history_log {
 
    using catalog_t = chain::log_catalog<state_history_log_data, chain::log_index<chain::state_history_exception>>;
 
+   chain::block_id_type last_block_id;
+
    std::mutex           mx; // the mutex is specifically to protect the access of the following variables
    uint32_t             _begin_block = 0;
    uint32_t             _end_block   = 0;
    catalog_t            catalog;
-   cfile_stream         write_log;
    cfile_stream         read_log;
    cfile_stream         index;
-   chain::block_id_type last_block_id;
+
+   // not protected by mx, but always accessed from work_strand
+   cfile_stream         write_log;
 
  private:
    void               read_header(state_history_log_header& header, bool assert_version = true);

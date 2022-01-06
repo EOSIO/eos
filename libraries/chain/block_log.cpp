@@ -570,6 +570,7 @@ namespace eosio { namespace chain {
 
    void block_log::set_version(uint32_t ver) { detail::block_log_impl::default_version = ver; }
    uint32_t block_log::version() const { return my->preamble.version; }
+   uint32_t block_log::get_first_block_num() const { return my->preamble.first_block_num; }
 
    detail::block_log_impl::block_log_impl(const block_log::config_type& config)
    : stride( config.stride )
