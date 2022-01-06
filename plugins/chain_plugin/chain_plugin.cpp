@@ -1568,7 +1568,7 @@ read_only::get_activated_protocol_features( const read_only::get_activated_proto
    auto lower = ( params.search_by_block_num ? pfm.lower_bound( lower_bound_value )
                                              : pfm.at_activation_ordinal( lower_bound_value ) );
 
-   auto upper = ( params.search_by_block_num ? pfm.upper_bound( lower_bound_value )
+   auto upper = ( params.search_by_block_num ? pfm.upper_bound( upper_bound_value )
                                              : get_next_if_not_end( pfm.at_activation_ordinal( upper_bound_value ) ) );
 
    if( params.reverse ) {
