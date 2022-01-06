@@ -75,8 +75,8 @@ void test_control_plugin_impl::process_next_block_state(const chain::block_state
            ("slot", slot - _first_sequence_timeslot));
 
       bool last_slot = false;
-      if (_where_in_sequence + 1 == config::producer_repetitions){
-         auto last_slot_time = _first_sequence_timeslot + config::producer_repetitions;
+      if (_where_in_sequence + 1 == chain::config::producer_repetitions){
+         auto last_slot_time = _first_sequence_timeslot + chain::config::producer_repetitions;
          last_slot = slot == last_slot_time;
       }
 
@@ -84,7 +84,7 @@ void test_control_plugin_impl::process_next_block_state(const chain::block_state
          int32_t slot_index = slot - _first_sequence_timeslot;
          if (last_slot && slot_index > _producer_sequence + 1){
             wlog("Producer produced less than ${n} blocks, ${l}th block is last in sequence. Likely performance issue, check timing",
-                 ("n", config::producer_repetitions)("l", _producer_sequence + 1));
+                 ("n", chain::config::producer_repetitions)("l", _producer_sequence + 1));
          }
          ilog("shutting down");
          app().quit();
