@@ -1485,6 +1485,7 @@ std::string itoh(I n, size_t hlen = sizeof(I)<<1) {
 }
 
 read_only::get_info_results read_only::get_info(const read_only::get_info_params&) const {
+
    const auto& rm = db.get_resource_limits_manager();
    return {
       itoh(static_cast<uint32_t>(app().version())),
@@ -1507,7 +1508,8 @@ read_only::get_info_results read_only::get_info(const read_only::get_info_params
       app().full_version_string(),
       db.last_irreversible_block_time(),
       rm.get_total_cpu_weight(),
-      rm.get_total_net_weight()
+      rm.get_total_net_weight(),
+      db.get_first_block_num()
    };
 }
 

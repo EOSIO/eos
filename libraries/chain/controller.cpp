@@ -2296,6 +2296,11 @@ const controller::config& controller::get_config()const
    return my->conf;
 }
 
+uint32_t controller::get_first_block_num()const
+{
+   return my->blog.get_first_block_num();
+}
+
 controller::controller( const controller::config& cfg, const chain_id_type& chain_id )
 :my( new controller_impl( cfg, *this, protocol_feature_set{}, chain_id ) )
 {

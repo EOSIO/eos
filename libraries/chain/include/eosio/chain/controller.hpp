@@ -206,6 +206,7 @@ namespace eosio { namespace chain {
          const protocol_feature_manager&       get_protocol_feature_manager()const;
          uint32_t                              get_max_nonprivileged_inline_action_size()const;
          const config&                         get_config()const;
+         uint32_t get_first_block_num() const;
 
          const flat_set<account_name>&   get_actor_whitelist() const;
          const flat_set<account_name>&   get_actor_blacklist() const;
