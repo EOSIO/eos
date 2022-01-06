@@ -30,7 +30,6 @@ for FILE in $(ls "$CICD_DIR/platforms/$PLATFORM_TYPE"); do
     ( [[ $SKIP_LINUX == true ]] && [[ ! $FILE =~ 'macos' ]] ) && continue
     # use pinned or unpinned, not both sets of platform files
     if [[ $PINNED == false ]]; then
-        export SKIP_CONTRACT_BUILDER=${SKIP_CONTRACT_BUILDER:-true}
         export SKIP_PACKAGE_BUILDER=${SKIP_PACKAGE_BUILDER:-true}
     fi
     export FILE_NAME="$(echo "$FILE" | awk '{split($0,a,/\.(d|s)/); print a[1] }')"
@@ -189,8 +188,8 @@ cat <<EOF
   - label: ":docker: Docker - Build and Install"
     command: "./.cicd/installation-build.sh"
     env:
-      IMAGE_TAG: "ubuntu-18.04-unpinned"
-      PLATFORM_TYPE: "unpinned"
+      IMAGE_TAG: "ubuntu-18.04-$PLATFORM_TYPE"
+      PLATFORM_TYPE: $PLATFORM_TYPE
     agents:
       queue: "$BUILDKITE_BUILD_AGENT_QUEUE"
     timeout: ${TIMEOUT:-180}
@@ -654,8 +653,8 @@ cat <<EOF
   - label: ":docker: Docker - Label Container with Git Branch and Git Tag"
     command: .cicd/docker-tag.sh
     env:
-      IMAGE_TAG: "ubuntu-18.04-unpinned"
-      PLATFORM_TYPE: "unpinned"
+      IMAGE_TAG: "ubuntu-18.04-$PLATFORM_TYPE"
+      PLATFORM_TYPE: $PLATFORM_TYPE
     agents:
       queue: "$BUILDKITE_BUILD_AGENT_QUEUE"
     timeout: ${TIMEOUT:-10}

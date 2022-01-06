@@ -55,7 +55,7 @@
         {
           "name": "doxygen_to_xml",
           "options": {
-            "INPUT": "libraries/chain/include/eosio/chain/webassembly/interface.hpp plugins/blockvault_client_plugin/include/eosio/blockvault_client_plugin/blockvault.hpp"
+            "INPUT": "libraries/chain/include/eosio/chain/webassembly/interface.hpp"
           },
           "disable_default_filters" :true,
           "filters" : []

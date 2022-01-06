@@ -100,20 +100,6 @@ RUN git clone -b v0.5.0 https://github.com/stefanberger/swtpm && \
     rm -rf swtpm
 RUN ldconfig
 
-# install libpq, postgresql-13
-ENV TZ=America/Chicago
-RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone && \
-    echo "deb http://apt.postgresql.org/pub/repos/apt xenial-pgdg main" > /etc/apt/sources.list.d/pgdg.list && \
-    curl -sL https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add - && \
-    apt-get update && apt-get -y install libpq-dev postgresql-13 && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
-# build libpqxx
-RUN curl -L https://github.com/jtv/libpqxx/archive/7.2.1.tar.gz | tar zxvf - && \
-    cd  libpqxx-7.2.1  && \
-    cmake -DCMAKE_TOOLCHAIN_FILE=/tmp/clang.cmake -DSKIP_BUILD_TEST=ON -DPostgreSQL_TYPE_INCLUDE_DIR=/usr/include/postgresql -DCMAKE_BUILD_TYPE=Release -S . -B build && \
-    cmake --build build && cmake --install build && \
-    cd .. && rm -rf libpqxx-7.2.1
 #install nvm
 RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.0/install.sh | bash
 # load nvm in non-interactive shells

@@ -95,7 +95,7 @@ public:
    bool                   is_producing_block() const;
    bool                   is_producer_key(const chain::public_key_type& key) const;
    chain::signature_type  sign_compact(const chain::public_key_type& key, const fc::sha256& digest) const;
-   void log_failed_transaction(const transaction_id_type& trx_id, const packed_transaction_ptr& packed_trx_ptr, const char* reason) const;
+   void log_failed_transaction(const transaction_id_type& trx_id, const chain::packed_transaction_ptr& packed_trx_ptr, const char* reason) const;
 
    bool execute_incoming_transaction(const chain::transaction_metadata_ptr& trx,
                                      next_function<chain::transaction_trace_ptr> next);
