@@ -78,8 +78,6 @@ BOOST_AUTO_TEST_CASE( replace_account_keys ) try {
 
 BOOST_AUTO_TEST_CASE( decompressed_size_over_limit ) try {
    tester chain;
-   const name usr = config::system_account_name;
-   const name active_permission = config::active_name;
 
    // build a transaction, add cf data, sign
    cf_action                        cfa;
