@@ -168,7 +168,7 @@ try:
         totalNodes=totalNodes,
         unstartedNodes=totalNodes - numOfProducers,
         pnodes=1,
-        useBiosBootFile=False,
+        #useBiosBootFile=False,
         topo="mesh",
         specificExtraNodeosArgs=specificNodeosArgs,
         extraNodeosArgs=traceNodeosArgs

@@ -677,7 +677,7 @@ private:
 };
 
 BOOST_AUTO_TEST_CASE(test_deltas_not_empty) {
-   for (backing_store_type backing_store : { backing_store_type::CHAINBASE/* TODO: uncomment this , backing_store_type::ROCKSDB*/ } ) {
+   for (backing_store_type backing_store : { backing_store_type::CHAINBASE } ) {
       table_deltas_tester chain { backing_store };
 
       auto deltas = eosio::state_history::create_deltas(chain.control->kv_db(), false);
@@ -689,7 +689,7 @@ BOOST_AUTO_TEST_CASE(test_deltas_not_empty) {
 }
 
 BOOST_AUTO_TEST_CASE(test_deltas_account_creation) {
-   for (backing_store_type backing_store : { backing_store_type::CHAINBASE, backing_store_type::ROCKSDB }) {
+   for (backing_store_type backing_store : { backing_store_type::CHAINBASE }) {
       table_deltas_tester chain { backing_store };
       chain.produce_block();
 
@@ -710,7 +710,7 @@ BOOST_AUTO_TEST_CASE(test_deltas_account_creation) {
 }
 
 BOOST_AUTO_TEST_CASE(test_deltas_account_metadata) {
-   for (backing_store_type backing_store : { backing_store_type::CHAINBASE, backing_store_type::ROCKSDB }) {
+   for (backing_store_type backing_store : { backing_store_type::CHAINBASE }) {
       table_deltas_tester chain { backing_store };
       chain.produce_block();
 
@@ -729,7 +729,7 @@ BOOST_AUTO_TEST_CASE(test_deltas_account_metadata) {
 
 
 BOOST_AUTO_TEST_CASE(test_deltas_account_permission) {
-   for (backing_store_type backing_store : { backing_store_type::CHAINBASE, backing_store_type::ROCKSDB }) {
+   for (backing_store_type backing_store : { backing_store_type::CHAINBASE }) {
       table_deltas_tester chain { backing_store };
       chain.produce_block();
 
@@ -751,7 +751,7 @@ BOOST_AUTO_TEST_CASE(test_deltas_account_permission) {
 }
 
 BOOST_AUTO_TEST_CASE(test_deltas_account_permission_creation_and_deletion) {
-   for (backing_store_type backing_store : { backing_store_type::CHAINBASE, backing_store_type::ROCKSDB }) {
+   for (backing_store_type backing_store : { backing_store_type::CHAINBASE }) {
       table_deltas_tester chain { backing_store };
       chain.produce_block();
 
@@ -797,7 +797,7 @@ BOOST_AUTO_TEST_CASE(test_deltas_account_permission_creation_and_deletion) {
 }
 
 BOOST_AUTO_TEST_CASE(test_deltas_account_permission_modification) {
-   for (backing_store_type backing_store : { backing_store_type::CHAINBASE, backing_store_type::ROCKSDB }) {
+   for (backing_store_type backing_store : { backing_store_type::CHAINBASE }) {
       table_deltas_tester chain { backing_store };
       chain.produce_block();
 
@@ -837,7 +837,7 @@ BOOST_AUTO_TEST_CASE(test_deltas_account_permission_modification) {
 }
 
 BOOST_AUTO_TEST_CASE(test_deltas_permission_link) {
-   for (backing_store_type backing_store : { backing_store_type::CHAINBASE, backing_store_type::ROCKSDB }) {
+   for (backing_store_type backing_store : { backing_store_type::CHAINBASE }) {
       table_deltas_tester chain { backing_store };
       chain.produce_block();
 
@@ -863,7 +863,7 @@ BOOST_AUTO_TEST_CASE(test_deltas_permission_link) {
 }
 
 BOOST_AUTO_TEST_CASE(test_deltas_global_property_history) {
-   for (backing_store_type backing_store : { backing_store_type::CHAINBASE, backing_store_type::ROCKSDB }) {
+   for (backing_store_type backing_store : { backing_store_type::CHAINBASE }) {
       // Assuming max transaction delay is 45 days (default in config.hpp)
       table_deltas_tester chain { backing_store };
 
@@ -884,7 +884,7 @@ BOOST_AUTO_TEST_CASE(test_deltas_global_property_history) {
 }
 
 BOOST_AUTO_TEST_CASE(test_deltas_protocol_feature_history) {
-   for (backing_store_type backing_store : { backing_store_type::CHAINBASE, backing_store_type::ROCKSDB }) {
+   for (backing_store_type backing_store : { backing_store_type::CHAINBASE }) {
       table_deltas_tester chain { backing_store, setup_policy::none };
       const auto &pfm = chain.control->get_protocol_feature_manager();
 
@@ -919,7 +919,7 @@ BOOST_AUTO_TEST_CASE(test_deltas_protocol_feature_history) {
 }
 
 BOOST_AUTO_TEST_CASE(test_deltas_kv) {
-   for (backing_store_type backing_store : { backing_store_type::CHAINBASE, backing_store_type::ROCKSDB }) {
+   for (backing_store_type backing_store : { backing_store_type::CHAINBASE }) {
       table_deltas_tester chain { backing_store };
 
       chain.produce_blocks(2);
@@ -980,7 +980,7 @@ BOOST_AUTO_TEST_CASE(test_deltas_kv) {
 }
 
 BOOST_AUTO_TEST_CASE(test_deltas_contract) {
-   for (backing_store_type backing_store : { backing_store_type::CHAINBASE, backing_store_type::ROCKSDB }) {
+   for (backing_store_type backing_store : { backing_store_type::CHAINBASE }) {
       table_deltas_tester chain { backing_store, setup_policy::none };
 
       chain.produce_block();
@@ -1125,7 +1125,7 @@ BOOST_AUTO_TEST_CASE(test_deltas_contract) {
 }
 
 BOOST_AUTO_TEST_CASE(test_deltas_contract_several_rows){
-   for (backing_store_type backing_store : { backing_store_type::CHAINBASE, backing_store_type::ROCKSDB }) {
+   for (backing_store_type backing_store : { backing_store_type::CHAINBASE }) {
       table_deltas_tester chain { backing_store, setup_policy::none };
 
       chain.produce_block();
@@ -1302,7 +1302,7 @@ BOOST_AUTO_TEST_CASE(test_deltas_table_and_kv) {
 }
 
 BOOST_AUTO_TEST_CASE(test_deltas_resources_history) {
-   for (backing_store_type backing_store : { backing_store_type::CHAINBASE, backing_store_type::ROCKSDB }) {
+   for (backing_store_type backing_store : { backing_store_type::CHAINBASE }) {
       table_deltas_tester chain { backing_store };
       chain.produce_block();
 

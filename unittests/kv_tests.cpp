@@ -621,7 +621,6 @@ class kv_tester : public tester {
    }
 
    // Make sure that a failed transaction correctly rolls back changes to the database,
-   // for both rocksdb and chainbase.
    void test_undo() {
       setmany("", "kvtest"_n,
               {
@@ -695,11 +694,6 @@ class kv_chainbase_tester : public kv_tester {
    kv_chainbase_tester() : kv_tester(backing_store_type::CHAINBASE) { }
 };
 
-class kv_rocksdb_tester : public kv_tester {
- public:
-   kv_rocksdb_tester() : kv_tester(backing_store_type::ROCKSDB) { }
-};
-
 BOOST_AUTO_TEST_SUITE(kv_tests)
 
 BOOST_FIXTURE_TEST_CASE(kv_basic, kv_chainbase_tester) try {
@@ -771,88 +765,6 @@ FC_LOG_AND_RETHROW()
 
 BOOST_FIXTURE_TEST_CASE(max_iterators, kv_chainbase_tester) try { //
    test_max_iterators();
-}
-FC_LOG_AND_RETHROW()
-
-// RocksDB related test cases
-
-BOOST_FIXTURE_TEST_CASE(kv_basic_rocksdb, kv_rocksdb_tester) try {
-   test_kv_basic_common();
-}
-FC_LOG_AND_RETHROW()
-
-BOOST_FIXTURE_TEST_CASE(kv_scan_rocksdb, kv_rocksdb_tester) try {
-   test_kv_scan_common();
-}
-FC_LOG_AND_RETHROW()
-
-BOOST_FIXTURE_TEST_CASE(kv_scanrev_rocksdb, kv_rocksdb_tester) try {
-   test_kv_scanrev_common();
-}
-FC_LOG_AND_RETHROW()
-
-BOOST_FIXTURE_TEST_CASE(kv_scanrev2_rocksdb, kv_rocksdb_tester) try { //
-   test_kv_scanrev2_common();
-}
-FC_LOG_AND_RETHROW()
-
-BOOST_FIXTURE_TEST_CASE(kv_iterase_rocksdb, kv_rocksdb_tester) try { //
-   test_kv_iterase_common();
-}
-FC_LOG_AND_RETHROW()
-
-BOOST_FIXTURE_TEST_CASE(kv_ram_usage_rocksdb, kv_rocksdb_tester) try { //
-   test_kv_ram_usage_common();
-}
-FC_LOG_AND_RETHROW()
-
-BOOST_FIXTURE_TEST_CASE(kv_resource_limit_rocksdb, kv_rocksdb_tester) try { //
-   test_kv_resource_limit_common();
-}
-FC_LOG_AND_RETHROW()
-
-BOOST_FIXTURE_TEST_CASE(kv_key_value_limit_rocksdb, kv_rocksdb_tester) try { //
-   test_kv_key_value_limit_common();
-}
-FC_LOG_AND_RETHROW()
-
-BOOST_DATA_TEST_CASE_F(kv_rocksdb_tester, kv_inc_dec_usage_rocksdb, bdata::make(databases), db) try { //
-   test_kv_inc_dec_usage();
-}
-FC_LOG_AND_RETHROW()
-
-BOOST_DATA_TEST_CASE_F(kv_rocksdb_tester, kv_inc_usage_and_limit_rocksdb, bdata::make(databases), db) try { //
-   test_kv_inc_usage_and_limit();
-}
-FC_LOG_AND_RETHROW()
-
-BOOST_DATA_TEST_CASE_F(kv_rocksdb_tester, kv_dec_limit_and_usage_rocksdb, bdata::make(databases), db) try { //
-   test_kv_dec_limit_and_usage();
-}
-FC_LOG_AND_RETHROW()
-
-BOOST_DATA_TEST_CASE_F(kv_rocksdb_tester, get_data_rocksdb, bdata::make(databases), db) try { //
-   test_get_data();
-}
-FC_LOG_AND_RETHROW()
-
-BOOST_DATA_TEST_CASE_F(kv_rocksdb_tester, other_contract_rocksdb, bdata::make(databases), db) try { //
-   test_other_contract();
-}
-FC_LOG_AND_RETHROW()
-
-BOOST_FIXTURE_TEST_CASE(max_iterators_rocksdb, kv_rocksdb_tester) try { //
-   test_max_iterators();
-}
-FC_LOG_AND_RETHROW()
-
-BOOST_DATA_TEST_CASE_F(kv_chainbase_tester, undo, bdata::make(databases) * bdata::make({false, true}), db, rocks) try { //
-   test_undo();
-}
-FC_LOG_AND_RETHROW()
-
-BOOST_DATA_TEST_CASE_F(kv_rocksdb_tester, rocksdb_undo, bdata::make(databases) * bdata::make({false, true}), db, rocks) try { //
-   test_undo();
 }
 FC_LOG_AND_RETHROW()
 

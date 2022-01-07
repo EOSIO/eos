@@ -31,7 +31,7 @@ using namespace fc;
 
 BOOST_AUTO_TEST_SUITE(get_table_tests)
 
-using backing_store_ts = boost::mpl::list<TESTER, ROCKSDB_TESTER>;
+using backing_store_ts = boost::mpl::list<TESTER>;
 
 transaction_trace_ptr
 issue_tokens( TESTER& t, account_name issuer, account_name to, const asset& amount,

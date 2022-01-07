@@ -68,7 +68,7 @@ struct completed_block {
 using block_stage_type = std::variant<building_block, assembled_block, completed_block>;
 
 struct pending_state {
-   pending_state( combined_session&& s, const block_header_state& prev,
+   pending_state( kv_session&& s, const block_header_state& prev,
                   block_timestamp_type when,
                   uint16_t num_prev_blocks_to_confirm,
                   const vector<digest_type>& new_protocol_feature_activations )
@@ -76,7 +76,7 @@ struct pending_state {
    ,_block_stage( building_block( prev, when, num_prev_blocks_to_confirm, new_protocol_feature_activations ) )
    {}
 
-   combined_session                   _db_session;
+   kv_session                   _db_session;
    block_stage_type                   _block_stage;
    controller::block_status           _block_status = controller::block_status::incomplete;
    std::optional<block_id_type>       _producer_block_id;
@@ -162,7 +162,7 @@ struct controller_impl {
    controller&                         self;
    std::function<void()>               shutdown;
    chainbase::database                 db;
-   combined_database                   kv_db;
+   kv_database                   kv_db;
    block_log                           blog;
    std::optional<pending_state>        pending;
    block_state_ptr                     head;
@@ -234,9 +234,7 @@ struct controller_impl {
     db( cfg.state_dir,
         cfg.read_only ? database::read_only : database::read_write,
         cfg.state_size, false, cfg.db_map_mode ),
-    kv_db(cfg.backing_store == backing_store_type::CHAINBASE
-          ? combined_database(db, cfg.persistent_storage_mbytes_batch)
-          : combined_database(db, cfg)), 
+    kv_db(kv_database(db)),
     blog( cfg.blog ),
     fork_db( cfg.blog.log_dir / config::reversible_blocks_dir_name ),
     wasmif( cfg.wasm_runtime, cfg.eosvmoc_tierup, db, cfg.state_dir, cfg.eosvmoc_config, !cfg.profile_accounts.empty() ),
@@ -976,7 +974,7 @@ struct controller_impl {
       const bool validating = !self.is_producing_block();
       EOS_ASSERT( !validating || explicit_billed_cpu_time, transaction_exception, "validating requires explicit billing" );
 
-      combined_session undo_session = !self.skip_db_sessions() ? kv_db.make_session() : kv_db.make_no_op_session();
+      kv_session undo_session = !self.skip_db_sessions() ? kv_db.make_session() : kv_db.make_no_op_session();
 
       auto gtrx = generated_transaction(gto);
 
@@ -2346,7 +2344,7 @@ const chainbase::database& controller::db()const { return my->db; }
 chainbase::database& controller::mutable_db()const { return my->db; }
 
 const fork_database& controller::fork_db()const { return my->fork_db; }
-eosio::chain::combined_database& controller::kv_db() const { return my->kv_db; }
+eosio::chain::kv_database& controller::kv_db() const { return my->kv_db; }
 
 void controller::preactivate_feature( uint32_t action_id, const digest_type& feature_digest ) {
    const auto& pfs = my->protocol_features.get_protocol_feature_set();
