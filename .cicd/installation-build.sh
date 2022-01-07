@@ -13,7 +13,11 @@ eval $BUILD_COMMAND
 echo '+++ :arrow_up: Pushing Container'
 for REGISTRY in "${CONTRACT_REGISTRIES[@]}"; do
     if [[ ! -z "$REGISTRY" ]]; then
-        COMMITS=("$REGISTRY:base-ubuntu-18.04-$BUILDKITE_COMMIT" "$REGISTRY:base-ubuntu-18.04-$BUILDKITE_COMMIT-$PLATFORM_TYPE" "$REGISTRY:base-ubuntu-18.04-$SANITIZED_BRANCH-$BUILDKITE_COMMIT")
+        COMMITS=("$REGISTRY:base-ubuntu-18.04-$BUILDKITE_COMMIT-$PLATFORM_TYPE")
+        # Platform agnostic elements should be unpinned
+        if [[ "$PLATFORM_TYPE" == 'unpinned' ]] ; then
+            COMMITS=(${COMMITS[@]} "$REGISTRY:base-ubuntu-18.04-$BUILDKITE_COMMIT" "$REGISTRY:base-ubuntu-18.04-$SANITIZED_BRANCH-$BUILDKITE_COMMIT")
+        fi
         for COMMIT in "${COMMITS[@]}"; do
             COMMIT_COMMAND="docker commit 'ci-contracts-builder-$BUILDKITE_PIPELINE_SLUG-$BUILDKITE_BUILD_NUMBER' '$COMMIT'"
             echo "$ $COMMIT_COMMAND"
