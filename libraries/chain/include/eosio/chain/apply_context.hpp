@@ -501,7 +501,7 @@ class apply_context {
    /// Console methods:
    public:
 
-      void console_append( const string& val ) {
+      void console_append( std::string_view val ) {
          _pending_console_output += val;
       }
 

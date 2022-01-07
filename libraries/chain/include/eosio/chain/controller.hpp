@@ -18,6 +18,8 @@ namespace boost { namespace asio {
    class thread_pool;
 }}
 
+namespace eosio { namespace vm { class wasm_allocator; }}
+
 namespace eosio { namespace chain {
 
    class authorization_manager;

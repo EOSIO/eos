@@ -37,7 +37,7 @@ std::tuple<bool, eosvmoc_message, std::vector<wrapped_fd>> read_message_with_fds
    do {
       red = recvmsg(fd, &msg, 0);
    } while(red == -1 && errno == EINTR);
-   if(red < 1 || red >= sizeof(buff))
+   if(red < 1 || static_cast<unsigned>(red) >= sizeof(buff))
       return {false, message, std::move(fds)};
    
    try {

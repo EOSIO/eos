@@ -1,5 +1,7 @@
 #pragma once
 
+#include <eosio/chain/webassembly/eos-vm-oc/stack.hpp>
+
 #include <stdint.h>
 #include <stddef.h>
 #include <exception>
@@ -24,7 +26,7 @@ class executor {
       executor(const code_cache_base& cc);
       ~executor();
 
-      void execute(const code_descriptor& code, const memory& mem, apply_context& context);
+      void execute(const code_descriptor& code, memory& mem, apply_context& context);
 
    private:
       uint8_t* code_mapping;
@@ -34,6 +36,8 @@ class executor {
       std::exception_ptr executors_exception_ptr;
       sigjmp_buf executors_sigjmp_buf;
       std::list<std::vector<std::byte>> executors_bounce_buffers;
+      std::vector<std::byte> globals_buffer;
+      execution_stack stack;
 };
 
 }}}
