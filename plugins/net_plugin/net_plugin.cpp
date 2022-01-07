@@ -1799,7 +1799,6 @@ namespace eosio {
          peer_dlog( c, "We are already caught up, my irr = ${b}, head = ${h}, target = ${t}",
                   ("b", lib_num)( "h", fork_head_block_num )( "t", target ) );
          c->send_handshake();
-         return;
       }
 
       if( sync_state == in_sync ) {
