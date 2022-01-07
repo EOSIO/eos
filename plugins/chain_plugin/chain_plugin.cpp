@@ -3274,7 +3274,7 @@ void read_only::push_ro_transaction(const read_only::push_ro_transaction_params&
       fc_add_tag(trx_span, "method", "send_transaction");
 
       app().get_method<incoming::methods::transaction_async>()(input_trx, true, true, static_cast<const bool>(params.return_failure_traces),
-            [this, token=trx_trace.get_token(), input_trx, params, next]
+            [this, token=trx_trace->get_token(), input_trx, params, next]
             (const std::variant<fc::exception_ptr, transaction_trace_ptr>& result) -> void {
          auto trx_span = fc_create_span_from_token(token, "Processed");
          fc_add_tag(trx_span, "trx_id", input_trx->id());

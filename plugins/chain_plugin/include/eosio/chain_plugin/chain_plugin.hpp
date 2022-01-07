@@ -586,7 +586,7 @@ public:
       chain::block_id_type         head_block_id;
       uint32_t                     last_irreversible_block_num = 0;
       chain::block_id_type         last_irreversible_block_id;
-      digest_type                  code_hash;
+      chain::digest_type           code_hash;
       vector<transaction_id_type>  pending_transactions;
       fc::variant                  result;
    };

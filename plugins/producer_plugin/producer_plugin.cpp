@@ -393,7 +393,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
                   };
                   try {
                      auto result = future.get();
-                     bool return_failure_trace = false;
+                     //bool return_failure_trace = false;
                      if( !self->process_incoming_transaction_async( result, persist_until_expired, next, return_failure_trace ) ) {
                         if( self->_pending_block_mode == pending_block_mode::producing ) {
                            self->schedule_maybe_produce_block( true );
@@ -2006,7 +2006,7 @@ void producer_plugin_impl::process_scheduled_and_incoming_trxs( const fc::time_p
          bool persist_until_expired = itr->trx_type == trx_enum_type::incoming_persisted;
          bool return_failure_trace = itr->return_failure_trace;
          itr = _unapplied_transactions.erase( itr );
-         if( !process_incoming_transaction_async( trx_meta, persist_until_expired, return_failure_trace, next ) ) {
+         if( !process_incoming_transaction_async( trx_meta, persist_until_expired, next, return_failure_trace ) ) {
             exhausted = true;
             break;
          }
@@ -2077,7 +2077,7 @@ bool producer_plugin_impl::process_incoming_trxs( const fc::time_point& deadline
          bool return_failure_trace = itr->return_failure_trace;
          itr = _unapplied_transactions.erase( itr );
          ++processed;
-         if( !process_incoming_transaction_async( trx_meta, persist_until_expired, return_failure_trace, next ) ) {
+         if( !process_incoming_transaction_async( trx_meta, persist_until_expired, next, return_failure_trace ) ) {
             exhausted = true;
             break;
          }
@@ -2310,7 +2310,7 @@ bool producer_plugin::execute_incoming_transaction(const chain::transaction_meta
 {
    const bool persist_until_expired = false;
    const bool return_failure_trace = true;
-   bool exhausted = !my->process_incoming_transaction_async( trx, persist_until_expired, return_failure_trace, std::move(next));
+   bool exhausted = !my->process_incoming_transaction_async( trx, persist_until_expired, std::move(next), return_failure_trace );
    if( exhausted ) {
       if( my->_pending_block_mode == pending_block_mode::producing ) {
          my->schedule_maybe_produce_block( true );
