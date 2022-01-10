@@ -62,7 +62,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_snapshot_information, SNAPSHOT_SUITE, snapsho
 
    write_snapshot( pending_path );
    next_t next;
-   eosio::pending_snapshot pending{ block2->previous, next, pending_path.generic_string(), final_path.generic_string(), nullptr };
+   eosio::pending_snapshot pending{ block2->previous, next, pending_path.generic_string(), final_path.generic_string() };
    test_snap_info = pending.finalize(*chain.control);
    BOOST_REQUIRE_EQUAL(test_snap_info.head_block_num, 6);
    BOOST_REQUIRE_EQUAL(test_snap_info.version, chain_snapshot_header::current_version);

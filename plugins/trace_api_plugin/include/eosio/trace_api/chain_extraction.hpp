@@ -107,9 +107,9 @@ private:
             if( it != tracked.cached_traces.end() ) {
                traces.emplace_back( to_transaction_trace<transaction_trace_t>( it->second ));
             }
+            tt.ids.emplace_back(id);
          }
          clear_caches( block_state->block_num );
-
          store.append( std::move( bt ) );
       } catch( ... ) {
          except_handler( MAKE_EXCEPTION_WITH_CONTEXT( std::current_exception() ) );

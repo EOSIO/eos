@@ -1,4 +1,5 @@
 #include <eosio/producer_plugin/producer_plugin.hpp>
+#include <eosio/producer_plugin/producer_plugin.hpp>
 #include <eosio/producer_plugin/pending_snapshot.hpp>
 #include <eosio/producer_plugin/subjective_billing.hpp>
 #include <eosio/chain/plugin_interface.hpp>
@@ -9,7 +10,6 @@
 #include <eosio/chain/thread_utils.hpp>
 #include <eosio/chain/unapplied_transaction_queue.hpp>
 #include <eosio/resource_monitor_plugin/resource_monitor_plugin.hpp>
-#include <eosio/blockvault_client_plugin/blockvault_client_plugin.hpp>
 
 #include <fc/io/json.hpp>
 #include <fc/log/logger_config.hpp>
@@ -130,28 +130,10 @@ enum class pending_block_mode {
    speculating
 };
 
-class producer_plugin_impl;
-class block_only_sync : public blockvault::sync_callback {
-   producer_plugin_impl*       _impl;
-   boost::asio::deadline_timer _start_sync_timer;
-   bool                        _pending = false;
-
- public:
-   block_only_sync(producer_plugin_impl* impl, boost::asio::io_service& io)
-       : _impl(impl), _start_sync_timer(io) {}
-
-   bool is_pending() const { return _pending; }
-   void cancel() { _start_sync_timer.cancel(); }
-   void schedule();
-   void on_snapshot(const char* snapshot_filename) override;
-   void on_block(eosio::chain::signed_block_ptr block) override;
-};
-
 class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin_impl> {
    public:
       producer_plugin_impl(boost::asio::io_service& io)
       :_timer(io)
-      ,_block_vault_resync(this, io)
       ,_transaction_ack_channel(app().get_channel<compat::channels::transaction_ack>())
       {
       }
@@ -176,7 +158,6 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       std::map<chain::public_key_type, signature_provider_type> _signature_providers;
       std::set<chain::account_name>                             _producers;
       boost::asio::deadline_timer                               _timer;
-      block_only_sync                                           _block_vault_resync;
       using producer_watermark = std::pair<uint32_t, block_timestamp_type>;
       std::map<chain::account_name, producer_watermark>         _producer_watermarks;
       pending_block_mode                                        _pending_block_mode = pending_block_mode::speculating;
@@ -199,8 +180,6 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       bool                                                      _protocol_features_signaled = false; // to mark whether it has been signaled in start_block
 
       chain_plugin*                                             chain_plug = nullptr;
-      eosio::blockvault::block_vault_interface*                 blockvault = nullptr;
-      uint32_t                                                  _latest_rejected_block_num = 0;
 
       incoming::channels::block::channel_type::handle           _incoming_block_subscription;
       incoming::channels::transaction::channel_type::handle     _incoming_transaction_subscription;
@@ -208,7 +187,6 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       compat::channels::transaction_ack::channel_type&          _transaction_ack_channel;
 
       incoming::methods::block_sync::method_type::handle        _incoming_block_sync_provider;
-      incoming::methods::blockvault_sync::method_type::handle   _incoming_blockvault_sync_provider;
       incoming::methods::transaction_async::method_type::handle _incoming_transaction_async_provider;
 
       transaction_id_with_expiry_index                          _blacklisted_transactions;
@@ -305,61 +283,6 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          _subjective_billing.abort_block();
       }
 
-      bool on_sync_block(const signed_block_ptr& block, bool check_connectivity) {
-         auto& chain = chain_plug->chain();
-
-         const auto& id = block->calculate_id();
-         auto blk_num = block->block_num();
-
-         fc_dlog(_log, "syncing blockvault block ${n} ${id}", ("n", blk_num)("id", id));
-
-         if (check_connectivity) {
-            auto previous = chain.fetch_block_by_id(block->previous);
-            if (!previous) {
-               fc_dlog(_log, "Don't have previous block for block number ${bn}, looking for block id ${pbi}",
-                    ("bn", block->block_num())("pbi", block->previous));
-               return true;
-            }
-         }
-
-         auto existing = chain.fetch_block_by_id( id );
-         if( existing ) { return true; }
-
-         // start processing of block
-         auto bsf = chain.create_block_state_future( id, block );
-
-         // abort the pending block
-         _unapplied_transactions.add_aborted( chain.abort_block() );
-
-         // push the new block
-         auto handle_error = [&](const auto& e)
-         {
-            fc_elog(_log, (e.to_detail_string()));
-            throw;
-         };
-
-         try {
-            block_state_ptr blk_state = chain.push_block( bsf, [this]( const branch_type& forked_branch ) {
-               _unapplied_transactions.add_forked( forked_branch );
-            }, [this]( const transaction_id_type& id ) {
-               return _unapplied_transactions.get_trx( id );
-            } );
-         } catch ( const guard_exception& e ) {
-            chain_plugin::handle_guard_exception(e);
-            return false;
-         } catch ( const std::bad_alloc& ) {
-            chain_plugin::handle_bad_alloc();
-         } catch ( boost::interprocess::bad_alloc& ) {
-            chain_plugin::handle_db_exhaustion();
-         } catch( const fc::exception& e ) {
-            handle_error(e);
-         } catch (const std::exception& e) {
-            handle_error(fc::std_exception_wrapper::from_current_exception(e));
-         }
-
-         return true;
-      }
-
       bool on_incoming_block(const signed_block_ptr& block, const std::optional<block_id_type>& block_id) {
          auto& chain = chain_plug->chain();
          if ( _pending_block_mode == pending_block_mode::producing) {
@@ -405,14 +328,6 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
             }, [this]( const transaction_id_type& id ) {
                return _unapplied_transactions.get_trx( id );
             } );
-
-            if ( blockvault != nullptr ) {
-               if (_block_vault_resync.is_pending() && _producers.count( block->producer ) > 0 ) {
-                  // Cancel any pending resync from blockvault if we received any blocks from the same logical producer
-                  _block_vault_resync.cancel();
-               }
-               blockvault->async_append_external_block(blk_state->dpos_irreversible_blocknum, blk_state->block, [](bool){});
-            }
          } catch ( const guard_exception& e ) {
             chain_plugin::handle_guard_exception(e);
             return false;
@@ -851,9 +766,6 @@ if( options.count(op_name) ) { \
 
 void producer_plugin::plugin_initialize(const boost::program_options::variables_map& options)
 { try {
-   auto blockvault_plug = app().find_plugin<blockvault_client_plugin>();
-   my->blockvault = blockvault_plug ? blockvault_plug->get() : nullptr;
-
    my->chain_plug = app().find_plugin<chain_plugin>();
    EOS_ASSERT( my->chain_plug, plugin_config_exception, "chain_plugin not found" );
    my->_options = &options;
@@ -1007,11 +919,6 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
       return my->on_incoming_block(block, block_id);
    });
 
-   my->_incoming_blockvault_sync_provider = app().get_method<incoming::methods::blockvault_sync>().register_provider(
-         [this](const signed_block_ptr& block, bool check_connectivity) {
-            return my->on_sync_block(block, check_connectivity);
-   });
-
    my->_incoming_transaction_async_provider = app().get_method<incoming::methods::transaction_async>().register_provider(
          [this](const packed_transaction_ptr& trx, bool persist_until_expired, next_function<transaction_trace_ptr> next) -> void {
       return my->on_incoming_transaction_async(trx, persist_until_expired, next );
@@ -1092,7 +999,6 @@ void producer_plugin::plugin_startup()
 void producer_plugin::plugin_shutdown() {
    try {
       my->_timer.cancel();
-      my->_block_vault_resync.cancel();
    } catch ( const std::bad_alloc& ) {
      chain_plugin::handle_bad_alloc();
    } catch ( const boost::interprocess::bad_alloc& ) {
@@ -1317,9 +1223,6 @@ void producer_plugin::create_snapshot(producer_plugin::next_function<producer_pl
                ("message", ec.message()));
 
          next( producer_plugin::snapshot_information{head_id, head_block_num, head_block_time, chain_snapshot_header::current_version, snapshot_path.generic_string()} );
-         if ( my->blockvault != nullptr ) {
-            my->blockvault->propose_snapshot( blockvault::watermark_t{head_block_num, head_block_time}, snapshot_path.generic_string().c_str() );
-         }
       } CATCH_AND_CALL (next);
       return;
    }
@@ -1351,7 +1254,7 @@ void producer_plugin::create_snapshot(producer_plugin::next_function<producer_pl
                ("ec", ec.value())
                ("message", ec.message()));
 
-         my->_pending_snapshot_index.emplace(head_id, next, pending_path.generic_string(), snapshot_path.generic_string(), my->blockvault);
+         my->_pending_snapshot_index.emplace(head_id, next, pending_path.generic_string(), snapshot_path.generic_string());
       } CATCH_AND_CALL (next);
    }
 }
@@ -1547,7 +1450,7 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
 
    const auto& hbs = chain.head_block_state();
 
-   if( chain.get_terminate_at_block() > 0 && chain.get_terminate_at_block() < hbs->block_num ) {
+   if( chain.get_terminate_at_block() > 0 && chain.get_terminate_at_block() < chain.head_block_num() ) {
       ilog("Reached configured maximum block ${num}; terminating", ("num", chain.get_terminate_at_block()));
       app().quit();
       return start_block_result::failed;
@@ -1587,9 +1490,6 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
       _pending_block_mode = pending_block_mode::speculating;
    } else if ( _max_irreversible_block_age_us.count() >= 0 && irreversible_block_age >= _max_irreversible_block_age_us ) {
       elog("Not producing block because the irreversible block is too old [age:${age}s, max:${max}s]", ("age", irreversible_block_age.count() / 1'000'000)( "max", _max_irreversible_block_age_us.count() / 1'000'000 ));
-      _pending_block_mode = pending_block_mode::speculating;
-   } else if ( _latest_rejected_block_num >  hbs->block_num ) {
-      elog("Not producing block because the block number has been rejected by block vault");
       _pending_block_mode = pending_block_mode::speculating;
    }
 
@@ -2344,18 +2244,12 @@ bool producer_plugin_impl::maybe_produce_block() {
       return false;
    }
 
-   const char* reason = "produce_block error";
-
    try {
       produce_block();
       return true;
-   }
-   catch(block_validation_error&) {
-      reason = "block vault rejected block, waiting on external block to continue";
-   }
-   LOG_AND_DROP();
+   } LOG_AND_DROP();
 
-   fc_wlog(_log, "Aborting block due to ${reason}", ("reason", reason));
+   fc_wlog(_log, "Aborting block due to produce_block error");
    abort_block();
    return false;
 }
@@ -2472,20 +2366,6 @@ void producer_plugin_impl::produce_block() {
                      [&d](const auto& p) { return p.get()(d); });
       return signatures;
    });
-
-   if (blockvault != nullptr) {
-      std::promise<bool> p;
-      std::future<bool>  f = p.get_future();
-      if (!assign_block_signatures())
-         return;
-      blockvault->async_propose_constructed_block(block_state->dpos_irreversible_blocknum,
-                                                block_state->block, [&p](bool b) { p.set_value(b); });
-      if (!f.get()) {
-         _latest_rejected_block_num = block_state->block->block_num();
-         _block_vault_resync.schedule();
-         EOS_ASSERT(false, block_validation_error, "Block rejected by block vault");
-      }
-   }
 
    chain.commit_block();
    block_state_ptr new_bs = chain.head_block_state();

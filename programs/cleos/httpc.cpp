@@ -281,6 +281,10 @@ namespace eosio { namespace client { namespace http {
             throw chain::missing_history_api_plugin_exception(FC_LOG_MESSAGE(error, "History API plugin is not enabled"));
          } else if (url.path.compare(0, net_func_base.size(), net_func_base) == 0) {
             throw chain::missing_net_api_plugin_exception(FC_LOG_MESSAGE(error, "Net API plugin is not enabled"));
+         } else if (url.path.compare(0, trace_api_func_base.size(), trace_api_func_base) == 0) {
+            if ( re.find("Trace API:") == string::npos ) {
+               throw chain::missing_trace_api_plugin_exception(FC_LOG_MESSAGE(error, "Trace API plugin is not enabled"));
+            }
          }
       } else {
          auto &&error_info = response_result.as<eosio::error_results>().error;

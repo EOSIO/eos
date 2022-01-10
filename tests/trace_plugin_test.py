@@ -3,6 +3,7 @@ import json
 import time
 import unittest
 import sys
+import os
 
 from testUtils import Utils
 from Cluster import Cluster
@@ -32,7 +33,8 @@ class TraceApiPluginTest(unittest.TestCase):
     # start keosd and nodeos
     def startEnv(self) :
         account_names = ["alice", "bob", "charlie"]
-        traceNodeosArgs = " --plugin eosio::trace_api_plugin --trace-no-abis --trace-dir=. --signing-delay {}".format(signing_delay)
+        abs_path = os.path.abspath(os.getcwd() + '/../unittests/contracts/eosio.token/eosio.token.abi')
+        traceNodeosArgs = " --plugin eosio::trace_api_plugin --trace-rpc-abi eosio.token={} --signing-delay {}".format(abs_path, signing_delay)
         self.cluster.launch(totalNodes=1, extraNodeosArgs=traceNodeosArgs)
         self.walletMgr.launch()
         testWalletName="testwallet"
