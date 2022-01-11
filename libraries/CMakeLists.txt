@@ -19,10 +19,10 @@ add_subdirectory( builtins )
 # Suppress warnings on 3rdParty Library
 add_definitions( -w )
 add_subdirectory( softfloat )
+add_subdirectory( wasm-jit )
 remove_definitions( -w )
 
 add_subdirectory( chainbase )
-add_subdirectory( wasm-jit )
 add_subdirectory( appbase )
 add_subdirectory( chain )
 add_subdirectory( testing )
@@ -67,6 +67,10 @@ set_property(GLOBAL PROPERTY CTEST_CUSTOM_TESTS_IGNORE
 add_subdirectory( rodeos )
 
 find_package(OpenSSL REQUIRED)
+
+# Suppress warnings on 3rdParty Library
+add_definitions( -w )
 option(AMQP-CPP_LINUX_TCP CACHE ON)
 add_subdirectory( amqp-cpp EXCLUDE_FROM_ALL )
 target_include_directories(amqpcpp PRIVATE "${OPENSSL_INCLUDE_DIR}")
+remove_definitions( -w )

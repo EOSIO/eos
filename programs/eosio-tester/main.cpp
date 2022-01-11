@@ -83,10 +83,6 @@ struct assert_exception : std::exception {
    const char* what() const noexcept override { return msg.c_str(); }
 };
 
-// HACK: UB.  Unfortunately, I can't think of a way to allow a transaction_context
-// to be constructed outside of controller in 2.0 that doesn't have undefined behavior.
-// A better solution would be to factor database access out of apply_context, but
-// that can't really be backported to 2.0 at this point.
 namespace {
 struct __attribute__((__may_alias__)) xxx_transaction_checktime_timer {
    std::atomic_bool&             expired;
@@ -96,8 +92,7 @@ struct transaction_checktime_factory {
    eosio::chain::platform_timer              timer;
    std::atomic_bool                          expired;
    eosio::chain::transaction_checktime_timer get() {
-      xxx_transaction_checktime_timer result{ expired, timer };
-      return std::move(*reinterpret_cast<eosio::chain::transaction_checktime_timer*>(&result));
+      return { expired, timer };
    }
 };
 }; // namespace

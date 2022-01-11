@@ -1548,8 +1548,7 @@ namespace eosio {
    void connection::sync_timeout( boost::system::error_code ec ) {
       if( !ec ) {
          my_impl->sync_master->sync_reassign_fetch( shared_from_this(), benign_other );
-      } else if( ec == boost::asio::error::operation_aborted ) {
-      } else {
+      } else if( ec != boost::asio::error::operation_aborted ) { // don't log on operation_aborted, called on destroy
          peer_elog( this, "setting timer for sync request got error ${ec}", ("ec", ec.message()) );
       }
    }
@@ -1558,11 +1557,7 @@ namespace eosio {
    void connection::fetch_timeout( boost::system::error_code ec ) {
       if( !ec ) {
          my_impl->dispatcher->retry_fetch( shared_from_this() );
-      } else if( ec == boost::asio::error::operation_aborted ) {
-         if( !connected() ) {
-            peer_dlog( this, "fetch timeout was cancelled due to dead connection" );
-         }
-      } else {
+      } else if( ec != boost::asio::error::operation_aborted ) { // don't log on operation_aborted, called on destroy
          peer_elog( this, "setting timer for fetch request got error ${ec}", ("ec", ec.message() ) );
       }
    }
@@ -1805,7 +1800,6 @@ namespace eosio {
          peer_dlog( c, "We are already caught up, my irr = ${b}, head = ${h}, target = ${t}",
                   ("b", lib_num)( "h", fork_head_block_num )( "t", target ) );
          c->send_handshake();
-         return;
       }
 
       if( sync_state == in_sync ) {
@@ -2763,7 +2757,7 @@ namespace eosio {
       }
 
       auto is_webauthn_sig = []( const fc::crypto::signature& s ) {
-         return s.which() == fc::get_index<fc::crypto::signature::storage_type, fc::crypto::webauthn::signature>();
+         return static_cast<size_t>(s.which()) == fc::get_index<fc::crypto::signature::storage_type, fc::crypto::webauthn::signature>();
       };
       bool has_webauthn_sig = is_webauthn_sig( ptr->producer_signature );
 
@@ -3091,7 +3085,11 @@ namespace eosio {
       }
       if( msg.reason == wrong_version ) {
          if( !retry ) no_retry = fatal_other; // only retry once on wrong version
-      } else {
+      } 
+      else if ( msg.reason == benign_other ) {
+         if ( retry ) fc_dlog( logger, "received benign_other reason, retrying to connect");
+      }
+      else {
          retry = false;
       }
       flush_queues();
@@ -3270,9 +3268,8 @@ namespace eosio {
       peer_dlog( this, "received packed_transaction ${id}", ("id", tid) );
 
       trx_in_progress_size += calc_trx_size( trx );
-      app().post( priority::low, [trx{std::move(trx)}, weak = weak_from_this()]() {
-         my_impl->chain_plug->accept_transaction( trx,
-            [weak, trx](const std::variant<fc::exception_ptr, transaction_trace_ptr>& result) mutable {
+      my_impl->chain_plug->accept_transaction( trx,
+         [weak = weak_from_this(), trx](const std::variant<fc::exception_ptr, transaction_trace_ptr>& result) mutable {
          // next (this lambda) called from application thread
          if (std::holds_alternative<fc::exception_ptr>(result)) {
             fc_dlog( logger, "bad packed_transaction : ${m}", ("m", std::get<fc::exception_ptr>(result)->what()) );
@@ -3288,7 +3285,6 @@ namespace eosio {
          if( conn ) {
             conn->trx_in_progress_size -= calc_trx_size( trx );
          }
-        });
       });
    }
 
@@ -3653,7 +3649,6 @@ namespace eosio {
    bool connection::populate_handshake( handshake_message& hello ) {
       namespace sc = std::chrono;
       hello.network_version = net_version_base + net_version;
-      const auto prev_head_id = hello.head_id;
       uint32_t lib, head;
       std::tie( lib, std::ignore, head,
                 hello.last_irreversible_block_id, std::ignore, hello.head_id ) = my_impl->get_chain_info();

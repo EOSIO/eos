@@ -370,6 +370,12 @@ void amqp_trx_plugin::plugin_shutdown() {
    try {
       dlog( "shutdown.." );
 
+      if( my->trx_queue_ptr ) {
+         // Need to stop processing from queue since amqp_handler can be paused waiting on queue to empty.
+         // Without this it is possible for the amqp_trx->stop() to hang forever waiting on the trx_queue.
+         my->trx_queue_ptr->signal_stop();
+      }
+
       if( my->amqp_trx ) {
          my->amqp_trx->stop();
       }

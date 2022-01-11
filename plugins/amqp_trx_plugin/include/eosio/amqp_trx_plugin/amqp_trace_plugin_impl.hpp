@@ -5,7 +5,7 @@
 
 namespace eosio {
 
-struct amqp_trace_plugin_impl : std::enable_shared_from_this<amqp_trace_plugin_impl> {
+struct amqp_trace_plugin_impl {
 
    enum class reliable_mode {
       exit,
@@ -24,9 +24,6 @@ public:
 
    // called from any thread
    void publish_error( std::string routing_key, std::string correlation_id, int64_t error_code, std::string error_message );
-
-   // called on application thread
-   void on_applied_transaction(const chain::transaction_trace_ptr& trace, const chain::packed_transaction_ptr& t);
 
    // called from any thread
    void publish_result( std::string routing_key, std::string correlation_id, std::string block_uuid,

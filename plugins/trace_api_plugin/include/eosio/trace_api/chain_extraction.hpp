@@ -87,6 +87,8 @@ private:
 
          std::vector<transaction_trace_t>& traces = std::get<std::vector<transaction_trace_t>>(bt.transactions);
          traces.reserve( block_state->block->transactions.size() + 1 );
+         block_trxs_entry tt;
+         tt.ids.reserve(block_state->block->transactions.size() + 1);
          if( onblock_trace )
             traces.emplace_back( to_transaction_trace<transaction_trace_t>( *onblock_trace ));
          for( const auto& r : block_state->block->transactions ) {
@@ -100,11 +102,15 @@ private:
             if( it != cached_traces.end() ) {
                traces.emplace_back( to_transaction_trace<transaction_trace_t>( it->second ));
             }
+            tt.ids.emplace_back(id);
          }
          clear_caches();
 
-         store.append( std::move( bt ) );
+         // tt entry acts as a placeholder in a trx id slice if this block has no transaction
+         tt.block_num = bt.number;
+         store.append_trx_ids( std::move(tt) );
 
+         store.append( std::move( bt ) );
       } catch( ... ) {
          except_handler( MAKE_EXCEPTION_WITH_CONTEXT( std::current_exception() ) );
       }

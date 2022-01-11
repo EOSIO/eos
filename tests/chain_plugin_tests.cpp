@@ -157,6 +157,8 @@ BOOST_FIXTURE_TEST_CASE( get_info, TESTER ) try {
    BOOST_TEST(*info.fork_db_head_block_id == control->fork_db_pending_head_block_id());
    BOOST_TEST(*info.server_full_version_string == app().full_version_string());
    BOOST_TEST(*info.last_irreversible_block_time == control->last_irreversible_block_time());
+   BOOST_TEST(*info.total_cpu_weight == control->get_resource_limits_manager().get_total_cpu_weight());
+   BOOST_TEST(*info.total_net_weight == control->get_resource_limits_manager().get_total_net_weight());
 
    produce_blocks(1);
 
@@ -180,6 +182,54 @@ BOOST_FIXTURE_TEST_CASE( get_info, TESTER ) try {
    BOOST_TEST(*info.server_full_version_string == app().full_version_string());
    BOOST_TEST(*info.last_irreversible_block_time == control->last_irreversible_block_time());
 } FC_LOG_AND_RETHROW() //get_info
+
+BOOST_FIXTURE_TEST_CASE( get_consensus_parameters, TESTER ) try {
+   produce_blocks(1);
+
+   chain_apis::read_only::get_info_params p;
+   chain_apis::read_only plugin(*(this->control), {}, fc::microseconds::maximum());
+
+   auto parms = plugin.get_consensus_parameters({});
+
+   // verifying chain_config
+   BOOST_TEST(parms.chain_config.max_block_cpu_usage == control->get_global_properties().configuration.max_block_cpu_usage);
+   BOOST_TEST(parms.chain_config.target_block_net_usage_pct == control->get_global_properties().configuration.target_block_net_usage_pct);
+   BOOST_TEST(parms.chain_config.max_transaction_net_usage == control->get_global_properties().configuration.max_transaction_net_usage);
+   BOOST_TEST(parms.chain_config.base_per_transaction_net_usage == control->get_global_properties().configuration.base_per_transaction_net_usage);
+   BOOST_TEST(parms.chain_config.net_usage_leeway == control->get_global_properties().configuration.net_usage_leeway);
+   BOOST_TEST(parms.chain_config.context_free_discount_net_usage_num == control->get_global_properties().configuration.context_free_discount_net_usage_num);
+   BOOST_TEST(parms.chain_config.context_free_discount_net_usage_den == control->get_global_properties().configuration.context_free_discount_net_usage_den);
+   BOOST_TEST(parms.chain_config.max_block_cpu_usage == control->get_global_properties().configuration.max_block_cpu_usage);
+   BOOST_TEST(parms.chain_config.target_block_cpu_usage_pct == control->get_global_properties().configuration.target_block_cpu_usage_pct);
+   BOOST_TEST(parms.chain_config.max_transaction_cpu_usage == control->get_global_properties().configuration.max_transaction_cpu_usage);
+   BOOST_TEST(parms.chain_config.min_transaction_cpu_usage == control->get_global_properties().configuration.min_transaction_cpu_usage);
+   BOOST_TEST(parms.chain_config.max_transaction_lifetime == control->get_global_properties().configuration.max_transaction_lifetime);
+   BOOST_TEST(parms.chain_config.deferred_trx_expiration_window == control->get_global_properties().configuration.deferred_trx_expiration_window);
+   BOOST_TEST(parms.chain_config.max_transaction_delay == control->get_global_properties().configuration.max_transaction_delay);
+   BOOST_TEST(parms.chain_config.max_inline_action_size == control->get_global_properties().configuration.max_inline_action_size);
+   BOOST_TEST(parms.chain_config.max_inline_action_depth == control->get_global_properties().configuration.max_inline_action_depth);
+   BOOST_TEST(parms.chain_config.max_authority_depth == control->get_global_properties().configuration.max_authority_depth);
+   BOOST_TEST(parms.chain_config.max_action_return_value_size == control->get_global_properties().configuration.max_action_return_value_size);
+
+   // verifying kv_database_config
+   BOOST_TEST(parms.kv_database_config.max_key_size == control->get_global_properties().kv_configuration.max_key_size);
+   BOOST_TEST(parms.kv_database_config.max_value_size == control->get_global_properties().kv_configuration.max_value_size);
+   BOOST_TEST(parms.kv_database_config.max_iterators == control->get_global_properties().kv_configuration.max_iterators);
+
+   // verifying wasm_config
+   BOOST_TEST(parms.wasm_config.max_mutable_global_bytes == control->get_global_properties().wasm_configuration.max_mutable_global_bytes);
+   BOOST_TEST(parms.wasm_config.max_table_elements == control->get_global_properties().wasm_configuration.max_table_elements);
+   BOOST_TEST(parms.wasm_config.max_section_elements == control->get_global_properties().wasm_configuration.max_section_elements);
+   BOOST_TEST(parms.wasm_config.max_linear_memory_init == control->get_global_properties().wasm_configuration.max_linear_memory_init);
+   BOOST_TEST(parms.wasm_config.max_func_local_bytes == control->get_global_properties().wasm_configuration.max_func_local_bytes);
+   BOOST_TEST(parms.wasm_config.max_nested_structures == control->get_global_properties().wasm_configuration.max_nested_structures);
+   BOOST_TEST(parms.wasm_config.max_symbol_bytes == control->get_global_properties().wasm_configuration.max_symbol_bytes);
+   BOOST_TEST(parms.wasm_config.max_module_bytes == control->get_global_properties().wasm_configuration.max_module_bytes);
+   BOOST_TEST(parms.wasm_config.max_code_bytes == control->get_global_properties().wasm_configuration.max_code_bytes);
+   BOOST_TEST(parms.wasm_config.max_pages == control->get_global_properties().wasm_configuration.max_pages);
+   BOOST_TEST(parms.wasm_config.max_call_depth == control->get_global_properties().wasm_configuration.max_call_depth);
+
+} FC_LOG_AND_RETHROW() //get_consensus_parameters
 
 BOOST_FIXTURE_TEST_CASE( get_all_accounts, TESTER ) try {
    produce_blocks(2);

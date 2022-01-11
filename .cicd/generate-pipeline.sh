@@ -30,7 +30,6 @@ for FILE in $(ls "$CICD_DIR/platforms/$PLATFORM_TYPE"); do
     ( [[ $SKIP_LINUX == true ]] && [[ ! $FILE =~ 'macos' ]] ) && continue
     # use pinned or unpinned, not both sets of platform files
     if [[ $PINNED == false ]]; then
-        export SKIP_CONTRACT_BUILDER=${SKIP_CONTRACT_BUILDER:-true}
         export SKIP_PACKAGE_BUILDER=${SKIP_PACKAGE_BUILDER:-true}
     fi
     export FILE_NAME="$(echo "$FILE" | awk '{split($0,a,/\.(d|s)/); print a[1] }')"
@@ -189,8 +188,8 @@ cat <<EOF
   - label: ":docker: Docker - Build and Install"
     command: "./.cicd/installation-build.sh"
     env:
-      IMAGE_TAG: "ubuntu-18.04-unpinned"
-      PLATFORM_TYPE: "unpinned"
+      IMAGE_TAG: "ubuntu-18.04-$PLATFORM_TYPE"
+      PLATFORM_TYPE: $PLATFORM_TYPE
     agents:
       queue: "$BUILDKITE_BUILD_AGENT_QUEUE"
     timeout: ${TIMEOUT:-180}
@@ -342,7 +341,26 @@ EOF
     skip: $(echo "$PLATFORM_JSON" | jq -r '.PLATFORM_SKIP_VAR | env[.] // empty')${SKIP_SERIAL_TESTS}
 
 EOF
-            elif [[ "$TEST_NAME" != 'rodeos_test_eosvmoc' ]]; then
+            elif [ $TEST_NAME != 'rodeos_test_eosvmoc'  -a \
+                   $TEST_NAME != 'rodeos_multi_ship_eos_vm_oc_idle_test'  -a \
+                   $TEST_NAME != 'rodeos_multi_ship_eos_vm_oc_load_test'  -a \
+                   $TEST_NAME != 'rodeos_idle_restart_producer_eos-vm-oc_test'  -a \
+                   $TEST_NAME != 'rodeos_idle_restart_rodeos_eos-vm-oc_test'  -a \
+                   $TEST_NAME != 'rodeos_idle_restart_ship_eos-vm-oc_test'  -a \
+                   $TEST_NAME != 'rodeos_idle_restart_rodeos_producer_eos-vm-oc_test'  -a \
+                   $TEST_NAME != 'rodeos_multi_ship_kill_clean_restart_eos_vm_oc_idle_test'  -a \
+                   $TEST_NAME != 'rodeos_multi_ship_kill_clean_restart_eos_vm_oc_load_test'  -a \
+                   $TEST_NAME != 'rodeos_multi_ship_kill_restart_eos_vm_oc_idle_test'  -a \
+                   $TEST_NAME != 'rodeos_multi_ship_kill_restart_eos_vm_oc_load_test'  -a \
+                   $TEST_NAME != 'rodeos_multi_ship_kill_clean_restart_eos_vm_oc_idle_unixsocket_test'  -a \
+                   $TEST_NAME != 'rodeos_multi_ship_kill_clean_restart_eos_vm_oc_load_unixsocket_test'  -a \
+                   $TEST_NAME != 'rodeos_multi_ship_kill_restart_eos_vm_oc_idle_unixsocket_test'  -a \
+                   $TEST_NAME != 'rodeos_multi_ship_kill_restart_eos_vm_oc_load_unixsocket_test'  -a \
+                   $TEST_NAME != 'rodeos_idle_restart_ship_unix-socket_eos-vm-oc_test'  -a \
+                   $TEST_NAME != 'rodeos_idle_restart_rodeos_unix-socket_eos-vm-oc_test'  -a \
+                   $TEST_NAME != 'rodeos_wasmQL_http_timeout_unix_socket_eos_vm_oc'  -a \
+                   $TEST_NAME != 'rodeos_wasmQL_http_timeout_eos_vm_oc' ]
+                 then
                 cat <<EOF
   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - $TEST_NAME"
     command:
@@ -564,20 +582,6 @@ cat <<EOF
     timeout: ${TIMEOUT:-10}
     skip: ${SKIP_CENTOS_7_7}${SKIP_PACKAGE_BUILDER}${SKIP_LINUX}
 
-  - label: ":centos: CentOS 8 - Package Builder"
-    command:
-      - "buildkite-agent artifact download build.tar.gz . --step ':centos: CentOS 8 - Build' && tar -xzf build.tar.gz"
-      - "./.cicd/package.sh"
-    env:
-      IMAGE_TAG: "centos-8-$PLATFORM_TYPE"
-      PLATFORM_TYPE: $PLATFORM_TYPE
-      OS: "el8" # OS and PKGTYPE required for lambdas
-      PKGTYPE: "rpm"
-    agents:
-      queue: "$BUILDKITE_TEST_AGENT_QUEUE"
-    timeout: ${TIMEOUT:-10}
-    skip: ${SKIP_CENTOS_8}${SKIP_PACKAGE_BUILDER}${SKIP_LINUX}
-
   - label: ":ubuntu: Ubuntu 16.04 - Package Builder"
     command:
       - "buildkite-agent artifact download build.tar.gz . --step ':ubuntu: Ubuntu 16.04 - Build' && tar -xzf build.tar.gz"
@@ -620,32 +624,6 @@ cat <<EOF
     timeout: ${TIMEOUT:-20}
     skip: ${SKIP_UBUNTU_20_04}${SKIP_PACKAGE_BUILDER}${SKIP_LINUX}
 
-  - label: ":darwin: macOS 10.14 - Package Builder"
-    command:
-      - "git clone \$BUILDKITE_REPO eos && cd eos && $GIT_FETCH git checkout -f \$BUILDKITE_COMMIT"
-      - "cd eos && buildkite-agent artifact download build.tar.gz . --step ':darwin: macOS 10.14 - Build' && tar -xzf build.tar.gz"
-      - "cd eos && ./.cicd/package.sh"
-    plugins:
-      - EOSIO/anka#v0.6.1:
-          no-volume: true
-          inherit-environment-vars: true
-          vm-name: 10.14.6_6C_14G_80G
-          vm-registry-tag: "clean::cicd::git-ssh::nas::brew::buildkite-agent"
-          always-pull: true
-          debug: true
-          wait-network: true
-          pre-execute-sleep: 5
-          pre-execute-ping-sleep: github.com
-          failover-registries:
-            - 'registry_1'
-            - 'registry_2'
-      - EOSIO/skip-checkout#v0.1.1:
-          cd: ~
-    agents:
-      - "queue=mac-anka-node-fleet"
-    timeout: ${TIMEOUT:-30}
-    skip: ${SKIP_MACOS_10_14}${SKIP_PACKAGE_BUILDER}${SKIP_MAC}
-
   - label: ":darwin: macOS 10.15 - Package Builder"
     command:
       - "git clone \$BUILDKITE_REPO eos && cd eos && $GIT_FETCH git checkout -f \$BUILDKITE_COMMIT"
@@ -675,8 +653,8 @@ cat <<EOF
   - label: ":docker: Docker - Label Container with Git Branch and Git Tag"
     command: .cicd/docker-tag.sh
     env:
-      IMAGE_TAG: "ubuntu-18.04-unpinned"
-      PLATFORM_TYPE: "unpinned"
+      IMAGE_TAG: "ubuntu-18.04-$PLATFORM_TYPE"
+      PLATFORM_TYPE: $PLATFORM_TYPE
     agents:
       queue: "$BUILDKITE_BUILD_AGENT_QUEUE"
     timeout: ${TIMEOUT:-10}
@@ -692,7 +670,7 @@ cat <<EOF
 
   - label: ":beer: Brew Updater"
     command:
-      - "buildkite-agent artifact download eosio.rb . --step ':darwin: macOS 10.14 - Package Builder'"
+      - "buildkite-agent artifact download eosio.rb . --step ':darwin: macOS 10.15 - Package Builder'"
       - "buildkite-agent artifact upload eosio.rb"
     agents:
       queue: "automation-basic-builder-fleet"

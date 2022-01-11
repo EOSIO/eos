@@ -779,13 +779,14 @@ const std::vector<char>& query_create_checkpoint(wasm_ql::thread_state&         
 
       ilog("checkpoint finished");
       return thread_state.action_return_value;
-   } catch (const std::exception& e) {
-      elog("std::exception creating snapshot: ${e}", ("e", e.what()));
-      throw;
    } catch (const fc::exception& e) {
       elog("fc::exception creating snapshot: ${e}", ("e", e.to_detail_string()));
       throw;
-   } catch (...) {
+   } catch (const std::exception& e) {
+      elog("std::exception creating snapshot: ${e}", ("e", e.what()));
+      throw;
+   }
+   catch (...) {
       elog("unknown exception creating snapshot");
       throw;
    }

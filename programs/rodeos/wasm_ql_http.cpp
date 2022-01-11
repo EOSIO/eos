@@ -44,6 +44,7 @@ using tcp       = boost::asio::ip::tcp; // from <boost/asio/ip/tcp.hpp>
 using unixs     = boost::asio::local::stream_protocol; // from <boost/asio/local/stream_protocol.hpp>
 
 using namespace std::literals;
+using std::chrono::steady_clock; // To create explicit timer
 
 struct error_info {
    int64_t          code    = {};
@@ -475,6 +476,8 @@ class http_session {
    std::shared_ptr<const wasm_ql::shared_state> shared_state;
    std::shared_ptr<thread_state_cache>          state_cache;
    queue                                        queue_;
+   std::unique_ptr< net::steady_timer >         _timer;
+   steady_clock::time_point                     last_activity_timepoint;
 
    // The parser is stored in an optional container so we can
    // construct it from scratch it at the beginning of each new message.
@@ -489,11 +492,35 @@ class http_session {
          queue_(*this) {}
 
    // Start the session
-   void run() { do_read(); }
+   void run() {
+      _timer.reset(new boost::asio::steady_timer(derived_session().stream.socket().get_executor()));
+      last_activity_timepoint = steady_clock::now();
+      start_socket_timer();
+      do_read(); 
+   }
 
  private:
    SessionType& derived_session() {
       return static_cast<SessionType&>(*this);
+   }
+   
+   void start_socket_timer() 
+   {       
+      _timer->expires_after( http_config->idle_timeout_ms );
+      _timer->async_wait( [ this ]( beast::error_code ec ) {
+         if ( ec ){
+            return;
+         }
+         auto session_duration    = steady_clock::now() - last_activity_timepoint;
+         if ( session_duration <= http_config->idle_timeout_ms ){
+            start_socket_timer();
+         }
+         else{
+            ec = beast::error::timeout;
+            fail( ec, "timeout" );
+            return do_close();
+         }
+      });
    }
 
    void do_read() {
@@ -504,7 +531,7 @@ class http_session {
       // of the body in bytes to prevent abuse.
       // todo: make configurable
       parser->body_limit(http_config->max_request_size);
-
+      last_activity_timepoint = steady_clock::now();
       // Read a request using the parser-oriented interface
       http::async_read(derived_session().stream, buffer, *parser, beast::bind_front_handler(&http_session::on_read, derived_session().shared_from_this()));
    }
@@ -554,7 +581,7 @@ class http_session {
       // Send a TCP shutdown
       beast::error_code ec;
       derived_session().stream.socket().shutdown(tcp::socket::shutdown_send, ec);
-
+      _timer->cancel(); // cancel connection timer.
       // At this point the connection is closed gracefully
    }
 }; // http_session

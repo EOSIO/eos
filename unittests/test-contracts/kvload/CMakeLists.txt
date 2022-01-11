@@ -1,0 +1,6 @@
+if( EOSIO_COMPILE_TEST_CONTRACTS )
+   add_contract( kvload kvload kvload.cpp )
+else()
+   configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/kvload.wasm ${CMAKE_CURRENT_BINARY_DIR}/kvload.wasm COPYONLY )
+   configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/kvload.abi  ${CMAKE_CURRENT_BINARY_DIR}/kvload.abi  COPYONLY )
+endif()

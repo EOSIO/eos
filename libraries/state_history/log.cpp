@@ -42,7 +42,6 @@ state_history_log::state_history_log(const char* const name, const state_history
    catalog.open(config.log_dir, config.retained_dir, config.archive_dir, name);
    catalog.max_retained_files = config.max_retained_files;
    this->stride               = config.stride;
-   this->num_buffered_entries = config.num_buffered_entries;
    open_log(config.log_dir / (std::string(name) + ".log"));
    open_index(config.log_dir / (std::string(name) + ".index"));
 
@@ -345,10 +344,10 @@ void state_history_log::store_entry(const chain::block_id_type& id, const chain:
    boost::asio::post(work_strand, [this, id, prev_id, shared_data ]() {
       write_entry(id, prev_id, shared_data);
    });
-   cached[block_num] = shared_data;
+   cached[block_num] = std::move(shared_data);
 
    while (cached.size() > num_buffered_entries && cached.begin()->second.use_count() == 1) {
-      // the log entry has been removed from write_queue, so we can safely erase it. 
+      // the first entry of cached has been written to disk, so we can safely erase it. 
       cached.erase(cached.begin());
    }
 

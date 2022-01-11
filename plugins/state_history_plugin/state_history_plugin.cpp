@@ -240,13 +240,14 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
             }
          };
 
+         auto block = get_block();
          if (block_id) {
             result.this_block  = block_position{to_send_block_num, *block_id};
             auto prev_block_id = plugin->get_block_id(to_send_block_num - 1);
             if (prev_block_id) 
                result.prev_block = block_position{to_send_block_num - 1, *prev_block_id};
             if (block_req.fetch_block) {
-                  result.block = signed_block_ptr_variant{get_block()};
+                  result.block = signed_block_ptr_variant{block};
             }
             if (block_req.fetch_traces && plugin->trace_log) {
                result.traces = plugin->trace_log->get_log_entry(to_send_block_num);
@@ -256,14 +257,17 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
                result.deltas = plugin->chain_state_log->get_log_entry(to_send_block_num);
                fc_add_tag(send_update_span, "deltas_size", result.deltas.data_size());
             }
-            set_result_block_header(result, get_block());
+            set_result_block_header(result, block);
          }
          ++to_send_block_num;
          
-         fc_ilog(_log, "pushing result {\"head\":{\"block_num\":${head}},\"last_irreversible\":{\"block_num\":${last_irr}},\"this_block\":{\"block_num\":${this_block}, \"id\": ${id}}} to send queue", 
-               ("head", result.head.block_num)("last_irr", result.last_irreversible.block_num)
-               ("this_block", result.this_block ? result.this_block->block_num : fc::variant())
-               ("id", block_id ? block_id->_hash[3] : 0 ));
+         bool fresh_block = block && fc::time_point::now() - block->timestamp < fc::minutes(5);
+         if( fresh_block || (result.this_block && result.this_block->block_num % 1000 == 0) ) {
+            fc_ilog(_log, "pushing result {\"head\":{\"block_num\":${head}},\"last_irreversible\":{\"block_num\":${last_irr}},\"this_block\":{\"block_num\":${this_block}, \"id\": ${id}}} to send queue", 
+                  ("head", result.head.block_num)("last_irr", result.last_irreversible.block_num)
+                  ("this_block", result.this_block ? result.this_block->block_num : fc::variant())
+                  ("id", block_id ? block_id->_hash[3] : 0 ));
+         }
 
          derived_session().send(std::move(result), fc_get_token(send_update_span));
          --block_req.max_messages_in_flight;
@@ -627,7 +631,6 @@ void state_history_plugin::set_program_options(options_description& cli, options
            "enable debug mode for trace history");
    options("context-free-data-compression", bpo::value<string>()->default_value("zlib"), 
            "compression mode for context free data in transaction traces. Supported options are \"zlib\" and \"none\"");
-   options("state-history-num-buffered-entries", bpo::value<uint32_t>()->default_value(2), "size of the buffered state history log entries in memory");
 }
 
 void state_history_plugin::plugin_initialize(const variables_map& options) {
@@ -649,7 +652,7 @@ void state_history_plugin::plugin_initialize(const variables_map& options) {
 
       auto  dir_option = options.at("state-history-dir").as<bfs::path>();
 
-      static eosio::state_history_config config;
+      eosio::state_history_config config;
       config.logger = &_log;
 
       if (dir_option.is_relative())
@@ -663,7 +666,6 @@ void state_history_plugin::plugin_initialize(const variables_map& options) {
       config.archive_dir        = options.at("state-history-archive-dir").as<bfs::path>();
       config.stride             = options.at("state-history-stride").as<uint32_t>();
       config.max_retained_files = options.at("max-retained-history-files").as<uint32_t>();
-      config.num_buffered_entries = options.at("state-history-num-buffered-entries").as<uint32_t>();
 
       auto ip_port         = options.at("state-history-endpoint").as<string>();
       if (ip_port.size()) {

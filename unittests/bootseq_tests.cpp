@@ -325,7 +325,7 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
         claim_rewards("runnerup1"_n);
         BOOST_TEST(get_balance("runnerup1"_n).get_amount() > 0);
 
-        const auto first_june_2018 = fc::seconds(1527811200); // 2018-06-01
+        // const auto first_june_2018 = fc::seconds(1527811200); // 2018-06-01
         const auto first_june_2028 = fc::seconds(1843430400); // 2028-06-01
         // Ensure that now is yet 10 years after 2018-06-01 yet
         BOOST_REQUIRE(control->head_block_time().time_since_epoch() < first_june_2028);

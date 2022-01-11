@@ -78,6 +78,8 @@ Testing/*
 build.tar.gz
 build/*
 build-debug/*
+node_modules
+package-lock.json
 
 etc/eosio/node_*
 var/lib/node_*
@@ -87,3 +89,4 @@ var/lib/node_*
 .DS_Store
 
 !*.swagger.*
+.cache

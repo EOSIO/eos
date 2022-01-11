@@ -22,10 +22,6 @@ producer_plugin::snapshot_information pending_snapshot::finalize( const chain::c
                ("ec", ec.value())
                ("message", ec.message()));
 
-    if (blockvault) {
-        blockvault->propose_snapshot( blockvault::watermark_t{block_ptr->block_num(), block_ptr->timestamp}, final_path.c_str() );
-    }
-
     return {block_id, block_ptr->block_num(), block_ptr->timestamp, chain::chain_snapshot_header::current_version, final_path};
 }
 
