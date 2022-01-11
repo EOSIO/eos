@@ -362,6 +362,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          schedule_production_loop();
       }
 
+      // Can be called from any thread. Called from net threads
       void on_incoming_transaction_async(const packed_transaction_ptr& trx, bool persist_until_expired, next_function<transaction_trace_ptr> next) {
          chain::controller& chain = chain_plug->chain();
          const auto max_trx_time_ms = _max_transaction_time_ms.load();
