@@ -1323,7 +1323,7 @@ struct controller_impl {
          emit( self.applied_transaction, std::tie(trace, trx->packed_trx()) );
 
          return trace;
-      } FC_RETHROW_EXCEPTIONS( warn, "trx {id}", ("id", trx->id.str()) )
+      } FC_RETHROW_EXCEPTIONS( warn, "trx {id}", ("id", trx->id()) )
    } /// push_transaction
 
    void start_block( block_timestamp_type when,
@@ -1782,7 +1782,7 @@ struct controller_impl {
          abort_block();
          throw;
       }
-   } FC_RETHROW_EXCEPTIONS(warn, "block_id: {blk_id}", ("blk_id", b->id())) } /// apply_block
+   } FC_RETHROW_EXCEPTIONS(warn, "block_id: {blk_id}", ("blk_id", bsp->id)) } /// apply_block
 
    std::future<block_state_ptr> create_block_state_future( const block_id_type& id, const signed_block_ptr& b ) {
       EOS_ASSERT( b, block_validate_exception, "null block" );

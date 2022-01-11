@@ -22,6 +22,7 @@ namespace chain {
 
    struct chain_id_type : public fc::sha256 {
       using fc::sha256::sha256;
+      using fc::sha256::str;
 
       template<typename T>
       inline friend T& operator<<( T& ds, const chain_id_type& cid ) {
@@ -68,3 +69,18 @@ namespace fc {
   void to_variant(const eosio::chain::chain_id_type& cid, fc::variant& v);
   void from_variant(const fc::variant& v, eosio::chain::chain_id_type& cid);
 } // fc
+
+#include <fmt/format.h>
+
+namespace fmt {
+template<>
+struct formatter<eosio::chain::chain_id_type> {
+   template<typename ParseContext>
+   constexpr auto parse( ParseContext& ctx ) { return ctx.begin(); }
+
+   template<typename FormatContext>
+   auto format( const eosio::chain::chain_id_type& v, FormatContext& ctx ) {
+      return format_to( ctx.out(), "{}", v.str() );
+   }
+};
+}
