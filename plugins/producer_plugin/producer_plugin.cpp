@@ -2269,46 +2269,6 @@ static auto maybe_make_debug_time_logger() -> std::optional<decltype(make_debug_
    }
 }
 
-void block_only_sync::schedule() {
-   if (!_pending) {
-      // wait one second to see if we can actually get the block from net plugin before we try to resync from block vault
-      _start_sync_timer.expires_from_now(boost::posix_time::seconds(1));
-      _pending = true;
-      _start_sync_timer.async_wait(app().get_priority_queue().wrap(
-          priority::high, [this, weak_impl = _impl->weak_from_this()](const boost::system::error_code& ec) {
-             auto shared_impl = weak_impl.lock();
-             auto impl        = shared_impl.get();
-             if (impl && !ec) {
-                auto id = impl->chain_plug->chain().last_irreversible_block_id();
-                fc_dlog(_log, "Attempt to resync from block vault");
-                try {
-                  impl->blockvault->sync(&id, *this);
-                } catch( fc::exception& er ) {
-                   fc_wlog(_log, "Attempting to resync from blockvault encountered ${details}; the node must restart to "
-                        "continue!",
-                        ("details", er.to_detail_string()));
-                   app().quit();
-                }
-             }
-             this->_pending = false;
-          }));
-   }
-}
-
-void block_only_sync::on_snapshot(const char*) {
-   EOS_THROW(producer_exception, "a snapshot");
-}
-
-void block_only_sync::on_block(eosio::chain::signed_block_ptr block) {
-   try {
-      bool connectivity_check = false; // use false right now, should investigate further after 3.0 rc
-      _impl->on_sync_block(block, connectivity_check);
-   }
-   catch (const unlinkable_block_exception&) {
-      fc_dlog(_log, "got unlinkable block ${num} from block vault", ("num", block->block_num()));
-   }
-}
-
 bool producer_plugin_impl::assign_block_signatures() {
    bool result = false;
    try {
