@@ -73,6 +73,8 @@ class Utils:
     DataDir="var/lib/"
     ConfigDir="etc/eosio/"
 
+    TimeFmt='%Y-%m-%dT%H:%M:%S.%f'
+
     @staticmethod
     def Print(*args, **kwargs):
         stackDepth=len(inspect.stack())-2
