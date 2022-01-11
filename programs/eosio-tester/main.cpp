@@ -184,6 +184,12 @@ struct test_chain {
 
    test_chain(const char* snapshot) {
       eosio::chain::genesis_state genesis;
+      // increase default limits to allow for code coverage
+      genesis.initial_configuration.max_transaction_net_usage *= 2;
+      genesis.initial_configuration.max_block_net_usage *= 2;
+      genesis.initial_configuration.max_block_cpu_usage *= 2;
+      genesis.initial_configuration.max_transaction_cpu_usage *= 2;
+
       genesis.initial_timestamp = fc::time_point::from_iso_string("2020-01-01T00:00:00.000");
       cfg                       = std::make_unique<eosio::chain::controller::config>();
       cfg->blog.log_dir         = dir.path() / "blocks";
