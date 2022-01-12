@@ -92,7 +92,6 @@ namespace eosio { namespace chain {
             validation_mode          block_validation_mode  = validation_mode::FULL;
 
             pinnable_mapped_file::map_mode db_map_mode      = pinnable_mapped_file::map_mode::mapped;
-            vector<string>           db_hugepage_paths;
 
             flat_set<account_name>   resource_greylist;
             flat_set<account_name>   trusted_producers;

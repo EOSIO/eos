@@ -576,7 +576,6 @@ class Cluster(object):
     @staticmethod
     def getClientVersion(verbose=False):
         """Returns client version (string)"""
-        p = re.compile(r'^Build version:\s(\w+)\n$')
         try:
             cmd="%s version client" % (Utils.EosClientPath)
             if verbose: Utils.Print("cmd: %s" % (cmd))
@@ -584,12 +583,7 @@ class Cluster(object):
             assert(response)
             assert(isinstance(response, str))
             if verbose: Utils.Print("response: <%s>" % (response))
-            m=p.match(response)
-            if m is None:
-                Utils.Print("ERROR: client version regex mismatch")
-                return None
-
-            verStr=m.group(1)
+            verStr=response.strip()
             return verStr
         except subprocess.CalledProcessError as ex:
             msg=ex.output.decode("utf-8")

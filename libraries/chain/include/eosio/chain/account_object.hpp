@@ -18,9 +18,10 @@ namespace eosio { namespace chain {
       shared_blob          abi;
 
       void set_abi( const eosio::chain::abi_def& a ) {
-         abi.resize( fc::raw::pack_size( a ) );
-         fc::datastream<char*> ds( abi.data(), abi.size() );
-         fc::raw::pack( ds, a );
+         abi.resize_and_fill( fc::raw::pack_size( a ), [&a](char* data, std::size_t size) {
+            fc::datastream<char*> ds( data, size );
+            fc::raw::pack( ds, a );
+         });
       }
 
       eosio::chain::abi_def get_abi()const {
@@ -102,7 +103,6 @@ namespace eosio { namespace chain {
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::account_object, eosio::chain::account_index)
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::account_metadata_object, eosio::chain::account_metadata_index)
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::account_ram_correction_object, eosio::chain::account_ram_correction_index)
-
 
 FC_REFLECT(eosio::chain::account_object, (name)(creation_date)(abi))
 FC_REFLECT(eosio::chain::account_metadata_object, (name)(recv_sequence)(auth_sequence)(code_sequence)(abi_sequence)
