@@ -226,9 +226,9 @@ if [[ "$DCMAKE_BUILD_TYPE" != 'Debug' ]]; then
             if [[ ! "$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)" =~ 'macos' ]]; then
                 cat <<EOF
   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Unit Tests"
-    command:
-      - "buildkite-agent artifact download build.tar.gz . --step '$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build' && tar -xzf build.tar.gz"
-      - "./.cicd/test.sh scripts/parallel-test.sh"
+    command: |
+      buildkite-agent artifact download build.tar.gz . --step '$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build' && tar -xzf build.tar.gz
+      ./.cicd/test.sh scripts/parallel-test.sh
     env:
       IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
       PLATFORM_TYPE: $PLATFORM_TYPE
@@ -283,9 +283,9 @@ EOF
             if [[ ! "$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)" =~ 'macos' ]]; then
                 cat <<EOF
   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - WASM Spec Tests"
-    command:
-      - "buildkite-agent artifact download build.tar.gz . --step '$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build' && tar -xzf build.tar.gz"
-      - "./.cicd/test.sh scripts/wasm-spec-test.sh"
+    command: |
+      buildkite-agent artifact download build.tar.gz . --step '$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build' && tar -xzf build.tar.gz
+      ./.cicd/test.sh scripts/wasm-spec-test.sh
     env:
       IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
       PLATFORM_TYPE: $PLATFORM_TYPE
@@ -344,9 +344,9 @@ EOF
                 if [[ ! "$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)" =~ 'macos' ]]; then
                     cat <<EOF
   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - $TEST_NAME"
-    command:
-      - "buildkite-agent artifact download build.tar.gz . --step '$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build' && tar -xzf build.tar.gz"
-      - "./.cicd/test.sh scripts/serial-test.sh $TEST_NAME"
+    command: |
+      buildkite-agent artifact download build.tar.gz . --step '$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build' && tar -xzf build.tar.gz
+      ./.cicd/test.sh scripts/serial-test.sh $TEST_NAME
     env:
       IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
       PLATFORM_TYPE: $PLATFORM_TYPE
@@ -422,9 +422,9 @@ EOF
                 if [[ ! "$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)" =~ 'macos' ]]; then
                     cat <<EOF
   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - $TEST_NAME"
-    command:
-      - "buildkite-agent artifact download build.tar.gz . --step '$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build' ${BUILD_SOURCE} && tar -xzf build.tar.gz"
-      - "./.cicd/test.sh scripts/long-running-test.sh $TEST_NAME"
+    command: |
+      buildkite-agent artifact download build.tar.gz . --step '$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build' ${BUILD_SOURCE} && tar -xzf build.tar.gz
+      ./.cicd/test.sh scripts/long-running-test.sh $TEST_NAME
     env:
       IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
       PLATFORM_TYPE: $PLATFORM_TYPE
@@ -476,9 +476,9 @@ EOF
         if [[ -z "$TEST" && ( ! "$PINNED" == 'false' || "$SKIP_MULTIVERSION_TEST" == 'false' ) ]]; then
             cat <<EOF
   - label: ":pipeline: Multiversion Test"
-    command:
-      - "buildkite-agent artifact download build.tar.gz . --step ':ubuntu: Ubuntu 18.04 - Build' && tar -xzf build.tar.gz"
-      - ./.cicd/test.sh .cicd/multiversion.sh
+    command: |
+      buildkite-agent artifact download build.tar.gz . --step ':ubuntu: Ubuntu 18.04 - Build' && tar -xzf build.tar.gz
+      ./.cicd/test.sh .cicd/multiversion.sh
     env:
       IMAGE_TAG: "ubuntu-18.04-pinned"
       PLATFORM_TYPE: "pinned"
@@ -563,14 +563,14 @@ cat <<EOF
     continue_on_failure: true
 
   - label: ":bar_chart: Test Metrics"
-    command:
-      - "ssh-keyscan -H github.com >> ~/.ssh/known_hosts"
-      - "git clone \$BUILDKITE_REPO ."
-      - "$GIT_FETCH git checkout -f \$BUILDKITE_COMMIT"
-      - "echo '+++ :compression: Extracting Test Metrics Code'"
-      - "tar -zxf .cicd/metrics/test-metrics.tar.gz"
-      - "echo '+++ :javascript: Running test-metrics.js'"
-      - "node --max-old-space-size=32768 test-metrics.js"
+    command: |
+      ssh-keyscan -H github.com >> ~/.ssh/known_hosts
+      git clone \$BUILDKITE_REPO .
+      $GIT_FETCH git checkout -f \$BUILDKITE_COMMIT
+      echo '+++ :compression: Extracting Test Metrics Code'
+      tar -zxf .cicd/metrics/test-metrics.tar.gz
+      echo '+++ :javascript: Running test-metrics.js'
+      node --max-old-space-size=32768 test-metrics.js
     plugins:
       - EOSIO/skip-checkout#v0.1.1:
           cd: ~
@@ -585,9 +585,9 @@ EOF
 
     # packaging
   - label: ":centos: CentOS 7.7 - Package Builder"
-    command:
-      - "buildkite-agent artifact download build.tar.gz . --step ':centos: CentOS 7.7 - Build' && tar -xzf build.tar.gz"
-      - "./.cicd/package.sh"
+    command: |
+      buildkite-agent artifact download build.tar.gz . --step ':centos: CentOS 7.7 - Build' && tar -xzf build.tar.gz
+      ./.cicd/package.sh
     env:
       IMAGE_TAG: "centos-7.7-$PLATFORM_TYPE"
       PLATFORM_TYPE: $PLATFORM_TYPE
@@ -599,9 +599,9 @@ EOF
     skip: ${SKIP_CENTOS_7_7}${SKIP_PACKAGE_BUILDER}${SKIP_LINUX}
 
   - label: ":ubuntu: Ubuntu 18.04 - Package Builder"
-    command:
-      - "buildkite-agent artifact download build.tar.gz . --step ':ubuntu: Ubuntu 18.04 - Build' && tar -xzf build.tar.gz"
-      - "./.cicd/package.sh"
+    command: |
+      buildkite-agent artifact download build.tar.gz . --step ':ubuntu: Ubuntu 18.04 - Build' && tar -xzf build.tar.gz
+      ./.cicd/package.sh
     env:
       IMAGE_TAG: "ubuntu-18.04-$PLATFORM_TYPE"
       PLATFORM_TYPE: $PLATFORM_TYPE
@@ -613,9 +613,9 @@ EOF
     skip: ${SKIP_UBUNTU_18_04}${SKIP_PACKAGE_BUILDER}${SKIP_LINUX}
 
   - label: ":ubuntu: Ubuntu 20.04 - Package Builder"
-    command:
-      - "buildkite-agent artifact download build.tar.gz . --step ':ubuntu: Ubuntu 20.04 - Build' && tar -xzf build.tar.gz"
-      - "./.cicd/package.sh"
+    command: |
+      buildkite-agent artifact download build.tar.gz . --step ':ubuntu: Ubuntu 20.04 - Build' && tar -xzf build.tar.gz
+      ./.cicd/package.sh
     env:
       IMAGE_TAG: "ubuntu-20.04-$PLATFORM_TYPE"
       PLATFORM_TYPE: $PLATFORM_TYPE
@@ -655,9 +655,9 @@ EOF
   - wait
 
   - label: ":aws: Amazon Linux 2 - Install Package"
-    command:
-      - "buildkite-agent artifact download '*.rpm' . --step ':centos: CentOS 7.7 - Package Builder' --agent-access-token \$\$BUILDKITE_AGENT_ACCESS_TOKEN"
-      - "./.cicd/test-package.docker.sh"
+    command: |
+      buildkite-agent artifact download '*.rpm' . --step ':centos: CentOS 7.7 - Package Builder' --agent-access-token \$\$BUILDKITE_AGENT_ACCESS_TOKEN
+      ./.cicd/test-package.docker.sh
     env:
       IMAGE: "amazonlinux:2"
     agents:
@@ -666,9 +666,9 @@ EOF
     skip: ${SKIP_CENTOS_7_7}${SKIP_PACKAGE_BUILDER}${SKIP_LINUX}
 
   - label: ":centos: CentOS 7 - Install Package"
-    command:
-      - "buildkite-agent artifact download '*.rpm' . --step ':centos: CentOS 7.7 - Package Builder' --agent-access-token \$\$BUILDKITE_AGENT_ACCESS_TOKEN"
-      - "./.cicd/test-package.docker.sh"
+    command: |
+      buildkite-agent artifact download '*.rpm' . --step ':centos: CentOS 7.7 - Package Builder' --agent-access-token \$\$BUILDKITE_AGENT_ACCESS_TOKEN
+      ./.cicd/test-package.docker.sh
     env:
       IMAGE: "centos:7"
     agents:
@@ -677,9 +677,9 @@ EOF
     skip: ${SKIP_CENTOS_7_7}${SKIP_PACKAGE_BUILDER}${SKIP_LINUX}
 
   - label: ":ubuntu: Ubuntu 16.04 - Install Package"
-    command:
-      - "buildkite-agent artifact download '*.deb' . --step ':ubuntu: Ubuntu 16.04 - Package Builder' --agent-access-token \$\$BUILDKITE_AGENT_ACCESS_TOKEN"
-      - "./.cicd/test-package.docker.sh"
+    command: |
+      buildkite-agent artifact download '*.deb' . --step ':ubuntu: Ubuntu 16.04 - Package Builder' --agent-access-token \$\$BUILDKITE_AGENT_ACCESS_TOKEN
+      ./.cicd/test-package.docker.sh
     env:
       IMAGE: "ubuntu:16.04"
     agents:
@@ -688,9 +688,9 @@ EOF
     skip: ${SKIP_UBUNTU_16_04}${SKIP_PACKAGE_BUILDER}${SKIP_LINUX}
 
   - label: ":ubuntu: Ubuntu 18.04 - Install Package"
-    command:
-      - "buildkite-agent artifact download '*.deb' . --step ':ubuntu: Ubuntu 18.04 - Package Builder' --agent-access-token \$\$BUILDKITE_AGENT_ACCESS_TOKEN"
-      - "./.cicd/test-package.docker.sh"
+    command: |
+      buildkite-agent artifact download '*.deb' . --step ':ubuntu: Ubuntu 18.04 - Package Builder' --agent-access-token \$\$BUILDKITE_AGENT_ACCESS_TOKEN
+      ./.cicd/test-package.docker.sh
     env:
       IMAGE: "ubuntu:18.04"
     agents:
@@ -699,9 +699,9 @@ EOF
     skip: ${SKIP_UBUNTU_18_04}${SKIP_PACKAGE_BUILDER}${SKIP_LINUX}
 
   - label: ":ubuntu: Ubuntu 20.04 - Install Package"
-    command:
-      - "buildkite-agent artifact download '*.deb' . --step ':ubuntu: Ubuntu 20.04 - Package Builder' --agent-access-token \$\$BUILDKITE_AGENT_ACCESS_TOKEN"
-      - "./.cicd/test-package.docker.sh"
+    command: |
+      buildkite-agent artifact download '*.deb' . --step ':ubuntu: Ubuntu 20.04 - Package Builder' --agent-access-token \$\$BUILDKITE_AGENT_ACCESS_TOKEN
+      ./.cicd/test-package.docker.sh
     env:
       IMAGE: "ubuntu:20.04"
     agents:
@@ -754,9 +754,9 @@ EOF
     timeout: ${TIMEOUT:-5}
 
   - label: ":beer: Brew Updater"
-    command:
-      - "buildkite-agent artifact download eosio.rb . --step ':darwin: macOS 10.15 - Package Builder'"
-      - "buildkite-agent artifact upload eosio.rb"
+    command: |
+      buildkite-agent artifact download eosio.rb . --step ':darwin: macOS 10.15 - Package Builder'
+      buildkite-agent artifact upload eosio.rb
     agents:
       queue: "automation-basic-builder-fleet"
     timeout: ${TIMEOUT:-5}
