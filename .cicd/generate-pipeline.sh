@@ -557,7 +557,6 @@ cat <<EOF
 
   - label: ":bar_chart: Test Metrics"
     command: |
-      ssh-keyscan -H github.com >> ~/.ssh/known_hosts
       git clone \$BUILDKITE_REPO .
       $GIT_FETCH git checkout -f \$BUILDKITE_COMMIT
       echo '+++ :compression: Extracting Test Metrics Code'
