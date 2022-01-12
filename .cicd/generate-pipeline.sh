@@ -12,10 +12,10 @@ export DOCS_URL="https://github.com/EOSIO/eos/blob/$(git rev-parse HEAD)/.cicd"
 export RETRY="$([[ "$BUILDKITE" == 'true' ]] && buildkite-agent meta-data get pipeline-upload-retries --default '0' || echo "${RETRY:-0}")"
 if [[ "$BUILDKITE" == 'true' && "$RETRY" == '0' ]]; then
     echo "This documentation is also available on [GitHub]($DOCS_URL/README.md)." | buildkite-agent annotate --append --style 'info' --context 'documentation'
-    cat .cicd/README.md | buildkite-agent annotate --append --style 'info' --context 'documentation'
+    cat .cicd/README.md | sed 's_<x>_<details>\n<summary>See More</summary>_' | sed 's_</x>_</details>_' | buildkite-agent annotate --append --style 'info' --context 'documentation'
     if [[ "$BUILDKITE_PIPELINE_SLUG" == 'eosio-test-stability' ]]; then
         echo "This documentation is also available on [GitHub]($DOCS_URL/eosio-test-stability.md)." | buildkite-agent annotate --append --style 'info' --context 'test-stability'
-        cat .cicd/eosio-test-stability.md | buildkite-agent annotate --append --style 'info' --context 'test-stability'
+        cat .cicd/eosio-test-stability.md | sed 's_<x>_<details>\n<summary>See More</summary>_' | sed 's_</x>_</details>_' | buildkite-agent annotate --append --style 'info' --context 'test-stability'
     fi
 fi
 [[ "$BUILDKITE" == 'true' ]] && buildkite-agent meta-data set pipeline-upload-retries "$(( $RETRY + 1 ))"

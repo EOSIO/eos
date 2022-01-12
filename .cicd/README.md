@@ -3,8 +3,7 @@ The [eosio](https://buildkite.com/EOSIO/eosio) and [eosio-build-unpinned](https:
 
 The [eosio](https://buildkite.com/EOSIO/eosio) pipeline further triggers the [eosio-sync-from-genesis](https://buildkite.com/EOSIO/eosio-sync-from-genesis) and [eosio-resume-from-state](https://buildkite.com/EOSIO/eosio-resume-from-state) pipelines on each build, and the the [eosio-lrt](https://buildkite.com/EOSIO/eosio-lrt) pipeline on merge commits. Each of these pipelines are described in more detail below and in their respective READMEs.
 
-<details>
-<summary>See More</summary>
+<x>
 
 ## Index
 1. [Configuration](README.md#configuration)
@@ -103,4 +102,4 @@ Pipeline | Details
   - [Stability Testing](https://github.com/EOSIO/eos/blob/HEAD/.cicd/eosio-test-stability.md)
 - [#help-automation](https://blockone.slack.com/archives/CMTAZ9L4D) Slack Channel
 
-</details>
+</x>
