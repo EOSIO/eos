@@ -19,6 +19,15 @@ if [[ "$BUILDKITE" == 'true' && "$RETRY" == '0' ]]; then
     fi
 fi
 [[ "$BUILDKITE" == 'true' ]] && buildkite-agent meta-data set pipeline-upload-retries "$(( $RETRY + 1 ))"
+# guard against accidentally spawning too many jobs
+if (( $ROUNDS > 1 || $ROUND_SIZE > 1 )) && [[ "$BUILDKITE_PIPELINE_SLUG" != 'eosio-test-stability' ]]; then
+    echo '+++ :no_entry: WARNING: Your parameters will spawn a very large number of jobs!' 1>&2
+    echo "Setting ROUNDS='$ROUNDS' and/or ROUND_SIZE='$ROUND_SIZE' in the environment will cause ALL tests to be run $(( $ROUNDS * $ROUND_SIZE )) times, which will consume a large number of agents!" 1>&2
+    [[ "$BUILDKITE" == 'true' ]] && cat | buildkite-agent annotate --append --style 'error' --context 'no-TEST' <<-MD
+Your build was cancelled because you set \`ROUNDS\` and/or \`ROUND_SIZE\` outside the [eosio-test-stability](https://buildkite.com/EOSIO/eosio-test-stability) pipeline.
+MD
+    exit 255
+fi
 # Determine if it's a forked PR and make sure to add git fetch so we don't have to git clone the forked repo's url
 if [[ $BUILDKITE_BRANCH =~ ^pull/[0-9]+/head: ]]; then
     PR_ID=$(echo $BUILDKITE_BRANCH | cut -d/ -f2)
