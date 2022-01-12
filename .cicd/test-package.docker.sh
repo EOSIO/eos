@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-. "${0%/*}/libfunctions.sh"
+. "${0%/*}/helpers/perform.sh"
 
 echo '--- :docker: Pretest Setup'
 
