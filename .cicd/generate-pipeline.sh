@@ -4,6 +4,7 @@ set -eo pipefail
 . ./.cicd/helpers/general.sh
 export PLATFORMS_JSON_ARRAY='[]'
 [[ -z "$ROUNDS" ]] && export ROUNDS='1'
+[[ -z "$ROUND_SIZE" ]] && export ROUND_SIZE='1'
 BUILDKITE_BUILD_AGENT_QUEUE='automation-eks-eos-builder-fleet'
 BUILDKITE_TEST_AGENT_QUEUE='automation-eks-eos-tester-fleet'
 # attach pipeline documentation
@@ -184,8 +185,7 @@ EOF
 EOF
     fi
 done
-cat <<EOF
-
+[[ -z "$TEST" ]] && cat <<EOF
   - label: ":docker: Docker - Build and Install"
     command: "./.cicd/installation-build.sh"
     env:
@@ -196,6 +196,8 @@ cat <<EOF
     timeout: ${TIMEOUT:-180}
     skip: ${SKIP_INSTALL}${SKIP_LINUX}${SKIP_DOCKER}
 
+EOF
+cat <<EOF
   - wait
 
 EOF
@@ -207,7 +209,7 @@ if [[ "$DCMAKE_BUILD_TYPE" != 'Debug' ]]; then
         echo "    # round $ROUND of $ROUNDS"
         # parallel tests
         echo '    # parallel tests'
-        echo $PLATFORMS_JSON_ARRAY | jq -cr '.[]' | while read -r PLATFORM_JSON; do
+        [[ -z "$TEST" ]] && echo $PLATFORMS_JSON_ARRAY | jq -cr '.[]' | while read -r PLATFORM_JSON; do
             if [[ ! "$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)" =~ 'macos' ]]; then
                 cat <<EOF
   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Unit Tests"
@@ -264,7 +266,7 @@ EOF
         done
         # wasm spec tests
         echo '    # wasm spec tests'
-        echo $PLATFORMS_JSON_ARRAY | jq -cr '.[]' | while read -r PLATFORM_JSON; do
+        [[ -z "$TEST" ]] && echo $PLATFORMS_JSON_ARRAY | jq -cr '.[]' | while read -r PLATFORM_JSON; do
             if [[ ! "$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)" =~ 'macos' ]]; then
                 cat <<EOF
   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - WASM Spec Tests"
@@ -320,7 +322,11 @@ EOF
         echo '    # serial tests'
         echo $PLATFORMS_JSON_ARRAY | jq -cr '.[]' | while read -r PLATFORM_JSON; do
             IFS=$oIFS
-            SERIAL_TESTS="$(cat tests/CMakeLists.txt | grep nonparallelizable_tests | grep -v "^#" | awk -F ' ' '{ print $2 }' | sort | uniq)"
+            if [[ -z "$TEST" ]]; then
+                SERIAL_TESTS="$(cat tests/CMakeLists.txt | grep nonparallelizable_tests | grep -v "^#" | awk -F ' ' '{ print $2 }' | sort | uniq)"
+            else
+                SERIAL_TESTS="$(cat tests/CMakeLists.txt | grep -v "^#" | awk -F ' ' '{ print $2 }' | sort | uniq | grep -P "^$TEST$" | awk "{while(i++<$ROUND_SIZE)print;i=0}")"
+            fi
             for TEST_NAME in $SERIAL_TESTS; do
                 if [[ ! "$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)" =~ 'macos' ]]; then
                     cat <<EOF
@@ -396,7 +402,7 @@ EOF
         done
         # long-running tests
         echo '    # long-running tests'
-        echo $PLATFORMS_JSON_ARRAY | jq -cr '.[]' | while read -r PLATFORM_JSON; do
+        [[ -z "$TEST" ]] && echo $PLATFORMS_JSON_ARRAY | jq -cr '.[]' | while read -r PLATFORM_JSON; do
             IFS=$oIFS
             LR_TESTS="$(cat tests/CMakeLists.txt | grep long_running_tests | grep -v "^#" | awk -F" " '{ print $2 }' | sort | uniq)"
             for TEST_NAME in $LR_TESTS; do
@@ -454,7 +460,7 @@ EOF
             IFS=$nIFS
         done
         IFS=$oIFS
-        if [[ ! "$PINNED" == 'false' || "$SKIP_MULTIVERSION_TEST" == 'false' ]]; then
+        if [[ -z "$TEST" && ( ! "$PINNED" == 'false' || "$SKIP_MULTIVERSION_TEST" == 'false' ) ]]; then
             cat <<EOF
   - label: ":pipeline: Multiversion Test"
     command:
@@ -471,12 +477,13 @@ EOF
 EOF
         fi
         if [[ "$ROUND" != "$ROUNDS" ]]; then
-            echo '  - wait'
+            echo '  - wait: ~'
+            [[ "$BUILDKITE_SOURCE" == 'schedule' || "$CONTINUE_ON_FAILURE" == 'true' ]] && echo '    continue_on_failure: true'
             echo ''
         fi
     done
     # trigger eosio-lrt post pr
-    if [[ -z $BUILDKITE_TRIGGERED_FROM_BUILD_ID && $TRIGGER_JOB == "true" ]]; then
+    if [[ -z "$TEST" && -z $BUILDKITE_TRIGGERED_FROM_BUILD_ID && $TRIGGER_JOB == "true" ]]; then
         if ( [[ ! $PINNED == false ]] ); then
             cat <<EOF
   - label: ":pipeline: Trigger Long Running Tests"
@@ -499,7 +506,7 @@ EOF
         fi
     fi
     # trigger eosio-sync-from-genesis for every build
-    if [[ "$BUILDKITE_PIPELINE_SLUG" == 'eosio' && -z "${SKIP_INSTALL}${SKIP_LINUX}${SKIP_DOCKER}${SKIP_SYNC_TESTS}" ]]; then
+    if [[ -z "$TEST" && "$BUILDKITE_PIPELINE_SLUG" == 'eosio' && -z "${SKIP_INSTALL}${SKIP_LINUX}${SKIP_DOCKER}${SKIP_SYNC_TESTS}" ]]; then
         cat <<EOF
   - label: ":chains: Sync from Genesis Test"
     trigger: "eosio-sync-from-genesis"
@@ -518,7 +525,7 @@ EOF
 EOF
     fi
     # trigger eosio-resume-from-state for every build
-    if [[ "$BUILDKITE_PIPELINE_SLUG" == 'eosio' && -z "${SKIP_INSTALL}${SKIP_LINUX}${SKIP_DOCKER}${SKIP_SYNC_TESTS}" ]]; then
+    if [[ -z "$TEST" && "$BUILDKITE_PIPELINE_SLUG" == 'eosio' && -z "${SKIP_INSTALL}${SKIP_LINUX}${SKIP_DOCKER}${SKIP_SYNC_TESTS}" ]]; then
         cat <<EOF
   - label: ":outbox_tray: Resume from State Test"
     trigger: "eosio-resume-from-state"
@@ -559,6 +566,8 @@ cat <<EOF
     timeout: ${TIMEOUT:-10}
     soft_fail: true
 
+EOF
+[[ -z "$TEST" ]] && cat <<EOF
   - wait
 
     # packaging
