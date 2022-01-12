@@ -654,7 +654,7 @@ EOF
 
   - wait
 
-  - label: ":aws: Amazon Linux 2 - Test Package"
+  - label: ":aws: Amazon Linux 2 - Install Package"
     command:
       - "buildkite-agent artifact download '*.rpm' . --step ':centos: CentOS 7.7 - Package Builder' --agent-access-token \$\$BUILDKITE_AGENT_ACCESS_TOKEN"
       - "./.cicd/test-package.docker.sh"
@@ -665,7 +665,7 @@ EOF
     timeout: ${TIMEOUT:-10}
     skip: ${SKIP_CENTOS_7_7}${SKIP_PACKAGE_BUILDER}${SKIP_LINUX}
 
-  - label: ":centos: CentOS 7 - Test Package"
+  - label: ":centos: CentOS 7 - Install Package"
     command:
       - "buildkite-agent artifact download '*.rpm' . --step ':centos: CentOS 7.7 - Package Builder' --agent-access-token \$\$BUILDKITE_AGENT_ACCESS_TOKEN"
       - "./.cicd/test-package.docker.sh"
@@ -676,7 +676,7 @@ EOF
     timeout: ${TIMEOUT:-10}
     skip: ${SKIP_CENTOS_7_7}${SKIP_PACKAGE_BUILDER}${SKIP_LINUX}
 
-  - label: ":ubuntu: Ubuntu 16.04 - Test Package"
+  - label: ":ubuntu: Ubuntu 16.04 - Install Package"
     command:
       - "buildkite-agent artifact download '*.deb' . --step ':ubuntu: Ubuntu 16.04 - Package Builder' --agent-access-token \$\$BUILDKITE_AGENT_ACCESS_TOKEN"
       - "./.cicd/test-package.docker.sh"
@@ -687,7 +687,7 @@ EOF
     timeout: ${TIMEOUT:-10}
     skip: ${SKIP_UBUNTU_16_04}${SKIP_PACKAGE_BUILDER}${SKIP_LINUX}
 
-  - label: ":ubuntu: Ubuntu 18.04 - Test Package"
+  - label: ":ubuntu: Ubuntu 18.04 - Install Package"
     command:
       - "buildkite-agent artifact download '*.deb' . --step ':ubuntu: Ubuntu 18.04 - Package Builder' --agent-access-token \$\$BUILDKITE_AGENT_ACCESS_TOKEN"
       - "./.cicd/test-package.docker.sh"
@@ -698,7 +698,7 @@ EOF
     timeout: ${TIMEOUT:-10}
     skip: ${SKIP_UBUNTU_18_04}${SKIP_PACKAGE_BUILDER}${SKIP_LINUX}
 
-  - label: ":ubuntu: Ubuntu 20.04 - Test Package"
+  - label: ":ubuntu: Ubuntu 20.04 - Install Package"
     command:
       - "buildkite-agent artifact download '*.deb' . --step ':ubuntu: Ubuntu 20.04 - Package Builder' --agent-access-token \$\$BUILDKITE_AGENT_ACCESS_TOKEN"
       - "./.cicd/test-package.docker.sh"
@@ -709,7 +709,7 @@ EOF
     timeout: ${TIMEOUT:-10}
     skip: ${SKIP_UBUNTU_20_04}${SKIP_PACKAGE_BUILDER}${SKIP_LINUX}
 
-  - label: ":darwin: macOS 10.15 - Test Package"
+  - label: ":darwin: macOS 10.15 - Install Package"
     command:
       - "git clone \$BUILDKITE_REPO eos && cd eos && $GIT_FETCH git checkout -f \$BUILDKITE_COMMIT"
       - "cd eos && buildkite-agent artifact download '*' . --step ':darwin: macOS 10.15 - Package Builder' --agent-access-token \$\$BUILDKITE_AGENT_ACCESS_TOKEN"
