@@ -48,13 +48,8 @@ for FILE in $(ls "$CICD_DIR/platforms/$PLATFORM_TYPE"); do
         export SKIP_PACKAGE_BUILDER=${SKIP_PACKAGE_BUILDER:-true}
     fi
     export FILE_NAME="$(echo "$FILE" | awk '{split($0,a,/\.(d|s)/); print a[1] }')"
-    # macos-10.14
+    # macos-10.15
     # ubuntu-16.04
-    # skip Mojave if it's anything but the post-merge build
-    if [[ "$FILE_NAME" =~ 'macos-10.14' && "$SKIP_MACOS_10_14" != 'false' && "$RUN_ALL_TESTS" != 'true' && ( "$BUILDKITE_SOURCE" != 'webhook' || "$BUILDKITE_PULL_REQUEST" != 'false' || ! "$BUILDKITE_MESSAGE" =~ 'Merge pull request' ) ]]; then
-        export SKIP_MACOS_10_14='true'
-        continue
-    fi
     export PLATFORM_NAME="$(echo $FILE_NAME | cut -d- -f1 | sed 's/os/OS/g')"
     # macOS
     # ubuntu
@@ -68,7 +63,7 @@ for FILE in $(ls "$CICD_DIR/platforms/$PLATFORM_TYPE"); do
     # _14
     # _04
     export VERSION_FULL="$(echo $FILE_NAME | cut -d- -f2)"
-    # 10.14
+    # 10.15
     # 16.04
     OLDIFS=$IFS
     IFS='_'
@@ -83,9 +78,7 @@ for FILE in $(ls "$CICD_DIR/platforms/$PLATFORM_TYPE"); do
     export PLATFORM_SKIP_VAR="SKIP_${PLATFORM_NAME_UPCASE}_${VERSION_MAJOR}${VERSION_MINOR}"
     # Anka Template and Tags
     export ANKA_TAG_BASE='clean::cicd::git-ssh::nas::brew::buildkite-agent'
-    if [[ $FILE_NAME =~ 'macos-10.14' ]]; then
-        export ANKA_TEMPLATE_NAME='10.14.6_6C_14G_80G'
-    elif [[ $FILE_NAME =~ 'macos-10.15' ]]; then
+    if [[ $FILE_NAME =~ 'macos-10.15' ]]; then
         export ANKA_TEMPLATE_NAME='10.15.5_6C_14G_80G'
     else # Linux
         export ANKA_TAG_BASE=''
