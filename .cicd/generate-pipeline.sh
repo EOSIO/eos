@@ -98,7 +98,7 @@ if [[ ! -z ${BUILDKITE_TRIGGERED_FROM_BUILD_ID} ]]; then
 fi
 export BUILD_SOURCE=${BUILD_SOURCE:---build \$BUILDKITE_BUILD_ID}
 # set trigger_job if master/release/develop branch and webhook
-if [[ ! $BUILDKITE_PIPELINE_SLUG =~ 'lrt' ]] && [[ $BUILDKITE_BRANCH =~ ^release/[0-9]+\.[0-9]+\.x$ || $BUILDKITE_BRANCH =~ ^master$ || $BUILDKITE_BRANCH =~ ^develop$ || "$SKIP_LONG_RUNNING_TESTS" == 'false' ]]; then
+if [[ ! $BUILDKITE_PIPELINE_SLUG =~ 'lrt' ]] && [[ $BUILDKITE_BRANCH =~ ^release/[0-9]+\.[0-9]+\.x$ || $BUILDKITE_BRANCH =~ ^master$ || $BUILDKITE_BRANCH =~ ^develop$ || $BUILDKITE_BRANCH =~ ^develop-boxed$ || "$SKIP_LONG_RUNNING_TESTS" == 'false' ]]; then
     [[ $BUILDKITE_SOURCE != 'schedule' ]] && export TRIGGER_JOB=true
 fi
 # run LRTs synchronously when running full test suite
