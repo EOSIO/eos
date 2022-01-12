@@ -49,7 +49,7 @@ for FILE in $(ls "$CICD_DIR/platforms/$PLATFORM_TYPE"); do
     fi
     export FILE_NAME="$(echo "$FILE" | awk '{split($0,a,/\.(d|s)/); print a[1] }')"
     # macos-10.15
-    # ubuntu-16.04
+    # ubuntu-20.04
     export PLATFORM_NAME="$(echo $FILE_NAME | cut -d- -f1 | sed 's/os/OS/g')"
     # macOS
     # ubuntu
@@ -64,7 +64,7 @@ for FILE in $(ls "$CICD_DIR/platforms/$PLATFORM_TYPE"); do
     # _04
     export VERSION_FULL="$(echo $FILE_NAME | cut -d- -f2)"
     # 10.15
-    # 16.04
+    # 20.04
     OLDIFS=$IFS
     IFS='_'
     set $PLATFORM_NAME
@@ -668,17 +668,6 @@ EOF
       queue: "$BUILDKITE_TEST_AGENT_QUEUE"
     timeout: ${TIMEOUT:-10}
     skip: ${SKIP_CENTOS_7_7}${SKIP_PACKAGE_BUILDER}${SKIP_LINUX}
-
-  - label: ":ubuntu: Ubuntu 16.04 - Install Package"
-    command: |
-      buildkite-agent artifact download '*.deb' . --step ':ubuntu: Ubuntu 16.04 - Package Builder' --agent-access-token \$\$BUILDKITE_AGENT_ACCESS_TOKEN
-      ./.cicd/test-package.docker.sh
-    env:
-      IMAGE: "ubuntu:16.04"
-    agents:
-      queue: "$BUILDKITE_TEST_AGENT_QUEUE"
-    timeout: ${TIMEOUT:-10}
-    skip: ${SKIP_UBUNTU_16_04}${SKIP_PACKAGE_BUILDER}${SKIP_LINUX}
 
   - label: ":ubuntu: Ubuntu 18.04 - Install Package"
     command: |
