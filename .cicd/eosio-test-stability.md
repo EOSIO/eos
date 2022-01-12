@@ -1,8 +1,7 @@
 # Stability Testing
 Stability testing of EOSIO unit and integration tests is done in the [eosio-test-stability](https://buildkite.com/EOSIO/eosio-test-stability) pipeline. It will take thousands of runs of any given test to identify it as "stable" or "unstable". Runs should be split evenly across "pinned" (fixed dependency version) and "unpinned" (default dependency version) builds because, sometimes, test instability is only expressed in one of these environments. Finally, stability testing should be performed on the Linux fleet first because this fleet is effectively infinite. Once stability is demonstrated on Linux, testing can be performed on the finite macOS Anka fleet.
 
-<details>
-<summary>See More</summary>
+<x>
 
 ## Index
 1. [Configuration](eosio-test-stability.md#configuration)
@@ -81,4 +80,4 @@ If these runs are against `eos:develop` and `develop` has five supported operati
   - [Run Your First Build](https://buildkite.com/docs/tutorials/getting-started#run-your-first-build)
 - [#help-automation](https://blockone.slack.com/archives/CMTAZ9L4D) Slack Channel
 
-</details>
+</x>
