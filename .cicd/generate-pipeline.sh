@@ -544,7 +544,7 @@ EOF
 fi
 # pipeline tail
 cat <<EOF
-  - wait:
+  - wait: ~
     continue_on_failure: true
 
   - label: ":bar_chart: Test Metrics"
