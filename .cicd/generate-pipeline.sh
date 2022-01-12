@@ -8,12 +8,12 @@ BUILDKITE_BUILD_AGENT_QUEUE='automation-eks-eos-builder-fleet'
 BUILDKITE_TEST_AGENT_QUEUE='automation-eks-eos-tester-fleet'
 # attach pipeline documentation
 export DOCS_URL="https://github.com/EOSIO/eos/blob/${BUILDKITE_COMMIT:-master}/.cicd/README.md"
-export RETRY="$(buildkite-agent meta-data get pipeline-upload-retries --default '0')"
+export RETRY="$([[ "$BUILDKITE" == 'true' ]] && buildkite-agent meta-data get pipeline-upload-retries --default '0' || echo "${RETRY:-0}")"
 if [[ "$BUILDKITE" == 'true' && "$RETRY" == '0' ]]; then
     echo "This documentation is also available on [GitHub]($DOCS_URL)." | buildkite-agent annotate --append --style 'info' --context 'documentation'
     cat .cicd/README.md | buildkite-agent annotate --append --style 'info' --context 'documentation'
 fi
-buildkite-agent meta-data set pipeline-upload-retries "$(( $RETRY + 1 ))"
+[[ "$BUILDKITE" == 'true' ]] && buildkite-agent meta-data set pipeline-upload-retries "$(( $RETRY + 1 ))"
 # Determine if it's a forked PR and make sure to add git fetch so we don't have to git clone the forked repo's url
 if [[ $BUILDKITE_BRANCH =~ ^pull/[0-9]+/head: ]]; then
     PR_ID=$(echo $BUILDKITE_BRANCH | cut -d/ -f2)
