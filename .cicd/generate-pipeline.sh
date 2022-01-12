@@ -736,6 +736,8 @@ EOF
     timeout: ${TIMEOUT:-10}
     skip: ${SKIP_MACOS_10_15}${SKIP_PACKAGE_BUILDER}${SKIP_MAC}
 
+  - wait
+
   - label: ":docker: Docker - Label Container with Git Branch and Git Tag"
     command: .cicd/docker-tag.sh
     env:
@@ -745,8 +747,6 @@ EOF
       queue: "$BUILDKITE_BUILD_AGENT_QUEUE"
     timeout: ${TIMEOUT:-10}
     skip: ${SKIP_INSTALL}${SKIP_LINUX}${SKIP_DOCKER}${SKIP_PACKAGE_BUILDER}
-
-  - wait
 
   - label: ":git: Git Submodule Regression Check"
     command: "./.cicd/submodule-regression-check.sh"
