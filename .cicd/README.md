@@ -52,6 +52,7 @@ SKIP_PACKAGE_BUILDER='true|false'    # skip all packaging steps
 Configure how the steps are executed:
 ```bash
 FORCE_BASE_IMAGE='true|false'        # force the CI system to build base images from scratch, but do not overwrite any existing copies in the cloud
+OVERWRITE_BASE_IMAGE='true|false'    # force the CI system to build base images from scratch and overwrite the copies in the cloud, if successful
 PINNED='true|false'                  # use specific versions of dependencies instead of whatever version is provided by default on a given platform
 TIMEOUT='##'                         # set timeout in minutes for all steps
 ```
