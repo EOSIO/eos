@@ -595,6 +595,33 @@ EOF
       PKGTYPE: "rpm"
     agents:
       queue: "$BUILDKITE_TEST_AGENT_QUEUE"
+    key: "centos7pb"
+    timeout: ${TIMEOUT:-10}
+    skip: ${SKIP_CENTOS_7_7}${SKIP_PACKAGE_BUILDER}${SKIP_LINUX}
+
+  - label: ":centos: CentOS 7 - Test Package"
+    command:
+      - "buildkite-agent artifact download '*.rpm' . --step ':centos: CentOS 7.7 - Package Builder' --agent-access-token \$\$BUILDKITE_AGENT_ACCESS_TOKEN"
+      - "./.cicd/test-package.docker.sh"
+    env:
+      IMAGE: "centos:7"
+    agents:
+      queue: "$BUILDKITE_TEST_AGENT_QUEUE"
+    depends_on: "centos7pb"
+    allow_dependency_failure: false
+    timeout: ${TIMEOUT:-10}
+    skip: ${SKIP_CENTOS_7_7}${SKIP_PACKAGE_BUILDER}${SKIP_LINUX}
+
+  - label: ":aws: Amazon Linux 2 - Test Package"
+    command:
+      - "buildkite-agent artifact download '*.rpm' . --step ':centos: CentOS 7.7 - Package Builder' --agent-access-token \$\$BUILDKITE_AGENT_ACCESS_TOKEN"
+      - "./.cicd/test-package.docker.sh"
+    env:
+      IMAGE: "amazonlinux:2"
+    agents:
+      queue: "$BUILDKITE_TEST_AGENT_QUEUE"
+    depends_on: "centos7pb"
+    allow_dependency_failure: false
     timeout: ${TIMEOUT:-10}
     skip: ${SKIP_CENTOS_7_7}${SKIP_PACKAGE_BUILDER}${SKIP_LINUX}
 
@@ -609,6 +636,20 @@ EOF
       PKGTYPE: "deb"
     agents:
       queue: "$BUILDKITE_TEST_AGENT_QUEUE"
+    key: "ubuntu1804pb"
+    timeout: ${TIMEOUT:-10}
+    skip: ${SKIP_UBUNTU_18_04}${SKIP_PACKAGE_BUILDER}${SKIP_LINUX}
+
+  - label: ":ubuntu: Ubuntu 18.04 - Test Package"
+    command:
+      - "buildkite-agent artifact download '*.deb' . --step ':ubuntu: Ubuntu 18.04 - Package Builder' --agent-access-token \$\$BUILDKITE_AGENT_ACCESS_TOKEN"
+      - "./.cicd/test-package.docker.sh"
+    env:
+      IMAGE: "ubuntu:18.04"
+    agents:
+      queue: "$BUILDKITE_TEST_AGENT_QUEUE"
+    depends_on: "ubuntu1804pb"
+    allow_dependency_failure: false
     timeout: ${TIMEOUT:-10}
     skip: ${SKIP_UBUNTU_18_04}${SKIP_PACKAGE_BUILDER}${SKIP_LINUX}
 
@@ -623,7 +664,21 @@ EOF
       PKGTYPE: "deb"
     agents:
       queue: "$BUILDKITE_TEST_AGENT_QUEUE"
-    timeout: ${TIMEOUT:-20}
+    key: "ubuntu2004pb"
+    timeout: ${TIMEOUT:-10}
+    skip: ${SKIP_UBUNTU_20_04}${SKIP_PACKAGE_BUILDER}${SKIP_LINUX}
+
+  - label: ":ubuntu: Ubuntu 20.04 - Test Package"
+    command:
+      - "buildkite-agent artifact download '*.deb' . --step ':ubuntu: Ubuntu 20.04 - Package Builder' --agent-access-token \$\$BUILDKITE_AGENT_ACCESS_TOKEN"
+      - "./.cicd/test-package.docker.sh"
+    env:
+      IMAGE: "ubuntu:20.04"
+    agents:
+      queue: "$BUILDKITE_TEST_AGENT_QUEUE"
+    depends_on: "ubuntu2004pb"
+    allow_dependency_failure: false
+    timeout: ${TIMEOUT:-10}
     skip: ${SKIP_UBUNTU_20_04}${SKIP_PACKAGE_BUILDER}${SKIP_LINUX}
 
   - label: ":darwin: macOS 10.15 - Package Builder"
@@ -649,7 +704,36 @@ EOF
           cd: ~
     agents:
       - "queue=mac-anka-node-fleet"
+    key: "macos1015pb"
     timeout: ${TIMEOUT:-30}
+    skip: ${SKIP_MACOS_10_15}${SKIP_PACKAGE_BUILDER}${SKIP_MAC}
+
+  - label: ":darwin: macOS 10.15 - Test Package"
+    command:
+      - "git clone \$BUILDKITE_REPO eos && cd eos && $GIT_FETCH git checkout -f \$BUILDKITE_COMMIT"
+      - "cd eos && buildkite-agent artifact download '*' . --step ':darwin: macOS 10.15 - Package Builder' --agent-access-token \$\$BUILDKITE_AGENT_ACCESS_TOKEN"
+      - "cd eos && ./.cicd/test-package.anka.sh"
+    plugins:
+      - EOSIO/anka#v0.6.1:
+          no-volume: true
+          inherit-environment-vars: true
+          vm-name: 10.15.5_6C_14G_80G
+          vm-registry-tag: "clean::cicd::git-ssh::nas::brew::buildkite-agent"
+          always-pull: true
+          debug: true
+          wait-network: true
+          pre-execute-sleep: 5
+          pre-execute-ping-sleep: github.com
+          failover-registries:
+            - 'registry_1'
+            - 'registry_2'
+      - EOSIO/skip-checkout#v0.1.1:
+          cd: ~
+    agents:
+      - "queue=mac-anka-node-fleet"
+    depends_on: "macos1015pb"
+    allow_dependency_failure: false
+    timeout: ${TIMEOUT:-10}
     skip: ${SKIP_MACOS_10_15}${SKIP_PACKAGE_BUILDER}${SKIP_MAC}
 
   - label: ":docker: Docker - Label Container with Git Branch and Git Tag"
