@@ -31,7 +31,6 @@ Configure which operating systems are built, tested, and packaged:
 RUN_ALL_TESTS='true'                 # run all tests in the current build (including LRTs, overridden by SKIP* variables)
 SKIP_AMAZON_LINUX_2='true|false'     # skip all steps for Amazon Linux 2
 SKIP_CENTOS_7_7='true|false'         # skip all steps for Centos 7.7
-SKIP_CENTOS_8='true|false'           # skip all steps for Centos 8
 SKIP_MACOS_10_15='true|false'        # skip all steps for MacOS 10.15
 SKIP_MACOS_11='true|false'           # skip all steps for MacOS 11
 SKIP_UBUNTU_18_04='true|false'       # skip all steps for Ubuntu 18.04
