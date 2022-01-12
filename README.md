@@ -22,6 +22,7 @@ apt-get update && apt-get install   \
         cmake                       \
         curl                        \
         git                         \
+        jq                          \
         libboost-all-dev            \
         libcurl4-openssl-dev        \
         libgmp-dev                  \
@@ -30,8 +31,8 @@ apt-get update && apt-get install   \
         libusb-1.0-0-dev            \
         libzstd-dev                 \
         llvm-11-dev                 \
-        npm                         \
         ninja-build                 \
+        npm                         \
         pkg-config                  \
         time
 ```
