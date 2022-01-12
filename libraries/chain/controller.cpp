@@ -2028,14 +2028,14 @@ struct controller_impl {
          emit( self.block_abort, block_num );
       }
 
-      if (fork_db.is_head_block(signing_failed_blocknum)) {
+      if( signing_failed_blocknum && fork_db.is_head_block(signing_failed_blocknum) ) {
          signing_failed_blocknum = 0;
-         auto poped = pop_block();
-         dlog("aborting unsigned block ${block_num}", ("block_num", poped->block_num));
-         fork_db.remove_head(poped->block_num);
-         auto trxs  = poped->extract_trxs_metas();
+         auto popped = pop_block();
+         dlog("aborting unsigned block ${block_num}", ("block_num", popped->block_num));
+         fork_db.remove_head(popped->block_num);
+         auto trxs  = popped->extract_trxs_metas();
          applied_trxs.insert(applied_trxs.end(), trxs.begin(), trxs.end());
-         emit(self.block_abort, poped->block_num);
+         emit(self.block_abort, popped->block_num);
       }
 
       return applied_trxs;
@@ -2341,11 +2341,11 @@ controller::~controller() {
    try {
       my->abort_block();
       auto db_head = my->fork_db.head();
-      if (db_head->block && db_head->block->producer_signature == signature_type()) {
-         auto poped = my->pop_block();
-         dlog("remove unsigned block ${block_num}", ("block_num", poped->block_num));
-         my->fork_db.remove_head(poped->block_num);
-         my->emit(my->self.block_abort, poped->block_num);
+      if(db_head && db_head->block && db_head->block->producer_signature == signature_type() ) {
+         auto popped = my->pop_block();
+         dlog("remove unsigned block ${block_num}", ("block_num", popped->block_num));
+         my->fork_db.remove_head(popped->block_num);
+         my->emit(my->self.block_abort, popped->block_num);
       }
    } FC_LOG_AND_DROP_ALL();
    /* Shouldn't be needed anymore.
