@@ -1,0 +1,20 @@
+name: Pull Request
+on: [pull_request]
+
+env:
+  PR_NUMBER: ${{ toJson(github.event.number) }}
+
+jobs:
+  submodule_regression_check:
+    name: Submodule Regression Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        run: |
+          git clone https://github.com/${GITHUB_REPOSITORY} .
+          git fetch -v --prune origin +refs/pull/${PR_NUMBER}/merge:refs/remotes/pull/${PR_NUMBER}/merge
+          git checkout --force --progress refs/remotes/pull/${PR_NUMBER}/merge
+          git submodule sync --recursive
+          git submodule update --init --force --recursive
+      - name: Submodule Regression Check
+        run: ./.cicd/submodule-regression-check.sh

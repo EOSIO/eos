@@ -1,0 +1,369 @@
+name: Ubuntu 20.04
+on:
+  push:
+    branches:
+      - main
+      - "release/*"
+  pull_request:
+    types: [assigned, opened, synchronize, reopened, labeled]
+
+env:
+  UBUNTU_2004_IMAGE: "ghcr.io/eosnetworkfoundation/builder-ubuntu-20.04-unpinned:latest"
+
+jobs:
+  ubuntu-2004-build:
+    name: Ubuntu 20.04 | Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Timestamp
+        id: ccache_cache_timestamp
+        shell: cmake -P {0}
+        run: |
+          string(TIMESTAMP current_date "%Y-%m-%d-%H-%M-%S" UTC)
+          message("::set-output name=timestamp::${current_date}")
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          submodules: recursive
+          fetch-depth: 0
+      - name: Preserve ccache
+        uses: actions/cache@v1.1.0
+        with:
+          path: .ccache
+          key: $ubuntu-20.04-ccache_make-${{ steps.ccache_cache_timestamp.outputs.timestamp }}
+          restore-keys: |
+            $ubuntu-20.04-ccache_make-
+      - name: Build
+        run: |
+          set -e
+          export CCACHE_DIR=${GITHUB_WORKSPACE}/.ccache
+          export CCACHE_CONFIGPATH=${GITHUB_WORKSPACE}/ccache.conf
+          echo max_size = 600M >${GITHUB_WORKSPACE}/ccache.conf
+          echo log_file = ${GITHUB_WORKSPACE}/ccache.log >>${GITHUB_WORKSPACE}/ccache.conf
+          export DOCKER="docker run --rm -v ${GITHUB_WORKSPACE}:${GITHUB_WORKSPACE} -w ${GITHUB_WORKSPACE} -e CCACHE_DIR -e CCACHE_CONFIGPATH --user $(id -u):$(id -g) ${UBUNTU_2004_IMAGE}"
+          export DOCKER_ROOT="docker run --rm -v ${GITHUB_WORKSPACE}:${GITHUB_WORKSPACE} -w ${GITHUB_WORKSPACE} -e CCACHE_DIR -e CCACHE_CONFIGPATH ${UBUNTU_2004_IMAGE}"
+          docker pull ${UBUNTU_2004_IMAGE}
+          echo =====
+          ${DOCKER} ccache -s
+          echo =====
+          mkdir build
+          ${DOCKER} bash -c "cd build && cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_C_COMPILER_LAUNCHER=ccache .."
+          echo =====
+          ${DOCKER} bash -c "cd build && make -j $(nproc)"
+          echo =====
+          mkdir install
+          ${DOCKER_ROOT} bash -c "cd build && DESTDIR=${GITHUB_WORKSPACE}/installed make -j $(nproc) install"
+          echo =====
+          ls -la ${GITHUB_WORKSPACE}
+          echo =====
+          ${DOCKER} ccache -s
+          echo =====
+          ${DOCKER} build/bin/nodeos --version
+          ${DOCKER} build/bin/nodeos --full-version
+          echo =====
+          tar -pczf build.tar.gz build
+          tar -pczf usr_local.tar.gz installed
+      - name: Upload build
+        uses: actions/upload-artifact@v1
+        with:
+          name: ubuntu-2004-build
+          path: build.tar.gz
+      - name: Upload usr_local
+        uses: actions/upload-artifact@v1
+        with:
+          name: ubuntu-2004-usr-local
+          path: usr_local.tar.gz
+  ubuntu-2004-docker:
+    name: Ubuntu 20.04 | Contract Builder Docker
+    runs-on: ubuntu-latest
+    needs: ubuntu-2004-build
+    steps:
+      - name: Download build
+        uses: actions/download-artifact@v1
+        with:
+          name: ubuntu-2004-build
+      - name: Download usr_local
+        uses: actions/download-artifact@v1
+        with:
+          name: ubuntu-2004-usr-local
+      - name: Docker Buildx setup
+        uses: docker/setup-buildx-action@v1
+      - name: Login to GitHub Package Registry
+        uses: docker/login-action@v1
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Define Tags
+        id: prep
+        run: |
+          REGISTRY="ghcr.io"
+          IMAGE="${REGISTRY}/${{ github.repository_owner }}/contract-builder-ubuntu-20.04-unpinned"
+          TAGS="${IMAGE}:${{ github.sha }}"
+          if [[ $GITHUB_REF == ref/head/main ]]; then
+            TAGS="${TAGS},${IMAGE}:latest"
+          fi
+          echo ::set-output name=tags::${TAGS,,}
+      - name: Prepare Dockerfile
+        run: |
+          set -e
+          mkdir installed
+          tar -xzf ubuntu-2004-build/build.tar.gz
+          tar -xzf ubuntu-2004-usr-local/usr_local.tar.gz installed
+          echo =====
+          ls -l installed/usr/local/bin
+          echo =====
+          echo `pwd`/build/unittests
+          ls -l `pwd`/build/unittests
+          echo =====
+          echo "FROM ${UBUNTU_2004_IMAGE}" >Dockerfile
+          echo "RUN curl -LO https://github.com/EOSIO/eosio.cdt/releases/download/v1.7.0/eosio.cdt_1.7.0-1-ubuntu-18.04_amd64.deb \\" >>Dockerfile
+          echo " && dpkg -i eosio.cdt_1.7.0-1-ubuntu-18.04_amd64.deb \\" >>Dockerfile
+          echo " && rm eosio.cdt_1.7.0-1-ubuntu-18.04_amd64.deb" >>Dockerfile
+          echo "COPY installed/usr/local /usr/local" >>Dockerfile
+          echo "RUN mkdir -p `pwd`/build/unittests" >>Dockerfile
+          echo "COPY build/unittests `pwd`/build/unittests" >>Dockerfile
+          cat Dockerfile
+          echo =====
+          echo ${{ steps.prep.outputs.tags }}
+      - name: Build & Publish Image
+        uses: docker/build-push-action@v2
+        with:
+          push: true
+          file: Dockerfile
+          tags: ${{ steps.prep.outputs.tags }}
+          context: .
+  ubuntu-2004-parallel-test:
+    name: Ubuntu 20.04 | Parallel Test
+    runs-on: ubuntu-latest
+    needs: ubuntu-2004-build
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          submodules: recursive
+          fetch-depth: 0
+      - name: Download build
+        uses: actions/download-artifact@v1
+        with:
+          name: ubuntu-2004-build
+      - name: Parallel Test
+        run: |
+          set -e
+          tar -xzf ubuntu-2004-build/build.tar.gz
+          export DOCKER="docker run --rm -v ${GITHUB_WORKSPACE}:${GITHUB_WORKSPACE} -w ${GITHUB_WORKSPACE} ${UBUNTU_2004_IMAGE}"
+          docker pull ${UBUNTU_2004_IMAGE}
+          ${DOCKER} bash -c 'cd build && ctest -j $(nproc) -LE "nonparallelizable_tests|long_running_tests|wasm_spec_tests"'
+  ubuntu-2004-wasm-test:
+    name: Ubuntu 20.04 | WASM Spec Test
+    runs-on: ubuntu-latest
+    needs: ubuntu-2004-build
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          submodules: recursive
+          fetch-depth: 0
+      - name: Download build
+        uses: actions/download-artifact@v1
+        with:
+          name: ubuntu-2004-build
+      - name: WASM Spec Test
+        run: |
+          set -e
+          tar -xzf ubuntu-2004-build/build.tar.gz
+          export DOCKER="docker run --rm -v ${GITHUB_WORKSPACE}:${GITHUB_WORKSPACE} -w ${GITHUB_WORKSPACE} ${UBUNTU_2004_IMAGE}"
+          docker pull ${UBUNTU_2004_IMAGE}
+          ${DOCKER} bash -c 'cd build && ctest -j $(nproc) -L "wasm_spec_tests"'
+  ubuntu-2004-serial-test:
+    name: Ubuntu 20.04 | Serial Test
+    runs-on: ubuntu-latest
+    needs: ubuntu-2004-build
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          submodules: recursive
+          fetch-depth: 0
+      - name: Download build
+        uses: actions/download-artifact@v1
+        with:
+          name: ubuntu-2004-build
+      - name: Serial Test
+        run: |
+          set -e
+          tar -xzf ubuntu-2004-build/build.tar.gz
+          export DOCKER="docker run --rm -v ${GITHUB_WORKSPACE}:${GITHUB_WORKSPACE} -w ${GITHUB_WORKSPACE} ${UBUNTU_2004_IMAGE}"
+          docker pull ${UBUNTU_2004_IMAGE}
+          echo =====
+          ${DOCKER} npm i
+          echo =====
+          ${DOCKER} bash -c 'cd build && ctest -L "nonparallelizable_tests"'
+  ubuntu-2004-long-test:
+    name: Ubuntu 20.04 | Long-Running Test
+    runs-on: ubuntu-latest
+    needs: ubuntu-2004-build
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          submodules: recursive
+          fetch-depth: 0
+      - name: Download build
+        uses: actions/download-artifact@v1
+        with:
+          name: ubuntu-2004-build
+      - name: Long-Running Test
+        run: |
+          set -e
+          tar -xzf ubuntu-2004-build/build.tar.gz
+          export DOCKER="docker run --rm -v ${GITHUB_WORKSPACE}:${GITHUB_WORKSPACE} -w ${GITHUB_WORKSPACE} ${UBUNTU_2004_IMAGE}"
+          docker pull ${UBUNTU_2004_IMAGE}
+          ${DOCKER} bash -c 'cd build && ctest -L "long_running_tests" -E "nodeos_short_fork_take_over_lr_test|nodeos_under_min_avail_ram_lr_test|nodeos_startup_catchup_lr_test|nodeos_producer_watermark_lr_test|nodeos_irreversible_mode_lr_test|nodeos_forked_chain_lr_test|nodeos_voting_lr_test"'
+  nodeos_short_fork_take_over_lr_test:
+    name: Ubuntu 20.04 | nodeos_short_fork_take_over_lr_test
+    runs-on: ubuntu-latest
+    needs: ubuntu-2004-build
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          submodules: recursive
+          fetch-depth: 0
+      - name: Download build
+        uses: actions/download-artifact@v1
+        with:
+          name: ubuntu-2004-build
+      - name: nodeos_short_fork_take_over_lr_test
+        run: |
+          set -e
+          tar -xzf ubuntu-2004-build/build.tar.gz
+          export DOCKER="docker run --rm -v ${GITHUB_WORKSPACE}:${GITHUB_WORKSPACE} -w ${GITHUB_WORKSPACE} ${UBUNTU_2004_IMAGE}"
+          docker pull ${UBUNTU_2004_IMAGE}
+          ${DOCKER} bash -c 'cd build && ctest -R nodeos_short_fork_take_over_lr_test'
+  nodeos_under_min_avail_ram_lr_test:
+    name: Ubuntu 20.04 | nodeos_under_min_avail_ram_lr_test
+    runs-on: ubuntu-latest
+    needs: ubuntu-2004-build
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          submodules: recursive
+          fetch-depth: 0
+      - name: Download build
+        uses: actions/download-artifact@v1
+        with:
+          name: ubuntu-2004-build
+      - name: nodeos_under_min_avail_ram_lr_test
+        run: |
+          set -e
+          tar -xzf ubuntu-2004-build/build.tar.gz
+          export DOCKER="docker run --rm -v ${GITHUB_WORKSPACE}:${GITHUB_WORKSPACE} -w ${GITHUB_WORKSPACE} ${UBUNTU_2004_IMAGE}"
+          docker pull ${UBUNTU_2004_IMAGE}
+          ${DOCKER} bash -c 'cd build && ctest -R nodeos_under_min_avail_ram_lr_test'
+  nodeos_startup_catchup_lr_test:
+    name: Ubuntu 20.04 | nodeos_startup_catchup_lr_test
+    runs-on: ubuntu-latest
+    needs: ubuntu-2004-build
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          submodules: recursive
+          fetch-depth: 0
+      - name: Download build
+        uses: actions/download-artifact@v1
+        with:
+          name: ubuntu-2004-build
+      - name: nodeos_startup_catchup_lr_test
+        run: |
+          set -e
+          tar -xzf ubuntu-2004-build/build.tar.gz
+          export DOCKER="docker run --rm -v ${GITHUB_WORKSPACE}:${GITHUB_WORKSPACE} -w ${GITHUB_WORKSPACE} ${UBUNTU_2004_IMAGE}"
+          docker pull ${UBUNTU_2004_IMAGE}
+          ${DOCKER} bash -c 'cd build && ctest -R nodeos_startup_catchup_lr_test'
+  nodeos_producer_watermark_lr_test:
+    name: Ubuntu 20.04 | nodeos_producer_watermark_lr_test
+    runs-on: ubuntu-latest
+    needs: ubuntu-2004-build
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          submodules: recursive
+          fetch-depth: 0
+      - name: Download build
+        uses: actions/download-artifact@v1
+        with:
+          name: ubuntu-2004-build
+      - name: nodeos_producer_watermark_lr_test
+        run: |
+          set -e
+          tar -xzf ubuntu-2004-build/build.tar.gz
+          export DOCKER="docker run --rm -v ${GITHUB_WORKSPACE}:${GITHUB_WORKSPACE} -w ${GITHUB_WORKSPACE} ${UBUNTU_2004_IMAGE}"
+          docker pull ${UBUNTU_2004_IMAGE}
+          ${DOCKER} bash -c 'cd build && ctest -R nodeos_producer_watermark_lr_test'
+  nodeos_irreversible_mode_lr_test:
+    name: Ubuntu 20.04 | nodeos_irreversible_mode_lr_test
+    runs-on: ubuntu-latest
+    needs: ubuntu-2004-build
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          submodules: recursive
+          fetch-depth: 0
+      - name: Download build
+        uses: actions/download-artifact@v1
+        with:
+          name: ubuntu-2004-build
+      - name: nodeos_irreversible_mode_lr_test
+        run: |
+          set -e
+          tar -xzf ubuntu-2004-build/build.tar.gz
+          export DOCKER="docker run --rm -v ${GITHUB_WORKSPACE}:${GITHUB_WORKSPACE} -w ${GITHUB_WORKSPACE} ${UBUNTU_2004_IMAGE}"
+          docker pull ${UBUNTU_2004_IMAGE}
+          ${DOCKER} bash -c 'cd build && ctest -R nodeos_irreversible_mode_lr_test'
+  nodeos_forked_chain_lr_test:
+    name: Ubuntu 20.04 | nodeos_forked_chain_lr_test
+    runs-on: ubuntu-latest
+    needs: ubuntu-2004-build
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          submodules: recursive
+          fetch-depth: 0
+      - name: Download build
+        uses: actions/download-artifact@v1
+        with:
+          name: ubuntu-2004-build
+      - name: nodeos_forked_chain_lr_test
+        run: |
+          set -e
+          tar -xzf ubuntu-2004-build/build.tar.gz
+          export DOCKER="docker run --rm -v ${GITHUB_WORKSPACE}:${GITHUB_WORKSPACE} -w ${GITHUB_WORKSPACE} ${UBUNTU_2004_IMAGE}"
+          docker pull ${UBUNTU_2004_IMAGE}
+          ${DOCKER} bash -c 'cd build && ctest -R nodeos_forked_chain_lr_test'
+  nodeos_voting_lr_test:
+    name: Ubuntu 20.04 | nodeos_voting_lr_test
+    runs-on: ubuntu-latest
+    needs: ubuntu-2004-build
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          submodules: recursive
+          fetch-depth: 0
+      - name: Download build
+        uses: actions/download-artifact@v1
+        with:
+          name: ubuntu-2004-build
+      - name: nodeos_voting_lr_test
+        run: |
+          set -e
+          tar -xzf ubuntu-2004-build/build.tar.gz
+          export DOCKER="docker run --rm -v ${GITHUB_WORKSPACE}:${GITHUB_WORKSPACE} -w ${GITHUB_WORKSPACE} ${UBUNTU_2004_IMAGE}"
+          docker pull ${UBUNTU_2004_IMAGE}
+          ${DOCKER} bash -c 'cd build && ctest -R nodeos_voting_lr_test'
