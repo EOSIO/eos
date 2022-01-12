@@ -76,8 +76,8 @@ for FILE in $(ls "$CICD_DIR/platforms/$PLATFORM_TYPE"); do
         export ANKA_TAG_BASE=''
         export ANKA_TEMPLATE_NAME=''
     fi
-    export PLATFORMS_JSON_ARRAY=$(echo $PLATFORMS_JSON_ARRAY | jq -c '. += [{ 
-        "FILE_NAME": env.FILE_NAME, 
+    export PLATFORMS_JSON_ARRAY=$(echo $PLATFORMS_JSON_ARRAY | jq -c '. += [{
+        "FILE_NAME": env.FILE_NAME,
         "PLATFORM_NAME": env.PLATFORM_NAME,
         "PLATFORM_SKIP_VAR": env.PLATFORM_SKIP_VAR,
         "PLATFORM_NAME_UPCASE": env.PLATFORM_NAME_UPCASE,
@@ -162,7 +162,7 @@ EOF
           failover-registries:
             - 'registry_1'
             - 'registry_2'
-          pre-commands: 
+          pre-commands:
             - "rm -rf mac-anka-fleet; git clone git@github.com:EOSIO/mac-anka-fleet.git && cd mac-anka-fleet && . ./ensure-tag.bash -u 12 -r 25G -a '-n'"
       - EOSIO/skip-checkout#v0.1.1:
           cd: ~
@@ -341,26 +341,26 @@ EOF
     skip: $(echo "$PLATFORM_JSON" | jq -r '.PLATFORM_SKIP_VAR | env[.] // empty')${SKIP_SERIAL_TESTS}
 
 EOF
-            elif [ $TEST_NAME != 'rodeos_test_eosvmoc'  -a \
-                   $TEST_NAME != 'rodeos_multi_ship_eos_vm_oc_idle_test'  -a \
-                   $TEST_NAME != 'rodeos_multi_ship_eos_vm_oc_load_test'  -a \
-                   $TEST_NAME != 'rodeos_idle_restart_producer_eos-vm-oc_test'  -a \
-                   $TEST_NAME != 'rodeos_idle_restart_rodeos_eos-vm-oc_test'  -a \
-                   $TEST_NAME != 'rodeos_idle_restart_ship_eos-vm-oc_test'  -a \
-                   $TEST_NAME != 'rodeos_idle_restart_rodeos_producer_eos-vm-oc_test'  -a \
-                   $TEST_NAME != 'rodeos_multi_ship_kill_clean_restart_eos_vm_oc_idle_test'  -a \
-                   $TEST_NAME != 'rodeos_multi_ship_kill_clean_restart_eos_vm_oc_load_test'  -a \
-                   $TEST_NAME != 'rodeos_multi_ship_kill_restart_eos_vm_oc_idle_test'  -a \
-                   $TEST_NAME != 'rodeos_multi_ship_kill_restart_eos_vm_oc_load_test'  -a \
-                   $TEST_NAME != 'rodeos_multi_ship_kill_clean_restart_eos_vm_oc_idle_unixsocket_test'  -a \
-                   $TEST_NAME != 'rodeos_multi_ship_kill_clean_restart_eos_vm_oc_load_unixsocket_test'  -a \
-                   $TEST_NAME != 'rodeos_multi_ship_kill_restart_eos_vm_oc_idle_unixsocket_test'  -a \
-                   $TEST_NAME != 'rodeos_multi_ship_kill_restart_eos_vm_oc_load_unixsocket_test'  -a \
-                   $TEST_NAME != 'rodeos_idle_restart_ship_unix-socket_eos-vm-oc_test'  -a \
-                   $TEST_NAME != 'rodeos_idle_restart_rodeos_unix-socket_eos-vm-oc_test'  -a \
-                   $TEST_NAME != 'rodeos_wasmQL_http_timeout_unix_socket_eos_vm_oc'  -a \
-                   $TEST_NAME != 'rodeos_wasmQL_http_timeout_eos_vm_oc' ]
-                 then
+                elif [ $TEST_NAME != 'rodeos_test_eosvmoc'  -a \
+                        $TEST_NAME != 'rodeos_multi_ship_eos_vm_oc_idle_test'  -a \
+                        $TEST_NAME != 'rodeos_multi_ship_eos_vm_oc_load_test'  -a \
+                        $TEST_NAME != 'rodeos_idle_restart_producer_eos-vm-oc_test'  -a \
+                        $TEST_NAME != 'rodeos_idle_restart_rodeos_eos-vm-oc_test'  -a \
+                        $TEST_NAME != 'rodeos_idle_restart_ship_eos-vm-oc_test'  -a \
+                        $TEST_NAME != 'rodeos_idle_restart_rodeos_producer_eos-vm-oc_test'  -a \
+                        $TEST_NAME != 'rodeos_multi_ship_kill_clean_restart_eos_vm_oc_idle_test'  -a \
+                        $TEST_NAME != 'rodeos_multi_ship_kill_clean_restart_eos_vm_oc_load_test'  -a \
+                        $TEST_NAME != 'rodeos_multi_ship_kill_restart_eos_vm_oc_idle_test'  -a \
+                        $TEST_NAME != 'rodeos_multi_ship_kill_restart_eos_vm_oc_load_test'  -a \
+                        $TEST_NAME != 'rodeos_multi_ship_kill_clean_restart_eos_vm_oc_idle_unixsocket_test'  -a \
+                        $TEST_NAME != 'rodeos_multi_ship_kill_clean_restart_eos_vm_oc_load_unixsocket_test'  -a \
+                        $TEST_NAME != 'rodeos_multi_ship_kill_restart_eos_vm_oc_idle_unixsocket_test'  -a \
+                        $TEST_NAME != 'rodeos_multi_ship_kill_restart_eos_vm_oc_load_unixsocket_test'  -a \
+                        $TEST_NAME != 'rodeos_idle_restart_ship_unix-socket_eos-vm-oc_test'  -a \
+                        $TEST_NAME != 'rodeos_idle_restart_rodeos_unix-socket_eos-vm-oc_test'  -a \
+                        $TEST_NAME != 'rodeos_wasmQL_http_timeout_unix_socket_eos_vm_oc'  -a \
+                        $TEST_NAME != 'rodeos_wasmQL_http_timeout_eos_vm_oc' ]
+                then
                 cat <<EOF
   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - $TEST_NAME"
     command:
@@ -472,13 +472,12 @@ EOF
     skip: ${SKIP_LINUX}${SKIP_UBUNTU_18_04}${SKIP_MULTIVERSION_TEST}
 
 EOF
-    fi
+        fi
         if [[ "$ROUND" != "$ROUNDS" ]]; then
             echo '  - wait'
             echo ''
         fi
     done
-    
     # trigger eosio-lrt post pr
     if [[ -z $BUILDKITE_TRIGGERED_FROM_BUILD_ID && $TRIGGER_JOB == "true" ]]; then
         if ( [[ ! $PINNED == false ]] ); then
