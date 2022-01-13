@@ -587,7 +587,7 @@ EOF
       PKGTYPE: "rpm"
     agents:
       queue: "$BUILDKITE_TEST_AGENT_QUEUE"
-    timeout: ${TIMEOUT:-10}
+    timeout: ${TIMEOUT:-20}
     skip: ${SKIP_CENTOS_7_7}${SKIP_PACKAGE_BUILDER}${SKIP_LINUX}
 
   - label: ":ubuntu: Ubuntu 18.04 - Package Builder"
@@ -601,7 +601,7 @@ EOF
       PKGTYPE: "deb"
     agents:
       queue: "$BUILDKITE_TEST_AGENT_QUEUE"
-    timeout: ${TIMEOUT:-10}
+    timeout: ${TIMEOUT:-20}
     skip: ${SKIP_UBUNTU_18_04}${SKIP_PACKAGE_BUILDER}${SKIP_LINUX}
 
   - label: ":ubuntu: Ubuntu 20.04 - Package Builder"
@@ -615,7 +615,7 @@ EOF
       PKGTYPE: "deb"
     agents:
       queue: "$BUILDKITE_TEST_AGENT_QUEUE"
-    timeout: ${TIMEOUT:-10}
+    timeout: ${TIMEOUT:-20}
     skip: ${SKIP_UBUNTU_20_04}${SKIP_PACKAGE_BUILDER}${SKIP_LINUX}
 
   - label: ":darwin: macOS 10.15 - Package Builder"
