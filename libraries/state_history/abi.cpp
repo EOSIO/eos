@@ -108,6 +108,22 @@ extern const char* const state_history_plugin_abi = R"({
             ]
         },
         {
+            "name": "action_trace_v1", "fields": [
+                { "name": "action_ordinal", "type": "varuint32" },
+                { "name": "creator_action_ordinal", "type": "varuint32" },
+                { "name": "receipt", "type": "action_receipt?" },
+                { "name": "receiver", "type": "name" },
+                { "name": "act", "type": "action" },
+                { "name": "context_free", "type": "bool" },
+                { "name": "elapsed", "type": "int64" },
+                { "name": "console", "type": "string" },
+                { "name": "account_ram_deltas", "type": "account_delta[]" },
+                { "name": "except", "type": "string?" },
+                { "name": "error_code", "type": "uint64?" },
+                { "name": "return_value", "type": "bytes"}
+            ]
+        },
+        {
             "name": "partial_transaction_v0", "fields": [
                 { "name": "expiration", "type": "time_point_sec" },
                 { "name": "ref_block_num", "type": "uint16" },
@@ -352,6 +368,28 @@ extern const char* const state_history_plugin_abi = R"({
             ]
         },
         {
+            "name": "chain_config_v1", "fields": [
+                { "type": "uint64", "name": "max_block_net_usage" },
+                { "type": "uint32", "name": "target_block_net_usage_pct" },
+                { "type": "uint32", "name": "max_transaction_net_usage" },
+                { "type": "uint32", "name": "base_per_transaction_net_usage" },
+                { "type": "uint32", "name": "net_usage_leeway" },
+                { "type": "uint32", "name": "context_free_discount_net_usage_num" },
+                { "type": "uint32", "name": "context_free_discount_net_usage_den" },
+                { "type": "uint32", "name": "max_block_cpu_usage" },
+                { "type": "uint32", "name": "target_block_cpu_usage_pct" },
+                { "type": "uint32", "name": "max_transaction_cpu_usage" },
+                { "type": "uint32", "name": "min_transaction_cpu_usage" },
+                { "type": "uint32", "name": "max_transaction_lifetime" },
+                { "type": "uint32", "name": "deferred_trx_expiration_window" },
+                { "type": "uint32", "name": "max_transaction_delay" },
+                { "type": "uint32", "name": "max_inline_action_size" },
+                { "type": "uint16", "name": "max_inline_action_depth" },
+                { "type": "uint16", "name": "max_authority_depth" },
+                { "type": "uint32", "name": "max_action_return_value_size" }
+            ]
+        },
+        {
             "name": "global_property_v0", "fields": [
                 { "type": "uint32?", "name": "proposed_schedule_block_num" },
                 { "type": "producer_schedule", "name": "proposed_schedule" },
@@ -502,7 +540,7 @@ extern const char* const state_history_plugin_abi = R"({
         { "name": "result", "types": ["get_status_result_v0", "get_blocks_result_v0"] },
 
         { "name": "action_receipt", "types": ["action_receipt_v0"] },
-        { "name": "action_trace", "types": ["action_trace_v0"] },
+        { "name": "action_trace", "types": ["action_trace_v0", "action_trace_v1"] },
         { "name": "partial_transaction", "types": ["partial_transaction_v0"] },
         { "name": "transaction_trace", "types": ["transaction_trace_v0"] },
         { "name": "transaction_variant", "types": ["transaction_id", "packed_transaction"] },
@@ -518,7 +556,7 @@ extern const char* const state_history_plugin_abi = R"({
         { "name": "contract_index256", "types": ["contract_index256_v0"] },
         { "name": "contract_index_double", "types": ["contract_index_double_v0"] },
         { "name": "contract_index_long_double", "types": ["contract_index_long_double_v0"] },
-        { "name": "chain_config", "types": ["chain_config_v0"] },
+        { "name": "chain_config", "types": ["chain_config_v0", "chain_config_v1"] },
         { "name": "global_property", "types": ["global_property_v0", "global_property_v1"] },
         { "name": "generated_transaction", "types": ["generated_transaction_v0"] },
         { "name": "activated_protocol_feature", "types": ["activated_protocol_feature_v0"] },

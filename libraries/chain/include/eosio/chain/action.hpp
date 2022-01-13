@@ -53,32 +53,38 @@ namespace eosio { namespace chain {
     *  application code. An application code will check to see if the required authorization
     *  were properly declared when it executes.
     */
-   struct action {
-      account_name               account;
-      action_name                name;
-      vector<permission_level>   authorization;
+   struct action_base {
+      account_name             account;
+      action_name              name;
+      vector<permission_level> authorization;
+
+      action_base() = default;
+
+      action_base( account_name acnt, action_name act, const vector<permission_level>& auth )
+         : account(acnt), name(act), authorization(auth) {}
+      action_base( account_name acnt, action_name act, vector<permission_level>&& auth )
+         : account(acnt), name(act), authorization(std::move(auth)) {}
+   };
+
+   struct action : public action_base {
       bytes                      data;
 
-      action(){}
+      action() = default;
 
       template<typename T, std::enable_if_t<std::is_base_of<bytes, T>::value, int> = 1>
-      action( vector<permission_level> auth, const T& value ) {
-         account     = T::get_account();
-         name        = T::get_name();
-         authorization = move(auth);
+      action( vector<permission_level> auth, const T& value )
+         : action_base( T::get_account(), T::get_name(), std::move(auth) ) {
          data.assign(value.data(), value.data() + value.size());
       }
 
       template<typename T, std::enable_if_t<!std::is_base_of<bytes, T>::value, int> = 1>
-      action( vector<permission_level> auth, const T& value ) {
-         account     = T::get_account();
-         name        = T::get_name();
-         authorization = move(auth);
-         data        = fc::raw::pack(value);
+      action( vector<permission_level> auth, const T& value )
+         : action_base( T::get_account(), T::get_name(), std::move(auth) ) {
+         data = fc::raw::pack(value);
       }
 
       action( vector<permission_level> auth, account_name account, action_name name, const bytes& data )
-            : account(account), name(name), authorization(move(auth)), data(data) {
+            : action_base(account, name, std::move(auth)), data(data)  {
       }
 
       template<typename T>
@@ -89,6 +95,38 @@ namespace eosio { namespace chain {
       }
    };
 
+   template <typename Hasher>
+   auto generate_action_digest(Hasher&& hash, const action& act, const vector<char>& action_output) {
+      using hash_type = decltype(hash(nullptr, 0));
+      hash_type hashes[2];
+      const action_base* base = &act;
+      const auto action_base_size   = fc::raw::pack_size(*base);
+      const auto action_input_size  = fc::raw::pack_size(act.data);
+      const auto action_output_size = fc::raw::pack_size(action_output);
+      const auto rhs_size           = action_input_size + action_output_size;
+      std::vector<char> buff;
+      buff.reserve(std::max(action_base_size, rhs_size));
+      {
+         buff.resize(action_base_size);
+         fc::datastream<char*> ds(buff.data(), action_base_size);
+         fc::raw::pack(ds, *base);
+         hashes[0] = hash(buff.data(), action_base_size);
+      }
+      {
+         buff.resize(rhs_size);
+         fc::datastream<char*> ds(buff.data(), rhs_size);
+         fc::raw::pack(ds, act.data);
+         fc::raw::pack(ds, action_output);
+         hashes[1] = hash(buff.data(), rhs_size);
+      }
+      auto hashes_size = fc::raw::pack_size(hashes[0]) + fc::raw::pack_size(hashes[1]);
+      buff.resize(hashes_size); // may cause reallocation but in practice will be unlikely
+      fc::datastream<char*> ds(buff.data(), hashes_size);
+      fc::raw::pack(ds, hashes[0]);
+      fc::raw::pack(ds, hashes[1]);
+      return hash(buff.data(), hashes_size);
+   }
+
    struct action_notice : public action {
       account_name receiver;
    };
@@ -96,4 +134,5 @@ namespace eosio { namespace chain {
 } } /// namespace eosio::chain
 
 FC_REFLECT( eosio::chain::permission_level, (actor)(permission) )
-FC_REFLECT( eosio::chain::action, (account)(name)(authorization)(data) )
+FC_REFLECT( eosio::chain::action_base, (account)(name)(authorization) )
+FC_REFLECT_DERIVED( eosio::chain::action, (eosio::chain::action_base), (data) )

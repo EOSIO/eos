@@ -115,12 +115,12 @@ namespace eosio { namespace chain { namespace webassembly {
    uint32_t interface::get_blockchain_parameters_packed( legacy_span<char> packed_blockchain_parameters ) const {
       auto& gpo = context.control.get_global_properties();
 
-      auto s = fc::raw::pack_size( gpo.configuration );
+      auto s = fc::raw::pack_size( gpo.configuration.v0() );
       if( packed_blockchain_parameters.size() == 0 ) return s;
 
       if ( s <= packed_blockchain_parameters.size() ) {
          datastream<char*> ds( packed_blockchain_parameters.data(), s );
-         fc::raw::pack(ds, gpo.configuration);
+         fc::raw::pack(ds, gpo.configuration.v0());
          return s;
       }
       return 0;
@@ -128,7 +128,7 @@ namespace eosio { namespace chain { namespace webassembly {
 
    void interface::set_blockchain_parameters_packed( legacy_span<const char> packed_blockchain_parameters ) {
       datastream<const char*> ds( packed_blockchain_parameters.data(), packed_blockchain_parameters.size() );
-      chain::chain_config cfg;
+      chain::chain_config_v0 cfg;
       fc::raw::unpack(ds, cfg);
       cfg.validate();
       context.db.modify( context.control.get_global_properties(),

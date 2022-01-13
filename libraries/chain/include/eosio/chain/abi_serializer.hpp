@@ -60,6 +60,7 @@ struct abi_serializer {
 
    type_name get_action_type(name action)const;
    type_name get_table_type(name action)const;
+   type_name get_action_result_type(name action_result)const;
 
    optional<string>  get_error_message( uint64_t error_code )const;
 
@@ -139,6 +140,7 @@ private:
    map<name,type_name>                        tables;
    map<uint64_t, string>                      error_messages;
    map<type_name, variant_def, std::less<>>   variants;
+   map<name,type_name>                        action_results;
 
    map<type_name, pair<unpack_function, pack_function>, std::less<>> built_in_types;
    void configure_built_in_types();
@@ -440,6 +442,55 @@ namespace impl {
          } catch(...) {
             mvo("data", act.data);
          }
+         out(name, std::move(mvo));
+      }
+
+      /**
+       * overload of to_variant_object for action_trace
+       *
+       * This matches the FC_REFLECT for this type, but this is provided to extract the contents of action_trace.return_value
+       * @tparam Resolver
+       * @param action_trace
+       * @param resolver
+       * @return
+       */
+      template<typename Resolver>
+      static void add( mutable_variant_object& out, const char* name, const action_trace& act_trace, Resolver resolver, abi_traverse_context& ctx )
+      {
+         static_assert(fc::reflector<action_trace>::total_member_count == 17);
+         auto h = ctx.enter_scope();
+         mutable_variant_object mvo;
+
+         mvo("action_ordinal", act_trace.action_ordinal);
+         mvo("creator_action_ordinal", act_trace.creator_action_ordinal);
+         mvo("closest_unnotified_ancestor_action_ordinal", act_trace.closest_unnotified_ancestor_action_ordinal);
+         mvo("receipt", act_trace.receipt);
+         mvo("receiver", act_trace.receiver);
+         add(mvo, "act", act_trace.act, resolver, ctx);
+         mvo("context_free", act_trace.context_free);
+         mvo("elapsed", act_trace.elapsed);
+         mvo("console", act_trace.console);
+         mvo("trx_id", act_trace.trx_id);
+         mvo("block_num", act_trace.block_num);
+         mvo("block_time", act_trace.block_time);
+         mvo("producer_block_id", act_trace.producer_block_id);
+         mvo("account_ram_deltas", act_trace.account_ram_deltas);
+         mvo("except", act_trace.except);
+         mvo("error_code", act_trace.error_code);
+
+         mvo("return_value_hex_data", act_trace.return_value);
+         auto act = act_trace.act;
+         try {
+            auto abi = resolver(act.account);
+            if (abi) {
+               auto type = abi->get_action_result_type(act.name);
+               if (!type.empty()) {
+                  binary_to_variant_context _ctx(*abi, ctx, type);
+                  _ctx.short_path = true; // Just to be safe while avoiding the complexity of threading an override boolean all over the place
+                  mvo( "return_value_data", abi->_binary_to_variant( type, act_trace.return_value, _ctx ));
+               }
+            }
+         } catch(...) {}
          out(name, std::move(mvo));
       }
 

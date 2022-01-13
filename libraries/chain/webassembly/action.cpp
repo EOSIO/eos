@@ -20,4 +20,13 @@ namespace eosio { namespace chain { namespace webassembly {
    name interface::current_receiver() const {
       return context.get_receiver();
    }
+
+   void interface::set_action_return_value( span<const char> packed_blob ) {
+      auto max_action_return_value_size = 
+         context.control.get_global_properties().configuration.max_action_return_value_size;
+      EOS_ASSERT(packed_blob.size() <= max_action_return_value_size,
+                 action_return_value_exception, 
+                 "action return value size must be less or equal to ${s} bytes", ("s", max_action_return_value_size));
+      context.action_return_value.assign( packed_blob.data(), packed_blob.data() + packed_blob.size() );
+   }
 }}} // ns eosio::chain::webassembly

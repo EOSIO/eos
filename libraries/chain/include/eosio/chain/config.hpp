@@ -1,6 +1,7 @@
 #pragma once
 #include <eosio/chain/wasm_interface.hpp>
 #include <fc/time.hpp>
+#include <fc/utility.hpp>
 
 #pragma GCC diagnostic ignored "-Wunused-variable"
 
@@ -83,6 +84,9 @@ const static uint32_t   default_block_cpu_effort_pct                 = 80 * perc
 const static uint16_t   default_controller_thread_pool_size          = 2;
 const static uint32_t   default_max_variable_signature_length        = 16384u;
 const static uint32_t   default_max_nonprivileged_inline_action_size = 4 * 1024; // 4 KB
+const static uint32_t   default_max_action_return_value_size         = 256;
+
+static_assert(MAX_SIZE_OF_BYTE_ARRAYS == 20*1024*1024, "Changing MAX_SIZE_OF_BYTE_ARRAYS breaks consensus. Make sure this is expected");
 
 const static uint32_t   min_net_usage_delta_between_base_and_max_for_trx  = 10*1024;
 // Should be large enough to allow recovery from badly set blockchain parameters without a hard fork

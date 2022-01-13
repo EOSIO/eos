@@ -368,9 +368,29 @@ fc::variant push_actions(std::vector<chain::action>&& actions, packed_transactio
    return push_transaction(trx, compression);
 }
 
+void print_return_value( const fc::variant& at ) {
+   std::string return_value, return_value_prefix{"return value: "};
+   const auto  & iter_value = at.get_object().find("return_value_data");
+   const auto  & iter_hex   = at.get_object().find("return_value_hex_data");
+
+   if( iter_value != at.get_object().end() ) {
+      return_value = fc::json::to_string(iter_value->value(), fc::time_point::maximum());
+   }
+   else if( iter_hex != at.get_object().end() ) {
+      return_value = iter_hex->value().as_string();
+      return_value_prefix = "return value (hex): ";
+   }
+
+   if( !return_value.empty() ) {
+      if( return_value.size() > 100 ) {
+         return_value = return_value.substr(0, 100) + "...";
+      }
+      cout << "=>" << std::setw(46) << std::right << return_value_prefix << return_value << "\n";
+   }
+}
+
 void print_action( const fc::variant& at ) {
-   const auto& receipt = at["receipt"];
-   auto receiver = receipt["receiver"].as_string();
+   auto receiver = at["receiver"].as_string();
    const auto& act = at["act"].get_object();
    auto code = act["account"].as_string();
    auto func = act["name"].as_string();
@@ -385,6 +405,7 @@ void print_action( const fc::variant& at ) {
    */
    if( args.size() > 100 ) args = args.substr(0,100) + "...";
    cout << "#" << std::setw(14) << right << receiver << " <= " << std::setw(28) << std::left << (code +"::" + func) << " " << args << "\n";
+   print_return_value(at);
    if( console.size() ) {
       std::stringstream ss(console);
       string line;

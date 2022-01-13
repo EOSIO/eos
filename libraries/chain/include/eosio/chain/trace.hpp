@@ -44,6 +44,7 @@ namespace eosio { namespace chain {
       flat_set<account_delta>         account_ram_deltas;
       fc::optional<fc::exception>     except;
       fc::optional<uint64_t>          error_code;
+      std::vector<char>               return_value;
    };
 
    struct transaction_trace {
@@ -87,8 +88,9 @@ FC_REFLECT( eosio::chain::account_delta,
 FC_REFLECT( eosio::chain::action_trace,
                (action_ordinal)(creator_action_ordinal)(closest_unnotified_ancestor_action_ordinal)(receipt)
                (receiver)(act)(context_free)(elapsed)(console)(trx_id)(block_num)(block_time)
-               (producer_block_id)(account_ram_deltas)(except)(error_code) )
+               (producer_block_id)(account_ram_deltas)(except)(error_code)(return_value) )
 
+// @ignore except_ptr
 FC_REFLECT( eosio::chain::transaction_trace, (id)(block_num)(block_time)(producer_block_id)
                                              (receipt)(elapsed)(net_usage)(scheduled)
                                              (action_traces)(account_ram_delta)(failed_dtrx_trace)(except)(error_code) )
