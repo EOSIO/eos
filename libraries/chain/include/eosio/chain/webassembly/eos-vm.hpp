@@ -4,6 +4,7 @@
 #include <eosio/chain/webassembly/runtime_interface.hpp>
 #include <eosio/chain/exceptions.hpp>
 #include <eosio/chain/apply_context.hpp>
+#include <eosio/chain/wasm_config.hpp>
 #include <eosio/chain/whitelisted_intrinsics.hpp>
 #include <softfloat_types.h>
 
@@ -28,6 +29,8 @@ using namespace fc;
 using namespace eosio::vm;
 
 void validate(const bytes& code, const whitelisted_intrinsics_type& intrinsics );
+
+void validate(const bytes& code, const wasm_config& cfg, const whitelisted_intrinsics_type& intrinsics );
 
 struct apply_options;
 

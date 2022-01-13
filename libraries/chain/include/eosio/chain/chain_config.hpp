@@ -12,7 +12,30 @@ namespace eosio { namespace chain {
  * their preference for each of the parameters in this object, and the blockchain runs according to the median of the
  * values specified by the producers.
  */
-struct chain_config {
+struct chain_config_v0 {
+
+   //order must match parameters as ids are used in serialization
+   enum {
+      max_block_net_usage_id,
+      target_block_net_usage_pct_id,
+      max_transaction_net_usage_id,
+      base_per_transaction_net_usage_id,
+      net_usage_leeway_id,
+      context_free_discount_net_usage_num_id,
+      context_free_discount_net_usage_den_id,
+      max_block_cpu_usage_id,
+      target_block_cpu_usage_pct_id,
+      max_transaction_cpu_usage_id,
+      min_transaction_cpu_usage_id,
+      max_transaction_lifetime_id,
+      deferred_trx_expiration_window_id,
+      max_transaction_delay_id,
+      max_inline_action_size_id,
+      max_inline_action_depth_id,
+      max_authority_depth_id,
+      PARAMS_COUNT
+   };
+
    uint64_t   max_block_net_usage;                 ///< the maxiumum net usage in instructions for a block
    uint32_t   target_block_net_usage_pct;          ///< the target percent (1% == 100, 100%= 10,000) of maximum net usage; exceeding this triggers congestion handling
    uint32_t   max_transaction_net_usage;           ///< the maximum objectively measured net usage that the chain will allow regardless of account limits
@@ -35,29 +58,16 @@ struct chain_config {
 
    void validate()const;
 
+   inline const chain_config_v0& v0() const {
+      return *this;
+   }
+   
    template<typename Stream>
-   friend Stream& operator << ( Stream& out, const chain_config& c ) {
-      return out << "Max Block Net Usage: " << c.max_block_net_usage << ", "
-                 << "Target Block Net Usage Percent: " << ((double)c.target_block_net_usage_pct / (double)config::percent_1) << "%, "
-                 << "Max Transaction Net Usage: " << c.max_transaction_net_usage << ", "
-                 << "Base Per-Transaction Net Usage: " << c.base_per_transaction_net_usage << ", "
-                 << "Net Usage Leeway: " << c.net_usage_leeway << ", "
-                 << "Context-Free Data Net Usage Discount: " << (double)c.context_free_discount_net_usage_num * 100.0 / (double)c.context_free_discount_net_usage_den << "% , "
-
-                 << "Max Block CPU Usage: " << c.max_block_cpu_usage << ", "
-                 << "Target Block CPU Usage Percent: " << ((double)c.target_block_cpu_usage_pct / (double)config::percent_1) << "%, "
-                 << "Max Transaction CPU Usage: " << c.max_transaction_cpu_usage << ", "
-                 << "Min Transaction CPU Usage: " << c.min_transaction_cpu_usage << ", "
-
-                 << "Max Transaction Lifetime: " << c.max_transaction_lifetime << ", "
-                 << "Deferred Transaction Expiration Window: " << c.deferred_trx_expiration_window << ", "
-                 << "Max Transaction Delay: " << c.max_transaction_delay << ", "
-                 << "Max Inline Action Size: " << c.max_inline_action_size << ", "
-                 << "Max Inline Action Depth: " << c.max_inline_action_depth << ", "
-                 << "Max Authority Depth: " << c.max_authority_depth << "\n";
+   friend Stream& operator << ( Stream& out, const chain_config_v0& c ) {
+      return c.log(out) << "\n";
    }
 
-   friend inline bool operator ==( const chain_config& lhs, const chain_config& rhs ) {
+   friend inline bool operator ==( const chain_config_v0& lhs, const chain_config_v0& rhs ) {
       return   std::tie(   lhs.max_block_net_usage,
                            lhs.target_block_net_usage_pct,
                            lhs.max_transaction_net_usage,
@@ -97,13 +107,38 @@ struct chain_config {
                         );
    };
 
-   friend inline bool operator !=( const chain_config& lhs, const chain_config& rhs ) { return !(lhs == rhs); }
+   friend inline bool operator !=( const chain_config_v0& lhs, const chain_config_v0& rhs ) { return !(lhs == rhs); }
 
+protected:
+   template<typename Stream>
+   Stream& log(Stream& out) const{
+      return out << "Max Block Net Usage: " << max_block_net_usage << ", "
+                     << "Target Block Net Usage Percent: " << ((double)target_block_net_usage_pct / (double)config::percent_1) << "%, "
+                     << "Max Transaction Net Usage: " << max_transaction_net_usage << ", "
+                     << "Base Per-Transaction Net Usage: " << base_per_transaction_net_usage << ", "
+                     << "Net Usage Leeway: " << net_usage_leeway << ", "
+                     << "Context-Free Data Net Usage Discount: " << (double)context_free_discount_net_usage_num * 100.0 / (double)context_free_discount_net_usage_den << "% , "
+
+                     << "Max Block CPU Usage: " << max_block_cpu_usage << ", "
+                     << "Target Block CPU Usage Percent: " << ((double)target_block_cpu_usage_pct / (double)config::percent_1) << "%, "
+                     << "Max Transaction CPU Usage: " << max_transaction_cpu_usage << ", "
+                     << "Min Transaction CPU Usage: " << min_transaction_cpu_usage << ", "
+
+                     << "Max Transaction Lifetime: " << max_transaction_lifetime << ", "
+                     << "Deferred Transaction Expiration Window: " << deferred_trx_expiration_window << ", "
+                     << "Max Transaction Delay: " << max_transaction_delay << ", "
+                     << "Max Inline Action Size: " << max_inline_action_size << ", "
+                     << "Max Inline Action Depth: " << max_inline_action_depth << ", "
+                     << "Max Authority Depth: " << max_authority_depth;
+   }
 };
+
+//after adding 1st value to chain_config_v1 change this using to point to v1
+using chain_config = chain_config_v0;
 
 } } // namespace eosio::chain
 
-FC_REFLECT(eosio::chain::chain_config,
+FC_REFLECT(eosio::chain::chain_config_v0,
            (max_block_net_usage)(target_block_net_usage_pct)
            (max_transaction_net_usage)(base_per_transaction_net_usage)(net_usage_leeway)
            (context_free_discount_net_usage_num)(context_free_discount_net_usage_den)

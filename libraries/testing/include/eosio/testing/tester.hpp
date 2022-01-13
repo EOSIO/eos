@@ -62,6 +62,7 @@ namespace eosio { namespace testing {
       old_bios_only,
       preactivate_feature_only,
       preactivate_feature_and_new_bios,
+      old_wasm_parser,
       full
    };
 
@@ -380,6 +381,7 @@ namespace eosio { namespace testing {
 
          void schedule_protocol_features_wo_preactivation(const vector<digest_type> feature_digests);
          void preactivate_protocol_features(const vector<digest_type> feature_digests);
+         void preactivate_builtin_protocol_features(const std::vector<builtin_protocol_feature_t>& features);
          void preactivate_all_builtin_protocol_features();
 
          static genesis_state default_genesis() {

@@ -328,6 +328,7 @@ struct controller_impl {
       set_activation_handler<builtin_protocol_feature_t::get_sender>();
       set_activation_handler<builtin_protocol_feature_t::webauthn_key>();
       set_activation_handler<builtin_protocol_feature_t::wtmsig_block_signatures>();
+      set_activation_handler<builtin_protocol_feature_t::configurable_wasm_limits>();
 
       self.irreversible_block.connect([this](const block_state_ptr& bsp) {
          wasmif.current_lib(bsp->block_num);
@@ -943,6 +944,8 @@ struct controller_impl {
          // special case for in-place upgrade of global_property_object
          if (std::is_same<value_t, global_property_object>::value) {
             using v2 = legacy::snapshot_global_property_object_v2;
+            using v3 = legacy::snapshot_global_property_object_v3;
+            using v4 = legacy::snapshot_global_property_object_v4;
 
             if (std::clamp(header.version, v2::minimum_version, v2::maximum_version) == header.version ) {
                fc::optional<genesis_state> genesis = extract_legacy_genesis_state(*snapshot, header.version);
@@ -954,7 +957,33 @@ struct controller_impl {
                   section.read_row(legacy_global_properties, db);
 
                   db.create<global_property_object>([&legacy_global_properties,&gs_chain_id](auto& gpo ){
-                     gpo.initalize_from(legacy_global_properties, gs_chain_id);
+                     gpo.initalize_from(legacy_global_properties, gs_chain_id, kv_database_config{},
+                                       genesis_state::default_initial_wasm_configuration);
+                  });
+               });
+               return; // early out to avoid default processing
+            }
+
+            if (std::clamp(header.version, v3::minimum_version, v3::maximum_version) == header.version ) {
+               snapshot->read_section<global_property_object>([&db=this->db]( auto &section ) {
+                  v3 legacy_global_properties;
+                  section.read_row(legacy_global_properties, db);
+
+                  db.create<global_property_object>([&legacy_global_properties](auto& gpo ){
+                     gpo.initalize_from(legacy_global_properties, kv_database_config{},
+                                        genesis_state::default_initial_wasm_configuration);
+                  });
+               });
+               return; // early out to avoid default processing
+            }
+
+            if (std::clamp(header.version, v4::minimum_version, v4::maximum_version) == header.version) {
+               snapshot->read_section<global_property_object>([&db = this->db](auto& section) {
+                  v4 legacy_global_properties;
+                  section.read_row(legacy_global_properties, db);
+
+                  db.create<global_property_object>([&legacy_global_properties](auto& gpo) {
+                     gpo.initalize_from(legacy_global_properties);
                   });
                });
                return; // early out to avoid default processing
@@ -1047,6 +1076,8 @@ struct controller_impl {
       genesis.initial_configuration.validate();
       db.create<global_property_object>([&genesis,&chain_id=this->chain_id](auto& gpo ){
          gpo.configuration = genesis.initial_configuration;
+         // TODO: Update this when genesis protocol features are enabled.
+         gpo.wasm_configuration = genesis_state::default_initial_wasm_configuration;
          gpo.chain_id = chain_id;
       });
 
@@ -3291,11 +3322,23 @@ chain_id_type controller::extract_chain_id(snapshot_reader& snapshot) {
    }
 
    chain_id_type chain_id;
-   snapshot.read_section<global_property_object>([&chain_id]( auto &section ){
-      snapshot_global_property_object global_properties;
-      section.read_row(global_properties);
-      chain_id = global_properties.chain_id;
-   });
+
+   using v4 = legacy::snapshot_global_property_object_v4;
+   if (header.version <= v4::maximum_version) {
+      snapshot.read_section<global_property_object>([&chain_id]( auto &section ){
+         v4 global_properties;
+         section.read_row(global_properties);
+         chain_id = global_properties.chain_id;
+      });
+   }
+   else {
+      snapshot.read_section<global_property_object>([&chain_id]( auto &section ){
+         snapshot_global_property_object global_properties;
+         section.read_row(global_properties);
+         chain_id = global_properties.chain_id;
+      });
+   }
+
    return chain_id;
 }
 
@@ -3367,6 +3410,13 @@ void controller_impl::on_activation<builtin_protocol_feature_t::wtmsig_block_sig
    } );
 }
 
+template<>
+void controller_impl::on_activation<builtin_protocol_feature_t::configurable_wasm_limits>() {
+   db.modify( db.get<protocol_state_object>(), [&]( auto& ps ) {
+      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "set_wasm_parameters_packed" );
+      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "get_wasm_parameters_packed" );
+   } );
+}
 
 
 /// End of protocol feature activation handlers
