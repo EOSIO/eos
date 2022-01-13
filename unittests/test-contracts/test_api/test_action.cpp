@@ -152,6 +152,9 @@ void test_action::test_cf_action() {
    } else if ( cfa.payload == 211 ) {
       send_deferred( "testapi"_n.value, "testapi"_n.value, "hello", 6, 0 );
       eosio_assert( false, "transaction_api should not be allowed" );
+   } else if ( cfa.payload == 212 ) {
+      set_action_return_value("hi", 2);
+      eosio_assert( false, "set_action_return_value should not be allowed" );
    }
 
 }
@@ -276,6 +279,7 @@ void test_action::test_action_ordinal1(uint64_t receiver, uint64_t code, uint64_
                          std::tuple<>());
       act2.send(); // -> exec 9
 
+      set_action_return_value( &eosio::pack(unsigned_int(1))[0], eosio::pack_size(unsigned_int(1)) );
       eosio::require_recipient( "charlie"_n ); // -> exec 3 which would then cause execution of 11
 
    } else if (receiver == "bob"_n.value) {
@@ -285,6 +289,7 @@ void test_action::test_action_ordinal1(uint64_t receiver, uint64_t code, uint64_
                          std::tuple<>());
       act1.send(); // -> exec 10
 
+      set_action_return_value( &eosio::pack(std::string("bob"))[0], eosio::pack_size(std::string("bob")) );
       eosio::require_recipient( "david"_n );  // -> exec 4
    } else if (receiver == "charlie"_n.value) {
       print("exec 3");
@@ -293,12 +298,14 @@ void test_action::test_action_ordinal1(uint64_t receiver, uint64_t code, uint64_
                          std::tuple<>()); // exec 11
       act1.send();
 
+      set_action_return_value( &eosio::pack(std::string("charlie"))[0], eosio::pack_size(std::string("charlie")) );
       if (is_account("fail3"_n)) {
          eosio_assert(false, "fail at point 3");
       }
 
    } else if (receiver == "david"_n.value) {
       print("exec 4");
+      set_action_return_value( &eosio::pack(std::string("david"))[0], eosio::pack_size(std::string("david")) );
    } else {
       eosio_assert(false, "assert failed at test_action::test_action_ordinal1");
    }
@@ -314,16 +321,20 @@ void test_action::test_action_ordinal2(uint64_t receiver, uint64_t code, uint64_
                          name(WASM_TEST_ACTION("test_action", "test_action_ordinal4")),
                          std::tuple<>());
       act1.send(); // -> exec 8
+      set_action_return_value( &eosio::pack("five"_n)[0], eosio::pack_size("five"_n) );
    } else if (receiver == "david"_n.value) {
       print("exec 6");
+      set_action_return_value( &eosio::pack(true)[0], eosio::pack_size(true) );
    } else if (receiver == "erin"_n.value) {
       print("exec 7");
+      set_action_return_value( &eosio::pack(signed_int(7))[0], eosio::pack_size(signed_int(7)) );
    } else {
       eosio_assert(false, "assert failed at test_action::test_action_ordinal2");
    }
 }
 void test_action::test_action_ordinal4(uint64_t receiver, uint64_t code, uint64_t action) {
    print("exec 8");
+   // no set_action_return_value
 }
 void test_action::test_action_ordinal3(uint64_t receiver, uint64_t code, uint64_t action) {
    print("exec 9");
@@ -331,10 +342,13 @@ void test_action::test_action_ordinal3(uint64_t receiver, uint64_t code, uint64_
    if (is_account("failnine"_n)) {
       eosio_assert(false, "fail at point 9");
    }
+   set_action_return_value( &eosio::pack(unsigned_int(9))[0], eosio::pack_size(unsigned_int(9)) );
 }
 void test_action::test_action_ordinal_foo(uint64_t receiver, uint64_t code, uint64_t action) {
    print("exec 10");
+   set_action_return_value( &eosio::pack(13.23)[0], eosio::pack_size(13.23) );
 }
 void test_action::test_action_ordinal_bar(uint64_t receiver, uint64_t code, uint64_t action) {
    print("exec 11");
+   set_action_return_value( &eosio::pack(11.42f)[0], eosio::pack_size(11.42f) );
 }
