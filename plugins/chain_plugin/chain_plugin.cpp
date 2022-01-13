@@ -3271,10 +3271,10 @@ void read_only::push_ro_transaction(const read_only::push_ro_transaction_params&
       auto trx_trace = fc_create_trace_with_id("TransactionReadOnly", input_trx->id());
       auto trx_span = fc_create_span(trx_trace, "HTTP Received");
       fc_add_tag(trx_span, "trx_id", input_trx->id());
-      fc_add_tag(trx_span, "method", "send_transaction");
+      fc_add_tag(trx_span, "method", "push_ro_transaction");
 
       app().get_method<incoming::methods::transaction_async>()(input_trx, true, true, static_cast<const bool>(params.return_failure_traces),
-            [this, token=trx_trace->get_token(), input_trx, params, next]
+            [this, token=fc_get_token(trx_trace), input_trx, params, next]
             (const std::variant<fc::exception_ptr, transaction_trace_ptr>& result) -> void {
          auto trx_span = fc_create_span_from_token(token, "Processed");
          fc_add_tag(trx_span, "trx_id", input_trx->id());
@@ -3303,20 +3303,22 @@ void read_only::push_ro_transaction(const read_only::push_ro_transaction_params&
                } catch( chain::abi_exception& ) {
                   output = *trx_trace_ptr;
                }
-               const auto& accnt_metadata_obj = db.db().get<account_metadata_object,by_name>( params.account_name );
-               const auto& receipts = db.get_pending_trx_receipts();
-               vector<transaction_id_type>  pending_transactions;
-               pending_transactions.reserve(receipts.size());
-               for( transaction_receipt const& receipt : receipts ) {
-                  if( std::holds_alternative<transaction_id_type>(receipt.trx) ) {
-                     pending_transactions.push_back(std::get<transaction_id_type>(receipt.trx));
+               if (db.is_building_block()){
+                  const auto& accnt_metadata_obj = db.db().get<account_metadata_object,by_name>( params.account_name );
+                  const auto& receipts = db.get_pending_trx_receipts();
+                  vector<transaction_id_type>  pending_transactions;
+                  pending_transactions.reserve(receipts.size());
+                  for( transaction_receipt const& receipt : receipts ) {
+                     if( std::holds_alternative<transaction_id_type>(receipt.trx) ) {
+                        pending_transactions.push_back(std::get<transaction_id_type>(receipt.trx));
+                     }
+                     else {
+                        pending_transactions.push_back(std::get<packed_transaction>(receipt.trx).id());
+                     }
                   }
-                  else {
-                     pending_transactions.push_back(std::get<packed_transaction>(receipt.trx).id());
-                  }
+                  next(read_only::push_ro_transaction_results{db.head_block_num(), db.head_block_id(), db.last_irreversible_block_num(), db.last_irreversible_block_id(),
+                                                              accnt_metadata_obj.code_hash, pending_transactions, output});
                }
-               next(read_only::push_ro_transaction_results{db.head_block_num(), db.head_block_id(), db.last_irreversible_block_num(), db.last_irreversible_block_id(),
-                                                           accnt_metadata_obj.code_hash, pending_transactions, output});
             } CATCH_AND_CALL(next);
          }
       });

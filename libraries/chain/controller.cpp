@@ -2708,8 +2708,8 @@ std::optional<block_id_type> controller::pending_producer_block_id()const {
 }
 
 const deque<transaction_receipt>& controller::get_pending_trx_receipts()const {
-   static deque<transaction_receipt> empty;
-   return my->pending ? my->pending->get_trx_receipts() : empty;
+   EOS_ASSERT( my->pending, block_validate_exception, "no pending block" );
+   return my->pending->get_trx_receipts();
 }
 
 uint32_t controller::last_irreversible_block_num() const {
