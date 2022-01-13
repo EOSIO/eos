@@ -88,6 +88,7 @@ public:
    void stop() {
       mtx_.lock();
       stopped_ = true;
+      queue_.clear();
       mtx_.unlock();
       empty_cv_.notify_all();
       full_cv_.notify_all();
@@ -173,6 +174,7 @@ public:
 
    /// separate run() because of shared_from_this
    void run() {
+      if( !running_ ) throw std::logic_error("restart not supported");
       queue_.pause(); // start paused, on_block_start will unpause
       thread_ = std::thread([self=this->shared_from_this()]() {
          fc::set_os_thread_name( "trxq" );
@@ -211,10 +213,15 @@ public:
       });
    }
 
-   /// shutdown queue processing
-   void stop() {
+   /// Stop queue processing
+   void signal_stop() {
       running_ = false;
       queue_.stop();
+   }
+
+   /// shutdown queue processing
+   void stop() {
+      signal_stop();
       if( thread_.joinable() ) {
          thread_.join();
       }
@@ -251,7 +258,7 @@ public:
       auto future = chain::transaction_metadata::start_recover_keys( trx, sig_thread_pool_, chain_id_, max_trx_cpu_usage,
                                                                      transaction_metadata::trx_type::input,
                                                                      configured_subjective_signature_length_limit_ );
-      q_item i{ .delivery_tag = delivery_tag, .trx = std::move(trx), .fut = std::move(future), .next = std::move(next) };
+      q_item i{ .delivery_tag = delivery_tag, .trx = trx, .fut = std::move(future), .next = std::move(next) };
       if( !queue_.push( std::move( i ) ) ) {
          ilog( "Queue stopped, unable to process transaction ${id}, not ack'ed to AMQP", ("id", trx->id()) );
       }

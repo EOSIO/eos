@@ -447,13 +447,13 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          schedule_production_loop();
       }
 
+      // Can be called from any thread. Called from net threads
       void on_incoming_transaction_async(const packed_transaction_ptr& trx,
                                          bool persist_until_expired,
                                          const bool read_only,
                                          const bool return_failure_trace,
                                          next_function<transaction_trace_ptr> next) {
          chain::controller& chain = chain_plug->chain();
-         bool is_resource_payer_pf_activated = chain.is_builtin_activated(builtin_protocol_feature_t::resource_payer);
          const auto max_trx_time_ms = _max_transaction_time_ms.load();
          fc::microseconds max_trx_cpu_usage = max_trx_time_ms < 0 ? fc::microseconds::maximum() : fc::milliseconds( max_trx_time_ms );
 
@@ -462,15 +462,20 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
                                                                  read_only ? transaction_metadata::trx_type::read_only : transaction_metadata::trx_type::input,
                                                                  chain.configured_subjective_signature_length_limit() );
 
-         boost::asio::post(_thread_pool->get_executor(), [self = this, future{std::move(future)}, persist_until_expired, return_failure_trace,
-                                                          next{std::move(next)}, is_resource_payer_pf_activated, trx]() mutable {
+         boost::asio::post(_thread_pool->get_executor(),
+                           [self = this, future{std::move(future)}, persist_until_expired,
+                            return_failure_trace, next{std::move(next)}, trx]() mutable {
             if( future.valid() ) {
                future.wait();
-               app().post( priority::low, [self, future{std::move(future)}, persist_until_expired, next{std::move( next )}, trx{std::move(trx)}, is_resource_payer_pf_activated, return_failure_trace]() mutable {
-                  auto exception_handler = [self, &next, trx{std::move(trx)}, is_resource_payer_pf_activated](fc::exception_ptr ex) {
+               app().post( priority::low,
+                           [self, future{std::move(future)}, persist_until_expired, next{std::move( next )},
+                            trx{std::move(trx)}, return_failure_trace]() mutable {
+                  auto exception_handler = [self, &next, trx{std::move(trx)}](fc::exception_ptr ex) {
 
                      fc_dlog(_trx_failed_trace_log, "[TRX_TRACE] Speculative execution is REJECTING tx: ${txid}, auth: ${a} : ${why} ",
-                            ("txid", trx->id())("a",trx->get_transaction().resource_payer(is_resource_payer_pf_activated))("why",ex->what()));
+                            ("txid", trx->id())
+                            ("a",trx->get_transaction().resource_payer(self->chain_plug->chain().is_builtin_activated(builtin_protocol_feature_t::resource_payer)))
+                            ("why",ex->what()));
                      next(ex);
 
                      fc_dlog(_trx_trace_failure_log, "[TRX_TRACE] Speculative execution is REJECTING tx: ${entire_trx}",
