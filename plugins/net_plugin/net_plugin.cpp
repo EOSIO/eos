@@ -1799,7 +1799,6 @@ namespace eosio {
          peer_dlog( c, "We are already caught up, my irr = ${b}, head = ${h}, target = ${t}",
                   ("b", lib_num)( "h", fork_head_block_num )( "t", target ) );
          c->send_handshake();
-         return;
       }
 
       if( sync_state == in_sync ) {
@@ -3085,7 +3084,11 @@ namespace eosio {
       }
       if( msg.reason == wrong_version ) {
          if( !retry ) no_retry = fatal_other; // only retry once on wrong version
-      } else {
+      } 
+      else if ( msg.reason == benign_other ) {
+         if ( retry ) fc_dlog( logger, "received benign_other reason, retrying to connect");
+      }
+      else {
          retry = false;
       }
       flush_queues();
@@ -3264,9 +3267,8 @@ namespace eosio {
       peer_dlog( this, "received packed_transaction ${id}", ("id", tid) );
 
       trx_in_progress_size += calc_trx_size( trx );
-      app().post( priority::low, [trx{std::move(trx)}, weak = weak_from_this()]() {
-         my_impl->chain_plug->accept_transaction( trx,
-            [weak, trx](const std::variant<fc::exception_ptr, transaction_trace_ptr>& result) mutable {
+      my_impl->chain_plug->accept_transaction( trx,
+         [weak = weak_from_this(), trx](const std::variant<fc::exception_ptr, transaction_trace_ptr>& result) mutable {
          // next (this lambda) called from application thread
          if (std::holds_alternative<fc::exception_ptr>(result)) {
             fc_dlog( logger, "bad packed_transaction : ${m}", ("m", std::get<fc::exception_ptr>(result)->what()) );
@@ -3282,7 +3284,6 @@ namespace eosio {
          if( conn ) {
             conn->trx_in_progress_size -= calc_trx_size( trx );
          }
-        });
       });
    }
 

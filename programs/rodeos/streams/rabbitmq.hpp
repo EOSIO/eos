@@ -68,24 +68,13 @@ public:
    }
 
    void publish(const std::vector<char>& data, const std::string& routing_key) override {
-      if (exchange_name_.empty()) {
-         if( publish_immediately_ ) {
-            amqp_publisher_->publish_message_direct( queue_name_, data,
-                                                     []( const std::string& err ) {
-                                                        elog( "AMQP direct message error: ${e}", ("e", err) );
-                                                     } );
-         } else {
-            queue_.emplace_back( std::make_pair( queue_name_, data ) );
-         }
+      if( publish_immediately_ ) {
+         amqp_publisher_->publish_message_direct( exchange_name_.empty() ? queue_name_ : routing_key, data,
+                                                  []( const std::string& err ) {
+                                                     elog( "AMQP direct message error: ${e}", ("e", err) );
+                                                  } );
       } else {
-         if( publish_immediately_ ) {
-            amqp_publisher_->publish_message_direct( routing_key, data,
-                                                     []( const std::string& err ) {
-                                                        elog( "AMQP direct message error: ${e}", ("e", err) );
-                                                     } );
-         } else {
-            queue_.emplace_back( std::make_pair( routing_key, data ) );
-         }
+         queue_.emplace_back( std::make_pair( exchange_name_.empty() ? queue_name_ : routing_key, data ) );
       }
    }
 
