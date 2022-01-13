@@ -26,8 +26,6 @@ fi
 DISTRIB_MAJOR_VERSION="$(echo "$DISTRIB_RELEASE" | cut -d '.' -f '1')"
 if (( "$DISTRIB_MAJOR_VERSION" >= 18 )); then
     RELEASE_SPECIFIC_DEPS='libssl1.1'
-elif (( "$DISTRIB_MAJOR_VERSION" >= 16 )); then
-    RELEASE_SPECIFIC_DEPS='libssl1.0.0'
 else
     echo "Found Ubuntu $DISTRIB_MAJOR_VERSION, but not sure which version of libssl to use. Exiting..."
     exit 2
