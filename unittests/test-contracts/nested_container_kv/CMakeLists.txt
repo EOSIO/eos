@@ -1,0 +1,6 @@
+if( EOSIO_COMPILE_TEST_CONTRACTS )
+   add_contract( nested_container_kv nested_container_kv nested_container_kv.cpp )
+else()
+   configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/nested_container_kv.wasm ${CMAKE_CURRENT_BINARY_DIR}/nested_container_kv.wasm COPYONLY )
+   configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/nested_container_kv.abi  ${CMAKE_CURRENT_BINARY_DIR}/nested_container_kv.abi  COPYONLY )
+endif() 

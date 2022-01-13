@@ -66,9 +66,13 @@ set_property(GLOBAL PROPERTY CTEST_CUSTOM_TESTS_IGNORE
   attest pbkdf2 parsing ${_CTEST_CUSTOM_TESTS_IGNORE}")
 
 find_package(OpenSSL REQUIRED)
+
+# Suppress warnings on 3rdParty Library
+add_definitions( -w )
 option(AMQP-CPP_LINUX_TCP CACHE ON)
 add_subdirectory( amqp-cpp EXCLUDE_FROM_ALL )
 target_include_directories(amqpcpp PRIVATE "${OPENSSL_INCLUDE_DIR}")
+remove_definitions( -w )
 
 find_package(PostgreSQL)
 if(PostgreSQL_FOUND)
@@ -76,4 +80,4 @@ if(PostgreSQL_FOUND)
    add_definitions( -w )
    add_subdirectory(libpqxx EXCLUDE_FROM_ALL)
    remove_definitions( -w )
- endif()
+endif()
