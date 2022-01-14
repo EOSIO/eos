@@ -1023,8 +1023,10 @@ BOOST_FIXTURE_TEST_CASE(get_wasm_parameters_test, TESTER) {
 }
 
 // Uses a custom section with large size
-BOOST_FIXTURE_TEST_CASE(large_custom_section, TESTER)
+BOOST_FIXTURE_TEST_CASE(large_custom_section, old_wasm_tester)
 {
+   create_account( "hugecustom"_n );
+
    std::vector<uint8_t> custom_section_wasm{
       0x00, 'a', 's', 'm', 0x01, 0x00, 0x00, 0x00,
       0x01, 0x07, 0x01, 0x60, 0x03, 0x7e, 0x7e, 0x7e, 0x00,            //type section containing a function as void(i64,i64,i64)
@@ -1035,12 +1037,23 @@ BOOST_FIXTURE_TEST_CASE(large_custom_section, TESTER)
       0x02, 0x00,                                                      //function body start with length 3; no locals
       0x0b,                                                            //end
       0x00,                                                            //custom section
-      0x80, 0x80, 0x08,                                                //size  2^17
+      0x85, 0x80, 0x04,                                                //size  2^16 + 5
       0x04, 'h', 'u', 'g', 'e'                                         //name
    };
 
-   custom_section_wasm.resize(custom_section_wasm.size() + 131072 - 5);
-   create_account( "hugecustom"_n );
+   custom_section_wasm.resize(custom_section_wasm.size() + 65536);
+   BOOST_CHECK_THROW(set_code( "hugecustom"_n, custom_section_wasm ), wasm_serialization_error);
+
+   // One byte less and it should pass
+   auto okay_custom = custom_section_wasm;
+   --okay_custom[okay_custom.size() - 65536 - 5 - 3];
+   okay_custom.pop_back();
+   set_code( "hugecustom"_n, okay_custom );
+
+   // It's also okay once CONFIGURABLE_WASM_LIMITS is activated
+   preactivate_builtin_protocol_features({builtin_protocol_feature_t::configurable_wasm_limits});
+   produce_block();
+
    set_code( "hugecustom"_n, custom_section_wasm );
 
    signed_transaction trx;
