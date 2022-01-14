@@ -1022,4 +1022,32 @@ BOOST_FIXTURE_TEST_CASE(get_wasm_parameters_test, TESTER) {
    BOOST_CHECK_THROW(check_wasm_params(fc::raw::pack(uint32_t{0}, wasm_config{ 0,0,0,0,0,0,0,0,0,0,0 })), fc::exception);
 }
 
+// Uses a custom section with large size
+BOOST_FIXTURE_TEST_CASE(large_custom_section, TESTER)
+{
+   std::vector<uint8_t> custom_section_wasm{
+      0x00, 'a', 's', 'm', 0x01, 0x00, 0x00, 0x00,
+      0x01, 0x07, 0x01, 0x60, 0x03, 0x7e, 0x7e, 0x7e, 0x00,            //type section containing a function as void(i64,i64,i64)
+      0x03, 0x02, 0x01, 0x00,                                          //a function
+
+      0x07, 0x09, 0x01, 0x05, 'a', 'p', 'p', 'l', 'y', 0x00, 0x00,     //export function 0 as "apply"
+      0x0a, 0x04, 0x01,                                                //code section
+      0x02, 0x00,                                                      //function body start with length 3; no locals
+      0x0b,                                                            //end
+      0x00,                                                            //custom section
+      0x80, 0x80, 0x08,                                                //size  2^17
+      0x04, 'h', 'u', 'g', 'e'                                         //name
+   };
+
+   custom_section_wasm.resize(custom_section_wasm.size() + 131072 - 5);
+   create_account( "hugecustom"_n );
+   set_code( "hugecustom"_n, custom_section_wasm );
+
+   signed_transaction trx;
+   trx.actions.emplace_back(vector<permission_level>{{"hugecustom"_n,config::active_name}}, "hugecustom"_n, ""_n, std::vector<char>{});
+   set_transaction_headers(trx);
+   trx.sign(get_private_key("hugecustom"_n, "active"), control->get_chain_id());
+   push_transaction(trx);
+}
+
 BOOST_AUTO_TEST_SUITE_END()
