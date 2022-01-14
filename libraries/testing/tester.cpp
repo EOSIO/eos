@@ -431,9 +431,10 @@ namespace eosio { namespace testing {
             signing_keys.emplace_back( get_private_key( producer.producer_name, "active") );
          }
       });
-      
+
       control->finalize_block([&](digest_type d) {
          std::vector<signature_type> sigs;
+         sigs.reserve(signing_keys.size());
          std::transform(signing_keys.begin(), signing_keys.end(), std::back_inserter(sigs),
                         [&d](const auto& k) { return k.sign(d); });
          return sigs;

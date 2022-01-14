@@ -2326,6 +2326,7 @@ void producer_plugin_impl::produce_block() {
          app().post(priority::high, [self]() { self->complete_produced_block_if_ready(); });
       });
       std::vector<signature_type> signatures;
+      signatures.reserve(relevant_providers.size());
       std::transform(relevant_providers.begin(), relevant_providers.end(), std::back_inserter(signatures),
                      [&d](const auto& p) { return p.get()(d); });
       return signatures;
