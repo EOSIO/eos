@@ -434,14 +434,12 @@ namespace eosio { namespace testing {
 
       block_state_ptr bsp;
       
-      auto assign_signatures = control->finalize_block(bsp, [&](digest_type d) {
+      control->finalize_block(bsp, [&](digest_type d) {
          std::vector<signature_type> sigs;
          std::transform(signing_keys.begin(), signing_keys.end(), std::back_inserter(sigs),
                         [&d](const auto& k) { return k.sign(d); });
          return sigs;
-      });
-      control->commit_block();
-      assign_signatures.get()(); 
+      }).get()(); 
 
       last_produced_block[control->head_block_state()->header.producer] =
           control->head_block_state()->id;

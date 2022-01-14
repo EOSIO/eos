@@ -288,12 +288,9 @@ struct test_chain {
       ilog("finish block ${n}", ("n", control->head_block_num()));
       block_state_ptr bsp;
 
-      auto assign_sigatures = control->finalize_block(bsp, [&](eosio::chain::digest_type d) {
+      control->finalize_block(bsp, [&](eosio::chain::digest_type d) {
          return std::vector{ producer_key.sign(d) };
-      });
-
-      control->commit_block();
-      assign_sigatures.get()();
+      }).get()();
    }
 };
 

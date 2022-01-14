@@ -203,11 +203,11 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          ready
       };
 
-      std::future<std::function<void()>>  assign_signatures_fut;
+      std::future<std::function<void()>>  complete_produced_block_fut;
       std::atomic<signatures_status_type> signatures_status;
       
-      bool                                assign_block_signatures();
-      bool                                assign_block_signatures_if_ready();
+      bool                                complete_produced_block();
+      bool                                complete_produced_block_if_ready();
       /*
        * HACK ALERT
        * Boost timers can be in a state where a handler has not yet executed but is not abortable.
@@ -1620,19 +1620,19 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
          if( !remove_expired_trxs( preprocess_deadline ) )
             return start_block_result::exhausted;
          
-         if (!assign_block_signatures_if_ready())
+         if (!complete_produced_block_if_ready())
             return start_block_result::failed;
          
          if( !remove_expired_blacklisted_trxs( preprocess_deadline ) )
             return start_block_result::exhausted;
          
-         if (!assign_block_signatures_if_ready())
+         if (!complete_produced_block_if_ready())
             return start_block_result::failed;
          
          if( !_subjective_billing.remove_expired( _log, chain.pending_block_time(), fc::time_point::now(), preprocess_deadline ) )
             return start_block_result::exhausted;
 
-         if (!assign_block_signatures_if_ready())
+         if (!complete_produced_block_if_ready())
             return start_block_result::failed;
 
          // limit execution of pending incoming to once per block
@@ -1641,7 +1641,7 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
          if( !process_unapplied_trxs( preprocess_deadline ) )
             return start_block_result::exhausted;
 
-         if (!assign_block_signatures_if_ready())
+         if (!complete_produced_block_if_ready())
             return start_block_result::failed;
 
          if (_pending_block_mode == pending_block_mode::producing) {
@@ -1652,7 +1652,7 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
                      fc::time_point::now() + fc::milliseconds(_max_scheduled_transaction_time_per_block_ms)
                );
             }
-            if (!assign_block_signatures_if_ready())
+            if (!complete_produced_block_if_ready())
                return start_block_result::failed;
             // may exhaust scheduled_trx_deadline but not preprocess_deadline, exhausted preprocess_deadline checked below
             process_scheduled_and_incoming_trxs( scheduled_trx_deadline, pending_incoming_process_limit );
@@ -2269,10 +2269,10 @@ static auto maybe_make_debug_time_logger() -> std::optional<decltype(make_debug_
    }
 }
 
-bool producer_plugin_impl::assign_block_signatures() {
+bool producer_plugin_impl::complete_produced_block() {
    bool result = false;
    try {
-      assign_signatures_fut.get()();
+      complete_produced_block_fut.get()();
       result = true;
    } LOG_AND_DROP();
    signatures_status = signatures_status_type::none;
@@ -2280,9 +2280,9 @@ bool producer_plugin_impl::assign_block_signatures() {
 }
 
 /// @return false only if the previous block signing failed. 
-bool producer_plugin_impl::assign_block_signatures_if_ready() {
+bool producer_plugin_impl::complete_produced_block_if_ready() {
    if (signatures_status.load() == signatures_status_type::ready) {
-      return assign_block_signatures();
+      return complete_produced_block();
    }
    return true;
 }
@@ -2313,13 +2313,17 @@ void producer_plugin_impl::produce_block() {
    }
 
    eosio::chain::block_state_ptr block_state;
-   signatures_status     = signatures_status_type::pending;
-   assign_signatures_fut = chain.finalize_block(block_state, [relevant_providers = std::move(relevant_providers),
-                                                              self = shared_from_this()](const digest_type& d) {
+   signatures_status           = signatures_status_type::pending;
+   complete_produced_block_fut = chain.finalize_block(block_state, [relevant_providers = std::move(relevant_providers),
+                                                                    self = shared_from_this()](const digest_type& d) {
+      /// This lambda is called from a separate thread to sign the block
       auto                        debug_logger = maybe_make_debug_time_logger();
       auto                        on_exit      = fc::make_scoped_exit([self] {
+         /// This lambda will always be called after the signing is finished to signal main thread for the completion of the block signing 
+         /// regardless the block signing is successful or not. The main thread should then call `complete_produced_block_fut.get()()`
+         /// to complete the block. If the block signing fails, calling `complete_produced_block_fut.get()()` would throw an exception.
          self->signatures_status = signatures_status_type::ready;
-         app().post(priority::high, [self]() { self->assign_block_signatures_if_ready(); });
+         app().post(priority::high, [self]() { self->complete_produced_block_if_ready(); });
       });
       std::vector<signature_type> signatures;
       std::transform(relevant_providers.begin(), relevant_providers.end(), std::back_inserter(signatures),
@@ -2327,7 +2331,6 @@ void producer_plugin_impl::produce_block() {
       return signatures;
    });
 
-   chain.commit_block();
    block_state_ptr new_bs = chain.head_block_state();
    ilog("Produced block ${id}... #${n} @ ${t} signed by ${p} [trxs: ${count}, lib: ${lib}, confirmed: ${confs}]",
         ("p",new_bs->header.producer)("id",new_bs->id.str().substr(8,16))

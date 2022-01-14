@@ -1568,7 +1568,7 @@ struct controller_impl {
    /**
     * @post regardless of the success of commit block there is no active pending block
     */
-   void commit_block( bool add_to_fork_db ) {
+   void commit_block() {
       auto reset_pending_on_exit = fc::make_scoped_exit([this]{
          pending.reset();
       });
@@ -1579,18 +1579,12 @@ struct controller_impl {
 
          auto bsp = std::get<completed_block>(pending->_block_stage)._block_state;
 
-         if( add_to_fork_db ) {
-            fork_db.add( bsp );
-            fork_db.mark_valid( bsp );
-            emit( self.accepted_block_header, bsp );
-            head = fork_db.head();
-            EOS_ASSERT( bsp == head, fork_database_exception, "committed block did not become the new head in fork database");
-         }
-
-         auto trace = fc_create_trace_with_id_if(add_to_fork_db, "block", bsp->id);
-         fc_add_tag( trace, "block_id",  bsp->id.str() );
-         fc_add_tag( trace, "block_num", bsp->block_num );
-         fc_add_tag( trace, "num_transactions", bsp->block->transactions.size());     
+         fork_db.add( bsp );
+         fork_db.mark_valid( bsp );
+         emit( self.accepted_block_header, bsp );
+         head = fork_db.head();
+         EOS_ASSERT( bsp == head, fork_database_exception, "committed block did not become the new head in fork database");
+         
       } catch (...) {
          // dont bother resetting pending, instead abort the block
          reset_pending_on_exit.cancel();
@@ -1602,10 +1596,16 @@ struct controller_impl {
       pending->push();
    }
 
-   void assign_signatures(block_state_ptr bsp, std::vector<signature_type>&& sigs, bool wtmsig_enabled) {
+   void complete_produced_block(block_state_ptr bsp, std::vector<signature_type>&& sigs, bool wtmsig_enabled) {
       try {
          bsp->assign_signatures(std::move(sigs), wtmsig_enabled);
          log_irreversible();
+
+         auto trace = fc_create_trace_with_id("block", bsp->id);
+         fc_add_tag( trace, "block_id",  bsp->id.str() );
+         fc_add_tag( trace, "block_num", bsp->block_num );
+         fc_add_tag(trace, "num_transactions", bsp->block->transactions.size());
+
          emit(self.accepted_block, bsp);
       } catch (...) {
          signing_failed_blocknum = bsp->block_num;
@@ -1776,8 +1776,8 @@ struct controller_impl {
          }
          // create completed_block with the existing block_state as we just verified it is the same as assembled_block
          pending->_block_stage = completed_block{ bsp };
-
-         commit_block(false);
+         pending->push();
+         emit(self.accepted_block, bsp);
          return;
       } catch ( const std::bad_alloc& ) {
          throw;
@@ -2573,25 +2573,23 @@ controller::finalize_block(block_state_ptr& bsp, signer_callback_type&& sign) {
 
    my->pending->_block_stage = completed_block{bsp};
 
-   return async_thread_pool(my->block_sign_pool.get_executor(),
-                            [bsp, my = my.get(), block_num = bsp->block_num, digest = bsp->sig_digest(),
-                             wtmsig_enabled = eosio::chain::detail::is_builtin_activated(
-                                 pfa, pfs, builtin_protocol_feature_t::wtmsig_block_signatures),
-                             sign = std::move(sign)] () -> std::function<void()> {
-                               std::vector<signature_type> signatures;
-                               try {
-                                  signatures = sign(digest);
-                               }
-                               FC_LOG_AND_DROP();
-                               return [bsp, my, signatures = std::move(signatures), wtmsig_enabled]() mutable {
-                                  my->assign_signatures(bsp, std::move(signatures), wtmsig_enabled);
-                               };
-                            });
-}
-
-void controller::commit_block() {
-   validate_db_available_size();
-   my->commit_block(true);
+   auto complete_produced_block_fut =
+       async_thread_pool(my->block_sign_pool.get_executor(),
+                         [bsp, my = my.get(), block_num = bsp->block_num, digest = bsp->sig_digest(),
+                          wtmsig_enabled = eosio::chain::detail::is_builtin_activated(
+                              pfa, pfs, builtin_protocol_feature_t::wtmsig_block_signatures),
+                          sign = std::move(sign)]() -> std::function<void()> {
+                            std::vector<signature_type> signatures;
+                            try {
+                               signatures = sign(digest);
+                            }
+                            FC_LOG_AND_DROP();
+                            return [bsp, my, signatures = std::move(signatures), wtmsig_enabled]() mutable {
+                               my->complete_produced_block(bsp, std::move(signatures), wtmsig_enabled);
+                            };
+                         });
+   my->commit_block();
+   return complete_produced_block_fut;
 }
 
 deque<transaction_metadata_ptr> controller::abort_block() {

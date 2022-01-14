@@ -178,7 +178,6 @@ namespace eosio { namespace chain {
          std::future<std::function<void()>>
          finalize_block(block_state_ptr& bsp, signer_callback_type&& sign);
 
-         void commit_block();
          void assign_signatures(block_state_ptr bsp, std::vector<signature_type>&& sigs, bool wtmsig_enabled);
 
          std::future<block_state_ptr> create_block_state_future( const block_id_type& id, const signed_block_ptr& b );
