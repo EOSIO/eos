@@ -948,4 +948,78 @@ BOOST_FIXTURE_TEST_CASE(reset_chain_tests, wasm_config_tester) {
    produce_block();
 }
 
+// Verifies the result of get_wasm_parameters_packed
+static const char check_get_wasm_parameters_wast[] = R"======(
+(module
+  (import "env" "get_wasm_parameters_packed" (func $get_wasm_parameters_packed (param i32 i32 i32) (result i32)))
+  (import "env" "read_action_data" (func $read_action_data (param i32 i32) (result i32)))
+  (import "env" "action_data_size" (func $action_data_size (result i32)))
+  (import "env" "memcmp" (func $memcmp (param i32 i32 i32) (result i32)))
+  (import "env" "memset" (func $memset (param i32 i32 i32) (result i32)))
+  (import "env" "printhex" (func $printhex (param i32 i32)))
+  (import "env" "eosio_assert" (func $eosio_assert (param i32 i32)))
+  (memory 1)
+  (func (export "apply") (param i64 i64 i64)
+     (drop (call $read_action_data (i32.const 0) (call $action_data_size)))
+     (drop (call $memset (i32.const 256) (i32.const 255) (call $action_data_size)))
+     (drop (call $get_wasm_parameters_packed (i32.const 256) (call $action_data_size) (i32.const 0)))
+     (if (call $memcmp (i32.const 0) (i32.const 256) (call $action_data_size))
+        (then
+          (call $printhex (i32.const 256) (call $action_data_size))
+          (call $eosio_assert (i32.const 0) (i32.const 512))
+        )
+     )
+  )
+  (data (i32.const 512) "Wrong result for get_wasm_parameters_packed")
+)
+)======";
+
+BOOST_FIXTURE_TEST_CASE(get_wasm_parameters_test, TESTER) {
+   produce_block();
+
+   create_account( "test"_n );
+
+   produce_block();
+
+   wasm_config original_params = {
+         .max_mutable_global_bytes = 1024,
+         .max_table_elements       = 1024,
+         .max_section_elements     = 8192,
+         .max_linear_memory_init   = 65536,
+         .max_func_local_bytes     = 8192,
+         .max_nested_structures    = 1024,
+         .max_symbol_bytes         = 8192,
+         .max_module_bytes         = 20971520,
+         .max_code_bytes           = 20971520,
+         .max_pages                = 528,
+         .max_call_depth           = 251
+   };
+
+   set_code("test"_n, check_get_wasm_parameters_wast);
+   produce_block();
+
+   auto check_wasm_params = [&](const std::vector<char>& params){
+      signed_transaction trx;
+      trx.actions.emplace_back(vector<permission_level>{{"test"_n,config::active_name}}, "test"_n, ""_n,
+                               params);
+      set_transaction_headers(trx);
+      trx.sign(get_private_key("test"_n, "active"), control->get_chain_id());
+      push_transaction(trx);
+   };
+
+   BOOST_CHECK_THROW(check_wasm_params(fc::raw::pack(uint32_t{0}, wasm_config(original_params))), unaccessible_api);
+
+   push_action( config::system_account_name, "setpriv"_n, config::system_account_name,
+                fc::mutable_variant_object()("account", "test"_n)("is_priv", true) );
+
+   check_wasm_params(fc::raw::pack(uint32_t{0}, wasm_config(original_params)));
+   // Extra space is left unmodified
+   check_wasm_params(fc::raw::pack(uint32_t{0}, wasm_config(original_params), static_cast<unsigned char>(0xFF)));
+   // Does nothing if the buffer is too small
+   check_wasm_params(std::vector<char>(fc::raw::pack_size(uint32_t{0}) + fc::raw::pack_size(original_params) - 1, '\xFF'));
+
+   // Test case sanity check
+   BOOST_CHECK_THROW(check_wasm_params(fc::raw::pack(uint32_t{0}, wasm_config{ 0,0,0,0,0,0,0,0,0,0,0 })), fc::exception);
+}
+
 BOOST_AUTO_TEST_SUITE_END()

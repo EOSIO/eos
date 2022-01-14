@@ -187,13 +187,14 @@ may use a new `set_proposed_producers_ex` intrinsic to access extended features.
             {}
          } )
          (  builtin_protocol_feature_t::configurable_wasm_limits, builtin_protocol_feature_spec{
-            "CONFIGURABLE_WASM_LIMITS",
-            fc::variant("67f5f1e92cbf6f7276e7b3fc8c2ad23e63448e657641a1e5de69bccd114542d6").as<digest_type>(),
+            "CONFIGURABLE_WASM_LIMITS2",
+            fc::variant("171c8d56482bcdefafc1af46059b3f0953dd618c247ac27b597aeea9668d0a30").as<digest_type>(),
             // SHA256 hash of the raw message below within the comment delimiters (do not modify message below).
 /*
-Builtin protocol feature: CONFIGURABLE_WASM_LIMITS
+Builtin protocol feature: CONFIGURABLE_WASM_LIMITS2
 
 Allows privileged contracts to set the constraints on WebAssembly code.
+Includes the behavior of GET_WASM_PARAMETERS_PACKED_FIX.
 */
             {}
          } )
