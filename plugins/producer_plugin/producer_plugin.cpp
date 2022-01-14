@@ -2312,16 +2312,16 @@ void producer_plugin_impl::produce_block() {
       _protocol_features_signaled = false;
    }
 
-   eosio::chain::block_state_ptr block_state;
    signatures_status           = signatures_status_type::pending;
-   complete_produced_block_fut = chain.finalize_block(block_state, [relevant_providers = std::move(relevant_providers),
-                                                                    self = shared_from_this()](const digest_type& d) {
+   complete_produced_block_fut = chain.finalize_block([relevant_providers = std::move(relevant_providers),
+                                                       self               = shared_from_this()](const digest_type& d) {
       /// This lambda is called from a separate thread to sign the block
       auto                        debug_logger = maybe_make_debug_time_logger();
       auto                        on_exit      = fc::make_scoped_exit([self] {
-         /// This lambda will always be called after the signing is finished to signal main thread for the completion of the block signing 
-         /// regardless the block signing is successful or not. The main thread should then call `complete_produced_block_fut.get()()`
-         /// to complete the block. If the block signing fails, calling `complete_produced_block_fut.get()()` would throw an exception.
+         /// This lambda will always be called after the signing is finished. The purpose is to signal main thread for the
+         /// completion of the block signing regardless the block signing is successful or not. The main thread should
+         /// then call `complete_produced_block_fut.get()()` to complete the block. If the block signing fails, calling
+         /// `complete_produced_block_fut.get()()` would throw an exception so that the caller can handle the situation.
          self->signatures_status = signatures_status_type::ready;
          app().post(priority::high, [self]() { self->complete_produced_block_if_ready(); });
       });

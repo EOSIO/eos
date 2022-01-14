@@ -1565,47 +1565,40 @@ struct controller_impl {
                               };
    } FC_CAPTURE_AND_RETHROW() } /// finalize_block
 
-   /**
-    * @post regardless of the success of commit block there is no active pending block
-    */
-   void commit_block(block_state_ptr&& bsp) {
-      auto reset_pending_on_exit = fc::make_scoped_exit([this]{
-         pending.reset();
-      });
-
-      try {
-         fork_db.add( bsp );
-         fork_db.mark_valid( bsp );
-         emit( self.accepted_block_header, bsp );
-         head = fork_db.head();
-         EOS_ASSERT( bsp == head, fork_database_exception, "committed block did not become the new head in fork database");
-         
-      } catch (...) {
-         // dont bother resetting pending, instead abort the block
-         reset_pending_on_exit.cancel();
-         abort_block();
-         throw;
-      }
-
-      // push the state for pending.
+   void create_completed_block(block_state_ptr bsp) {
+      auto reset_pending_on_exit = fc::make_scoped_exit([this] { pending.reset(); });
+      pending->_block_stage = completed_block{ bsp };
       pending->push();
    }
 
+   void add_to_fork_db(block_state_ptr bsp) {
+      auto abort_block_on_exception = fc::make_scoped_exit([this]{
+         abort_block();
+      });
+
+      fork_db.add( bsp );
+      fork_db.mark_valid( bsp );
+      emit( self.accepted_block_header, bsp );
+      head = fork_db.head();
+      EOS_ASSERT(bsp == head, fork_database_exception,
+                  "committed block did not become the new head in fork database");
+      abort_block_on_exception.cancel();
+   }
+
    void complete_produced_block(block_state_ptr bsp, std::vector<signature_type>&& sigs, bool wtmsig_enabled) {
-      try {
-         bsp->assign_signatures(std::move(sigs), wtmsig_enabled);
-         log_irreversible();
+      auto signal_failed_block_on_exception =
+          fc::make_scoped_exit([this, block_num = bsp->block_num] { signing_failed_blocknum = block_num; });
 
-         auto trace = fc_create_trace_with_id("block", bsp->id);
-         fc_add_tag( trace, "block_id",  bsp->id.str() );
-         fc_add_tag( trace, "block_num", bsp->block_num );
-         fc_add_tag(trace, "num_transactions", bsp->block->transactions.size());
+      bsp->assign_signatures(std::move(sigs), wtmsig_enabled);
+      log_irreversible();
 
-         emit(self.accepted_block, bsp);
-      } catch (...) {
-         signing_failed_blocknum = bsp->block_num;
-         throw;
-      }
+      auto trace = fc_create_trace_with_id("block", bsp->id);
+      fc_add_tag(trace, "block_id", bsp->id.str());
+      fc_add_tag(trace, "block_num", bsp->block_num);
+      fc_add_tag(trace, "num_transactions", bsp->block->transactions.size());
+
+      emit(self.accepted_block, bsp);
+      signal_failed_block_on_exception.cancel();
    }
 
    /**
@@ -1770,8 +1763,7 @@ struct controller_impl {
             bsp->set_trxs_metas( std::move( ab._trx_metas ), !skip_auth_checks );
          }
          // create completed_block with the existing block_state as we just verified it is the same as assembled_block
-         pending->_block_stage = completed_block{ bsp };
-         pending->push();
+         create_completed_block(bsp);
          emit(self.accepted_block, bsp);
          return;
       } catch ( const std::bad_alloc& ) {
@@ -2545,7 +2537,7 @@ void controller::start_block( block_timestamp_type when,
 }
 
 std::future<std::function<void()>>
-controller::finalize_block(block_state_ptr& bsp, signer_callback_type&& sign) {
+controller::finalize_block(signer_callback_type&& sign) {
    validate_db_available_size();
 
    my->finalize_block();
@@ -2555,7 +2547,7 @@ controller::finalize_block(block_state_ptr& bsp, signer_callback_type&& sign) {
    auto pfa = ab._pending_block_header_state.prev_activated_protocol_features;
    const auto& pfs = my->protocol_features.get_protocol_feature_set();
 
-   bsp = std::make_shared<block_state>(
+   block_state_ptr bsp = std::make_shared<block_state>(
                   std::move( ab._pending_block_header_state ),
                   std::move( ab._unsigned_block ),
                   std::move( ab._trx_metas ),
@@ -2565,8 +2557,6 @@ controller::finalize_block(block_state_ptr& bsp, signer_callback_type&& sign) {
                       const vector<digest_type>& new_features )
                   {}
               );
-
-   my->pending->_block_stage = completed_block{bsp};
 
    auto complete_produced_block_fut =
        async_thread_pool(my->block_sign_pool.get_executor(),
@@ -2580,10 +2570,12 @@ controller::finalize_block(block_state_ptr& bsp, signer_callback_type&& sign) {
                             }
                             FC_LOG_AND_DROP();
                             return [bsp, my, signatures = std::move(signatures), wtmsig_enabled]() mutable {
+                               // the labmda is to be executed in main thread 
                                my->complete_produced_block(bsp, std::move(signatures), wtmsig_enabled);
                             };
                          });
-   my->commit_block(std::move(bsp));
+   my->add_to_fork_db(bsp);
+   my->create_completed_block(bsp);
    return complete_produced_block_fut;
 }
 

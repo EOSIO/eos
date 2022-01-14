@@ -176,7 +176,7 @@ namespace eosio { namespace chain {
                                                            uint32_t billed_cpu_time_us, bool explicit_billed_cpu_time );
 
          std::future<std::function<void()>>
-         finalize_block(block_state_ptr& bsp, signer_callback_type&& sign);
+         finalize_block(signer_callback_type&& sign);
 
          void assign_signatures(block_state_ptr bsp, std::vector<signature_type>&& sigs, bool wtmsig_enabled);
 
