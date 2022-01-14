@@ -1778,7 +1778,6 @@ struct controller_impl {
          pending->_block_stage = completed_block{ bsp };
 
          commit_block(false);
-         emit(self.accepted_block, bsp);
          return;
       } catch ( const std::bad_alloc& ) {
          throw;
