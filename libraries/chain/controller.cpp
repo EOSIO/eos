@@ -1568,17 +1568,12 @@ struct controller_impl {
    /**
     * @post regardless of the success of commit block there is no active pending block
     */
-   void commit_block() {
+   void commit_block(block_state_ptr bsp) {
       auto reset_pending_on_exit = fc::make_scoped_exit([this]{
          pending.reset();
       });
 
       try {
-         EOS_ASSERT( std::holds_alternative<completed_block>(pending->_block_stage), block_validate_exception,
-                     "cannot call commit_block until pending block is completed" );
-
-         auto bsp = std::get<completed_block>(pending->_block_stage)._block_state;
-
          fork_db.add( bsp );
          fork_db.mark_valid( bsp );
          emit( self.accepted_block_header, bsp );
@@ -2588,7 +2583,7 @@ controller::finalize_block(block_state_ptr& bsp, signer_callback_type&& sign) {
                                my->complete_produced_block(bsp, std::move(signatures), wtmsig_enabled);
                             };
                          });
-   my->commit_block();
+   my->commit_block(bsp);
    return complete_produced_block_fut;
 }
 
