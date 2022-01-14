@@ -198,13 +198,15 @@ Enables new `set_action_return_value` intrinsic which sets a value that is inclu
             {}
          } )
          (  builtin_protocol_feature_t::configurable_wasm_limits, builtin_protocol_feature_spec{
-            "CONFIGURABLE_WASM_LIMITS",
-            fc::variant("67f5f1e92cbf6f7276e7b3fc8c2ad23e63448e657641a1e5de69bccd114542d6").as<digest_type>(),
+            "CONFIGURABLE_WASM_LIMITS2",
+            fc::variant("8139e99247b87f18ef7eae99f07f00ea3adf39ed53f4d2da3f44e6aa0bfd7c62").as<digest_type>(),
             // SHA256 hash of the raw message below within the comment delimiters (do not modify message below).
 /*
-Builtin protocol feature: CONFIGURABLE_WASM_LIMITS
+Builtin protocol feature: CONFIGURABLE_WASM_LIMITS2
 
 Allows privileged contracts to set the constraints on WebAssembly code.
+Includes the behavior of GET_WASM_PARAMETERS_PACKED_FIX and
+also removes an inadvertent restriction on custom sections.
 */
             {}
          } )

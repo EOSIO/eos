@@ -948,4 +948,119 @@ BOOST_FIXTURE_TEST_CASE(reset_chain_tests, wasm_config_tester) {
    produce_block();
 }
 
+// Verifies the result of get_wasm_parameters_packed
+static const char check_get_wasm_parameters_wast[] = R"======(
+(module
+  (import "env" "get_wasm_parameters_packed" (func $get_wasm_parameters_packed (param i32 i32 i32) (result i32)))
+  (import "env" "read_action_data" (func $read_action_data (param i32 i32) (result i32)))
+  (import "env" "action_data_size" (func $action_data_size (result i32)))
+  (import "env" "memcmp" (func $memcmp (param i32 i32 i32) (result i32)))
+  (import "env" "memset" (func $memset (param i32 i32 i32) (result i32)))
+  (import "env" "printhex" (func $printhex (param i32 i32)))
+  (import "env" "eosio_assert" (func $eosio_assert (param i32 i32)))
+  (memory 1)
+  (func (export "apply") (param i64 i64 i64)
+     (drop (call $read_action_data (i32.const 0) (call $action_data_size)))
+     (drop (call $memset (i32.const 256) (i32.const 255) (call $action_data_size)))
+     (drop (call $get_wasm_parameters_packed (i32.const 256) (call $action_data_size) (i32.const 0)))
+     (if (call $memcmp (i32.const 0) (i32.const 256) (call $action_data_size))
+        (then
+          (call $printhex (i32.const 256) (call $action_data_size))
+          (call $eosio_assert (i32.const 0) (i32.const 512))
+        )
+     )
+  )
+  (data (i32.const 512) "Wrong result for get_wasm_parameters_packed")
+)
+)======";
+
+BOOST_FIXTURE_TEST_CASE(get_wasm_parameters_test, TESTER) {
+   produce_block();
+
+   create_account( "test"_n );
+
+   produce_block();
+
+   wasm_config original_params = {
+         .max_mutable_global_bytes = 1024,
+         .max_table_elements       = 1024,
+         .max_section_elements     = 8192,
+         .max_linear_memory_init   = 65536,
+         .max_func_local_bytes     = 8192,
+         .max_nested_structures    = 1024,
+         .max_symbol_bytes         = 8192,
+         .max_module_bytes         = 20971520,
+         .max_code_bytes           = 20971520,
+         .max_pages                = 528,
+         .max_call_depth           = 251
+   };
+
+   set_code("test"_n, check_get_wasm_parameters_wast);
+   produce_block();
+
+   auto check_wasm_params = [&](const std::vector<char>& params){
+      signed_transaction trx;
+      trx.actions.emplace_back(vector<permission_level>{{"test"_n,config::active_name}}, "test"_n, ""_n,
+                               params);
+      set_transaction_headers(trx);
+      trx.sign(get_private_key("test"_n, "active"), control->get_chain_id());
+      push_transaction(trx);
+   };
+
+   BOOST_CHECK_THROW(check_wasm_params(fc::raw::pack(uint32_t{0}, wasm_config(original_params))), unaccessible_api);
+
+   push_action( config::system_account_name, "setpriv"_n, config::system_account_name,
+                fc::mutable_variant_object()("account", "test"_n)("is_priv", true) );
+
+   check_wasm_params(fc::raw::pack(uint32_t{0}, wasm_config(original_params)));
+   // Extra space is left unmodified
+   check_wasm_params(fc::raw::pack(uint32_t{0}, wasm_config(original_params), static_cast<unsigned char>(0xFF)));
+   // Does nothing if the buffer is too small
+   check_wasm_params(std::vector<char>(fc::raw::pack_size(uint32_t{0}) + fc::raw::pack_size(original_params) - 1, '\xFF'));
+
+   // Test case sanity check
+   BOOST_CHECK_THROW(check_wasm_params(fc::raw::pack(uint32_t{0}, wasm_config{ 0,0,0,0,0,0,0,0,0,0,0 })), fc::exception);
+}
+
+// Uses a custom section with large size
+BOOST_FIXTURE_TEST_CASE(large_custom_section, old_wasm_tester)
+{
+   create_account( "hugecustom"_n );
+
+   std::vector<uint8_t> custom_section_wasm{
+      0x00, 'a', 's', 'm', 0x01, 0x00, 0x00, 0x00,
+      0x01, 0x07, 0x01, 0x60, 0x03, 0x7e, 0x7e, 0x7e, 0x00,            //type section containing a function as void(i64,i64,i64)
+      0x03, 0x02, 0x01, 0x00,                                          //a function
+
+      0x07, 0x09, 0x01, 0x05, 'a', 'p', 'p', 'l', 'y', 0x00, 0x00,     //export function 0 as "apply"
+      0x0a, 0x04, 0x01,                                                //code section
+      0x02, 0x00,                                                      //function body start with length 3; no locals
+      0x0b,                                                            //end
+      0x00,                                                            //custom section
+      0x85, 0x80, 0x04,                                                //size  2^16 + 5
+      0x04, 'h', 'u', 'g', 'e'                                         //name
+   };
+
+   custom_section_wasm.resize(custom_section_wasm.size() + 65536);
+   BOOST_CHECK_THROW(set_code( "hugecustom"_n, custom_section_wasm ), wasm_serialization_error);
+
+   // One byte less and it should pass
+   auto okay_custom = custom_section_wasm;
+   --okay_custom[okay_custom.size() - 65536 - 5 - 3];
+   okay_custom.pop_back();
+   set_code( "hugecustom"_n, okay_custom );
+
+   // It's also okay once CONFIGURABLE_WASM_LIMITS is activated
+   preactivate_builtin_protocol_features({builtin_protocol_feature_t::configurable_wasm_limits});
+   produce_block();
+
+   set_code( "hugecustom"_n, custom_section_wasm );
+
+   signed_transaction trx;
+   trx.actions.emplace_back(vector<permission_level>{{"hugecustom"_n,config::active_name}}, "hugecustom"_n, ""_n, std::vector<char>{});
+   set_transaction_headers(trx);
+   trx.sign(get_private_key("hugecustom"_n, "active"), control->get_chain_id());
+   push_transaction(trx);
+}
+
 BOOST_AUTO_TEST_SUITE_END()
