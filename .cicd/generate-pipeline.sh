@@ -546,6 +546,7 @@ EOF
         SKIP_KYLIN: "${SKIP_KYLIN}"
         SKIP_MAIN: "${SKIP_MAIN}"
         TIMEOUT: "${TIMEOUT}"
+    skip: "See BLU-30414"
 
 EOF
     fi
