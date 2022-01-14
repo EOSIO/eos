@@ -1568,7 +1568,7 @@ struct controller_impl {
    /**
     * @post regardless of the success of commit block there is no active pending block
     */
-   void commit_block(block_state_ptr bsp) {
+   void commit_block(block_state_ptr&& bsp) {
       auto reset_pending_on_exit = fc::make_scoped_exit([this]{
          pending.reset();
       });
@@ -2583,7 +2583,7 @@ controller::finalize_block(block_state_ptr& bsp, signer_callback_type&& sign) {
                                my->complete_produced_block(bsp, std::move(signatures), wtmsig_enabled);
                             };
                          });
-   my->commit_block(bsp);
+   my->commit_block(std::move(bsp));
    return complete_produced_block_fut;
 }
 
