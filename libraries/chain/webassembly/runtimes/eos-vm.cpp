@@ -81,6 +81,32 @@ void validate(const bytes& code, const whitelisted_intrinsics_type& intrinsics) 
    }
 }
 
+void validate( const bytes& code, const wasm_config& cfg, const whitelisted_intrinsics_type& intrinsics ) {
+   EOS_ASSERT(code.size() <= cfg.max_module_bytes, wasm_serialization_error, "Code too large");
+   wasm_code_ptr code_ptr((uint8_t*)code.data(), code.size());
+   try {
+      eos_vm_null_backend_t<wasm_config> bkend(code_ptr, code.size(), nullptr, cfg);
+      // check import signatures
+      eos_vm_host_functions_t::resolve(bkend.get_module());
+      // check that the imports are all currently enabled
+      const auto& imports = bkend.get_module().imports;
+      for(std::uint32_t i = 0; i < imports.size(); ++i) {
+         EOS_ASSERT(std::string_view((char*)imports[i].module_str.raw(), imports[i].module_str.size()) == "env" &&
+                    is_intrinsic_whitelisted(intrinsics, std::string_view((char*)imports[i].field_str.raw(), imports[i].field_str.size())),
+                    wasm_serialization_error, "${module}.${fn} unresolveable",
+                    ("module", std::string((char*)imports[i].module_str.raw(), imports[i].module_str.size()))
+                    ("fn", std::string((char*)imports[i].field_str.raw(), imports[i].field_str.size())));
+      }
+      // check apply
+      uint32_t apply_idx = bkend.get_module().get_exported_function("apply");
+      EOS_ASSERT(apply_idx < std::numeric_limits<uint32_t>::max(), wasm_serialization_error, "apply not exported");
+      const vm::func_type& apply_type = bkend.get_module().get_function_type(apply_idx);
+      EOS_ASSERT((apply_type == vm::host_function{{vm::i64, vm::i64, vm::i64}, {}}), wasm_serialization_error, "apply has wrong type");
+   } catch(vm::exception& e) {
+      EOS_THROW(wasm_serialization_error, e.detail());
+   }
+}
+
 // Be permissive on apply.
 struct apply_options {
    std::uint32_t max_pages = wasm_constraints::maximum_linear_memory/wasm_constraints::wasm_page_size;
@@ -105,6 +131,10 @@ class eos_vm_instantiated_module : public wasm_instantiated_module_interface {
          _instantiated_module->set_wasm_allocator(&context.control.get_wasm_allocator());
          _runtime->_bkend = _instantiated_module.get();
          apply_options opts;
+         if(context.control.is_builtin_activated(builtin_protocol_feature_t::configurable_wasm_limits)) {
+            const wasm_config& config = context.control.get_global_properties().wasm_configuration;
+            opts = {config.max_pages, config.max_call_depth};
+         }
          auto fn = [&]() {
             eosio::chain::webassembly::interface iface(context);
             _runtime->_bkend->initialize(&iface, opts);
@@ -230,6 +260,8 @@ REGISTER_HOST_FUNCTION(activate_feature, privileged_check);
 REGISTER_LEGACY_HOST_FUNCTION(preactivate_feature, privileged_check);
 REGISTER_HOST_FUNCTION(set_resource_limits, privileged_check);
 REGISTER_LEGACY_HOST_FUNCTION(get_resource_limits, privileged_check);
+REGISTER_HOST_FUNCTION(get_wasm_parameters_packed, privileged_check);
+REGISTER_HOST_FUNCTION(set_wasm_parameters_packed, privileged_check);
 REGISTER_LEGACY_HOST_FUNCTION(set_proposed_producers, privileged_check);
 REGISTER_LEGACY_HOST_FUNCTION(set_proposed_producers_ex, privileged_check);
 REGISTER_LEGACY_HOST_FUNCTION(get_blockchain_parameters_packed, privileged_check);

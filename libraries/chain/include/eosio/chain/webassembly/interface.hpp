@@ -82,6 +82,69 @@ namespace webassembly {
          */
          void get_resource_limits(account_name account, legacy_ptr<int64_t, 8> ram_bytes, legacy_ptr<int64_t, 8> net_weight, legacy_ptr<int64_t, 8> cpu_weight) const;
 
+          /**
+           * Get the current wasm limits configuration.
+           *
+           * The structure of the parameters is as follows:
+           *
+           * - max_mutable_global_bytes
+           * The maximum total size (in bytes) used for mutable globals.
+           * i32 and f32 consume 4 bytes and i64 and f64 consume 8 bytes.
+           * Const globals are not included in this count.
+           *
+           * - max_table_elements
+           * The maximum number of elements of a table.
+           *
+           * - max_section_elements
+           * The maximum number of elements in each section.
+           *
+           * - max_linear_memory_init
+           * The size (in bytes) of the range of memory that may be initialized.
+           * Data segments may use the range [0, max_linear_memory_init).
+           *
+           * - max_func_local_bytes
+           * The maximum total size (in bytes) used by parameters and local variables in a function.
+           *
+           * - max_nested_structures
+           * The maximum nesting depth of structured control instructions.
+           * The function itself is included in this count.
+           *
+           * - max_symbol_bytes
+           * The maximum size (in bytes) of names used for import and export.
+           *
+           * - max_module_bytes
+           * The maximum total size (in bytes) of a wasm module.
+           *
+           * - max_code_bytes
+           * The maximum size (in bytes) of each function body.
+           *
+           * - max_pages
+           * The maximum number of 64 KiB pages of linear memory that a contract can use.
+           * Enforced when an action is executed. The initial size of linear memory is also checked at setcode.
+           *
+           * - max_call_depth
+           * The maximum number of functions that may be on the stack. Enforced when an action is executed.
+           *
+           * @ingroup privileged
+           *
+           * @param[out] packed_parameters the ouput for the parameters.
+           * @param max_version has no effect, but should be 0.
+           *
+           * @return the size of the packed parameters if packed_parameters is empty, otherwise it returns the amount of data written in packed_parameters.
+         */
+         uint32_t get_wasm_parameters_packed( span<char> packed_parameters, uint32_t max_version ) const;
+
+         /**
+           * Set the configuration for wasm limits.
+           *
+           * See get_wasm_parameters_packed documentation for more details on the structure of the packed_parameters.
+           *
+           * @ingroup privileged
+           *
+           * @param packed_parameters - a span containing the packed configuration to set.
+         */
+         void set_wasm_parameters_packed( span<const char> packed_parameters );
+
          /**
           * Proposes a schedule change using the legacy producer key format.
           *
