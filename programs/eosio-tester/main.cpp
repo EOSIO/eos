@@ -1,6 +1,11 @@
+#include <eosio/coverage.hpp>
 #include <eosio/chain/apply_context.hpp>
 #include <eosio/chain/controller.hpp>
 #include <eosio/chain/transaction_context.hpp>
+#include <eosio/chain/whitelisted_intrinsics.hpp>
+#include <eosio/chain/webassembly/common.hpp>
+#include <eosio/chain/webassembly/interface.hpp>
+#include <eosio/chain/webassembly/preconditions.hpp>
 #include <eosio/state_history/create_deltas.hpp>
 #include <eosio/state_history/serialization.hpp>
 #include <eosio/state_history/trace_converter.hpp>
@@ -10,6 +15,7 @@
 #include <fc/crypto/sha256.hpp>
 #include <fc/crypto/sha512.hpp>
 #include <fc/exception/exception.hpp>
+#include <boost/hana/string.hpp>
 
 #undef N
 
@@ -101,6 +107,51 @@ struct transaction_checktime_factory {
    }
 };
 }; // namespace
+
+// Defined here to keep it out of nodeos
+namespace eosio::chain::webassembly {
+
+#define REGISTER_HOST_FUNCTION(NAME, ...)                                                                              \
+   static host_function_registrator<&interface::NAME, core_precondition, context_aware_check, ##__VA_ARGS__>           \
+       NAME##_registrator_impl() {                                                                                     \
+      return {BOOST_HANA_STRING("env"), BOOST_HANA_STRING(#NAME)};                                                     \
+   }                                                                                                                   \
+   inline static auto NAME##_registrator = NAME##_registrator_impl();
+
+// code coverage API
+REGISTER_HOST_FUNCTION(coverage_inc_fun_cnt)
+REGISTER_HOST_FUNCTION(coverage_inc_line_cnt)
+REGISTER_HOST_FUNCTION(coverage_get_fun_cnt)
+REGISTER_HOST_FUNCTION(coverage_get_line_cnt)
+REGISTER_HOST_FUNCTION(coverage_dump)
+REGISTER_HOST_FUNCTION(coverage_reset)
+
+void interface::coverage_inc_fun_cnt(uint64_t code, uint32_t file_num, uint32_t func_num) {
+   eosio::coverage::coverage_inc_fun_cnt(code, file_num, func_num);
+}
+
+void interface::coverage_inc_line_cnt(uint64_t code, uint32_t file_num, uint32_t line_num) {
+   eosio::coverage::coverage_inc_line_cnt(code, file_num, line_num);
+}
+
+uint32_t interface::coverage_get_fun_cnt(uint64_t code, uint32_t file_num, uint32_t func_num) {
+   eosio::coverage::coverage_get_fun_cnt(code, file_num, func_num);
+}
+
+uint32_t interface::coverage_get_line_cnt(uint64_t code, uint32_t file_num, uint32_t line_num) {
+   eosio::coverage::coverage_get_line_cnt(code, file_num, line_num);
+}
+
+void interface::coverage_dump(uint32_t n) {
+   eosio::coverage::coverage_dump(n);
+}
+
+void interface::coverage_reset() {
+   eosio::coverage::coverage_reset();
+}
+
+} // namespace eosio::chain::webassembly
+
 
 struct intrinsic_context {
    eosio::chain::controller&                          control;
@@ -233,17 +284,15 @@ struct test_chain {
                control, [] {}, [] { return false; }, genesis);
          control->start_block(control->head_block_time() + fc::microseconds(block_interval_us), 0,
                               { *control->get_protocol_feature_manager().get_builtin_digest(
-                                    eosio::chain::builtin_protocol_feature_t::preactivate_feature) 
-                                 });
-         auto& pfm = control->get_protocol_feature_manager();
-         auto feat = eosio::chain::builtin_protocol_feature_t::wasm_code_coverage;
-         auto wasm_code_coverage_digest = *pfm.get_builtin_digest(feat);
-         uint32_t action_id = 0;         
-         control->preactivate_feature(action_id, wasm_code_coverage_digest);
-         finish_block();
-
-         control->start_block(control->head_block_time() + fc::microseconds(block_interval_us), 0,
-                               { wasm_code_coverage_digest });
+                                    eosio::chain::builtin_protocol_feature_t::preactivate_feature) });
+         control->mutable_db().modify( control->mutable_db().get<eosio::chain::protocol_state_object>(), [&]( auto& ps ) {
+            eosio::chain::add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "coverage_inc_fun_cnt" );
+            eosio::chain::add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "coverage_inc_line_cnt" );
+            eosio::chain::add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "coverage_get_fun_cnt" );
+            eosio::chain::add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "coverage_get_line_cnt" );
+            eosio::chain::add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "coverage_dump" );
+            eosio::chain::add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "coverage_reset" );
+         } );
       }
    }
 
@@ -515,7 +564,6 @@ FC_REFLECT(push_trx_args, (transaction)(context_free_data)(signatures)(keys))
    int db_##IDX##_previous(int iterator, uint64_t& primary) {                                                            \
       return selected().IDX.previous_secondary(iterator, primary);                                                       \
    }
-
 
 struct callbacks {
    ::state& state;

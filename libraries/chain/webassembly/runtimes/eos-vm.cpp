@@ -11,7 +11,6 @@
 #include <eosio/chain/webassembly/eos-vm-oc.hpp>
 #endif
 #include <boost/hana/string.hpp>
-#include <boost/hana/equal.hpp>
 
 namespace eosio { namespace chain { namespace webassembly { namespace eos_vm_runtime {
 
@@ -289,18 +288,6 @@ std::unique_ptr<wasm_instantiated_module_interface> eos_vm_profile_runtime::inst
 
 }
 
-template <auto HostFunction, typename... Preconditions>
-struct host_function_registrator {
-   template <typename Mod, typename Name>
-   constexpr host_function_registrator(Mod mod_name, Name fn_name) {
-      using rhf_t = eos_vm_host_functions_t;
-      rhf_t::add<HostFunction, Preconditions...>(mod_name.c_str(), fn_name.c_str());
-#ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
-      eosvmoc::register_eosvm_oc<HostFunction, std::tuple<Preconditions...>>(mod_name + BOOST_HANA_STRING(".") + fn_name);
-#endif
-   }
-};
-
 #define REGISTER_HOST_FUNCTION(NAME, ...)                                                                              \
    static host_function_registrator<&interface::NAME, core_precondition, context_aware_check, ##__VA_ARGS__>           \
        NAME##_registrator_impl() {                                                                                     \
@@ -573,14 +560,6 @@ REGISTER_CF_HOST_FUNCTION(__gttf2);
 REGISTER_CF_HOST_FUNCTION(__letf2);
 REGISTER_CF_HOST_FUNCTION(__lttf2);
 REGISTER_CF_HOST_FUNCTION(__unordtf2);
-
-// code coverage API 
-REGISTER_HOST_FUNCTION(coverage_inc_fun_cnt)
-REGISTER_HOST_FUNCTION(coverage_inc_line_cnt)
-REGISTER_HOST_FUNCTION(coverage_get_fun_cnt)
-REGISTER_HOST_FUNCTION(coverage_get_line_cnt)
-REGISTER_HOST_FUNCTION(coverage_dump)
-REGISTER_HOST_FUNCTION(coverage_reset)
 
 } // namespace webassembly
 } // namespace chain
