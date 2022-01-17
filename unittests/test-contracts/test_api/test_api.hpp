@@ -27,6 +27,11 @@ namespace eosio { class transaction; }
    return; \
 }
 
+extern "C" {
+    __attribute__((eosio_wasm_import))
+    void set_action_return_value(const char*, size_t);
+}
+
 struct test_types {
    static void types_size();
    static void char_to_symbol();

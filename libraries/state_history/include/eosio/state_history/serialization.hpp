@@ -291,7 +291,7 @@ datastream<ST>& operator<<(datastream<ST>&                                      
 
 template <typename ST>
 datastream<ST>& operator<<(datastream<ST>& ds, const history_serial_wrapper<eosio::chain::chain_config>& obj) {
-   fc::raw::pack(ds, fc::unsigned_int(0));
+   fc::raw::pack(ds, fc::unsigned_int(1));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.max_block_net_usage));
    fc::raw::pack(ds, as_type<uint32_t>(obj.obj.target_block_net_usage_pct));
    fc::raw::pack(ds, as_type<uint32_t>(obj.obj.max_transaction_net_usage));
@@ -309,6 +309,7 @@ datastream<ST>& operator<<(datastream<ST>& ds, const history_serial_wrapper<eosi
    fc::raw::pack(ds, as_type<uint32_t>(obj.obj.max_inline_action_size));
    fc::raw::pack(ds, as_type<uint16_t>(obj.obj.max_inline_action_depth));
    fc::raw::pack(ds, as_type<uint16_t>(obj.obj.max_authority_depth));
+   fc::raw::pack(ds, as_type<uint32_t>(obj.obj.max_action_return_value_size));
    return ds;
 }
 
@@ -570,7 +571,7 @@ inline fc::optional<uint64_t> cap_error_code(const fc::optional<uint64_t>& error
 template <typename ST>
 datastream<ST>& operator<<(datastream<ST>& ds, const history_context_wrapper<bool, eosio::chain::action_trace>& obj) {
    bool debug_mode = obj.context;
-   fc::raw::pack(ds, fc::unsigned_int(0));
+   fc::raw::pack(ds, fc::unsigned_int(1));
    fc::raw::pack(ds, as_type<fc::unsigned_int>(obj.obj.action_ordinal));
    fc::raw::pack(ds, as_type<fc::unsigned_int>(obj.obj.creator_action_ordinal));
    fc::raw::pack(ds, bool(obj.obj.receipt));
@@ -597,6 +598,7 @@ datastream<ST>& operator<<(datastream<ST>& ds, const history_context_wrapper<boo
    fc::raw::pack(ds, as_type<fc::optional<std::string>>(e));
    fc::raw::pack(ds,
                  as_type<fc::optional<uint64_t>>(debug_mode ? obj.obj.error_code : cap_error_code(obj.obj.error_code)));
+   fc::raw::pack(ds, as_type<eosio::chain::bytes>(obj.obj.return_value));
 
    return ds;
 }

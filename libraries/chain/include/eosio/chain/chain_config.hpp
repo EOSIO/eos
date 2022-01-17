@@ -133,8 +133,66 @@ protected:
    }
 };
 
+/**
+ * @brief v1 Producer-voted blockchain configuration parameters
+ *
+ * If Adding new parameters create chain_config_v[n] class instead of adding
+ * new parameters to v1 or v0. This is needed for snapshots backward compatibility
+ */
+struct chain_config_v1 : chain_config_v0 {
+   using Base = chain_config_v0;
+
+   uint32_t   max_action_return_value_size = config::default_max_action_return_value_size;               ///< size limit for action return value
+   
+   //order must match parameters as ids are used in serialization
+   enum {
+     max_action_return_value_size_id = Base::PARAMS_COUNT,
+     PARAMS_COUNT
+   };
+
+   inline const Base& base() const {
+      return static_cast<const Base&>(*this);
+   }
+
+   void validate() const;
+
+   template<typename Stream>
+   friend Stream& operator << ( Stream& out, const chain_config_v1& c ) {
+      return c.log(out) << "\n";
+   }
+
+   friend inline bool operator == ( const chain_config_v1& lhs, const chain_config_v1& rhs ) {
+      //add v1 parameters comarison here
+      return std::tie(lhs.max_action_return_value_size) == std::tie(rhs.max_action_return_value_size) 
+          && lhs.base() == rhs.base();
+   }
+
+   friend inline bool operator != ( const chain_config_v1& lhs, const chain_config_v1& rhs ) {
+      return !(lhs == rhs);
+   }
+
+   inline chain_config_v1& operator= (const Base& b) {
+      Base::operator= (b);
+      return *this;
+   }
+
+protected:
+   template<typename Stream>
+   Stream& log(Stream& out) const{
+      return base().log(out) << ", Max Action Return Value Size: " << max_action_return_value_size;
+   }
+};
+
+class controller;
+
+struct config_entry_validator{
+   const controller& control;
+
+   bool operator()(uint32_t id) const;
+};
+
 //after adding 1st value to chain_config_v1 change this using to point to v1
-using chain_config = chain_config_v0;
+using chain_config = chain_config_v1;
 
 } } // namespace eosio::chain
 
@@ -149,4 +207,8 @@ FC_REFLECT(eosio::chain::chain_config_v0,
            (max_transaction_lifetime)(deferred_trx_expiration_window)(max_transaction_delay)
            (max_inline_action_size)(max_inline_action_depth)(max_authority_depth)
 
+)
+
+FC_REFLECT_DERIVED(eosio::chain::chain_config_v1, (eosio::chain::chain_config_v0), 
+           (max_action_return_value_size)
 )

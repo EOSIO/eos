@@ -580,6 +580,14 @@ namespace webassembly {
          name current_receiver() const;
 
          /**
+          * Sets a value (packed blob char array) to be included in the action receipt.
+          *
+          * @ingroup action
+          * @param packed_blob - the packed blob
+         */
+         void set_action_return_value(span<const char> packed_blob);
+
+         /**
           * Print a string.
           *
           * @ingroup console
