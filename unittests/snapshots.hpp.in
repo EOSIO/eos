@@ -1,17 +1,104 @@
 #pragma once
 
-#define MAKE_READ_SNAPSHOT(NAME) \
-   struct NAME {\
-       static fc::variant json() { return read_json_snapshot  ("${CMAKE_BINARY_DIR}/unittests/snapshots/" #NAME ".json.gz"); } \
-       static std::string bin()  { return read_binary_snapshot("${CMAKE_BINARY_DIR}/unittests/snapshots/" #NAME ".bin.gz" ); } \
-   };\
+#include <fc/variant.hpp>
+#include <fc/filesystem.hpp>
+
+#include <boost/iostreams/filtering_stream.hpp>
+#include <boost/iostreams/copy.hpp>
+#include <boost/iostreams/filter/gzip.hpp>
+
+#include <fstream>
+#include <sstream>
+#include <string>
+#include <string_view>
+#include <type_traits>
 
 namespace eosio {
    namespace testing {
-      struct snapshots {
-         // v2
-         MAKE_READ_SNAPSHOT(snap_v2)
-         MAKE_READ_SNAPSHOT(snap_v2_prod_sched)
+      namespace snapshot {
+         // tags for snapshot type
+         struct json {};
+         struct binary {};
+      } // ns eosio::testing::snapshot
+
+      static inline constexpr snapshot::json   json_tag;
+      static inline constexpr snapshot::binary binary_tag;
+
+      namespace snapshot {
+         template <typename T>
+         static inline constexpr bool is_json_v   = std::is_same_v<std::decay_t<T>, snapshot::json>;
+
+         template <typename T>
+         static inline constexpr bool is_binary_v =std::is_same_v<std::decay_t<T>, snapshot::binary>;
+      } // ns eosio::testing::snapshot
+
+      template <typename TypeTag>
+      struct snapshot_file {
+         static constexpr auto base_path = "${CMAKE_BINARY_DIR}/unittests/snapshots/";
+         static inline constexpr auto file_suffix() {
+            if constexpr (snapshot::is_json_v<TypeTag>)
+               return ".json.gz";
+            else
+               return ".bin.gz";
+         }
+
+         std::string file_name;
+
+      protected:
+         snapshot_file(const std::string_view& fn)
+            : file_name(base_path + std::string(fn.data(), fn.size()) + file_suffix()) { }
+      };
+
+      template <typename TypeTag>
+      struct snapshot_input_file : public snapshot_file<TypeTag> {
+         snapshot_input_file(const std::string_view& fn)
+            :  snapshot_file<TypeTag>(fn) {}
+
+         auto read_as_string() const {
+            std::ifstream file(this->file_name);
+            boost::iostreams::filtering_istream buf_in;
+            buf_in.push(boost::iostreams::gzip_decompressor());
+            buf_in.push(file);
+            std::stringstream unzipped;
+            boost::iostreams::copy(buf_in, unzipped);
+            return unzipped.str();
+         }
+
+         auto read() const {
+            if constexpr (snapshot::is_json_v<TypeTag>) {
+               return fc::json::from_string(read_as_string());
+            } else {
+               static_assert(snapshot::is_binary_v<TypeTag>, "unsupported type");
+               return fc::json::from_string(read_as_string());
+            }
+         }
+      };
+
+      template <typename TypeTag>
+      struct snapshot_output_file : public snapshot_file<TypeTag> {
+         snapshot_output_file(const std::string_view& fn)
+            :  snapshot_file<TypeTag>(fn) {}
+
+         template <typename Snapshot>
+         void write( const Snapshot& snapshot ) {
+            std::string out_string;
+
+            if constexpr (snapshot::is_json_v<TypeTag>) {
+               out_string = fc::json::to_string(snapshot, fc::time_point::maximum());
+            } else {
+               static_assert(snapshot::is_binary_v<TypeTag>, "unsupported type");
+               std::ostringstream out_stream;
+               out_stream.write(snapshot.data(), snapshot.size());
+               out_string = out_stream.str();
+            }
+
+            std::istringstream inStream(out_string);
+            std::ofstream file(this->file_name);
+            boost::iostreams::filtering_streambuf<boost::iostreams::input> buf_in;
+            buf_in.push(boost::iostreams::gzip_compressor());
+            buf_in.push(inStream);
+            boost::iostreams::copy(buf_in, file);
+         }
       };
    } /// eosio::testing
 }  /// eosio

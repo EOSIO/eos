@@ -82,6 +82,36 @@ namespace eosio { namespace chain { namespace webassembly {
       return context.control.set_proposed_producers( std::move(producers) );
    }
 
+   uint32_t interface::get_wasm_parameters_packed( span<char> packed_parameters, uint32_t max_version ) const {
+      auto& gpo = context.control.get_global_properties();
+      auto& params = gpo.wasm_configuration;
+      uint32_t version = std::min( max_version, uint32_t(0) );
+
+      auto s = fc::raw::pack_size( version ) + fc::raw::pack_size( params );
+      if ( packed_parameters.size() == 0 )
+         return s;
+
+      if ( s <= packed_parameters.size() ) {
+         datastream<char*> ds( packed_parameters.data(), s );
+         fc::raw::pack(ds, version);
+         fc::raw::pack(ds, params);
+      }
+      return s;
+   }
+   void interface::set_wasm_parameters_packed( span<const char> packed_parameters ) {
+      datastream<const char*> ds( packed_parameters.data(), packed_parameters.size() );
+      uint32_t version;
+      chain::wasm_config cfg;
+      fc::raw::unpack(ds, version);
+      EOS_ASSERT(version == 0, wasm_config_unknown_version, "set_wasm_parameters_packed: Unknown version: ${version}", ("version", version));
+      fc::raw::unpack(ds, cfg);
+      cfg.validate();
+      context.db.modify( context.control.get_global_properties(),
+         [&]( auto& gprops ) {
+            gprops.wasm_configuration = cfg;
+         }
+      );
+   }
    int64_t interface::set_proposed_producers( legacy_span<const char> packed_producer_schedule) {
       datastream<const char*> ds( packed_producer_schedule.data(), packed_producer_schedule.size() );
       std::vector<producer_authority> producers;
@@ -115,12 +145,12 @@ namespace eosio { namespace chain { namespace webassembly {
    uint32_t interface::get_blockchain_parameters_packed( legacy_span<char> packed_blockchain_parameters ) const {
       auto& gpo = context.control.get_global_properties();
 
-      auto s = fc::raw::pack_size( gpo.configuration );
+      auto s = fc::raw::pack_size( gpo.configuration.v0() );
       if( packed_blockchain_parameters.size() == 0 ) return s;
 
       if ( s <= packed_blockchain_parameters.size() ) {
          datastream<char*> ds( packed_blockchain_parameters.data(), s );
-         fc::raw::pack(ds, gpo.configuration);
+         fc::raw::pack(ds, gpo.configuration.v0());
          return s;
       }
       return 0;
@@ -128,7 +158,7 @@ namespace eosio { namespace chain { namespace webassembly {
 
    void interface::set_blockchain_parameters_packed( legacy_span<const char> packed_blockchain_parameters ) {
       datastream<const char*> ds( packed_blockchain_parameters.data(), packed_blockchain_parameters.size() );
-      chain::chain_config cfg;
+      chain::chain_config_v0 cfg;
       fc::raw::unpack(ds, cfg);
       cfg.validate();
       context.db.modify( context.control.get_global_properties(),

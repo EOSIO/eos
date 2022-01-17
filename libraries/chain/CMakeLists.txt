@@ -99,6 +99,7 @@ add_library( eosio_chain
               wasm_interface.cpp
               wasm_eosio_validation.cpp
               wasm_eosio_injection.cpp
+              wasm_config.cpp
               apply_context.cpp
               abi_serializer.cpp
               asset.cpp

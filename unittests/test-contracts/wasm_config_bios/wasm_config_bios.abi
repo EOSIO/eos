@@ -1,0 +1,77 @@
+{
+    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT ",
+    "version": "eosio::abi/1.1",
+    "types": [],
+    "structs": [
+        {
+            "name": "setwparams",
+            "base": "",
+            "fields": [
+                {
+                    "name": "cfg",
+                    "type": "wasm_config"
+                }
+            ]
+        },
+        {
+            "name": "wasm_config",
+            "base": "",
+            "fields": [
+                {
+                    "name": "max_mutable_global_bytes",
+                    "type": "uint32"
+                },
+                {
+                    "name": "max_table_elements",
+                    "type": "uint32"
+                },
+                {
+                    "name": "max_section_elements",
+                    "type": "uint32"
+                },
+                {
+                    "name": "max_linear_memory_init",
+                    "type": "uint32"
+                },
+                {
+                    "name": "max_func_local_bytes",
+                    "type": "uint32"
+                },
+                {
+                    "name": "max_nested_structures",
+                    "type": "uint32"
+                },
+                {
+                    "name": "max_symbol_bytes",
+                    "type": "uint32"
+                },
+                {
+                    "name": "max_module_bytes",
+                    "type": "uint32"
+                },
+                {
+                    "name": "max_code_bytes",
+                    "type": "uint32"
+                },
+                {
+                    "name": "max_pages",
+                    "type": "uint32"
+                },
+                {
+                    "name": "max_call_depth",
+                    "type": "uint32"
+                }
+            ]
+        }
+    ],
+    "actions": [
+        {
+            "name": "setwparams",
+            "type": "setwparams",
+            "ricardian_contract": ""
+        }
+    ],
+    "tables": [],
+    "ricardian_clauses": [],
+    "variants": []
+}

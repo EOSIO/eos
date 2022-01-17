@@ -39,6 +39,13 @@ namespace eosio { namespace chain {
    wasm_interface::~wasm_interface() {}
 
    void wasm_interface::validate(const controller& control, const bytes& code) {
+      const auto& pso = control.db().get<protocol_state_object>();
+
+      if (control.is_builtin_activated(builtin_protocol_feature_t::configurable_wasm_limits)) {
+         const auto& gpo = control.get_global_properties();
+         webassembly::eos_vm_runtime::validate( code, gpo.wasm_configuration, pso.whitelisted_intrinsics );
+         return;
+      }
       Module module;
       try {
          Serialization::MemoryInputStream stream((U8*)code.data(), code.size());
@@ -51,8 +58,6 @@ namespace eosio { namespace chain {
 
       wasm_validations::wasm_binary_validation validator(control, module);
       validator.validate();
-
-      const auto& pso = control.db().get<protocol_state_object>();
 
       webassembly::eos_vm_runtime::validate( code, pso.whitelisted_intrinsics );
 

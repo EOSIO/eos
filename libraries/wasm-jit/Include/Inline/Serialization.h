@@ -134,7 +134,7 @@ namespace Serialization
 	{ memcpy(stream.advance(numBytes),bytes,numBytes); }
 	FORCEINLINE void serializeBytes(InputStream& stream,U8* bytes,Uptr numBytes)
 	{ 
-      if ( numBytes < eosio::chain::wasm_constraints::wasm_page_size )
+      if ( numBytes < eosio::chain::wasm_constraints::wasm_page_size || !WASM::check_limits)
          memcpy(bytes,stream.advance(numBytes),numBytes); 
       else
          throw FatalSerializationException(std::string("Trying to deserialize bytes of size : " + std::to_string((uint64_t)numBytes)));
