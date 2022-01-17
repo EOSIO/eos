@@ -12,6 +12,7 @@
 #include <eosio/chain/block_log_config.hpp>
 #include <eosio/chain/backing_store.hpp>
 
+struct test_chain;
 namespace chainbase {
    class database;
 }
@@ -403,10 +404,13 @@ namespace eosio { namespace chain {
       private:
          friend class apply_context;
          friend class transaction_context;
+         friend struct ::test_chain;
+
+         chainbase::database& mutable_db()const;
 
          std::unique_ptr<controller_impl> my;
       public:
-         chainbase::database& mutable_db()const;
+
 
    };
 
