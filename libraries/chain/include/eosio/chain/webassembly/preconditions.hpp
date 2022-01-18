@@ -55,10 +55,6 @@ namespace eosio { namespace chain { namespace webassembly {
       struct is_whitelisted_type<vm::argument_proxy<T*, 0>> {
          static constexpr bool value = is_wasm_arithmetic_type_v<std::remove_const_t<T>>;
       };
-      template <>
-      struct is_whitelisted_type<vm::argument_proxy<digest_type*, 0>> {
-         static constexpr bool value = true;
-      };
    }
 
    template <typename T>
