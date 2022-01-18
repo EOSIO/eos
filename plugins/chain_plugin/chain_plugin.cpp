@@ -3316,9 +3316,10 @@ void read_only::push_ro_transaction(const read_only::push_ro_transaction_params&
                         pending_transactions.push_back(std::get<packed_transaction>(receipt.trx).id());
                      }
                   }
-                  next(read_only::push_ro_transaction_results{db.head_block_num(), db.head_block_id(), db.last_irreversible_block_num(), db.last_irreversible_block_id(),
-                                                              accnt_metadata_obj.code_hash, pending_transactions, output});
                }
+               next(read_only::push_ro_transaction_results{db.head_block_num(), db.head_block_id(), db.last_irreversible_block_num(), db.last_irreversible_block_id(),
+                                                              accnt_metadata_obj.code_hash, std::move(pending_transactions), output});
+
             } CATCH_AND_CALL(next);
          }
       });
