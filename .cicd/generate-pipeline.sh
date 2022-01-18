@@ -643,7 +643,7 @@ EOF
     agents:
       - "queue=mac-anka-node-fleet"
     timeout: ${TIMEOUT:-30}
-    skip: ${SKIP_MACOS_10_15}${SKIP_PACKAGE_BUILDER}${SKIP_MAC}
+    skip: "See BLU-30502"
 
   - wait
 
@@ -715,7 +715,7 @@ EOF
     agents:
       - "queue=mac-anka-node-fleet"
     timeout: ${TIMEOUT:-20}
-    skip: ${SKIP_MACOS_10_15}${SKIP_PACKAGE_BUILDER}${SKIP_MAC}
+    skip: "See BLU-30502"
 
   - wait
 
@@ -742,7 +742,7 @@ EOF
     agents:
       queue: "automation-basic-builder-fleet"
     timeout: ${TIMEOUT:-5}
-    skip: ${SKIP_PACKAGE_BUILDER}${SKIP_MAC}${SKIP_MACOS_10_15}
+    skip: "See BLU-30502"
 
   - label: ":docker: :ubuntu: Docker - Build 18.04 Docker Image"
     command:  "./.cicd/create-docker-from-binary.sh"
