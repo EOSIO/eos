@@ -257,6 +257,8 @@ inline constexpr auto get_intrinsic_table() {
       "env.set_action_return_value",
       "env.get_wasm_parameters_packed",
       "env.set_wasm_parameters_packed",
+      "env.get_parameters_packed",
+      "env.set_parameters_packed",
       "env.get_code_hash"
    );
 }

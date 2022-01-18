@@ -330,6 +330,7 @@ struct controller_impl {
       set_activation_handler<builtin_protocol_feature_t::wtmsig_block_signatures>();
       set_activation_handler<builtin_protocol_feature_t::action_return_value>();
       set_activation_handler<builtin_protocol_feature_t::configurable_wasm_limits>();
+      set_activation_handler<builtin_protocol_feature_t::blockchain_parameters>();
       set_activation_handler<builtin_protocol_feature_t::get_code_hash>();
 
       self.irreversible_block.connect([this](const block_state_ptr& bsp) {
@@ -3417,6 +3418,14 @@ void controller_impl::on_activation<builtin_protocol_feature_t::configurable_was
    db.modify( db.get<protocol_state_object>(), [&]( auto& ps ) {
       add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "set_wasm_parameters_packed" );
       add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "get_wasm_parameters_packed" );
+   } );
+}
+
+template<>
+void controller_impl::on_activation<builtin_protocol_feature_t::blockchain_parameters>() {
+   db.modify( db.get<protocol_state_object>(), [&]( auto& ps ) {
+      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "get_parameters_packed" );
+      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "set_parameters_packed" );
    } );
 }
 

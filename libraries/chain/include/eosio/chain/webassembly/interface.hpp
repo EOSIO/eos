@@ -193,6 +193,42 @@ namespace webassembly {
          void set_blockchain_parameters_packed(legacy_span<const char> packed_blockchain_parameters);
 
          /**
+          * Retrieve the blockchain config parameters.
+          * The input buffer is a packed data stream which represents an encoded sequence of parameter_id pairs with the following format:
+          * |varuint32:sequence_length | varuint32:parameter_id | ...
+          * The output buffer is a packed data stream which represents an encoded sequence of parameter_id:paramter_value pairs with the following format:
+          * |varuint32:sequence_length | varuint32:parameter_id | <various>:parameter_value | ...
+          * The encoding of parameter_values should be specific to the parameter being set
+          * The output buffer format should be valid input for set_parameters_packed.
+          * For each known parameter_id in the input sequence there should be an associated entry in the output sequence with the current encoded parameter_value.
+          *
+          * @brief Retrieve the blockchain config parameters.
+          * @ingroup privileged
+          *
+          * @param packed_parameter_ids - the input buffer with the format as described above.
+          * @param[out] packed_parameters - the output buffer with the format as described above.
+         */
+         uint32_t get_parameters_packed( span<const char> packed_parameter_ids, span<char> packed_parameters) const;
+
+         /**
+          * Set the blockchain parameters.
+          * It allows a system contract the ability to set parameters in a flexible manner.
+          * The input buffer is a packed data stream which represents an encoded sequence of parameter_id:paramter_value pairs with the following format:
+          * |varuint32:sequence_length | varuint32:parameter_id | <various>:parameter_value | ...
+          * The encoding of parameter_values should be specific to the parameter being set.
+          * Having duplicate parameter_ids encoded in the sequence should result in aborting the transaction context.
+          * The presence of a parameter_id which is unknown OR which is known but tied to an unactivated consensus protocol
+          * should result in aborting the transaction context.
+          * There are no requirement for the ordering of items in the sequence.
+          *
+          * @brief Set the blockchain parameters in a flexible manner.
+          * @ingroup privileged
+          *
+          * @param packed_parameters - buffer to hold the packed data with the format described above.
+         */
+         void set_parameters_packed( span<const char> packed_parameters );
+
+         /**
           * Check if an account is privileged.
           *
           * @ingroup privileged
