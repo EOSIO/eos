@@ -2,11 +2,12 @@
 set -eo pipefail
 # environment
 . ./.cicd/helpers/general.sh
+[[ -z "$BUILDKITE_BASIC_AGENT_QUEUE" ]] && BUILDKITE_BUILD_AGENT_QUEUE='automation-basic-builder-fleet'
+[[ -z "$BUILDKITE_BUILD_AGENT_QUEUE" ]] && BUILDKITE_BUILD_AGENT_QUEUE='automation-eks-eos-builder-fleet'
+[[ -z "$BUILDKITE_TEST_AGENT_QUEUE" ]] && BUILDKITE_TEST_AGENT_QUEUE='automation-eks-eos-tester-fleet'
 export PLATFORMS_JSON_ARRAY='[]'
 [[ -z "$ROUNDS" ]] && export ROUNDS='1'
 [[ -z "$ROUND_SIZE" ]] && export ROUND_SIZE='1'
-BUILDKITE_BUILD_AGENT_QUEUE='automation-eks-eos-builder-fleet'
-BUILDKITE_TEST_AGENT_QUEUE='automation-eks-eos-tester-fleet'
 # attach pipeline documentation
 export DOCS_URL="https://github.com/EOSIO/eos/blob/$(git rev-parse HEAD)/.cicd"
 export RETRY="$([[ "$BUILDKITE" == 'true' ]] && buildkite-agent meta-data get pipeline-upload-retries --default '0' || echo "${RETRY:-0}")"
@@ -732,7 +733,7 @@ EOF
   - label: ":git: Git Submodule Regression Check"
     command: "./.cicd/submodule-regression-check.sh"
     agents:
-      queue: "automation-basic-builder-fleet"
+      queue: "$BUILDKITE_BASIC_AGENT_QUEUE"
     timeout: ${TIMEOUT:-5}
 
   - label: ":beer: Brew Updater"
@@ -740,7 +741,7 @@ EOF
       buildkite-agent artifact download eosio.rb . --step ':darwin: macOS 10.15 - Package Builder'
       buildkite-agent artifact upload eosio.rb
     agents:
-      queue: "automation-basic-builder-fleet"
+      queue: "$BUILDKITE_BASIC_AGENT_QUEUE"
     timeout: ${TIMEOUT:-5}
     skip: "See BLU-30502"
 
