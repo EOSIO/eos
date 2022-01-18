@@ -23,13 +23,29 @@ namespace eosio { namespace chain { namespace webassembly {
       return context.is_account( account );
    }
 
-   bool interface::get_code_hash(
+   struct get_code_hash_result {
+      uint64_t code_sequence;
+      fc::sha256 code_hash;
+      uint8_t vm_type;
+      uint8_t vm_version;
+   };
+
+   uint32_t interface::get_code_hash(
       account_name account,
-      vm::argument_proxy<uint64_t*> code_sequence,
-      vm::argument_proxy<fc::sha256*> code_hash,
-      vm::argument_proxy<uint8_t*> vm_type,
-      vm::argument_proxy<uint8_t*> vm_version
+      uint32_t struct_version,
+      vm::span<char> packed_result
    ) const {
-      return context.get_code_hash( account, code_sequence, code_hash, vm_type, vm_version );
+      EOS_ASSERT(struct_version == 0, contract_exception, "get_code_hash with unsupported struct_version");
+      get_code_hash_result result;
+      context.get_code_hash(account, result.code_sequence, result.code_hash, result.vm_type, result.vm_version);
+
+      auto s = fc::raw::pack_size(result);
+      if (s <= packed_result.size()) {
+         datastream<char*> ds(packed_result.data(), s);
+         fc::raw::pack(ds, result);
+      }
+      return s;
    }
 }}} // ns eosio::chain::webassembly
+
+FC_REFLECT(eosio::chain::webassembly::get_code_hash_result, (code_sequence)(code_hash)(vm_type)(vm_version))

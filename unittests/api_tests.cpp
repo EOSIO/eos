@@ -3089,7 +3089,7 @@ BOOST_AUTO_TEST_CASE(action_results_tests) { try {
 
 static const char get_code_hash_wast[] = R"=====(
 (module
-   (import "env" "get_code_hash" (func $get_code_hash (param i64 i32 i32 i32 i32) (result i32)))
+   (import "env" "get_code_hash" (func $get_code_hash (param i64 i32 i32 i32) (result i32)))
    (import "env" "prints_l" (func $prints_l (param i32 i32)))
    (import "env" "printui" (func $printui (param i64)))
    (import "env" "printhex" (func $printhex (param i32 i32)))
@@ -3101,10 +3101,9 @@ static const char get_code_hash_wast[] = R"=====(
       (call $printui (i64.extend_u/i32
          (call $get_code_hash
             (get_local $2)
+            (i32.const 0)
             (i32.const 8)
-            (i32.const 16)
-            (i32.const 48)
-            (i32.const 49)
+            (i32.const 42)
          )
       ))
       (call $prints_l (i32.const 4) (i32.const 1))
@@ -3127,12 +3126,12 @@ BOOST_AUTO_TEST_CASE(get_code_hash_tests) { try {
    t.set_code("gethash"_n, get_code_hash_wast);
    t.produce_blocks(1);
 
-   auto check = [&](account_name acc, bool expected_ret, uint64_t expected_seq) {
+   auto check = [&](account_name acc, uint64_t expected_seq) {
       fc::sha256 expected_code_hash;
       auto obj = t.control->db().find<account_metadata_object,by_name>(acc);
       if(obj)
          expected_code_hash = obj->code_hash;
-      auto expected = std::to_string(expected_ret) + ":" + std::to_string(expected_seq) +
+      auto expected = "42:" + std::to_string(expected_seq) +
          ":" + expected_code_hash.str() + ":0:0";
 
       signed_transaction trx;
@@ -3145,15 +3144,15 @@ BOOST_AUTO_TEST_CASE(get_code_hash_tests) { try {
       t.produce_block();
    };
 
-   check("gethash"_n, true, 1);
-   check("nonexisting"_n, false, 0);
-   check("test"_n, false, 0);
+   check("gethash"_n, 1);
+   check("nonexisting"_n, 0);
+   check("test"_n, 0);
    t.set_code("test"_n, contracts::test_api_wasm());
-   check("test"_n, true, 1);
+   check("test"_n, 1);
    t.set_code("test"_n, get_code_hash_wast);
-   check("test"_n, true, 2);
+   check("test"_n, 2);
    t.set_code("test"_n, std::vector<uint8_t>{});
-   check("test"_n, false, 3);
+   check("test"_n, 3);
 } FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_SUITE_END()

@@ -475,22 +475,26 @@ namespace webassembly {
          /**
           * Retrieves the code hash for an account, if any.
           *
+          * The result is the packed version of this struct:
+          *
+          * struct {
+          *    uint64_t code_sequence;
+          *    fc::sha256 code_hash;
+          *    uint8_t vm_type;
+          *    uint8_t vm_version;
+          * } result;
+          *
           * @ingroup authorization
           * @param account - name of the account to check.
-          * @param code_sequence - Receives the number of times code has changed, or 0 if account does not exist.
-          * @param code_hash - Receives the code_hash, or empty if code not set or account does not exist.
-          * @param vm_type - Receives the vm type, or 0 if code not set or account does not exist.
-          * @param vm_version - Receives the vm version, or 0 if code not set or account does not exist.
+          * @param struct_version - must be 0.
+          * @param packed_result - receives the packed result.
           *
-          * @return true if the account exists and has code.
-          * @return false otherwise.
+          * @return the size of the packed result.
          */
-         bool get_code_hash(
+         uint32_t get_code_hash(
             account_name account,
-            vm::argument_proxy<uint64_t*> code_sequence,
-            vm::argument_proxy<fc::sha256*> code_hash,
-            vm::argument_proxy<uint8_t*> vm_type,
-            vm::argument_proxy<uint8_t*> vm_version) const;
+            uint32_t struct_version,
+            vm::span<char> packed_result) const;
 
          /**
           * Returns the time in microseconds from 1970 of the current block.
