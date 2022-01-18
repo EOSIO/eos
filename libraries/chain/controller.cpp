@@ -1565,9 +1565,9 @@ struct controller_impl {
                               };
    } FC_CAPTURE_AND_RETHROW() } /// finalize_block
 
-   void create_completed_block(block_state_ptr bsp) {
+   void create_completed_block(const block_state_ptr& bsp) {
       auto reset_pending_on_exit = fc::make_scoped_exit([this] { pending.reset(); });
-      pending->_block_stage = completed_block{ bsp };
+      pending->_block_stage      = completed_block{bsp};
       pending->push();
    }
 

@@ -1878,6 +1878,8 @@ bool producer_plugin_impl::process_unapplied_trxs( const fc::time_point& deadlin
             exhausted = true;
             break;
          }
+         if (!complete_produced_block_if_ready())
+            return false;
 
          const transaction_metadata_ptr trx = itr->trx_meta;
          ++num_processed;
