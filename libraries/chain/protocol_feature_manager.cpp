@@ -218,6 +218,7 @@ also removes an inadvertent restriction on custom sections.
             // SHA256 hash of the raw message below within the comment delimiters (do not modify message below).
 /*
 Builtin protocol feature: BLOCKCHAIN_PARAMETERS
+
 Allows privileged contracts to get and set subsets of blockchain parameters.
 */
    ;
