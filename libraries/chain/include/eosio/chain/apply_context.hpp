@@ -487,6 +487,9 @@ class apply_context {
        */
       bool is_account(const account_name& account)const;
 
+      bool get_code_hash(
+         account_name account, uint64_t* code_sequence, fc::sha256* code_hash, uint8_t* vm_type, uint8_t* vm_version) const;
+
       /**
        * Requires that the current action be delivered to account
        */

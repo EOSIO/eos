@@ -25,6 +25,7 @@ enum class builtin_protocol_feature_t : uint32_t {
    wtmsig_block_signatures,
    action_return_value,
    configurable_wasm_limits,
+   get_code_hash,
 };
 
 struct protocol_feature_subjective_restrictions {

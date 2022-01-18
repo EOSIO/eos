@@ -22,4 +22,14 @@ namespace eosio { namespace chain { namespace webassembly {
    bool interface::is_account( account_name account ) const {
       return context.is_account( account );
    }
+
+   bool interface::get_code_hash(
+      account_name account,
+      vm::argument_proxy<uint64_t*> code_sequence,
+      vm::argument_proxy<fc::sha256*> code_hash,
+      vm::argument_proxy<uint8_t*> vm_type,
+      vm::argument_proxy<uint8_t*> vm_version
+   ) const {
+      return context.get_code_hash( account, code_sequence, code_hash, vm_type, vm_version );
+   }
 }}} // ns eosio::chain::webassembly

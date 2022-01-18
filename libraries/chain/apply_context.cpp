@@ -207,6 +207,27 @@ bool apply_context::is_account( const account_name& account )const {
    return nullptr != db.find<account_object,by_name>( account );
 }
 
+bool apply_context::get_code_hash(
+   account_name account, uint64_t* code_sequence, fc::sha256* code_hash, uint8_t* vm_type, uint8_t* vm_version) const {
+
+   auto obj = db.find<account_metadata_object,by_name>(account);
+   if(!obj || obj->code_hash == fc::sha256{}) {
+      if(obj)
+         *code_sequence = obj->code_sequence;
+      else
+         *code_sequence = 0;
+      *code_hash = {};
+      *vm_type = 0;
+      *vm_version = 0;
+      return false;
+   }
+   *code_sequence = obj->code_sequence;
+   *code_hash = obj->code_hash;
+   *vm_type = obj->vm_type;
+   *vm_version = obj->vm_version;
+   return true;
+}
+
 void apply_context::require_authorization( const account_name& account ) {
    for( uint32_t i=0; i < act->authorization.size(); i++ ) {
      if( act->authorization[i].actor == account ) {

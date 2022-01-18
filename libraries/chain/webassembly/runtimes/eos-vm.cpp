@@ -195,7 +195,7 @@ std::unique_ptr<wasm_instantiated_module_interface> eos_vm_runtime<Impl>::instan
 template class eos_vm_runtime<eosio::vm::interpreter>;
 template class eos_vm_runtime<eosio::vm::jit>;
 
-} 
+}
 
 template <auto HostFunction, typename... Preconditions>
 struct host_function_registrator {
@@ -356,6 +356,7 @@ REGISTER_HOST_FUNCTION(require_auth2);
 REGISTER_HOST_FUNCTION(has_auth);
 REGISTER_HOST_FUNCTION(require_recipient);
 REGISTER_HOST_FUNCTION(is_account);
+REGISTER_HOST_FUNCTION(get_code_hash);
 
 // system api
 REGISTER_HOST_FUNCTION(current_time);
