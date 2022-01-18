@@ -3,12 +3,44 @@ ENV VERSION 1
 # install dependencies.
 RUN apt-get update && \
     apt-get upgrade -y && \
-    DEBIAN_FRONTEND=noninteractive apt-get install -y git make libtinfo5 \
-    bzip2 automake libbz2-dev libssl-dev doxygen graphviz libgmp3-dev \
-    autotools-dev python2.7 python2.7-dev python3 python3-pip python3-requests \
-    python3-dev python-configparser \
-    autoconf libtool g++ gcc curl zlib1g-dev sudo ruby libusb-1.0-0-dev \
-    libcurl4-gnutls-dev pkg-config patch vim-common jq gnupg libpq-dev postgresql postgresql-server-dev-all rabbitmq-server && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y \
+    autoconf \
+    automake \
+    autotools-dev \
+    bzip2 \
+    curl \
+    doxygen \
+    g++ \
+    gcc \
+    git \
+    gnupg \
+    graphviz \
+    jq \
+    libbz2-dev \
+    libcurl4-gnutls-dev \
+    libgmp3-dev \
+    libpq-dev \
+    libssl-dev \
+    libusb-1.0-0-dev \
+    libtinfo5 \
+    libtool \
+    make \
+    patch \
+    pkg-config \
+    postgresql \
+    postgresql-server-dev-all \
+    python2.7 \
+    python2.7-dev \
+    python3 \
+    python-configparser \
+    python3-dev \
+    python3-pip \
+    python3-requests \
+    rabbitmq-server \
+    ruby \
+    sudo \
+    vim-common \
+    zlib1g-dev && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
