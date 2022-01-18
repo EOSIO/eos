@@ -210,6 +210,16 @@ also removes an inadvertent restriction on custom sections.
 */
             {}
          } )
+         (  builtin_protocol_feature_t::blockchain_parameters, builtin_protocol_feature_spec{
+            "BLOCKCHAIN_PARAMETERS",
+            fc::variant("70787548dcea1a2c52c913a37f74ce99e6caae79110d7ca7b859936a0075b314").as<digest_type>(),
+            {}
+         } )
+            // SHA256 hash of the raw message below within the comment delimiters (do not modify message below).
+/*
+Builtin protocol feature: BLOCKCHAIN_PARAMETERS
+Allows privileged contracts to get and set subsets of blockchain parameters.
+*/
    ;
 
 

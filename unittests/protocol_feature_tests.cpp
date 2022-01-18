@@ -1781,4 +1781,131 @@ BOOST_AUTO_TEST_CASE( set_action_return_value_test ) { try {
    c.produce_block();
 } FC_LOG_AND_RETHROW() }
 
+static const char import_get_parameters_packed_wast[] = R"=====(
+(module
+ (import "env" "get_parameters_packed" (func $get_parameters_packed (param i32 i32 i32 i32)(result i32)))
+ (memory $0 1)
+ (export "apply" (func $apply))
+ (func $apply (param $0 i64) (param $1 i64) (param $2 i64)
+   (drop
+      (call $get_parameters_packed
+         (i32.const 0)
+         (i32.const 4)
+         (i32.const 4)
+         (i32.const 0)
+      )
+   )
+ )
+ (data (i32.const 0) "\00\00\00\00\00\00\00\00")
+)
+)=====";
+
+BOOST_AUTO_TEST_CASE( get_parameters_packed_test ) { try {
+   tester c( setup_policy::preactivate_feature_and_new_bios );
+
+   const auto& pfm = c.control->get_protocol_feature_manager();
+   const auto& d = pfm.get_builtin_digest(builtin_protocol_feature_t::blockchain_parameters);
+   BOOST_REQUIRE(d);
+
+   BOOST_CHECK_EXCEPTION(  c.set_code( config::system_account_name, import_get_parameters_packed_wast ),
+                           wasm_exception,
+                           fc_exception_message_is( "env.get_parameters_packed unresolveable" ) );
+
+   c.preactivate_protocol_features( {*d} );
+   c.produce_block();
+
+   // ensure it now resolves
+   c.set_code( config::system_account_name, import_get_parameters_packed_wast );
+   
+   // ensure it can be called
+   auto action_priv = action( {//vector of permission_level
+                                 { config::system_account_name, 
+                                    permission_name("active") }
+                              },
+                              config::system_account_name, 
+                              action_name(), 
+                              {} );
+   BOOST_REQUIRE_EQUAL(c.push_action(std::move(action_priv), config::system_account_name.to_uint64_t()), c.success());
+
+   c.produce_block();
+
+   const auto alice_account = account_name("alice");
+   c.create_accounts( {alice_account} );
+   c.produce_block();
+
+   c.set_code( alice_account, import_get_parameters_packed_wast );
+   auto action_non_priv = action( {//vector of permission_level
+                                    { alice_account, 
+                                      permission_name("active") }
+                                  },
+                                  alice_account, 
+                                  action_name(), 
+                                  {} );
+   //ensure priviledged intrinsic cannot be called by regular account
+   BOOST_REQUIRE_EQUAL(c.push_action(std::move(action_non_priv), alice_account.to_uint64_t()),
+                       c.error("alice does not have permission to call this API"));
+
+} FC_LOG_AND_RETHROW() }
+
+static const char import_set_parameters_packed_wast[] = R"=====(
+(module
+ (import "env" "set_parameters_packed" (func $set_parameters_packed (param i32 i32)))
+ (memory $0 1)
+ (export "apply" (func $apply))
+ (func $apply (param $0 i64) (param $1 i64) (param $2 i64)
+   (call $set_parameters_packed
+         (i32.const 0)
+         (i32.const 4)
+   )
+ )
+ (data (i32.const 0) "\00\00\00\00")
+)
+)=====";
+
+BOOST_AUTO_TEST_CASE( set_parameters_packed_test ) { try {
+   tester c( setup_policy::preactivate_feature_and_new_bios );
+
+   const auto& pfm = c.control->get_protocol_feature_manager();
+   const auto& d = pfm.get_builtin_digest(builtin_protocol_feature_t::blockchain_parameters);
+   BOOST_REQUIRE(d);
+
+   BOOST_CHECK_EXCEPTION(  c.set_code( config::system_account_name, import_set_parameters_packed_wast ),
+                           wasm_exception,
+                           fc_exception_message_is( "env.set_parameters_packed unresolveable" ) );
+
+   c.preactivate_protocol_features( {*d} );
+   c.produce_block();
+
+   // ensure it now resolves
+   c.set_code( config::system_account_name, import_set_parameters_packed_wast );
+   
+   // ensure it can be called
+   auto action_priv = action( {//vector of permission_level
+                                 { config::system_account_name, 
+                                    permission_name("active") }
+                              },
+                              config::system_account_name, 
+                              action_name(), 
+                              {} );
+   BOOST_REQUIRE_EQUAL(c.push_action(std::move(action_priv), config::system_account_name.to_uint64_t()), c.success());
+
+   c.produce_block();
+
+   const auto alice_account = account_name("alice");
+   c.create_accounts( {alice_account} );
+   c.produce_block();
+
+   c.set_code( alice_account, import_set_parameters_packed_wast );
+   auto action_non_priv = action( {//vector of permission_level
+                                    { alice_account, 
+                                      permission_name("active") }
+                                  },
+                                  alice_account, 
+                                  action_name(), 
+                                  {} );
+   //ensure priviledged intrinsic cannot be called by regular account
+   BOOST_REQUIRE_EQUAL(c.push_action(std::move(action_non_priv), alice_account.to_uint64_t()),
+                       c.error("alice does not have permission to call this API"));
+} FC_LOG_AND_RETHROW() }
+
 BOOST_AUTO_TEST_SUITE_END()
