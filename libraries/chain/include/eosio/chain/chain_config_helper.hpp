@@ -42,13 +42,6 @@ public:
               typename std::enable_if_t<std::is_base_of_v<T, Y>, _dummy> = _dummy{})
     : data_entry(another.config, another.id, another.validator)
    {}
-   template <typename Y>
-   explicit data_entry(const data_entry<Y, Validator>& another, 
-              typename std::enable_if_t<!std::is_base_of_v<T, Y>, _dummy> = _dummy{})
-    : config(std::forward<T&>(T{})) {
-      FC_THROW_EXCEPTION(eosio::chain::config_parse_error, 
-      "this constructor only for compilation of template magic and shouldn't ever be called");
-   }
 
    bool is_allowed() const{
       return validator(id);
