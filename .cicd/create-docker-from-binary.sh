@@ -2,7 +2,11 @@
 echo '--- :evergreen_tree: Configuring Environment'
 set -euo pipefail
 . ./.cicd/helpers/general.sh
-buildkite-agent artifact download '*.deb' --step ':ubuntu: Ubuntu 18.04 - Package Builder' .
+if [[ "$BUILDKITE_PIPELINE_SLUG" == 'eosio-contract-build' ]]; then
+    buildkite-agent artifact download '*.deb' --step ':ubuntu: Ubuntu 20.04 - Package Builder' .
+else
+    buildkite-agent artifact download '*.deb' --step ':ubuntu: Ubuntu 18.04 - Package Builder' .
+fi
 SANITIZED_BRANCH="$(sanitize "$BUILDKITE_BRANCH")"
 echo "Branch '$BUILDKITE_BRANCH' sanitized as '$SANITIZED_BRANCH'."
 SANITIZED_TAG="$(sanitize "$BUILDKITE_TAG")"
