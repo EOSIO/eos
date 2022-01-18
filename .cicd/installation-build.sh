@@ -19,10 +19,14 @@ eval $BUILD_COMMAND
 echo '+++ :arrow_up: Pushing Container'
 for REGISTRY in "${CONTRACT_REGISTRIES[@]}"; do
     if [[ ! -z "$REGISTRY" ]]; then
-        COMMITS=("$REGISTRY:base-ubuntu-18.04-$BUILDKITE_COMMIT-$PLATFORM_TYPE")
-        # Platform agnostic elements should be unpinned
-        if [[ "$PLATFORM_TYPE" == 'unpinned' ]] ; then
-            COMMITS=(${COMMITS[@]} "$REGISTRY:base-ubuntu-18.04-$BUILDKITE_COMMIT" "$REGISTRY:base-ubuntu-18.04-$SANITIZED_BRANCH-$BUILDKITE_COMMIT")
+        if [[ "$BUILDKITE_PIPELINE_SLUG" == 'eosio-contract-build' ]]; then
+            COMMITS=("$REGISTRY:base-$UBUNTU_VERSION-$BUILDKITE_COMMIT" "$REGISTRY:base-$UBUNTU_VERSION-$BUILDKITE_COMMIT-$PLATFORM_TYPE" "$REGISTRY:base-$UBUNTU_VERSION-$SANITIZED_BRANCH-$BUILDKITE_COMMIT")
+        else
+            COMMITS=("$REGISTRY:base-ubuntu-18.04-$BUILDKITE_COMMIT-$PLATFORM_TYPE")
+            # Platform agnostic elements should be unpinned
+            if [[ "$PLATFORM_TYPE" == 'unpinned' ]] ; then
+                COMMITS=(${COMMITS[@]} "$REGISTRY:base-ubuntu-18.04-$BUILDKITE_COMMIT" "$REGISTRY:base-ubuntu-18.04-$SANITIZED_BRANCH-$BUILDKITE_COMMIT")
+            fi
         fi
         for COMMIT in "${COMMITS[@]}"; do
             COMMIT_COMMAND="docker commit 'ci-contracts-builder-$BUILDKITE_PIPELINE_SLUG-$BUILDKITE_BUILD_NUMBER-$UBUNTU_VERSION' '$COMMIT'"
@@ -38,7 +42,7 @@ echo '--- :put_litter_in_its_place: Cleaning Up'
 DOCKER_STOP_COMMAND="docker stop 'ci-contracts-builder-$BUILDKITE_PIPELINE_SLUG-$BUILDKITE_BUILD_NUMBER-$UBUNTU_VERSION'"
 echo "$ $DOCKER_STOP_COMMAND"
 eval $DOCKER_STOP_COMMAND
-DOCKER_RM_COMMAND="docker rm 'ci-contracts-builder-$BUILDKITE_PIPELINE_SLUG-$BUILDKITE_BUILD_NUMBER-$UBUNTU_VERSION'"
+DOCKER_RM_COMMAND="docker rm 'ci-contracts-builder-$BUILDKITE_PIPELINE_SLUG-$BUILDKITE_BUILD_NUMBER-$UBUNTU_VERSION' || :"
 echo "$ $DOCKER_RM_COMMAND"
 eval $DOCKER_RM_COMMAND
 echo '--- :white_check_mark: Done!'
