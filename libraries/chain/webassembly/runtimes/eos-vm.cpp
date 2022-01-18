@@ -7,9 +7,6 @@
 //eos-vm includes
 #include <eosio/vm/backend.hpp>
 #include <eosio/chain/webassembly/preconditions.hpp>
-#ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
-#include <eosio/chain/webassembly/eos-vm-oc.hpp>
-#endif
 #include <boost/hana/string.hpp>
 
 namespace eosio { namespace chain { namespace webassembly { namespace eos_vm_runtime {

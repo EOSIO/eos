@@ -3,6 +3,9 @@
 #include <eosio/chain/types.hpp>
 #include <eosio/chain/webassembly/common.hpp>
 #include <eosio/chain/webassembly/eos-vm.hpp>
+#ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
+#include <eosio/chain/webassembly/eos-vm-oc.hpp>
+#endif
 
 #include <eosio/vm/backend.hpp>
 #include <eosio/vm/host_function.hpp>
