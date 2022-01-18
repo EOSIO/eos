@@ -3009,7 +3009,6 @@ BOOST_FIXTURE_TEST_CASE(action_ordinal_failtest3, TESTER) { try {
 
 } FC_LOG_AND_RETHROW() }
 
-#if 0 // TODO: enable when set_parameters_packed is added
 BOOST_AUTO_TEST_CASE(action_results_tests) { try {
    TESTER t;
    t.produce_blocks(2);
@@ -3085,6 +3084,5 @@ BOOST_AUTO_TEST_CASE(action_results_tests) { try {
                        action_validate_exception);
 
 } FC_LOG_AND_RETHROW() }
-#endif
 
 BOOST_AUTO_TEST_SUITE_END()
