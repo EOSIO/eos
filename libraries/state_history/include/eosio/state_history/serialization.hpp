@@ -314,6 +314,23 @@ datastream<ST>& operator<<(datastream<ST>& ds, const history_serial_wrapper<eosi
 }
 
 template <typename ST>
+datastream<ST>& operator<<(datastream<ST>& ds, const history_serial_wrapper<eosio::chain::wasm_config>& obj) {
+   fc::raw::pack(ds, fc::unsigned_int(0));
+   fc::raw::pack(ds, as_type<uint32_t>(obj.obj.max_mutable_global_bytes));
+   fc::raw::pack(ds, as_type<uint32_t>(obj.obj.max_table_elements));
+   fc::raw::pack(ds, as_type<uint32_t>(obj.obj.max_section_elements));
+   fc::raw::pack(ds, as_type<uint32_t>(obj.obj.max_linear_memory_init));
+   fc::raw::pack(ds, as_type<uint32_t>(obj.obj.max_func_local_bytes));
+   fc::raw::pack(ds, as_type<uint32_t>(obj.obj.max_nested_structures));
+   fc::raw::pack(ds, as_type<uint32_t>(obj.obj.max_symbol_bytes));
+   fc::raw::pack(ds, as_type<uint32_t>(obj.obj.max_module_bytes));
+   fc::raw::pack(ds, as_type<uint32_t>(obj.obj.max_code_bytes));
+   fc::raw::pack(ds, as_type<uint32_t>(obj.obj.max_pages));
+   fc::raw::pack(ds, as_type<uint32_t>(obj.obj.max_call_depth));
+   return ds;
+}
+
+template <typename ST>
 datastream<ST>& operator<<(datastream<ST>&                                                     ds,
                            const history_serial_wrapper<eosio::chain::global_property_object>& obj) {
    fc::raw::pack(ds, fc::unsigned_int(1));
@@ -322,7 +339,8 @@ datastream<ST>& operator<<(datastream<ST>&                                      
                          obj.db, as_type<eosio::chain::shared_producer_authority_schedule>(obj.obj.proposed_schedule)));
    fc::raw::pack(ds, make_history_serial_wrapper(obj.db, as_type<eosio::chain::chain_config>(obj.obj.configuration)));
    fc::raw::pack(ds, as_type<eosio::chain::chain_id_type>(obj.obj.chain_id));
-
+   fc::raw::pack(ds,
+                 make_history_serial_wrapper(obj.db, as_type<eosio::chain::wasm_config>(obj.obj.wasm_configuration)));
    return ds;
 }
 

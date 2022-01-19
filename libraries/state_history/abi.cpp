@@ -390,6 +390,21 @@ extern const char* const state_history_plugin_abi = R"({
             ]
         },
         {
+            "name": "wasm_config_v0", "fields": [
+                { "type": "uint32", "name": "max_mutable_global_bytes" },
+                { "type": "uint32", "name": "max_table_elements" },
+                { "type": "uint32", "name": "max_section_elements" },
+                { "type": "uint32", "name": "max_linear_memory_init" },
+                { "type": "uint32", "name": "max_func_local_bytes" },
+                { "type": "uint32", "name": "max_nested_structures" },
+                { "type": "uint32", "name": "max_symbol_bytes" },
+                { "type": "uint32", "name": "max_module_bytes" },
+                { "type": "uint32", "name": "max_code_bytes" },
+                { "type": "uint32", "name": "max_pages" },
+                { "type": "uint32", "name": "max_call_depth" }
+            ]
+        },
+        {
             "name": "global_property_v0", "fields": [
                 { "type": "uint32?", "name": "proposed_schedule_block_num" },
                 { "type": "producer_schedule", "name": "proposed_schedule" },
@@ -401,7 +416,8 @@ extern const char* const state_history_plugin_abi = R"({
                 { "type": "uint32?", "name": "proposed_schedule_block_num" },
                 { "type": "producer_authority_schedule", "name": "proposed_schedule" },
                 { "type": "chain_config", "name": "configuration" },
-                { "type": "checksum256", "name": "chain_id" }
+                { "type": "checksum256", "name": "chain_id" },
+                { "type": "wasm_config$", "name": "wasm_configuration" }
             ]
         },
         {
@@ -557,6 +573,7 @@ extern const char* const state_history_plugin_abi = R"({
         { "name": "contract_index_double", "types": ["contract_index_double_v0"] },
         { "name": "contract_index_long_double", "types": ["contract_index_long_double_v0"] },
         { "name": "chain_config", "types": ["chain_config_v0", "chain_config_v1"] },
+        { "name": "wasm_config", "types": ["wasm_config_v0"] },
         { "name": "global_property", "types": ["global_property_v0", "global_property_v1"] },
         { "name": "generated_transaction", "types": ["generated_transaction_v0"] },
         { "name": "activated_protocol_feature", "types": ["activated_protocol_feature_v0"] },
