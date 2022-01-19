@@ -3303,10 +3303,10 @@ void read_only::push_ro_transaction(const read_only::push_ro_transaction_params&
                } catch( chain::abi_exception& ) {
                   output = *trx_trace_ptr;
                }
+               vector<transaction_id_type>  pending_transactions;
+               const auto& accnt_metadata_obj = db.db().get<account_metadata_object,by_name>( params.account_name );
                if (db.is_building_block()){
-                  const auto& accnt_metadata_obj = db.db().get<account_metadata_object,by_name>( params.account_name );
                   const auto& receipts = db.get_pending_trx_receipts();
-                  vector<transaction_id_type>  pending_transactions;
                   pending_transactions.reserve(receipts.size());
                   for( transaction_receipt const& receipt : receipts ) {
                      if( std::holds_alternative<transaction_id_type>(receipt.trx) ) {
@@ -3317,9 +3317,13 @@ void read_only::push_ro_transaction(const read_only::push_ro_transaction_params&
                      }
                   }
                }
-               next(read_only::push_ro_transaction_results{db.head_block_num(), db.head_block_id(), db.last_irreversible_block_num(), db.last_irreversible_block_id(),
-                                                              accnt_metadata_obj.code_hash, std::move(pending_transactions), output});
-
+               next(read_only::push_ro_transaction_results{db.head_block_num(),
+                                                           db.head_block_id(),
+                                                           db.last_irreversible_block_num(),
+                                                           db.last_irreversible_block_id(),
+                                                           accnt_metadata_obj.code_hash,
+                                                           std::move(pending_transactions),
+                                                           output});
             } CATCH_AND_CALL(next);
          }
       });
