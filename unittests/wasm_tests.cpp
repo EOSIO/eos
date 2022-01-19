@@ -587,6 +587,24 @@ BOOST_FIXTURE_TEST_CASE( entry_import, TESTER ) try {
    BOOST_CHECK_THROW(push_transaction(trx), abort_called);
 } FC_LOG_AND_RETHROW()
 
+BOOST_FIXTURE_TEST_CASE( entry_db, TESTER ) try {
+   create_accounts( {"entrydb"_n} );
+   produce_block();
+
+   set_code("entrydb"_n, entry_db_wast);
+
+   signed_transaction trx;
+   action act;
+   act.account = "entrydb"_n;
+   act.name = ""_n;
+   act.authorization = vector<permission_level>{{"entrydb"_n,config::active_name}};
+   trx.actions.push_back(act);
+
+   set_transaction_headers(trx);
+   trx.sign(get_private_key( "entrydb"_n, "active" ), control->get_chain_id());
+   push_transaction(trx);
+} FC_LOG_AND_RETHROW()
+
 /**
  * Ensure we can load a wasm w/o memory
  */
@@ -1779,6 +1797,56 @@ BOOST_FIXTURE_TEST_CASE( varuint_memory_flags_tests, old_wasm_tester ) try {
 
    set_code(N(memflags), std::vector<uint8_t>{});
    BOOST_REQUIRE_THROW(set_code(N(memflags), varuint_memory_flags), wasm_exception);
+} FC_LOG_AND_RETHROW()
+
+static char reset_memory_fail1_wast[] = R"======(
+(module
+ (memory 2)
+ (func (export "apply") (param i64 i64 i64))
+)
+)======";
+
+// In a previous version of eos-vm, this would leave
+// memory incorrectly accessible to the next action.
+static char reset_memory_fail2_wast[] = R"======(
+(module
+ (memory 2)
+ (table 1 anyfunc)
+ (func $apply (export "apply") (param i64 i64 i64))
+ (elem (i32.const 1) $apply)
+)
+)======";
+
+static char reset_memory_fail3_wast[] = R"======(
+(module
+ (memory 1)
+ (func (export "apply") (param i64 i64 i64)
+  (i64.store (i32.const 65536) (i64.const 0))
+ )
+)
+)======";
+
+BOOST_FIXTURE_TEST_CASE( reset_memory_fail, TESTER ) try {
+   produce_block();
+   create_accounts( {"usemem"_n, "resetmem"_n, "accessmem"_n} );
+   produce_block();
+
+   set_code("usemem"_n, reset_memory_fail1_wast);
+   set_code("resetmem"_n, reset_memory_fail2_wast);
+   set_code("accessmem"_n, reset_memory_fail3_wast);
+   produce_block();
+
+   auto pushit = [&](name acct) {
+      signed_transaction trx;
+      trx.actions.push_back({ { { acct, config::active_name } }, acct, ""_n, bytes() });
+      set_transaction_headers(trx);
+      trx.sign(get_private_key( acct, "active" ), control->get_chain_id());
+      push_transaction(trx);
+   };
+   pushit("usemem"_n);
+   BOOST_CHECK_THROW(pushit("resetmem"_n), wasm_execution_error);
+   BOOST_CHECK_THROW(pushit("accessmem"_n), wasm_execution_error);
+   produce_block();
 } FC_LOG_AND_RETHROW()
 
 // TODO: Update to use eos-vm once merged
