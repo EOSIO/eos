@@ -146,7 +146,6 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       bool remove_expired_trxs( const fc::time_point& deadline );
       bool block_is_exhausted() const;
       bool remove_expired_blacklisted_trxs( const fc::time_point& deadline );
-      bool process_unapplied_trxs( const fc::time_point& deadline );
       void process_scheduled_and_incoming_trxs( const fc::time_point& deadline, size_t& pending_incoming_process_limit );
       bool process_incoming_trxs( const fc::time_point& deadline, size_t& pending_incoming_process_limit );
 
@@ -620,6 +619,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       };
 
       start_block_result start_block();
+      start_block_result process_unapplied_trxs( const fc::time_point& deadline );
 
       fc::time_point calculate_pending_block_time() const;
       fc::time_point calculate_block_deadline( const fc::time_point& ) const;
@@ -1639,8 +1639,9 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
          // limit execution of pending incoming to once per block
          size_t pending_incoming_process_limit = _unapplied_transactions.incoming_size();
 
-         if( !process_unapplied_trxs( preprocess_deadline ) )
-            return start_block_result::exhausted;
+         auto process_unapplied_trxs_result = process_unapplied_trxs( preprocess_deadline );
+         if( process_unapplied_trxs_result  != start_block_result::succeeded)
+            return process_unapplied_trxs_result;
 
          if (!complete_produced_block_if_ready())
             return start_block_result::failed;
@@ -1860,9 +1861,10 @@ private:
 
 } // anonymous namespace
 
-bool producer_plugin_impl::process_unapplied_trxs( const fc::time_point& deadline )
+producer_plugin_impl::start_block_result
+producer_plugin_impl::process_unapplied_trxs( const fc::time_point& deadline )
 {
-   bool exhausted = false;
+   start_block_result result = start_block_result::succeeded;
    if( !_unapplied_transactions.empty() ) {
       account_failures account_fails;
       chain::controller& chain = chain_plug->chain();
@@ -1876,11 +1878,11 @@ bool producer_plugin_impl::process_unapplied_trxs( const fc::time_point& deadlin
                      _unapplied_transactions.unapplied_end()   : _unapplied_transactions.persisted_end();
       while( itr != end_itr ) {
          if( deadline <= fc::time_point::now() ) {
-            exhausted = true;
+            result = start_block_result::exhausted;
             break;
          }
          if (!complete_produced_block_if_ready())
-            return false;
+            return start_block_result::failed;
 
          const transaction_metadata_ptr trx = itr->trx_meta;
          ++num_processed;
@@ -1920,7 +1922,7 @@ bool producer_plugin_impl::process_unapplied_trxs( const fc::time_point& deadlin
             if( trace->except ) {
                if( exception_is_exhausted( *trace->except, deadline_is_subjective ) ) {
                   if( block_is_exhausted() ) {
-                     exhausted = true;
+                     result = start_block_result::exhausted;
                      // don't erase, subjective failure so try again next time
                      break;
                   }
@@ -1967,7 +1969,7 @@ bool producer_plugin_impl::process_unapplied_trxs( const fc::time_point& deadlin
                ("m", num_processed)( "n", unapplied_trxs_size )("applied", num_applied)("failed", num_failed) );
       account_fails.report();
    }
-   return !exhausted;
+   return result;
 }
 
 void producer_plugin_impl::process_scheduled_and_incoming_trxs( const fc::time_point& deadline, size_t& pending_incoming_process_limit )
@@ -2241,11 +2243,15 @@ void producer_plugin_impl::schedule_delayed_production_loop(const std::weak_ptr<
 }
 
 bool producer_plugin_impl::maybe_produce_block() {
-   auto reschedule = fc::make_scoped_exit([this] { schedule_production_loop(); });
-
    if (signatures_status.load() != signatures_status_type::none) {
+      // If the condition is true, it means the previous block is either waiting for
+      // its signatures or waiting to be completed, the pending block cannot be produced
+      // immediately to ensure that no more than one block is signed at any time.
+      schedule_maybe_produce_block(false);
       return false;
    }
+
+   auto reschedule = fc::make_scoped_exit([this] { schedule_production_loop(); });
 
    try {
       produce_block();
