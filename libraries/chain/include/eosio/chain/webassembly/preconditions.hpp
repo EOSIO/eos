@@ -70,7 +70,7 @@ namespace eosio { namespace chain { namespace webassembly {
    inline static bool is_aliasing(const T& s1, const U& s2) {
       std::uintptr_t a_begin = reinterpret_cast<std::uintptr_t>(s1.data());
       std::uintptr_t a_end   = a_begin + s1.size_bytes();
-      
+
       std::uintptr_t b_begin = reinterpret_cast<std::uintptr_t>(s2.data());
       std::uintptr_t b_end   = b_begin + s2.size_bytes();
 
@@ -86,7 +86,7 @@ namespace eosio { namespace chain { namespace webassembly {
 
       // Intersection interval is [b_begin, std::min(a_end, b_end)).
 
-      if (std::min(a_end, b_end) == b_begin) // intersection interval has zero size 
+      if (std::min(a_end, b_end) == b_begin) // intersection interval has zero size
          return false;
 
       return true;
@@ -120,8 +120,8 @@ namespace eosio { namespace chain { namespace webassembly {
 
    namespace detail {
       template<typename T>
-      vm::span<const char> to_span(const vm::argument_proxy<T*>& val) { 
-         return {static_cast<const char*>(val.get_original_pointer()), sizeof(T)}; 
+      vm::span<const char> to_span(const vm::argument_proxy<T*>& val) {
+         return {static_cast<const char*>(val.get_original_pointer()), sizeof(T)};
       }
 
       template<typename T>

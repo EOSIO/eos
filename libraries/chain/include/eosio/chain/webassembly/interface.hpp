@@ -509,6 +509,31 @@ namespace webassembly {
          bool is_account(account_name account) const;
 
          /**
+          * Retrieves the code hash for an account, if any.
+          *
+          * The result is the packed version of this struct:
+          *
+          * struct {
+          *    varuint32 struct_version;
+          *    uint64_t code_sequence;
+          *    fc::sha256 code_hash;
+          *    uint8_t vm_type;
+          *    uint8_t vm_version;
+          * } result;
+          *
+          * @ingroup authorization
+          * @param account - name of the account to check.
+          * @param struct_version - use 0.
+          * @param packed_result - receives the packed result.
+          *
+          * @return the size of the packed result.
+         */
+         uint32_t get_code_hash(
+            account_name account,
+            uint32_t struct_version,
+            vm::span<char> packed_result) const;
+
+         /**
           * Returns the time in microseconds from 1970 of the current block.
           *
           * @ingroup system
@@ -734,13 +759,13 @@ namespace webassembly {
           * @param itr - iterator to the table row containing the record to update.
           * @param payer -  the account that pays for the storage costs.
           * @param buffer - new updated record.
-          * 
-          * @remark This function does not allow changing the primary key of a 
-          * table row. The serialized data that is stored in the table row of a 
-          * primary table may include a primary key and that primary key value 
-          * could be changed by the contract calling the db_update_i64 intrinsic; 
+          *
+          * @remark This function does not allow changing the primary key of a
+          * table row. The serialized data that is stored in the table row of a
+          * primary table may include a primary key and that primary key value
+          * could be changed by the contract calling the db_update_i64 intrinsic;
           * but that does not change the actual primary key of the table row.
-          * 
+          *
           * @pre `itr` points to an existing table row in the table.
           * @post the record contained in the table row pointed to by `itr` is replaced with the new updated record.
           */

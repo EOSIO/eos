@@ -1230,7 +1230,7 @@ BOOST_AUTO_TEST_CASE(deferred_inline_action_subjective_limit_failure) { try {
    } );
    CALL_TEST_FUNCTION(chain, "test_transaction", "send_deferred_transaction_4k_action", {} );
    BOOST_CHECK(!trace);
-   BOOST_CHECK_EXCEPTION(chain.produce_block( fc::seconds(2) ), fc::exception, 
+   BOOST_CHECK_EXCEPTION(chain.produce_block( fc::seconds(2) ), fc::exception,
                          [](const fc::exception& e) {
                             return expect_assert_message(e, "inline action too big for nonprivileged account");
                          }
@@ -3061,8 +3061,8 @@ BOOST_AUTO_TEST_CASE(action_results_tests) { try {
    t.set_code( config::system_account_name, contracts::action_results_wasm() );
    t.produce_blocks(1);
    call_autoresret_and_check( config::system_account_name,
-                              config::system_account_name, 
-                              "retmaxlim"_n, 
+                              config::system_account_name,
+                              "retmaxlim"_n,
                               [&]( const transaction_trace_ptr& res ) {
                                  BOOST_CHECK_EQUAL( res->receipt->status, transaction_receipt::executed );
 
@@ -3077,12 +3077,82 @@ BOOST_AUTO_TEST_CASE(action_results_tests) { try {
                                                                   expected_vec.end() );
                               } );
    t.produce_blocks(1);
-   BOOST_REQUIRE_THROW(call_autoresret_and_check( config::system_account_name, 
-                                                  config::system_account_name, 
-                                                  "setliminv"_n, 
+   BOOST_REQUIRE_THROW(call_autoresret_and_check( config::system_account_name,
+                                                  config::system_account_name,
+                                                  "setliminv"_n,
                                                   [&]( auto res ) {}),
                        action_validate_exception);
 
+} FC_LOG_AND_RETHROW() }
+
+static const char get_code_hash_wast[] = R"=====(
+(module
+   (import "env" "get_code_hash" (func $get_code_hash (param i64 i32 i32 i32) (result i32)))
+   (import "env" "prints_l" (func $prints_l (param i32 i32)))
+   (import "env" "printui" (func $printui (param i64)))
+   (import "env" "printhex" (func $printhex (param i32 i32)))
+   (memory $0 32)
+   (data (i32.const 4) ":")
+   (data (i32.const 8) "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx")
+   (export "apply" (func $apply))
+   (func $apply (param $0 i64) (param $1 i64) (param $2 i64)
+      (call $printui (i64.extend_u/i32
+         (call $get_code_hash
+            (get_local $2)
+            (i32.const 0)
+            (i32.const 8)
+            (i32.const 43)
+         )
+      ))
+      (call $prints_l (i32.const 4) (i32.const 1))
+      (call $printui (i64.load8_u offset=8 (i32.const 0)))
+      (call $prints_l (i32.const 4) (i32.const 1))
+      (call $printui (i64.load offset=9 (i32.const 0)))
+      (call $prints_l (i32.const 4) (i32.const 1))
+      (call $printhex (i32.const 17) (i32.const 32))
+      (call $prints_l (i32.const 4) (i32.const 1))
+      (call $printui (i64.load8_u offset=49 (i32.const 0)))
+      (call $prints_l (i32.const 4) (i32.const 1))
+      (call $printui (i64.load8_u offset=50 (i32.const 0)))
+   )
+)
+)=====";
+
+BOOST_AUTO_TEST_CASE(get_code_hash_tests) { try {
+   TESTER t;
+   t.produce_blocks(2);
+   t.create_account("gethash"_n);
+   t.create_account("test"_n);
+   t.set_code("gethash"_n, get_code_hash_wast);
+   t.produce_blocks(1);
+
+   auto check = [&](account_name acc, uint64_t expected_seq) {
+      fc::sha256 expected_code_hash;
+      auto obj = t.control->db().find<account_metadata_object,by_name>(acc);
+      if(obj)
+         expected_code_hash = obj->code_hash;
+      auto expected = "43:0:" + std::to_string(expected_seq) +
+         ":" + expected_code_hash.str() + ":0:0";
+
+      signed_transaction trx;
+      trx.actions.emplace_back(vector<permission_level>{{"gethash"_n, config::active_name}}, "gethash"_n, acc, bytes{});
+      t.set_transaction_headers(trx, t.DEFAULT_EXPIRATION_DELTA);
+      trx.sign(t.get_private_key("gethash"_n, "active"), t.control->get_chain_id());
+      auto tx_trace = t.push_transaction(trx);
+      BOOST_CHECK_EQUAL(tx_trace->receipt->status, transaction_receipt::executed);
+      BOOST_REQUIRE(tx_trace->action_traces.front().console == expected);
+      t.produce_block();
+   };
+
+   check("gethash"_n, 1);
+   check("nonexisting"_n, 0);
+   check("test"_n, 0);
+   t.set_code("test"_n, contracts::test_api_wasm());
+   check("test"_n, 1);
+   t.set_code("test"_n, get_code_hash_wast);
+   check("test"_n, 2);
+   t.set_code("test"_n, std::vector<uint8_t>{});
+   check("test"_n, 3);
 } FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_SUITE_END()

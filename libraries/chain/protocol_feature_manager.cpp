@@ -221,6 +221,17 @@ Builtin protocol feature: BLOCKCHAIN_PARAMETERS
 
 Allows privileged contracts to get and set subsets of blockchain parameters.
 */
+         (  builtin_protocol_feature_t::get_code_hash, builtin_protocol_feature_spec{
+            "GET_CODE_HASH",
+            fc::variant("d2596697fed14a0840013647b99045022ae6a885089f35a7e78da7a43ad76ed4").as<digest_type>(),
+            // SHA256 hash of the raw message below within the comment delimiters (do not modify message below).
+/*
+Builtin protocol feature: GET_CODE_HASH
+
+Enables new `get_code_hash` intrinsic which gets the current code hash of an account.
+*/
+            {}
+         } )
    ;
 
 
