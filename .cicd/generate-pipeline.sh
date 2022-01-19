@@ -328,7 +328,7 @@ EOF
         done
         # serial tests
         echo '    # serial tests'
-        echo $PLATFORMS_JSON_ARRAY | jq -cr '.[]' | grep -vP '^ship' | while read -r PLATFORM_JSON; do
+        echo $PLATFORMS_JSON_ARRAY | jq -cr '.[]' | while read -r PLATFORM_JSON; do
             IFS=$oIFS
             if [[ -z "$TEST" ]]; then
                 SERIAL_TESTS="$(cat tests/CMakeLists.txt | grep nonparallelizable_tests | grep -v "^#" | awk -F ' ' '{ print $2 }' | sort | uniq)"
@@ -351,7 +351,7 @@ EOF
       manual:
         permit_on_passed: true
     timeout: ${TIMEOUT:-20}
-    skip: $(echo "$PLATFORM_JSON" | jq -r '.PLATFORM_SKIP_VAR | env[.] // empty')${SKIP_SERIAL_TESTS}
+    skip: $(echo "$PLATFORM_JSON" | jq -r '.PLATFORM_SKIP_VAR | env[.] // empty')${SKIP_SERIAL_TESTS}$([[ "$(echo "$TEST_NAME" | grep -cP '^ship')" == '1' ]] && echo 'See AUTO-1711' || echo '')
 
 EOF
                 elif [ $TEST_NAME != 'rodeos_test_eosvmoc'  -a \
