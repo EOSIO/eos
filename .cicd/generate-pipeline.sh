@@ -328,7 +328,7 @@ EOF
         done
         # serial tests
         echo '    # serial tests'
-        echo $PLATFORMS_JSON_ARRAY | jq -cr '.[]' | while read -r PLATFORM_JSON; do
+        echo $PLATFORMS_JSON_ARRAY | jq -cr '.[]' | grep -vP '^ship' | while read -r PLATFORM_JSON; do
             IFS=$oIFS
             if [[ -z "$TEST" ]]; then
                 SERIAL_TESTS="$(cat tests/CMakeLists.txt | grep nonparallelizable_tests | grep -v "^#" | awk -F ' ' '{ print $2 }' | sort | uniq)"
