@@ -402,8 +402,14 @@ EOF
         permit_on_passed: true
     timeout: ${TIMEOUT:-60}
     skip: $(echo "$PLATFORM_JSON" | jq -r '.PLATFORM_SKIP_VAR | env[.] // empty')${SKIP_SERIAL_TESTS}
-
 EOF
+                if [[ "$(echo "$TEST_NAME" | grep -cP '^ship')" == '1' ]]; then
+                    cat <<YAML
+    env:
+      NPM_INSTALL: "true"
+YAML
+                fi
+                echo ''
                 fi
             done
             IFS=$nIFS
