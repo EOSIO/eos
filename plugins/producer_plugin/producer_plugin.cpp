@@ -204,7 +204,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       };
 
       std::future<std::function<void()>>  complete_produced_block_fut;
-      std::atomic<signatures_status_type> signatures_status;
+      std::atomic<signatures_status_type> signatures_status = signatures_status_type::none;
       
       bool                                complete_produced_block();
       bool                                complete_produced_block_if_ready();
