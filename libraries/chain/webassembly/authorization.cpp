@@ -24,6 +24,7 @@ namespace eosio { namespace chain { namespace webassembly {
    }
 
    struct get_code_hash_result {
+      unsigned_int struct_version;
       uint64_t code_sequence;
       fc::sha256 code_hash;
       uint8_t vm_type;
@@ -35,8 +36,8 @@ namespace eosio { namespace chain { namespace webassembly {
       uint32_t struct_version,
       vm::span<char> packed_result
    ) const {
-      EOS_ASSERT(struct_version == 0, contract_exception, "get_code_hash with unsupported struct_version");
-      get_code_hash_result result;
+      struct_version = std::min(uint32_t(0), struct_version);
+      get_code_hash_result result = {struct_version};
       context.get_code_hash(account, result.code_sequence, result.code_hash, result.vm_type, result.vm_version);
 
       auto s = fc::raw::pack_size(result);
@@ -48,4 +49,4 @@ namespace eosio { namespace chain { namespace webassembly {
    }
 }}} // ns eosio::chain::webassembly
 
-FC_REFLECT(eosio::chain::webassembly::get_code_hash_result, (code_sequence)(code_hash)(vm_type)(vm_version))
+FC_REFLECT(eosio::chain::webassembly::get_code_hash_result, (struct_version)(code_sequence)(code_hash)(vm_type)(vm_version))

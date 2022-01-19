@@ -3101,17 +3101,19 @@ static const char get_code_hash_wast[] = R"=====(
             (get_local $2)
             (i32.const 0)
             (i32.const 8)
-            (i32.const 42)
+            (i32.const 43)
          )
       ))
       (call $prints_l (i32.const 4) (i32.const 1))
-      (call $printui (i64.load offset=8 (i32.const 0)))
+      (call $printui (i64.load8_u offset=8 (i32.const 0)))
       (call $prints_l (i32.const 4) (i32.const 1))
-      (call $printhex (i32.const 16) (i32.const 32))
+      (call $printui (i64.load offset=9 (i32.const 0)))
       (call $prints_l (i32.const 4) (i32.const 1))
-      (call $printui (i64.load8_u offset=48 (i32.const 0)))
+      (call $printhex (i32.const 17) (i32.const 32))
       (call $prints_l (i32.const 4) (i32.const 1))
       (call $printui (i64.load8_u offset=49 (i32.const 0)))
+      (call $prints_l (i32.const 4) (i32.const 1))
+      (call $printui (i64.load8_u offset=50 (i32.const 0)))
    )
 )
 )=====";
@@ -3129,7 +3131,7 @@ BOOST_AUTO_TEST_CASE(get_code_hash_tests) { try {
       auto obj = t.control->db().find<account_metadata_object,by_name>(acc);
       if(obj)
          expected_code_hash = obj->code_hash;
-      auto expected = "42:" + std::to_string(expected_seq) +
+      auto expected = "43:0:" + std::to_string(expected_seq) +
          ":" + expected_code_hash.str() + ":0:0";
 
       signed_transaction trx;

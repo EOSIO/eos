@@ -514,6 +514,7 @@ namespace webassembly {
           * The result is the packed version of this struct:
           *
           * struct {
+          *    varuint32 struct_version;
           *    uint64_t code_sequence;
           *    fc::sha256 code_hash;
           *    uint8_t vm_type;
@@ -522,7 +523,7 @@ namespace webassembly {
           *
           * @ingroup authorization
           * @param account - name of the account to check.
-          * @param struct_version - must be 0.
+          * @param struct_version - use 0.
           * @param packed_result - receives the packed result.
           *
           * @return the size of the packed result.
