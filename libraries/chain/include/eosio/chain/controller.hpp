@@ -96,6 +96,8 @@ namespace eosio { namespace chain {
             flat_set<account_name>   resource_greylist;
             flat_set<account_name>   trusted_producers;
             uint32_t                 greylist_limit         = chain::config::maximum_elastic_resource_multiplier;
+
+            flat_set<account_name>   profile_accounts;
          };
 
          enum class block_status {
@@ -283,6 +285,8 @@ namespace eosio { namespace chain {
          bool is_trusted_producer( const account_name& producer) const;
 
          bool contracts_console()const;
+
+         bool is_profiling(account_name name) const;
 
          chain_id_type get_chain_id()const;
 

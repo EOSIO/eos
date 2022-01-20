@@ -241,6 +241,8 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
 #endif
          })->default_value(eosio::chain::config::default_wasm_runtime, default_wasm_runtime_str), wasm_runtime_opt.c_str()
          )
+         ("profile-account", boost::program_options::value<vector<string>>()->composing(),
+          "The name of an account whose code will be profiled")
          ("abi-serializer-max-time-ms", bpo::value<uint32_t>()->default_value(config::default_abi_serializer_max_time_us / 1000),
           "Override default maximum ABI serialization time allowed in ms")
          ("chain-state-db-size-mb", bpo::value<uint64_t>()->default_value(config::default_state_size / (1024  * 1024)), "Maximum size (in MiB) of the chain state database")
@@ -725,6 +727,8 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 
       if( options.count( "wasm-runtime" ))
          my->wasm_runtime = options.at( "wasm-runtime" ).as<vm_type>();
+
+      LOAD_VALUE_SET( options, "profile-account", my->chain_config->profile_accounts );
 
       if(options.count("abi-serializer-max-time-ms"))
          my->abi_serializer_max_time_us = fc::microseconds(options.at("abi-serializer-max-time-ms").as<uint32_t>() * 1000);
