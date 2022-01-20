@@ -48,7 +48,7 @@
         "pipeline-branch": "develop",
         "dependencies": // dependencies to pull for a build of contracts, by branch, tag, or commit hash
         {
-            "eosio.cdt": "develop"
+            "eosio.cdt": "kli-EPE-2001-unify-format-get/set_parameters_packed"
         }
     }
 }
