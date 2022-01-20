@@ -2243,15 +2243,14 @@ void producer_plugin_impl::schedule_delayed_production_loop(const std::weak_ptr<
 }
 
 bool producer_plugin_impl::maybe_produce_block() {
+   auto reschedule = fc::make_scoped_exit([this] { schedule_production_loop(); });
+
    if (signatures_status.load() != signatures_status_type::none) {
       // If the condition is true, it means the previous block is either waiting for
       // its signatures or waiting to be completed, the pending block cannot be produced
       // immediately to ensure that no more than one block is signed at any time.
-      schedule_maybe_produce_block(false);
       return false;
    }
-
-   auto reschedule = fc::make_scoped_exit([this] { schedule_production_loop(); });
 
    try {
       produce_block();
