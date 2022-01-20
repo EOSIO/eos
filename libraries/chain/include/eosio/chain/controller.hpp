@@ -354,6 +354,9 @@ namespace eosio { namespace chain {
 
       static fc::optional<chain_id_type> extract_chain_id_from_db( const path& state_dir );
 
+      void replace_producer_keys( const public_key_type& key );
+      void replace_account_keys( name account, name permission, const public_key_type& key );
+
       private:
          friend class apply_context;
          friend class transaction_context;
