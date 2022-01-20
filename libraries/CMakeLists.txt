@@ -1,8 +1,13 @@
 add_subdirectory( fc )
 add_subdirectory( builtins )
+
+# Suppress warnings on 3rdParty Library
+add_definitions( -w )
 add_subdirectory( softfloat )
-add_subdirectory( chainbase )
 add_subdirectory( wasm-jit )
+remove_definitions( -w )
+
+add_subdirectory( chainbase )
 add_subdirectory( appbase )
 add_subdirectory( chain )
 add_subdirectory( testing )
