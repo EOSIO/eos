@@ -54,8 +54,10 @@ private:
          return;
       }
       const auto& itr = tracked_blocks.find( trace->block_num );
-      if( itr == tracked_blocks.end() )
+      if (itr == tracked_blocks.end()) {
+         elog("unable to find tracked block ${block_num}", ("block_num", trace->block_num));
          return;
+      }
       auto& tracked = itr->second;
       if( chain::is_onblock( *trace )) {
          tracked.onblock_trace.emplace( cache_trace{trace, t} );
@@ -89,8 +91,10 @@ private:
          auto bt = create_block_trace( block_state );
          const auto& itr = tracked_blocks.find( block_state->block_num );
 
-         if( itr == tracked_blocks.end() )
+         if (itr == tracked_blocks.end()) {
+            elog("unable to find tracked block ${block_num}", ("block_num", block_state->block_num));
             return;
+         }
          auto& tracked = itr->second;
          std::vector<transaction_trace_t>& traces = std::get<std::vector<transaction_trace_t>>(bt.transactions);
          traces.reserve( block_state->block->transactions.size() + 1 );
