@@ -11,6 +11,7 @@ namespace eosio { namespace chain {
          transaction_checktime_timer() = delete;
          transaction_checktime_timer(const transaction_checktime_timer&) = delete;
          transaction_checktime_timer(transaction_checktime_timer&&) = default;
+         transaction_checktime_timer(platform_timer& timer);
          ~transaction_checktime_timer();
 
          void start(fc::time_point tp);
@@ -25,7 +26,6 @@ namespace eosio { namespace chain {
       private:
          platform_timer& _timer;
 
-         transaction_checktime_timer(platform_timer& timer);
          friend controller_impl;
    };
 
