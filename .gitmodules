@@ -28,3 +28,6 @@
 [submodule "libraries/appbase"]
 	path = libraries/appbase
 	url = https://github.com/eosio/appbase
+[submodule "libraries/spdlog"]
+	path = libraries/spdlog
+	url = https://github.com/gabime/spdlog
