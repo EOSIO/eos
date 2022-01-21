@@ -58,9 +58,9 @@ else # Linux
     fi
     . "$HELPERS_DIR/file-hash.sh" "$CICD_DIR/platforms/$PLATFORM_TYPE/$IMAGE_TAG.dockerfile"
     COMMANDS="$PRE_COMMANDS && $COMMANDS"
-    DOCKER_RUN="docker run $ARGS $(buildkite-intrinsics) --env CMAKE_EXTRAS='$CMAKE_EXTRAS' '$FULL_TAG' bash -c '$COMMANDS'"
-    echo "$ $DOCKER_RUN"
-    eval $DOCKER_RUN
+    DOCKER_RUN_ARGS="$ARGS $(buildkite-intrinsics) --env CMAKE_EXTRAS='$CMAKE_EXTRAS' '$FULL_TAG' bash -c '$COMMANDS'"
+    echo "$ docker run $DOCKER_RUN_ARGS"
+    eval "docker run ${PROXY_DOCKER_RUN_ARGS}${DOCKER_RUN_ARGS}"
 fi
 if [[ "$BUILDKITE" == 'true' && "$ENABLE_INSTALL" != 'true' ]]; then
     echo '--- :arrow_up: Uploading Artifacts'

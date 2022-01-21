@@ -15,10 +15,10 @@ else # Linux
     TEST_COMMAND="'\"'$MOUNTED_DIR/$1'\"' ${@: 2}"
     COMMANDS="echo \"$ $TEST_COMMAND\" && eval $TEST_COMMAND"
     . "$HELPERS_DIR/file-hash.sh" "$CICD_DIR/platforms/$PLATFORM_TYPE/$IMAGE_TAG.dockerfile"
-    DOCKER_RUN_COMMAND="docker run --rm --init -v \"\$(pwd):$MOUNTED_DIR\" $(buildkite-intrinsics) -e JOBS -e BUILDKITE_API_KEY '$FULL_TAG' bash -c '$COMMANDS'"
+    DOCKER_RUN_COMMAND="--rm --init -v \"\$(pwd):$MOUNTED_DIR\" $(buildkite-intrinsics) -e JOBS -e BUILDKITE_API_KEY '$FULL_TAG' bash -c '$COMMANDS'"
     set +e # defer error handling to end
-    echo "$ $DOCKER_RUN_COMMAND"
-    eval $DOCKER_RUN_COMMAND
+    echo "$ docker run $DOCKER_RUN_COMMAND"
+    eval "docker run ${PROXY_DOCKER_RUN_ARGS}${DOCKER_RUN_COMMAND}"
     EXIT_STATUS=$?
 fi
 # buildkite

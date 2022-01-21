@@ -64,9 +64,9 @@ elif [[ "$FORCE_BASE_IMAGE" == 'true' ]]; then
 fi
 # build, if neccessary
 if [[ ("$EXISTS_DOCKER_HUB" == 'false' && "$EXISTS_MIRROR" == 'false') || "$FORCE_BASE_IMAGE" == 'true' || "$OVERWRITE_BASE_IMAGE" == 'true' ]]; then # if we cannot pull the image, we build and push it first
-    export DOCKER_BUILD_COMMAND="docker build --no-cache -t 'ci:$HASHED_IMAGE_TAG' -f '$CICD_DIR/platforms/$PLATFORM_TYPE/$IMAGE_TAG.dockerfile' ."
-    echo "$ $DOCKER_BUILD_COMMAND"
-    eval $DOCKER_BUILD_COMMAND
+    export DOCKER_BUILD_ARGS="--no-cache -t 'ci:$HASHED_IMAGE_TAG' -f '$CICD_DIR/platforms/$PLATFORM_TYPE/$IMAGE_TAG.dockerfile' ."
+    echo "$ docker build $DOCKER_BUILD_ARGS"
+    eval "docker build ${PROXY_DOCKER_BUILD_ARGS}${DOCKER_BUILD_ARGS}"
     if [[ "$FORCE_BASE_IMAGE" != 'true' || "$OVERWRITE_BASE_IMAGE" == 'true' ]]; then
         for REGISTRY in ${CI_REGISTRIES[*]}; do
             if [[ ! -z "$REGISTRY" ]]; then
