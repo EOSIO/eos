@@ -180,6 +180,8 @@ struct controller_impl {
    bool                                trusted_producer_light_validation = false;
    uint32_t                            snapshot_head_block = 0;
    named_thread_pool                   thread_pool;
+   named_thread_pool                   block_sign_pool;
+   uint32_t                            signing_failed_blocknum = 0;
    platform_timer                      timer;
    fc::logger*                         deep_mind_logger = nullptr;
 #if defined(EOSIO_EOS_VM_RUNTIME_ENABLED) || defined(EOSIO_EOS_VM_JIT_RUNTIME_ENABLED)
@@ -190,7 +192,7 @@ struct controller_impl {
    map< account_name, map<handler_key, apply_handler> >   apply_handlers;
    unordered_map< builtin_protocol_feature_t, std::function<void(controller_impl&)>, enum_hash<builtin_protocol_feature_t> > protocol_feature_activation_handlers;
 
-   void pop_block() {
+   block_state_ptr pop_block() {
       auto prev = fork_db.get_block( head->header.previous );
 
       if( !prev ) {
@@ -202,11 +204,13 @@ struct controller_impl {
          EOS_ASSERT( head->block, block_validate_exception, "attempting to pop a block that was sparsely loaded from a snapshot");
       }
 
+      auto result = head;
       head = prev;
 
       kv_db.undo();
 
       protocol_features.popped_blocks_to( prev->block_num );
+      return result;
    }
 
    template<builtin_protocol_feature_t F>
@@ -246,7 +250,8 @@ struct controller_impl {
     conf( cfg ),
     chain_id( chain_id ),
     read_mode( cfg.read_mode ),
-    thread_pool( "chain", cfg.thread_pool_size )
+    thread_pool( "chain", cfg.thread_pool_size ),
+    block_sign_pool( "sign", 1 )
    {
 #ifdef EOSIO_REQUIRE_CHAIN_ID
       EOS_ASSERT(chain_id == chain_id_type(EOSIO_REQUIRE_CHAIN_ID), disallowed_chain_id_exception,
@@ -701,6 +706,7 @@ struct controller_impl {
 
    ~controller_impl() {
       thread_pool.stop();
+      block_sign_pool.stop();
       pending.reset();
    }
 
@@ -1559,47 +1565,40 @@ struct controller_impl {
                               };
    } FC_CAPTURE_AND_RETHROW() } /// finalize_block
 
-   /**
-    * @post regardless of the success of commit block there is no active pending block
-    */
-   void commit_block( bool add_to_fork_db ) {
-      auto reset_pending_on_exit = fc::make_scoped_exit([this]{
-         pending.reset();
+   void create_completed_block(const block_state_ptr& bsp) {
+      auto reset_pending_on_exit = fc::make_scoped_exit([this] { pending.reset(); });
+      pending->_block_stage      = completed_block{bsp};
+      pending->push();
+   }
+
+   void add_to_fork_db(block_state_ptr bsp) {
+      auto abort_block_on_exception = fc::make_scoped_exit([this]{
+         abort_block();
       });
 
-      try {
-         EOS_ASSERT( std::holds_alternative<completed_block>(pending->_block_stage), block_validate_exception,
-                     "cannot call commit_block until pending block is completed" );
+      fork_db.add( bsp );
+      fork_db.mark_valid( bsp );
+      emit( self.accepted_block_header, bsp );
+      head = fork_db.head();
+      EOS_ASSERT(bsp == head, fork_database_exception,
+                  "committed block did not become the new head in fork database");
+      abort_block_on_exception.cancel();
+   }
 
-         auto bsp = std::get<completed_block>(pending->_block_stage)._block_state;
+   void complete_produced_block(block_state_ptr bsp, std::vector<signature_type>&& sigs, bool wtmsig_enabled) {
+      auto signal_failed_block_on_exception =
+          fc::make_scoped_exit([this, block_num = bsp->block_num] { signing_failed_blocknum = block_num; });
 
-         if( add_to_fork_db ) {
-            fork_db.add( bsp );
-            fork_db.mark_valid( bsp );
-            emit( self.accepted_block_header, bsp );
-            head = fork_db.head();
-            EOS_ASSERT( bsp == head, fork_database_exception, "committed block did not become the new head in fork database");
-         }
+      bsp->assign_signatures(std::move(sigs), wtmsig_enabled);
+      log_irreversible();
 
-         auto trace = fc_create_trace_with_id_if(add_to_fork_db, "block", bsp->id);
-         fc_add_tag( trace, "block_id",  bsp->id.str() );
-         fc_add_tag( trace, "block_num", bsp->block_num );
-         fc_add_tag( trace, "num_transactions", bsp->block->transactions.size());         
+      auto trace = fc_create_trace_with_id("block", bsp->id);
+      fc_add_tag(trace, "block_id", bsp->id.str());
+      fc_add_tag(trace, "block_num", bsp->block_num);
+      fc_add_tag(trace, "num_transactions", bsp->block->transactions.size());
 
-         emit( self.accepted_block, bsp );
-
-         if( add_to_fork_db ) {
-            log_irreversible();
-         }
-      } catch (...) {
-         // dont bother resetting pending, instead abort the block
-         reset_pending_on_exit.cancel();
-         abort_block();
-         throw;
-      }
-
-      // push the state for pending.
-      pending->push();
+      emit(self.accepted_block, bsp);
+      signal_failed_block_on_exception.cancel();
    }
 
    /**
@@ -1764,9 +1763,8 @@ struct controller_impl {
             bsp->set_trxs_metas( std::move( ab._trx_metas ), !skip_auth_checks );
          }
          // create completed_block with the existing block_state as we just verified it is the same as assembled_block
-         pending->_block_stage = completed_block{ bsp };
-
-         commit_block(false);
+         create_completed_block(bsp);
+         emit(self.accepted_block, bsp);
          return;
       } catch ( const std::bad_alloc& ) {
          throw;
@@ -1924,7 +1922,7 @@ struct controller_impl {
             fork_db.mark_valid( new_head );
             head = new_head;
          } catch ( const std::exception& e ) {
-            fork_db.remove( new_head->id );
+            fork_db.remove_fork( new_head->id );
             throw;
          }
       } else if( new_head->id != head->id ) {
@@ -1973,7 +1971,7 @@ struct controller_impl {
             if( except ) {
                // ritr currently points to the block that threw
                // Remove the block that threw and all forks built off it.
-               fork_db.remove( (*ritr)->id );
+               fork_db.remove_fork( (*ritr)->id );
 
                // pop all blocks from the bad fork, discarding their transactions
                // ritr base is a forward itr to the last block successfully applied
@@ -2005,13 +2003,27 @@ struct controller_impl {
 
    deque<transaction_metadata_ptr> abort_block() {
       deque<transaction_metadata_ptr> applied_trxs;
+      
       if( pending ) {
          uint32_t block_num = pending->get_block_num();
-         applied_trxs = pending->extract_trx_metas();
+         dlog("aborting pending block ${block_num}", ("block_num", block_num));
+         auto trxs = pending->extract_trx_metas();
+         applied_trxs.insert(applied_trxs.begin(), trxs.begin(), trxs.end());
          pending.reset();
          protocol_features.popped_blocks_to( head->block_num );
          emit( self.block_abort, block_num );
       }
+
+      if( signing_failed_blocknum && fork_db.is_head_block(signing_failed_blocknum) ) {
+         signing_failed_blocknum = 0;
+         auto popped = pop_block();
+         dlog("aborting unsigned block ${block_num}", ("block_num", popped->block_num));
+         fork_db.remove_head(popped->block_num);
+         auto trxs  = popped->extract_trxs_metas();
+         applied_trxs.insert(applied_trxs.end(), trxs.begin(), trxs.end());
+         emit(self.block_abort, popped->block_num);
+      }
+
       return applied_trxs;
    }
 
@@ -2314,6 +2326,13 @@ controller::controller( const config& cfg, protocol_feature_set&& pfs, const cha
 controller::~controller() {
    try {
       my->abort_block();
+      auto db_head = my->fork_db.head();
+      if(db_head && db_head->block && db_head->block->producer_signature == signature_type() ) {
+         auto popped = my->pop_block();
+         dlog("remove unsigned block ${block_num}", ("block_num", popped->block_num));
+         my->fork_db.remove_head(popped->block_num);
+         my->emit(my->self.block_abort, popped->block_num);
+      }
    } FC_LOG_AND_DROP_ALL();
    /* Shouldn't be needed anymore.
    //close fork_db here, because it can generate "irreversible" signal to this controller,
@@ -2517,33 +2536,47 @@ void controller::start_block( block_timestamp_type when,
                     block_status::incomplete, std::optional<block_id_type>() );
 }
 
-block_state_ptr controller::finalize_block( const signer_callback_type& signer_callback ) {
+std::future<std::function<void()>>
+controller::finalize_block(signer_callback_type&& sign) {
    validate_db_available_size();
 
    my->finalize_block();
 
    auto& ab = std::get<assembled_block>(my->pending->_block_stage);
 
-   auto bsp = std::make_shared<block_state>(
+   auto pfa = ab._pending_block_header_state.prev_activated_protocol_features;
+   const auto& pfs = my->protocol_features.get_protocol_feature_set();
+
+   block_state_ptr bsp = std::make_shared<block_state>(
                   std::move( ab._pending_block_header_state ),
                   std::move( ab._unsigned_block ),
                   std::move( ab._trx_metas ),
-                  my->protocol_features.get_protocol_feature_set(),
+                  pfs,
                   []( block_timestamp_type timestamp,
                       const flat_set<digest_type>& cur_features,
                       const vector<digest_type>& new_features )
-                  {},
-                  signer_callback
+                  {}
               );
 
-   my->pending->_block_stage = completed_block{ bsp };
-
-   return bsp;
-}
-
-void controller::commit_block() {
-   validate_db_available_size();
-   my->commit_block(true);
+   auto complete_produced_block_fut =
+       async_thread_pool(my->block_sign_pool.get_executor(),
+                         [bsp, my = my.get(), block_num = bsp->block_num, digest = bsp->sig_digest(),
+                          wtmsig_enabled = eosio::chain::detail::is_builtin_activated(
+                              pfa, pfs, builtin_protocol_feature_t::wtmsig_block_signatures),
+                          sign = std::move(sign)]() -> std::function<void()> {
+                            std::vector<signature_type> signatures;
+                            try {
+                               signatures = sign(digest);
+                            }
+                            FC_LOG_AND_DROP();
+                            return [bsp, my, signatures = std::move(signatures), wtmsig_enabled]() mutable {
+                               // the labmda is to be executed in main thread 
+                               my->complete_produced_block(bsp, std::move(signatures), wtmsig_enabled);
+                            };
+                         });
+   my->add_to_fork_db(bsp);
+   my->create_completed_block(bsp);
+   return complete_produced_block_fut;
 }
 
 deque<transaction_metadata_ptr> controller::abort_block() {

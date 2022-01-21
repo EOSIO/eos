@@ -36,7 +36,7 @@ appArgs.add("--stop-wait", type=int, help="Wait time after stop is issued", defa
 appArgs.add("--restart-wait", type=int, help="Wait time after restart is issued", default=1)
 appArgs.add("--reps", type=int, help="How many times to run test", default=3)
 
-args=TestHelper.parse_args({"--dump-error-details","--keep-logs","-v","--leave-running","--clean-run"}, applicationSpecificArgs=appArgs)
+args=TestHelper.parse_args({"--dump-error-details","--keep-logs","-v","--leave-running","--clean-run", "--signing-delay"}, applicationSpecificArgs=appArgs)
 
 nodeOrderStr = args.node_order
 nodeOrder = re.split(",", nodeOrderStr)
@@ -53,7 +53,8 @@ with RodeosCluster(args.dump_error_details,
         args.clean_run, args.unix_socket,
         'test.filter', './tests/test_filter.wasm',
         args.eos_vm_oc_enable,
-        args.num_rodeos) as cluster:
+        args.num_rodeos,
+        producerExtraArgs="--signing-delay {}".format(args.signing_delay)) as cluster:
 
     assert cluster.waitRodeosReady(), "Rodeos failed to stand up"
 

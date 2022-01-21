@@ -207,7 +207,7 @@ class state_history_log {
 }; // state_history_log
 
 class state_history_traces_log : public state_history_log {
-   state_history::transaction_trace_cache cache;
+   std::map<uint32_t,state_history::transaction_trace_cache> trace_caches;
 
  public:
    bool                            trace_debug_mode = false;
@@ -218,12 +218,14 @@ class state_history_traces_log : public state_history_log {
    static bool exists(bfs::path state_history_dir);
 
    void add_transaction(const chain::transaction_trace_ptr& trace, const chain::packed_transaction_ptr& transaction) {
-      cache.add_transaction(trace, transaction);
+      trace_caches[trace->block_num].add_transaction(trace, transaction);
    }
 
    std::shared_ptr<std::vector<char>> get_log_entry(block_num_type block_num);
 
-   void block_start(uint32_t block_num) { cache.clear(); }
+   void block_start(uint32_t block_num) {
+      trace_caches[block_num].clear();
+   }
 
    void store(const chainbase::database& db, const chain::block_state_ptr& block_state);
 

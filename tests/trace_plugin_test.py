@@ -2,6 +2,7 @@
 import json
 import time
 import unittest
+import sys
 import os
 
 from testUtils import Utils
@@ -10,6 +11,8 @@ from TestHelper import TestHelper
 from Node import Node
 from WalletMgr import WalletMgr
 from core_symbol import CORE_SYMBOL
+
+signing_delay = 0
 
 class TraceApiPluginTest(unittest.TestCase):
     sleep_s = 1
@@ -31,7 +34,7 @@ class TraceApiPluginTest(unittest.TestCase):
     def startEnv(self) :
         account_names = ["alice", "bob", "charlie"]
         abs_path = os.path.abspath(os.getcwd() + '/../unittests/contracts/eosio.token/eosio.token.abi')
-        traceNodeosArgs = " --plugin eosio::trace_api_plugin --trace-rpc-abi eosio.token=" + abs_path
+        traceNodeosArgs = " --plugin eosio::trace_api_plugin --trace-rpc-abi eosio.token={} --signing-delay {}".format(abs_path, signing_delay)
         self.cluster.launch(totalNodes=1, extraNodeosArgs=traceNodeosArgs)
         self.walletMgr.launch()
         testWalletName="testwallet"
@@ -105,4 +108,8 @@ class TraceApiPluginTest(unittest.TestCase):
         self.cleanEnv(self, shouldCleanup=False)   # not cleanup to save log in case for further investigation
 
 if __name__ == "__main__":
+    num_args = len(sys.argv)
+    if num_args > 2 and sys.argv[num_args-2] == "--signing-delay":
+        signing_delay = sys.argv.pop()
+        sys.argv.pop()
     unittest.main()

@@ -146,7 +146,6 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       bool remove_expired_trxs( const fc::time_point& deadline );
       bool block_is_exhausted() const;
       bool remove_expired_blacklisted_trxs( const fc::time_point& deadline );
-      bool process_unapplied_trxs( const fc::time_point& deadline );
       void process_scheduled_and_incoming_trxs( const fc::time_point& deadline, size_t& pending_incoming_process_limit );
       bool process_incoming_trxs( const fc::time_point& deadline, size_t& pending_incoming_process_limit );
 
@@ -197,6 +196,17 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       std::optional<scoped_connection>                          _accepted_block_header_connection;
       std::optional<scoped_connection>                          _irreversible_block_connection;
 
+      enum class signatures_status_type {
+         none,
+         pending,
+         ready
+      };
+
+      std::future<std::function<void()>>  complete_produced_block_fut;
+      std::atomic<signatures_status_type> signatures_status = signatures_status_type::none;
+      
+      bool                                complete_produced_block();
+      bool                                complete_produced_block_if_ready();
       /*
        * HACK ALERT
        * Boost timers can be in a state where a handler has not yet executed but is not abortable.
@@ -268,7 +278,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       void abort_block() {
          auto& chain = chain_plug->chain();
 
-         _unapplied_transactions.add_aborted( chain.abort_block() );
+         _unapplied_transactions.add_aborted(chain.abort_block());
          _subjective_billing.abort_block();
       }
 
@@ -609,6 +619,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       };
 
       start_block_result start_block();
+      start_block_result process_unapplied_trxs( const fc::time_point& deadline );
 
       fc::time_point calculate_pending_block_time() const;
       fc::time_point calculate_block_deadline( const fc::time_point& ) const;
@@ -1609,16 +1620,31 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
       try {
          if( !remove_expired_trxs( preprocess_deadline ) )
             return start_block_result::exhausted;
+         
+         if (!complete_produced_block_if_ready())
+            return start_block_result::failed;
+         
          if( !remove_expired_blacklisted_trxs( preprocess_deadline ) )
             return start_block_result::exhausted;
+         
+         if (!complete_produced_block_if_ready())
+            return start_block_result::failed;
+         
          if( !_subjective_billing.remove_expired( _log, chain.pending_block_time(), fc::time_point::now(), preprocess_deadline ) )
             return start_block_result::exhausted;
+
+         if (!complete_produced_block_if_ready())
+            return start_block_result::failed;
 
          // limit execution of pending incoming to once per block
          size_t pending_incoming_process_limit = _unapplied_transactions.incoming_size();
 
-         if( !process_unapplied_trxs( preprocess_deadline ) )
-            return start_block_result::exhausted;
+         auto process_unapplied_trxs_result = process_unapplied_trxs( preprocess_deadline );
+         if( process_unapplied_trxs_result  != start_block_result::succeeded)
+            return process_unapplied_trxs_result;
+
+         if (!complete_produced_block_if_ready())
+            return start_block_result::failed;
 
          if (_pending_block_mode == pending_block_mode::producing) {
             auto scheduled_trx_deadline = preprocess_deadline;
@@ -1628,6 +1654,8 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
                      fc::time_point::now() + fc::milliseconds(_max_scheduled_transaction_time_per_block_ms)
                );
             }
+            if (!complete_produced_block_if_ready())
+               return start_block_result::failed;
             // may exhaust scheduled_trx_deadline but not preprocess_deadline, exhausted preprocess_deadline checked below
             process_scheduled_and_incoming_trxs( scheduled_trx_deadline, pending_incoming_process_limit );
          }
@@ -1833,9 +1861,10 @@ private:
 
 } // anonymous namespace
 
-bool producer_plugin_impl::process_unapplied_trxs( const fc::time_point& deadline )
+producer_plugin_impl::start_block_result
+producer_plugin_impl::process_unapplied_trxs( const fc::time_point& deadline )
 {
-   bool exhausted = false;
+   start_block_result result = start_block_result::succeeded;
    if( !_unapplied_transactions.empty() ) {
       account_failures account_fails;
       chain::controller& chain = chain_plug->chain();
@@ -1849,9 +1878,11 @@ bool producer_plugin_impl::process_unapplied_trxs( const fc::time_point& deadlin
                      _unapplied_transactions.unapplied_end()   : _unapplied_transactions.persisted_end();
       while( itr != end_itr ) {
          if( deadline <= fc::time_point::now() ) {
-            exhausted = true;
+            result = start_block_result::exhausted;
             break;
          }
+         if (!complete_produced_block_if_ready())
+            return start_block_result::failed;
 
          const transaction_metadata_ptr trx = itr->trx_meta;
          ++num_processed;
@@ -1891,7 +1922,7 @@ bool producer_plugin_impl::process_unapplied_trxs( const fc::time_point& deadlin
             if( trace->except ) {
                if( exception_is_exhausted( *trace->except, deadline_is_subjective ) ) {
                   if( block_is_exhausted() ) {
-                     exhausted = true;
+                     result = start_block_result::exhausted;
                      // don't erase, subjective failure so try again next time
                      break;
                   }
@@ -1938,7 +1969,7 @@ bool producer_plugin_impl::process_unapplied_trxs( const fc::time_point& deadlin
                ("m", num_processed)( "n", unapplied_trxs_size )("applied", num_applied)("failed", num_failed) );
       account_fails.report();
    }
-   return !exhausted;
+   return result;
 }
 
 void producer_plugin_impl::process_scheduled_and_incoming_trxs( const fc::time_point& deadline, size_t& pending_incoming_process_limit )
@@ -2212,9 +2243,14 @@ void producer_plugin_impl::schedule_delayed_production_loop(const std::weak_ptr<
 }
 
 bool producer_plugin_impl::maybe_produce_block() {
-   auto reschedule = fc::make_scoped_exit([this]{
-      schedule_production_loop();
-   });
+   auto reschedule = fc::make_scoped_exit([this] { schedule_production_loop(); });
+
+   if (signatures_status.load() != signatures_status_type::none) {
+      // If the condition is true, it means the previous block is either waiting for
+      // its signatures or waiting to be completed, the pending block cannot be produced
+      // immediately to ensure that no more than one block is signed at any time.
+      return false;
+   }
 
    try {
       produce_block();
@@ -2239,6 +2275,24 @@ static auto maybe_make_debug_time_logger() -> std::optional<decltype(make_debug_
    } else {
       return {};
    }
+}
+
+bool producer_plugin_impl::complete_produced_block() {
+   bool result = false;
+   try {
+      complete_produced_block_fut.get()();
+      result = true;
+   } LOG_AND_DROP();
+   signatures_status = signatures_status_type::none;
+   return result;
+}
+
+/// @return false only if the previous block signing failed. 
+bool producer_plugin_impl::complete_produced_block_if_ready() {
+   if (signatures_status.load() == signatures_status_type::ready) {
+      return complete_produced_block();
+   }
+   return true;
 }
 
 void producer_plugin_impl::produce_block() {
@@ -2266,20 +2320,26 @@ void producer_plugin_impl::produce_block() {
       _protocol_features_signaled = false;
    }
 
-   //idump( (fc::time_point::now() - chain.pending_block_time()) );
-   block_state_ptr pending_blk_state = chain.finalize_block( [&]( const digest_type& d ) {
-      auto debug_logger = maybe_make_debug_time_logger();
-      vector<signature_type> sigs;
-      sigs.reserve(relevant_providers.size());
+   signatures_status           = signatures_status_type::pending;
+   complete_produced_block_fut = chain.finalize_block([relevant_providers = std::move(relevant_providers),
+                                                       self               = shared_from_this()](const digest_type& d) {
+      /// This lambda is called from a separate thread to sign the block
+      auto                        debug_logger = maybe_make_debug_time_logger();
+      auto                        on_exit      = fc::make_scoped_exit([self] {
+         /// This lambda will always be called after the signing is finished. The purpose is to signal main thread for the
+         /// completion of the block signing regardless the block signing is successful or not. The main thread should
+         /// then call `complete_produced_block_fut.get()()` to complete the block. If the block signing fails, calling
+         /// `complete_produced_block_fut.get()()` would throw an exception so that the caller can handle the situation.
+         self->signatures_status = signatures_status_type::ready;
+         app().post(priority::high, [self]() { self->complete_produced_block_if_ready(); });
+      });
+      std::vector<signature_type> signatures;
+      signatures.reserve(relevant_providers.size());
+      std::transform(relevant_providers.begin(), relevant_providers.end(), std::back_inserter(signatures),
+                     [&d](const auto& p) { return p.get()(d); });
+      return signatures;
+   });
 
-      // sign with all relevant public keys
-      for (const auto& p : relevant_providers) {
-         sigs.emplace_back(p.get()(d));
-      }
-      return sigs;
-   } );
-
-   chain.commit_block();
    block_state_ptr new_bs = chain.head_block_state();
    ilog("Produced block ${id}... #${n} @ ${t} signed by ${p} [trxs: ${count}, lib: ${lib}, confirmed: ${confs}]",
         ("p",new_bs->header.producer)("id",new_bs->id.str().substr(8,16))

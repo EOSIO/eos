@@ -286,8 +286,10 @@ struct test_chain {
    void finish_block() {
       start_if_needed();
       ilog("finish block ${n}", ("n", control->head_block_num()));
-      control->finalize_block([&](eosio::chain::digest_type d) { return std::vector{ producer_key.sign(d) }; });
-      control->commit_block();
+
+      control->finalize_block([&](eosio::chain::digest_type d) {
+         return std::vector{ producer_key.sign(d) };
+      }).get()();
    }
 };
 

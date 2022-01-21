@@ -55,7 +55,7 @@ public:
       {
          std::unique_lock<std::mutex> lk(mtx_);
          empty_cv_.wait(lk, [this]() {
-            return (!queue_.empty() && !paused_) || stopped_;
+            return (!queue_.empty() && paused_ <= 0) || stopped_;
          });
          if( stopped_ ) return false;
          t = std::move(queue_.front());
@@ -77,7 +77,7 @@ public:
       {
          std::scoped_lock<std::mutex> lk( mtx_ );
          --paused_;
-         if( paused_ < 0 ) {
+         if( paused_ < -1 ) {
             throw std::logic_error("blocking_queue unpaused when not paused");
          }
       }
@@ -97,7 +97,7 @@ public:
    /// also checks paused flag because a paused queue indicates processing is on-going or explicitly paused
    bool empty() const {
       std::scoped_lock<std::mutex> lk(mtx_);
-      return queue_.empty() && !paused_;
+      return queue_.empty() && paused_ <= 0;
    }
 
    template<typename Lamba>
@@ -237,7 +237,8 @@ public:
 
    /// Should be called on each block finalize from app() thread
    void on_block_stop() {
-      if( started_ && ( allow_speculative_execution || prod_plugin_->is_producing_block() ) ) {
+      if( started_ && ( allow_speculative_execution || prod_plugin_->is_producing_block()
+                        || prod_plugin_->paused() ) ) {
          queue_.pause();
       }
    }
