@@ -44,6 +44,9 @@ public:
 
    struct snapshot_information {
       chain::block_id_type head_block_id;
+      uint32_t             head_block_num;
+      fc::time_point       head_block_time;
+      uint32_t             version;
       std::string          snapshot_name;
    };
 
@@ -123,7 +126,7 @@ FC_REFLECT(eosio::producer_plugin::runtime_options, (max_transaction_time)(max_i
 FC_REFLECT(eosio::producer_plugin::greylist_params, (accounts));
 FC_REFLECT(eosio::producer_plugin::whitelist_blacklist, (actor_whitelist)(actor_blacklist)(contract_whitelist)(contract_blacklist)(action_blacklist)(key_blacklist) )
 FC_REFLECT(eosio::producer_plugin::integrity_hash_information, (head_block_id)(integrity_hash))
-FC_REFLECT(eosio::producer_plugin::snapshot_information, (head_block_id)(snapshot_name))
+FC_REFLECT(eosio::producer_plugin::snapshot_information, (head_block_id)(head_block_num)(head_block_time)(version)(snapshot_name))
 FC_REFLECT(eosio::producer_plugin::scheduled_protocol_feature_activations, (protocol_features_to_activate))
 FC_REFLECT(eosio::producer_plugin::get_supported_protocol_features_params, (exclude_disabled)(exclude_unactivatable))
 FC_REFLECT(eosio::producer_plugin::get_account_ram_corrections_params, (lower_bound)(upper_bound)(limit)(reverse))

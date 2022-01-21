@@ -135,7 +135,8 @@ public:
    }
 
    producer_plugin::snapshot_information finalize( const chain::controller& chain ) const {
-      auto in_chain = (bool)chain.fetch_block_by_id( block_id );
+      auto block_ptr = chain.fetch_block_by_id( block_id );
+      auto in_chain = (bool)block_ptr;
       boost::system::error_code ec;
 
       if (!in_chain) {
@@ -152,7 +153,7 @@ public:
                  ("ec", ec.value())
                  ("message", ec.message()));
 
-      return {block_id, final_path};
+      return {block_id, block_ptr->block_num(), block_ptr->timestamp, chain_snapshot_header::current_version, final_path};
    }
 
    block_id_type     block_id;
@@ -1226,6 +1227,8 @@ void producer_plugin::create_snapshot(producer_plugin::next_function<producer_pl
    chain::controller& chain = my->chain_plug->chain();
 
    auto head_id = chain.head_block_id();
+   const auto head_block_num = chain.head_block_num();
+   const auto head_block_time = chain.head_block_time();
    const auto& snapshot_path = pending_snapshot::get_final_path(head_id, my->_snapshots_dir);
    const auto& temp_path     = pending_snapshot::get_temp_path(head_id, my->_snapshots_dir);
 
@@ -1268,11 +1271,11 @@ void producer_plugin::create_snapshot(producer_plugin::next_function<producer_pl
          bfs::rename(temp_path, snapshot_path, ec);
          EOS_ASSERT(!ec, snapshot_finalization_exception,
                "Unable to finalize valid snapshot of block number ${bn}: [code: ${ec}] ${message}",
-               ("bn", chain.head_block_num())
+               ("bn", head_block_num)
                ("ec", ec.value())
                ("message", ec.message()));
 
-         next( producer_plugin::snapshot_information{head_id, snapshot_path.generic_string()} );
+         next( producer_plugin::snapshot_information{head_id, head_block_num, head_block_time, chain_snapshot_header::current_version, snapshot_path.generic_string()} );
       } CATCH_AND_CALL (next);
       return;
    }
@@ -1300,7 +1303,7 @@ void producer_plugin::create_snapshot(producer_plugin::next_function<producer_pl
          bfs::rename(temp_path, pending_path, ec);
          EOS_ASSERT(!ec, snapshot_finalization_exception,
                "Unable to promote temp snapshot to pending for block number ${bn}: [code: ${ec}] ${message}",
-               ("bn", chain.head_block_num())
+               ("bn", head_block_num)
                ("ec", ec.value())
                ("message", ec.message()));
 
