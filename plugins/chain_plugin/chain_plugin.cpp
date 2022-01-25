@@ -10,7 +10,6 @@
 #include <eosio/chain/controller.hpp>
 #include <eosio/chain/generated_transaction_object.hpp>
 #include <eosio/chain/snapshot.hpp>
-#include <eosio/chain/kv_database.hpp>
 #include <eosio/chain/backing_store/kv_context.hpp>
 #include <eosio/chain/permission_link_object.hpp>
 #include <eosio/to_key.hpp>
@@ -931,7 +930,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          ilog( "Replay requested: deleting state database" );
          if( options.at( "truncate-at-block" ).as<uint32_t>() > 0 )
             wlog( "The --truncate-at-block option does not work for a regular replay of the blockchain." );
-         eosio::chain::kv_database::destroy( my->chain_config->state_dir );
+         eosio::chain::db_util::destroy( my->chain_config->state_dir );
       } else if( options.at( "truncate-at-block" ).as<uint32_t>() > 0 ) {
          wlog( "The --truncate-at-block option can only be used with --hard-replay-blockchain." );
       }
@@ -1970,7 +1969,7 @@ struct kv_table_rows_context {
 
    kv_table_rows_context(const controller& db, const read_only::get_kv_table_rows_params& param,
                          const fc::microseconds abi_serializer_max_time, bool shorten_error)
-       : kv_context(db.kv_db().create_kv_context(
+       : kv_context(db_util::create_kv_context(db.mutable_db(),
              param.code, {},
              db.get_global_properties().kv_configuration)) // To do: provide kv_resource_manmager to create_kv_context
        , p(param)

@@ -255,7 +255,7 @@ BOOST_AUTO_TEST_CASE(test_chain_state_log) {
    uint32_t last_accepted_block_num = 0;
 
    chain.control->accepted_block.connect([&](const block_state_ptr& block_state) {
-      log.store(chain.control->kv_db(), block_state);
+      log.store(chain.control->db(), block_state);
       last_accepted_block_num = block_state->block_num;
    });
 
@@ -292,7 +292,7 @@ struct state_history_tester : state_history_tester_logs, tester {
 
       control.accepted_block.connect([&](const block_state_ptr& bs) { 
          traces_log.store(control.db(), bs); 
-         chain_state_log.store(control.kv_db(), bs);
+         chain_state_log.store(control.db(), bs);
       });
       control.block_start.connect([&](uint32_t block_num) { traces_log.block_start(block_num); } );
    }) {}
@@ -539,7 +539,7 @@ BOOST_AUTO_TEST_CASE(test_state_result_abi) {
       std::vector<eosio::state_history::transaction_trace> traces;
       trace_converter::unpack(strm, traces);
       message.traces = traces;
-      message.deltas = fc::raw::pack(create_deltas(control->kv_db(), !prev_block));
+      message.deltas = fc::raw::pack(create_deltas(control->db(), !prev_block));
 
       prev_block                         = message.this_block;
       history[control->head_block_num()] = fc::raw::pack(state_result{message});
@@ -651,7 +651,7 @@ public:
    table_deltas_tester(backing_store_type backing_store, setup_policy policy=setup_policy::full) : tester(policy, db_read_mode::SPECULATIVE, std::optional<uint32_t>{}, std::optional<uint32_t>{}, backing_store) { };
 
    pair<bool, deltas_vector::iterator> find_table_delta(const std::string &name, bool full_snapshot = false) {
-      v = eosio::state_history::create_deltas(control->kv_db(), full_snapshot);
+      v = eosio::state_history::create_deltas(control->db(), full_snapshot);
 
       auto find_by_name = [&name](const auto& x) {
          return x.name == name;
@@ -680,7 +680,7 @@ BOOST_AUTO_TEST_CASE(test_deltas_not_empty) {
    for (backing_store_type backing_store : { backing_store_type::CHAINBASE } ) {
       table_deltas_tester chain { backing_store };
 
-      auto deltas = eosio::state_history::create_deltas(chain.control->kv_db(), false);
+      auto deltas = eosio::state_history::create_deltas(chain.control->db(), false);
 
       for(const auto &delta: deltas) {
          BOOST_REQUIRE(!delta.rows.obj.empty());

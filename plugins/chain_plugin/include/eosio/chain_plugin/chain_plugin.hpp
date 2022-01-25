@@ -14,7 +14,7 @@
 #include <eosio/chain/types.hpp>
 #include <eosio/chain/fixed_bytes.hpp>
 #include <eosio/chain/backing_store/kv_context.hpp>
-#include <eosio/chain/kv_database.hpp>
+#include <eosio/chain/db_util.hpp>
 #include <b1/session/shared_bytes.hpp>
 #include <eosio/to_key.hpp>
 

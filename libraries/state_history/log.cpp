@@ -504,7 +504,7 @@ std::shared_ptr<std::vector<char>> state_history_chain_state_log::get_log_entry(
    return std::make_shared<std::vector<char>>();
 }
 
-void state_history_chain_state_log::store(const chain::kv_database& db,
+void state_history_chain_state_log::store(const chainbase::database& db,
                                           const chain::block_state_ptr&   block_state) {
    auto [begin, end] = begin_end_block_nums();
    bool fresh        = begin == end;

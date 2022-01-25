@@ -33,8 +33,6 @@ namespace eosio { namespace chain {
       class resource_limits_manager;
    };
 
-   class kv_database;
-
    struct controller_impl;
    using chainbase::database;
    using chainbase::pinnable_mapped_file;
@@ -391,13 +389,11 @@ namespace eosio { namespace chain {
          void replace_producer_keys( const public_key_type& key );
          void replace_account_keys( name account, name permission, const public_key_type& key );
 
-         eosio::chain::kv_database& kv_db()const;
-
+      chainbase::database& mutable_db()const;
+      
       private:
          friend class apply_context;
          friend class transaction_context;
-
-         chainbase::database& mutable_db()const;
 
          std::unique_ptr<controller_impl> my;
 

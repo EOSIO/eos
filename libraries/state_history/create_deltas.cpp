@@ -140,13 +140,5 @@ std::vector<table_delta> create_deltas(const chainbase::database& db, bool full_
    return deltas;
 }
 
-std::vector<table_delta> create_deltas(const chain::kv_database& db, bool full_snapshot){
-   auto &chainbase_db = db.get_db();
-
-   std::vector<table_delta> deltas = create_deltas(chainbase_db, full_snapshot);
-
-   return deltas;
-}
-
 } // namespace state_history
 } // namespace eosio
