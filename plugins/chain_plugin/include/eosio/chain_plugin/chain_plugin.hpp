@@ -542,6 +542,24 @@ public:
       };
    }
 
+   struct push_ro_transaction_params {
+      name account_name;
+      bool return_failure_traces = true;
+      fc::variant transaction;
+   };
+
+   struct push_ro_transaction_results {
+      uint32_t                     head_block_num = 0;
+      chain::block_id_type         head_block_id;
+      uint32_t                     last_irreversible_block_num = 0;
+      chain::block_id_type         last_irreversible_block_id;
+      chain::digest_type           code_hash;
+      vector<transaction_id_type>  pending_transactions;
+      fc::variant                  result;
+   };
+
+   void push_ro_transaction(const push_ro_transaction_params& params, chain::plugin_interface::next_function<push_ro_transaction_results> next ) const;
+
    template<typename KeyValueObj>
    static void copy_inline_row(const KeyValueObj& obj, vector<char>& data) {
       data.resize( obj.value.size() );
@@ -985,3 +1003,6 @@ FC_REFLECT( eosio::chain_apis::read_only::get_all_accounts_params, (limit)(lower
 FC_REFLECT( eosio::chain_apis::read_only::get_all_accounts_result::account_result, (name)(creation_date))
 FC_REFLECT( eosio::chain_apis::read_only::get_all_accounts_result, (accounts)(more))
 FC_REFLECT( eosio::chain_apis::read_only::get_consensus_parameters_results, (chain_config)(kv_database_config)(wasm_config))
+FC_REFLECT( eosio::chain_apis::read_only::push_ro_transaction_params, (account_name)(return_failure_traces)(transaction) )
+FC_REFLECT( eosio::chain_apis::read_only::push_ro_transaction_results, (head_block_num)(head_block_id)(last_irreversible_block_num)(last_irreversible_block_id)(code_hash)(pending_transactions)(result) )
+

@@ -268,7 +268,7 @@ state_history_log::write_entry_header(const state_history_log_header& header, co
    fc_dlog(logger,"write_entry_header name=${name} block_num=${block_num}",("name", name) ("block_num", block_num));
 
    EOS_ASSERT(_begin_block == _end_block || block_num <= _end_block, chain::state_history_exception,
-              "missed a block in ${name}.log", ("name", name));
+              "missed a block in ${name}.log, block_num=${block_num}, _end_block=${_end_block} ", ("name", name)("block_num", block_num)("_end_block", _end_block));
 
    if (_begin_block != _end_block && block_num > _begin_block) {
       if (block_num == _end_block) {
@@ -472,11 +472,12 @@ void state_history_traces_log::prune_transactions(state_history_log::block_num_t
 }
 
 void state_history_traces_log::store(const chainbase::database& db, const chain::block_state_ptr& block_state) {
-
-   auto trace = cache.prepare_traces(block_state);
+   const uint32_t block_num = block_state->block_num;
+   auto trace = trace_caches[block_num].prepare_traces(block_state);
    fc::datastream<std::vector<char>> raw_strm;
    state_history::trace_converter::pack(raw_strm, db, trace_debug_mode, trace, compression);
    this->store_entry(block_state->id, block_state->block->previous, std::move(raw_strm.storage()));
+   trace_caches.erase(block_num);
 }
 
 void state_history_traces_log::write_payload(state_history_log::cfile_stream& stream, const std::vector<char>& data) {

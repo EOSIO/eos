@@ -8,9 +8,10 @@ recover_keys_future transaction_metadata::start_recover_keys( packed_transaction
                                                               boost::asio::io_context& thread_pool,
                                                               const chain_id_type& chain_id,
                                                               fc::microseconds time_limit,
+                                                              trx_type t,
                                                               uint32_t max_variable_sig_size )
 {
-   return async_thread_pool( thread_pool, [trx{std::move(trx)}, chain_id, time_limit, max_variable_sig_size]() mutable {
+   return async_thread_pool( thread_pool, [trx{std::move(trx)}, chain_id, time_limit, t, max_variable_sig_size]() mutable {
          fc::time_point deadline = time_limit == fc::microseconds::maximum() ?
                                    fc::time_point::maximum() : fc::time_point::now() + time_limit;
          const vector<signature_type>& sigs = check_variable_sig_size( trx, max_variable_sig_size );
@@ -20,7 +21,8 @@ recover_keys_future transaction_metadata::start_recover_keys( packed_transaction
          const bool allow_duplicate_keys = false;
          fc::microseconds cpu_usage =
                trx->get_transaction().get_signature_keys(sigs, chain_id, deadline, *context_free_data, recovered_pub_keys, allow_duplicate_keys);
-         return std::make_shared<transaction_metadata>( private_type(), std::move( trx ), cpu_usage, std::move( recovered_pub_keys ) );
+         return std::make_shared<transaction_metadata>( private_type(), std::move( trx ), cpu_usage, std::move( recovered_pub_keys ),
+                                                        t == trx_type::implicit, t == trx_type::scheduled, t == trx_type::read_only);
       }
    );
 }

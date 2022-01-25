@@ -63,17 +63,16 @@ auto create_test_block_state( deque<transaction_metadata_ptr> trx_metas ) {
    producer_authority_schedule schedule = { 0, { producer_authority{block->producer, block_signing_authority_v0{ 1, {{pub_key, 1}} } } } };
    pbhs.active_schedule = schedule;
    pbhs.valid_block_signing_authority = block_signing_authority_v0{ 1, {{pub_key, 1}} };
+   auto pfa = pbhs.prev_activated_protocol_features;
+   protocol_feature_set pfs;
    auto bsp = std::make_shared<block_state>(
-         std::move( pbhs ),
-         std::move( block ),
-         std::move( trx_metas ),
-         protocol_feature_set(),
-         []( block_timestamp_type timestamp,
-             const flat_set<digest_type>& cur_features,
-             const vector<digest_type>& new_features )
-         {},
-         signer
-   );
+       std::move(pbhs), std::move(block), std::move(trx_metas),
+       pfs,
+       [](block_timestamp_type timestamp,
+          const flat_set<digest_type> &cur_features,
+          const vector<digest_type> &new_features) {});
+   bool wtmsig_enabled = eosio::chain::detail::is_builtin_activated(pfa, pfs, builtin_protocol_feature_t::wtmsig_block_signatures);
+   bsp->assign_signatures( signer(bsp->sig_digest()),  wtmsig_enabled);
 
    return bsp;
 }

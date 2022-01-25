@@ -68,7 +68,7 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/large-lib-test.py ${CMAKE_CURRENT_BIN
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/rodeos_multi_ship_test.py ${CMAKE_CURRENT_BINARY_DIR}/rodeos_multi_ship_test.py COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/rodeos_multi_ship_kill_restart.py ${CMAKE_CURRENT_BINARY_DIR}/rodeos_multi_ship_kill_restart.py COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/rodeos_wasmQL_http_timeout.py ${CMAKE_CURRENT_BINARY_DIR}/rodeos_wasmQL_http_timeout.py COPYONLY)
-
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/read_only_query_tests.py ${CMAKE_CURRENT_BINARY_DIR}/read_only_query_tests.py COPYONLY)
 
 #To run plugin_test with all log from blockchain displayed, put --verbose after --, i.e. plugin_test -- --verbose
 add_test(NAME plugin_test COMMAND plugin_test --report_level=detailed --color_output)
@@ -95,6 +95,8 @@ set_property(TEST p2p_dawn515_test PROPERTY LABELS nonparallelizable_tests)
 if (DEFINED AMQP_CONN_STR)
   add_test(NAME nodeos_run_test-rabbitmq COMMAND tests/nodeos_run_test.py --amqp-address ${AMQP_CONN_STR} -v --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
   set_property(TEST nodeos_run_test-rabbitmq PROPERTY LABELS nonparallelizable_tests)
+  add_test(NAME nodeos_run_test-rabbitmq-with_signing_delay COMMAND tests/nodeos_run_test.py --amqp-address ${AMQP_CONN_STR} -v --clean-run --dump-error-detail --signing-delay 200 WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+  set_property(TEST nodeos_run_test-rabbitmq-with_signing_delay PROPERTY LABELS nonparallelizable_tests)
   add_test(NAME amqp_tests-rabbit COMMAND tests/amqp_tests.py --amqp-address ${AMQP_CONN_STR} -v --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
   set_property(TEST amqp_tests-rabbit PROPERTY LABELS nonparallelizable_tests)
   add_test(NAME nodeos_high_transaction_lr_test-rabbitmq COMMAND tests/nodeos_high_transaction_test.py --amqp-address ${AMQP_CONN_STR} -v --clean-run --dump-error-detail -p 4 -n 8 --num-transactions 10000 --max-transactions-per-second 500 WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
@@ -147,11 +149,15 @@ if(NOT EOSIO_REQUIRE_FULL_VALIDATION)
    set_property(TEST light_validation_sync_test PROPERTY LABELS nonparallelizable_tests)
    add_test(NAME eosio_blocklog_prune_test COMMAND tests/eosio_blocklog_prune_test.py -v --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
    set_property(TEST eosio_blocklog_prune_test PROPERTY LABELS nonparallelizable_tests)
+   add_test(NAME eosio_blocklog_prune_test_with_signing_delay COMMAND tests/eosio_blocklog_prune_test.py -v --clean-run --dump-error-detail --signing-delay 200 WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+   set_property(TEST eosio_blocklog_prune_test_with_signing_delay PROPERTY LABELS nonparallelizable_tests)
 endif()
 
 # rodeos tests
 add_test(NAME rodeos_test COMMAND tests/rodeos_test.py -v --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 set_property(TEST rodeos_test PROPERTY LABELS nonparallelizable_tests)
+add_test(NAME rodeos_test_with_signing_delay COMMAND tests/rodeos_test.py -v --clean-run --dump-error-detail --signing-delay 200 WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_property(TEST rodeos_test_with_signing_delay PROPERTY LABELS nonparallelizable_tests)
 if("eos-vm-oc" IN_LIST EOSIO_WASM_RUNTIMES)
    add_test(NAME rodeos_test_eosvmoc COMMAND tests/rodeos_test.py -v --clean-run --dump-error-detail --eos-vm-oc-enable WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
    set_property(TEST rodeos_test_eosvmoc PROPERTY LABELS nonparallelizable_tests)
@@ -200,6 +206,8 @@ set_property(TEST rodeos_idle_restart_rodeos_unix-socket_eos-vm-oc_test PROPERTY
 # TODO add restart_rodeos_ship_eos-vm-oc when it becomes stable
 add_test(NAME rodeos_idle_restart_rodeos_producer_eos-vm-oc_test COMMAND tests/rodeos_idle_test.py -v --clean-run --dump-error-detail --reps 2 --node-order _rodeos-k2,_prod-k2,+rodeos-n,+prod-n,_prod-k15,_rodeos-k15,+rodeos-n,+prod-n --eos-vm-oc-enable WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 set_property(TEST rodeos_idle_restart_rodeos_producer_eos-vm-oc_test PROPERTY LABELS nonparallelizable_tests)
+add_test(NAME read_only_query COMMAND tests/read_only_query_tests.py -p 1 -v --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_property(TEST read_only_query PROPERTY LABELS nonparallelizable_tests)
 
 # TODO add test restart all three  (rodeos, producer, ship) shutdown then brought back up
 
@@ -350,6 +358,10 @@ set_property(TEST plugin_http_api_test PROPERTY LABELS nonparallelizable_tests)
 add_test(NAME trace_plugin_test COMMAND tests/trace_plugin_test.py WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 set_tests_properties(trace_plugin_test PROPERTIES TIMEOUT 100)
 set_property(TEST trace_plugin_test PROPERTY LABELS nonparallelizable_tests)
+
+add_test(NAME trace_plugin_test_with_signing_delay COMMAND tests/trace_plugin_test.py --signing-delay 200 WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_tests_properties(trace_plugin_test_with_signing_delay PROPERTIES TIMEOUT 100)
+set_property(TEST trace_plugin_test_with_signing_delay PROPERTY LABELS nonparallelizable_tests)
 
 add_subdirectory(eosvmoc_tests)
 add_subdirectory(se_tests)

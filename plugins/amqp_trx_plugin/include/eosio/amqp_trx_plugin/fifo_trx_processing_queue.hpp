@@ -55,7 +55,7 @@ public:
       {
          std::unique_lock<std::mutex> lk(mtx_);
          empty_cv_.wait(lk, [this]() {
-            return (!queue_.empty() && !paused_) || stopped_;
+            return (!queue_.empty() && paused_ <= 0) || stopped_;
          });
          if( stopped_ ) return false;
          t = std::move(queue_.front());
@@ -77,7 +77,7 @@ public:
       {
          std::scoped_lock<std::mutex> lk( mtx_ );
          --paused_;
-         if( paused_ < 0 ) {
+         if( paused_ < -1 ) {
             throw std::logic_error("blocking_queue unpaused when not paused");
          }
       }
@@ -97,7 +97,7 @@ public:
    /// also checks paused flag because a paused queue indicates processing is on-going or explicitly paused
    bool empty() const {
       std::scoped_lock<std::mutex> lk(mtx_);
-      return queue_.empty() && !paused_;
+      return queue_.empty() && paused_ <= 0;
    }
 
    template<typename Lamba>
@@ -237,7 +237,8 @@ public:
 
    /// Should be called on each block finalize from app() thread
    void on_block_stop() {
-      if( started_ && ( allow_speculative_execution || prod_plugin_->is_producing_block() ) ) {
+      if( started_ && ( allow_speculative_execution || prod_plugin_->is_producing_block()
+                        || prod_plugin_->paused() ) ) {
          queue_.pause();
       }
    }
@@ -256,7 +257,7 @@ public:
    void push(chain::packed_transaction_ptr trx, uint64_t delivery_tag, producer_plugin::next_function<chain::transaction_trace_ptr> next) {
       fc::microseconds max_trx_cpu_usage = prod_plugin_->get_max_transaction_time();
       auto future = chain::transaction_metadata::start_recover_keys( trx, sig_thread_pool_, chain_id_, max_trx_cpu_usage,
-                                                                     configured_subjective_signature_length_limit_ );
+                                                                     chain::transaction_metadata::trx_type::input, configured_subjective_signature_length_limit_ );
       q_item i{ .delivery_tag = delivery_tag, .trx = trx, .fut = std::move(future), .next = std::move(next) };
       if( !queue_.push( std::move( i ) ) ) {
          ilog( "Queue stopped, unable to process transaction ${id}, not ack'ed to AMQP", ("id", trx->id()) );
