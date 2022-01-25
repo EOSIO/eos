@@ -21,11 +21,11 @@ struct coverage_callbacks {
    }
 
    uint32_t coverage_get_fun_cnt(uint64_t code, uint32_t file_num, uint32_t func_num) {
-      eosio::coverage::coverage_get_fun_cnt(code, file_num, func_num);
+      return eosio::coverage::coverage_get_fun_cnt(code, file_num, func_num);
    }
 
    uint32_t coverage_get_line_cnt(uint64_t code, uint32_t file_num, uint32_t line_num) {
-      eosio::coverage::coverage_get_line_cnt(code, file_num, line_num);
+      return eosio::coverage::coverage_get_line_cnt(code, file_num, line_num);
    }
 
    void coverage_dump(uint32_t n) {
