@@ -1,7 +1,6 @@
 #include <eosio/chain/backing_store/kv_context_chainbase.hpp>
 #include <eosio/chain/db_util.hpp>
 #include <eosio/chain/kv_chainbase_objects.hpp>
-#include <eosio/chain/backing_store/db_context.hpp>
 
 namespace eosio { namespace chain { namespace db_util {
    maybe_session::maybe_session(chainbase::database& cb_database) {
@@ -71,16 +70,11 @@ namespace eosio { namespace chain { namespace db_util {
       fc::remove( p / "shared_memory.meta" );
    }
 
-   std::unique_ptr<kv_context> create_kv_context(chainbase::database&         db, 
+   std::unique_ptr<kv_context> create_kv_context(const controller&            c, 
                                                  name                         receiver, 
                                                  kv_resource_manager          resource_manager,
                                                  const kv_database_config&    limits) {
-      return create_kv_chainbase_context<kv_resource_manager>(db, receiver, resource_manager, limits);
-   }
-
-   std::unique_ptr<db_context> create_db_context(apply_context&               context, 
-                                                 name                         receiver) {
-      return backing_store::create_db_chainbase_context(context, receiver);
+      return create_kv_chainbase_context<kv_resource_manager>(c.mutable_db(), receiver, resource_manager, limits);
    }
 
    template <typename Section>

@@ -48,6 +48,7 @@ using eosio::state_history::create_deltas;
 using eosio::state_history::get_blocks_result_v1;
 using eosio::state_history::state_result;
 using eosio::vm::span;
+using eosio::chain::name;
 
 struct callbacks;
 using rhf_t     = eosio::vm::registered_host_functions<callbacks>;
@@ -861,64 +862,64 @@ struct callbacks {
    }
 
    // clang-format off
-   int32_t db_get_i64(int32_t iterator, span<char> buffer)                                {return selected().db_get_context().db_get_i64(iterator, buffer.data(), buffer.size());}
-   int32_t db_next_i64(int32_t iterator, wasm_ptr<uint64_t> primary)                      {return selected().db_get_context().db_next_i64(iterator, *primary);}
-   int32_t db_previous_i64(int32_t iterator, wasm_ptr<uint64_t> primary)                  {return selected().db_get_context().db_previous_i64(iterator, *primary);}
-   int32_t db_find_i64(uint64_t code, uint64_t scope, uint64_t table, uint64_t id)        {return selected().db_get_context().db_find_i64(code, scope, table, id);}
-   int32_t db_lowerbound_i64(uint64_t code, uint64_t scope, uint64_t table, uint64_t id)  {return selected().db_get_context().db_lowerbound_i64(code, scope, table, id);}
-   int32_t db_upperbound_i64(uint64_t code, uint64_t scope, uint64_t table, uint64_t id)  {return selected().db_get_context().db_upperbound_i64(code, scope, table, id);}
-   int32_t db_end_i64(uint64_t code, uint64_t scope, uint64_t table)                      {return selected().db_get_context().db_end_i64(code, scope, table);}
+   int32_t db_get_i64(int32_t iterator, span<char> buffer)                                {return selected().db_get_i64(iterator, buffer.data(), buffer.size());}
+   int32_t db_next_i64(int32_t iterator, wasm_ptr<uint64_t> primary)                      {return selected().db_next_i64(iterator, *primary);}
+   int32_t db_previous_i64(int32_t iterator, wasm_ptr<uint64_t> primary)                  {return selected().db_previous_i64(iterator, *primary);}
+   int32_t db_find_i64(uint64_t code, uint64_t scope, uint64_t table, uint64_t id)        {return selected().db_find_i64(name(code), name(scope), name(table), id);}
+   int32_t db_lowerbound_i64(uint64_t code, uint64_t scope, uint64_t table, uint64_t id)  {return selected().db_lowerbound_i64(name(code), name(scope), name(table), id);}
+   int32_t db_upperbound_i64(uint64_t code, uint64_t scope, uint64_t table, uint64_t id)  {return selected().db_upperbound_i64(name(code), name(scope), name(table), id);}
+   int32_t db_end_i64(uint64_t code, uint64_t scope, uint64_t table)                      {return selected().db_end_i64(name(code), name(scope), name(table));}
 
    int32_t db_idx64_find_secondary(uint64_t code, uint64_t scope, uint64_t table, wasm_ptr<const uint64_t> secondary,
                                      wasm_ptr<uint64_t> primary) {
-      return selected().db_get_context().db_idx64_find_secondary(code, scope, table, *secondary, *primary);
+      return selected().idx64.find_secondary(code, scope, table, *secondary, *primary);
    }
    int32_t db_idx64_find_primary(uint64_t code, uint64_t scope, uint64_t table, wasm_ptr<uint64_t> secondary,
                                    uint64_t primary) {
-      return selected().db_get_context().db_idx64_find_primary(code, scope, table, *secondary, primary);
+      return selected().idx64.find_primary(code, scope, table, *secondary, primary);
    }
    int32_t db_idx64_lowerbound(uint64_t code, uint64_t scope, uint64_t table, wasm_ptr<uint64_t> secondary,
                                  wasm_ptr<uint64_t> primary) {
-      return selected().db_get_context().db_idx64_lowerbound(code, scope, table, *secondary, *primary);
+      return selected().idx64.lowerbound_secondary(code, scope, table, *secondary, *primary);
    }
    int32_t db_idx64_upperbound(uint64_t code, uint64_t scope, uint64_t table, wasm_ptr<uint64_t> secondary,
                                  wasm_ptr<uint64_t> primary) {
-      return selected().db_get_context().db_idx64_upperbound(code, scope, table, *secondary, *primary);
+      return selected().idx64.upperbound_secondary(code, scope, table, *secondary, *primary);
    }
    int32_t db_idx64_end(uint64_t code, uint64_t scope, uint64_t table) {
-      return selected().db_get_context().db_idx64_end(code, scope, table);
+      return selected().idx64.end_secondary(code, scope, table);
    }
    int32_t db_idx64_next(int32_t iterator, wasm_ptr<uint64_t> primary) {
-      return selected().db_get_context().db_idx64_next(iterator, *primary);
+      return selected().idx64.next_secondary(iterator, *primary);
    }
    int32_t db_idx64_previous(int32_t iterator, wasm_ptr<uint64_t> primary) {
-      return selected().db_get_context().db_idx64_previous(iterator, *primary);
+      return selected().idx64.previous_secondary(iterator, *primary);
    }
 
    int32_t db_idx128_find_secondary(uint64_t code, uint64_t scope, uint64_t table, wasm_ptr<const unsigned __int128> secondary,
                                    wasm_ptr<uint64_t> primary) {
-      return selected().db_get_context().db_idx128_find_secondary(code, scope, table, *secondary, *primary);
+      return selected().idx128.find_secondary(code, scope, table, *secondary, *primary);
    }
    int32_t db_idx128_find_primary(uint64_t code, uint64_t scope, uint64_t table, wasm_ptr<unsigned __int128> secondary,
                                  uint64_t primary) {
-      return selected().db_get_context().db_idx128_find_primary(code, scope, table, *secondary, primary);
+      return selected().idx128.find_primary(code, scope, table, *secondary, primary);
    }
    int32_t db_idx128_lowerbound(uint64_t code, uint64_t scope, uint64_t table, wasm_ptr<unsigned __int128> secondary,
                                wasm_ptr<uint64_t> primary) {
-      return selected().db_get_context().db_idx128_lowerbound(code, scope, table, *secondary, *primary);
+      return selected().idx128.lowerbound_secondary(code, scope, table, *secondary, *primary);
    }
    int32_t db_idx128_upperbound(uint64_t code, uint64_t scope, uint64_t table, wasm_ptr<unsigned __int128> secondary,
                                wasm_ptr<uint64_t> primary) {
-      return selected().db_get_context().db_idx128_upperbound(code, scope, table, *secondary, *primary);
+      return selected().idx128.upperbound_secondary(code, scope, table, *secondary, *primary);
    }
    int32_t db_idx128_end(uint64_t code, uint64_t scope, uint64_t table) {
-      return selected().db_get_context().db_idx128_end(code, scope, table);
+      return selected().idx128.end_secondary(code, scope, table);
    }
    int32_t db_idx128_next(int32_t iterator, wasm_ptr<uint64_t> primary) {
-      return selected().db_get_context().db_idx128_next(iterator, *primary);
+      return selected().idx128.next_secondary(iterator, *primary);
    }
    int32_t db_idx128_previous(int32_t iterator, wasm_ptr<uint64_t> primary) {
-      return selected().db_get_context().db_idx128_previous(iterator, *primary);
+      return selected().idx128.previous_secondary(iterator, *primary);
    }
    // DB_WRAPPERS_ARRAY_SECONDARY(idx256, 2, unsigned __int128)
    // DB_WRAPPERS_FLOAT_SECONDARY(idx_double, float64_t)

@@ -14,10 +14,9 @@
 #include <eosio/chain/kv_chainbase_objects.hpp>
 
 using boost::container::flat_set;
+using namespace eosio::chain::backing_store;
 
 namespace eosio { namespace chain {
-
-using db_context = backing_store::db_context;
 
 static inline void print_debug(account_name receiver, const action_trace& ar) {
    if (!ar.console.empty()) {
@@ -51,7 +50,6 @@ apply_context::apply_context(controller& con, transaction_context& trx_ctx, uint
    act = &trace.act;
    receiver = trace.receiver;
    context_free = trace.context_free;
-   _db_context = db_util::create_db_context(*this, receiver);
 }
 
 template <typename Exception>
@@ -104,7 +102,7 @@ void apply_context::exec_one()
          kv_iterators.resize(1);
          kv_destroyed_iterators.clear();
          if (!context_free) {
-            kv_backing_store = db_util::create_kv_context(control.mutable_db(), receiver, create_kv_resource_manager(*this), control.get_global_properties().kv_configuration);
+            kv_backing_store = db_util::create_kv_context(control, receiver, create_kv_resource_manager(*this), control.get_global_properties().kv_configuration);
         }
          receiver_account = &db.get<account_metadata_object,by_name>( receiver );
          if( !(context_free && control.skip_trx_checks()) ) {
@@ -222,7 +220,6 @@ void apply_context::exec()
    increment_action_id();
    for( uint32_t i = 1; i < _notified.size(); ++i ) {
       std::tie( receiver, action_ordinal ) = _notified[i];
-      _db_context->receiver = receiver;
       exec_one();
       increment_action_id();
    }
@@ -846,7 +843,7 @@ int apply_context::get_context_free_data( uint32_t index, char* buffer, size_t b
    return copy_size;
 }
 
-int apply_context::db_store_i64_chainbase( name scope, name table, const account_name& payer, uint64_t id, const char* buffer, size_t buffer_size ) {
+int apply_context::db_store_i64( name scope, name table, const account_name& payer, uint64_t id, const char* buffer, size_t buffer_size ) {
 //   require_write_lock( scope );
    const auto& tab = find_or_create_table( receiver, scope, table, payer );
    auto tableid = tab.id;
@@ -881,7 +878,7 @@ int apply_context::db_store_i64_chainbase( name scope, name table, const account
    return db_iter_store.add( obj );
 }
 
-void apply_context::db_update_i64_chainbase( int iterator, account_name payer, const char* buffer, size_t buffer_size ) {
+void apply_context::db_update_i64( int iterator, account_name payer, const char* buffer, size_t buffer_size ) {
    const key_value_object& obj = db_iter_store.get( iterator );
 
    const auto& table_obj = db_iter_store.get_table( obj.t_id );
@@ -922,7 +919,7 @@ void apply_context::db_update_i64_chainbase( int iterator, account_name payer, c
    });
 }
 
-void apply_context::db_remove_i64_chainbase( int iterator ) {
+void apply_context::db_remove_i64( int iterator ) {
    const key_value_object& obj = db_iter_store.get( iterator );
 
    const auto& table_obj = db_iter_store.get_table( obj.t_id );
@@ -953,7 +950,7 @@ void apply_context::db_remove_i64_chainbase( int iterator ) {
    db_iter_store.remove( iterator );
 }
 
-int apply_context::db_get_i64_chainbase( int iterator, char* buffer, size_t buffer_size ) {
+int apply_context::db_get_i64( int iterator, char* buffer, size_t buffer_size ) {
    const key_value_object& obj = db_iter_store.get( iterator );
 
    auto s = obj.value.size();
@@ -965,7 +962,7 @@ int apply_context::db_get_i64_chainbase( int iterator, char* buffer, size_t buff
    return copy_size;
 }
 
-int apply_context::db_next_i64_chainbase( int iterator, uint64_t& primary ) {
+int apply_context::db_next_i64( int iterator, uint64_t& primary ) {
    if( iterator < -1 ) return -1; // cannot increment past end iterator of table
 
    const auto& obj = db_iter_store.get( iterator ); // Check for iterator != -1 happens in this call
@@ -980,7 +977,7 @@ int apply_context::db_next_i64_chainbase( int iterator, uint64_t& primary ) {
    return db_iter_store.add( *itr );
 }
 
-int apply_context::db_previous_i64_chainbase( int iterator, uint64_t& primary ) {
+int apply_context::db_previous_i64( int iterator, uint64_t& primary ) {
    const auto& idx = db.get_index<key_value_index, by_scope_primary>();
 
    if( iterator < -1 ) // is end iterator
@@ -1012,7 +1009,7 @@ int apply_context::db_previous_i64_chainbase( int iterator, uint64_t& primary ) 
    return db_iter_store.add(*itr);
 }
 
-int apply_context::db_find_i64_chainbase( name code, name scope, name table, uint64_t id ) {
+int apply_context::db_find_i64( name code, name scope, name table, uint64_t id ) {
    //require_read_lock( code, scope ); // redundant?
 
    const auto* tab = find_table( code, scope, table );
@@ -1026,7 +1023,7 @@ int apply_context::db_find_i64_chainbase( name code, name scope, name table, uin
    return db_iter_store.add( *obj );
 }
 
-int apply_context::db_lowerbound_i64_chainbase( name code, name scope, name table, uint64_t id ) {
+int apply_context::db_lowerbound_i64( name code, name scope, name table, uint64_t id ) {
    //require_read_lock( code, scope ); // redundant?
 
    const auto* tab = find_table( code, scope, table );
@@ -1042,7 +1039,7 @@ int apply_context::db_lowerbound_i64_chainbase( name code, name scope, name tabl
    return db_iter_store.add( *itr );
 }
 
-int apply_context::db_upperbound_i64_chainbase( name code, name scope, name table, uint64_t id ) {
+int apply_context::db_upperbound_i64( name code, name scope, name table, uint64_t id ) {
    //require_read_lock( code, scope ); // redundant?
 
    const auto* tab = find_table( code, scope, table );
@@ -1058,7 +1055,7 @@ int apply_context::db_upperbound_i64_chainbase( name code, name scope, name tabl
    return db_iter_store.add( *itr );
 }
 
-int apply_context::db_end_i64_chainbase( name code, name scope, name table ) {
+int apply_context::db_end_i64( name code, name scope, name table ) {
    //require_read_lock( code, scope ); // redundant?
 
    const auto* tab = find_table( code, scope, table );
@@ -1200,11 +1197,5 @@ uint32_t apply_context::get_action_id() const {
 
 void apply_context::increment_action_id() {
    trx_context.action_id.increment();
-}
-
-db_context& apply_context::db_get_context() {
-   EOS_ASSERT( _db_context, action_validate_exception,
-               "context-free actions cannot access state" );
-   return *_db_context;
 }
 } } /// eosio::chain

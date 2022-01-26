@@ -1,5 +1,4 @@
 #pragma once
-#include <b1/chain_kv/chain_kv.hpp>
 #include <chainbase/chainbase.hpp>
 #include <eosio/chain/authorization_manager.hpp>
 #include <eosio/chain/block_state.hpp>
@@ -11,29 +10,18 @@
 #include <eosio/chain/account_object.hpp>
 #include <eosio/chain/backing_store.hpp>
 #include <eosio/chain/block_summary_object.hpp>
-#include <eosio/chain/code_object.hpp>
 #include <eosio/chain/contract_table_objects.hpp>
 #include <eosio/chain/database_header_object.hpp>
 #include <eosio/chain/generated_transaction_object.hpp>
-#include <eosio/chain/genesis_intrinsics.hpp>
 #include <eosio/chain/global_property_object.hpp>
 #include <eosio/chain/kv_chainbase_objects.hpp>
 #include <eosio/chain/protocol_state_object.hpp>
 #include <eosio/chain/transaction_object.hpp>
-#include <eosio/chain/whitelisted_intrinsics.hpp>
 #include <eosio/chain/controller.hpp>
 
 #include <b1/session/session.hpp>
 
-namespace eosio { namespace chain { 
-   
-   class apply_context;
-
-   namespace backing_store {
-      struct db_context;
-   }
-
-namespace db_util {
+namespace eosio { namespace chain { namespace db_util {
    using controller_index_set =
          index_set<account_index, account_metadata_index, account_ram_correction_index, global_property_multi_index,
                    protocol_state_multi_index, dynamic_global_property_multi_index, block_summary_multi_index,
@@ -43,13 +31,11 @@ namespace db_util {
    using contract_database_index_set = index_set<key_value_index, index64_index, index128_index, index256_index,
                                                  index_double_index, index_long_double_index>;
 
-   using db_context = backing_store::db_context;
-
    class maybe_session {
     public:
       maybe_session() = default;
 
-      maybe_session(chainbase::database& cb_database);
+      explicit maybe_session(chainbase::database& cb_database);
       maybe_session(maybe_session&& src) noexcept;
 
       maybe_session& operator=(const maybe_session& src) = delete;
@@ -70,12 +56,10 @@ namespace db_util {
 
    void destroy(const fc::path& p);
 
-   std::unique_ptr<kv_context> create_kv_context(chainbase::database& db, 
+   std::unique_ptr<kv_context> create_kv_context(const controller& c, 
                                                  name receiver, 
                                                  kv_resource_manager resource_manager,
                                                  const kv_database_config& limits);
-
-   std::unique_ptr<db_context> create_db_context(apply_context& context, name receiver);
 
    void add_to_snapshot(const chainbase::database&                                    db, 
                         const eosio::chain::snapshot_writer_ptr&                      snapshot, 

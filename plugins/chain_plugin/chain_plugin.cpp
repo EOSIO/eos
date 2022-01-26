@@ -1969,7 +1969,7 @@ struct kv_table_rows_context {
 
    kv_table_rows_context(const controller& db, const read_only::get_kv_table_rows_params& param,
                          const fc::microseconds abi_serializer_max_time, bool shorten_error)
-       : kv_context(db_util::create_kv_context(db.mutable_db(),
+       : kv_context(db_util::create_kv_context(db,
              param.code, {},
              db.get_global_properties().kv_configuration)) // To do: provide kv_resource_manmager to create_kv_context
        , p(param)
