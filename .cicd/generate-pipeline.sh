@@ -336,6 +336,7 @@ EOF
                 SERIAL_TESTS="$(cat tests/CMakeLists.txt | grep -v "^#" | awk -F ' ' '{ print $2 }' | sort | uniq | grep -P "^$TEST$" | awk "{while(i++<$ROUND_SIZE)print;i=0}")"
             fi
             for TEST_NAME in $SERIAL_TESTS; do
+                [[ "$(echo "$TEST_NAME" | grep -cP '^ship')" == '1' ]] && export NPM_INSTALL='true' || export NPM_INSTALL='false'
                 if [[ ! "$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)" =~ 'macos' ]]; then
                     cat <<EOF
   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - $TEST_NAME"
@@ -344,6 +345,7 @@ EOF
       ./.cicd/test.sh scripts/serial-test.sh $TEST_NAME
     env:
       IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
+      NPM_INSTALL: ${NPM_INSTALL:-false}
       PLATFORM_TYPE: $PLATFORM_TYPE
     agents:
       queue: "$BUILDKITE_TEST_AGENT_QUEUE"
@@ -396,20 +398,16 @@ EOF
             - 'registry_2'
       - EOSIO/skip-checkout#v0.1.1:
           cd: ~
+    env:
+      NPM_INSTALL: ${NPM_INSTALL:-false}
     agents: "queue=mac-anka-node-fleet"
     retry:
       manual:
         permit_on_passed: true
     timeout: ${TIMEOUT:-60}
     skip: $(echo "$PLATFORM_JSON" | jq -r '.PLATFORM_SKIP_VAR | env[.] // empty')${SKIP_SERIAL_TESTS}
+
 EOF
-                if [[ "$(echo "$TEST_NAME" | grep -cP '^ship')" == '1' ]]; then
-                    cat <<YAML
-    env:
-      NPM_INSTALL: "true"
-YAML
-                fi
-                echo ''
                 fi
             done
             IFS=$nIFS
