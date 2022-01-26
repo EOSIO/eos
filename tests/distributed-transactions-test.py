@@ -23,7 +23,7 @@ Print=Utils.Print
 errorExit=Utils.errorExit
 
 args=TestHelper.parse_args({"-p","-n","-d","-s","--nodes-file","--seed"
-                           ,"--dump-error-details","-v","--leave-running","--clean-run","--keep-logs"})
+                           ,"--dump-error-details","-v","--leave-running","--clean-run","--keep-logs","--amqp-address"})
 
 pnodes=args.p
 topo=args.s
@@ -37,6 +37,7 @@ dontKill=args.leave_running
 dumpErrorDetails=args.dump_error_details
 killAll=args.clean_run
 keepLogs=args.keep_logs
+amqpAddr=args.amqp_address
 
 killWallet=not dontKill
 killEosInstances=not dontKill
@@ -74,8 +75,12 @@ try:
                (pnodes, total_nodes-pnodes, topo, delay))
 
         Print("Stand up cluster")
-        traceNodeosArgs=" --plugin eosio::trace_api_plugin --trace-no-abis "
-        if cluster.launch(pnodes=pnodes, totalNodes=total_nodes, topo=topo, delay=delay, extraNodeosArgs=traceNodeosArgs) is False:
+        extraNodeosArgs=" --plugin eosio::trace_api_plugin --trace-no-abis "
+        if amqpAddr:
+            cluster.createAMQPQueue("trx")
+            extraNodeosArgs+="--plugin eosio::amqp_trx_plugin --amqp-trx-ack-mode=executed --amqp-trx-speculative-execution --amqp-trx-address %s" % (amqpAddr)
+
+        if cluster.launch(pnodes=pnodes, totalNodes=total_nodes, topo=topo, delay=delay, extraNodeosArgs=extraNodeosArgs) is False:
             errorExit("Failed to stand up eos cluster.")
 
         Print ("Wait for Cluster stabilization")
