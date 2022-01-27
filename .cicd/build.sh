@@ -60,6 +60,7 @@ else # Linux
     COMMANDS="$PRE_COMMANDS && $COMMANDS"
     DOCKER_RUN_ARGS="$ARGS $(buildkite-intrinsics) --env CMAKE_EXTRAS='$CMAKE_EXTRAS' '$FULL_TAG' bash -c '$COMMANDS'"
     echo "$ docker run $DOCKER_RUN_ARGS"
+    echo "Appending proxy args: '${PROXY_DOCKER_RUN_ARGS}'"
     eval "docker run ${PROXY_DOCKER_RUN_ARGS}${DOCKER_RUN_ARGS}"
 fi
 if [[ "$BUILDKITE" == 'true' && "$ENABLE_INSTALL" != 'true' ]]; then

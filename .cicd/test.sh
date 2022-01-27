@@ -18,7 +18,7 @@ else # Linux
     DOCKER_RUN_COMMAND="--rm --init -v \"\$(pwd):$MOUNTED_DIR\" $(buildkite-intrinsics) -e JOBS -e BUILDKITE_API_KEY '$FULL_TAG' bash -c '$COMMANDS'"
     set +e # defer error handling to end
     echo "$ docker run $DOCKER_RUN_COMMAND"
-    eval "docker run ${PROXY_DOCKER_RUN_ARGS}${DOCKER_RUN_COMMAND}"
+    eval "docker run ${DOCKER_RUN_COMMAND}"
     EXIT_STATUS=$?
 fi
 # buildkite

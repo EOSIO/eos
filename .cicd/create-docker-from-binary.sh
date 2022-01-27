@@ -13,6 +13,7 @@ DOCKERHUB_REGISTRY='docker.io/eosio/eosio'
 IMAGE="${DOCKERHUB_REGISTRY}:${BUILDKITE_COMMIT:-latest}"
 DOCKER_BUILD_ARGS="-t '$IMAGE' -f ./docker/dockerfile ."
 echo "$ docker build $DOCKER_BUILD_ARGS"
+echo "Appending proxy args: '${PROXY_DOCKER_BUILD_ARGS}'"
 eval "docker build ${PROXY_DOCKER_BUILD_ARGS}${DOCKER_BUILD_ARGS}"
 # docker tag
 echo '--- :label: Tag Container'
