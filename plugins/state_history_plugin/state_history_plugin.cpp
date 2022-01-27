@@ -131,7 +131,12 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       state_history_log_header header;
       auto&                    stream = log.get_entry(block_num, header);
       uint32_t                 s;
+      // Compressed deltas now exceeds 4GB on one of the public chains. This length prefix
+      // was intended to support adding additional fields in the future after the
+      // packed deltas or packed traces. For now we're going to let it overflow and
+      // ignore on read.
       stream.read((char*)&s, sizeof(s));
+      s = header.payload_size - sizeof(s);
       bytes compressed(s);
       if (s)
          stream.read(compressed.data(), s);
@@ -565,11 +570,13 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       process_table("resource_limits_config", db.get_index<resource_limits::resource_limits_config_index>(), pack_row);
 
       auto deltas_bin = zlib_compress_bytes(fc::raw::pack(deltas));
-      EOS_ASSERT(deltas_bin.size() == (uint32_t)deltas_bin.size(), plugin_exception, "deltas is too big");
       state_history_log_header header{.magic        = ship_magic(ship_current_version),
                                       .block_id     = block_state->block->id(),
                                       .payload_size = sizeof(uint32_t) + deltas_bin.size()};
       chain_state_log->write_entry(header, block_state->block->previous, [&](auto& stream) {
+         // Compressed deltas now exceeds 4GB on one of the public chains. This length prefix
+         // was intended to support adding additional fields in the future after the
+         // packed deltas. For now we're going to let it overflow and ignore on read.
          uint32_t s = (uint32_t)deltas_bin.size();
          stream.write((char*)&s, sizeof(s));
          if (!deltas_bin.empty())
