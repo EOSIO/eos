@@ -997,7 +997,7 @@ public:
    };
    void send_transaction(const send_transaction_params_v2& params, chain::plugin_interface::next_function<send_transaction_results> next);
 
-   void send_transaction(packed_transaction_ptr input_trx, const std::string method, bool return_failure_traces, chain::plugin_interface::next_function<send_transaction_results> next);
+   void send_transaction(chain::packed_transaction_ptr input_trx, const std::string method, bool return_failure_traces, chain::plugin_interface::next_function<send_transaction_results> next);
 
 };
 
