@@ -133,8 +133,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       uint32_t                 s;
       // Compressed deltas now exceeds 4GB on one of the public chains. This length prefix
       // was intended to support adding additional fields in the future after the
-      // packed deltas or packed traces. For now we're going to let it overflow and
-      // ignore on read.
+      // packed deltas or packed traces. For now we're going to ignore on read.
       stream.read((char*)&s, sizeof(s));
       uint64_t s2 = header.payload_size - sizeof(s);
       bytes    compressed(s2);
@@ -576,8 +575,11 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       chain_state_log->write_entry(header, block_state->block->previous, [&](auto& stream) {
          // Compressed deltas now exceeds 4GB on one of the public chains. This length prefix
          // was intended to support adding additional fields in the future after the
-         // packed deltas. For now we're going to let it overflow and ignore on read.
+         // packed deltas. For now we're going to ignore on read. The 0 is an attempt to signal
+         // old versions that something's not quite right.
          uint32_t s = (uint32_t)deltas_bin.size();
+         if (s != deltas_bin.size())
+            s = 0;
          stream.write((char*)&s, sizeof(s));
          if (!deltas_bin.empty())
             stream.write(deltas_bin.data(), deltas_bin.size());
