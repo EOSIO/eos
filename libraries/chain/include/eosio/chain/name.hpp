@@ -101,8 +101,6 @@ namespace eosio::chain {
 #endif
    } // namespace literals
 
-#define N(X) eosio::chain::string_to_name(#X)
-
 } // eosio::chain
 
 namespace std {

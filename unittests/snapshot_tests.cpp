@@ -181,10 +181,10 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_exhaustive_snapshot, SNAPSHOT_SUITE, snapshot
 {
    tester chain;
 
-   chain.create_account(N(snapshot));
+   chain.create_account("snapshot"_n);
    chain.produce_blocks(1);
-   chain.set_code(N(snapshot), contracts::snapshot_test_wasm());
-   chain.set_abi(N(snapshot), contracts::snapshot_test_abi().data());
+   chain.set_code("snapshot"_n, contracts::snapshot_test_wasm());
+   chain.set_abi("snapshot"_n, contracts::snapshot_test_abi().data());
    chain.produce_blocks(1);
    chain.control->abort_block();
 
@@ -201,7 +201,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_exhaustive_snapshot, SNAPSHOT_SUITE, snapshot
       sub_testers.emplace_back(chain.get_config(), SNAPSHOT_SUITE::get_reader(snapshot), generation);
 
       // increment the test contract
-      chain.push_action(N(snapshot), N(increment), N(snapshot), mutable_variant_object()
+      chain.push_action("snapshot"_n, "increment"_n, "snapshot"_n, mutable_variant_object()
          ( "value", 1 )
       );
 
@@ -226,10 +226,10 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_replay_over_snapshot, SNAPSHOT_SUITE, snapsho
    tester chain;
    const chainbase::bfs::path parent_path = chain.get_config().blocks_dir.parent_path();
 
-   chain.create_account(N(snapshot));
+   chain.create_account("snapshot"_n);
    chain.produce_blocks(1);
-   chain.set_code(N(snapshot), contracts::snapshot_test_wasm());
-   chain.set_abi(N(snapshot), contracts::snapshot_test_abi().data());
+   chain.set_code("snapshot"_n, contracts::snapshot_test_wasm());
+   chain.set_abi("snapshot"_n, contracts::snapshot_test_abi().data());
    chain.produce_blocks(1);
    chain.control->abort_block();
 
@@ -238,7 +238,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_replay_over_snapshot, SNAPSHOT_SUITE, snapsho
 
    for (int itr = 0; itr < pre_snapshot_block_count; itr++) {
       // increment the contract
-      chain.push_action(N(snapshot), N(increment), N(snapshot), mutable_variant_object()
+      chain.push_action("snapshot"_n, "increment"_n, "snapshot"_n, mutable_variant_object()
          ( "value", 1 )
       );
 
@@ -261,7 +261,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_replay_over_snapshot, SNAPSHOT_SUITE, snapsho
    // push more blocks to build up a block log
    for (int itr = 0; itr < post_snapshot_block_count; itr++) {
       // increment the contract
-      chain.push_action(N(snapshot), N(increment), N(snapshot), mutable_variant_object()
+      chain.push_action("snapshot"_n, "increment"_n, "snapshot"_n, mutable_variant_object()
          ( "value", 1 )
       );
 
@@ -321,10 +321,10 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_chain_id_in_snapshot, SNAPSHOT_SUITE, snapsho
    tester chain;
    const chainbase::bfs::path parent_path = chain.get_config().blocks_dir.parent_path();
 
-   chain.create_account(N(snapshot));
+   chain.create_account("snapshot"_n);
    chain.produce_blocks(1);
-   chain.set_code(N(snapshot), contracts::snapshot_test_wasm());
-   chain.set_abi(N(snapshot), contracts::snapshot_test_abi().data());
+   chain.set_code("snapshot"_n, contracts::snapshot_test_wasm());
+   chain.set_abi("snapshot"_n, contracts::snapshot_test_abi().data());
    chain.produce_blocks(1);
    chain.control->abort_block();
 
@@ -481,10 +481,10 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_restart_with_existing_state_and_truncated_blo
    tester chain;
    const chainbase::bfs::path parent_path = chain.get_config().blocks_dir.parent_path();
 
-   chain.create_account(N(snapshot));
+   chain.create_account("snapshot"_n);
    chain.produce_blocks(1);
-   chain.set_code(N(snapshot), contracts::snapshot_test_wasm());
-   chain.set_abi(N(snapshot), contracts::snapshot_test_abi().data());
+   chain.set_code("snapshot"_n, contracts::snapshot_test_wasm());
+   chain.set_abi("snapshot"_n, contracts::snapshot_test_abi().data());
    chain.produce_blocks(1);
    chain.control->abort_block();
 
@@ -492,7 +492,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_restart_with_existing_state_and_truncated_blo
 
    for (int itr = 0; itr < pre_snapshot_block_count; itr++) {
       // increment the contract
-      chain.push_action(N(snapshot), N(increment), N(snapshot), mutable_variant_object()
+      chain.push_action("snapshot"_n, "increment"_n, "snapshot"_n, mutable_variant_object()
                         ( "value", 1 )
                         );
 
