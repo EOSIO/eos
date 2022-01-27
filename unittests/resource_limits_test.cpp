@@ -318,20 +318,20 @@ BOOST_AUTO_TEST_SUITE(resource_limits_test)
       double uncongested_cpu_time_per_period = congested_cpu_time_per_period * config::maximum_elastic_resource_multiplier;
       wdump((uncongested_cpu_time_per_period));
 
-      initialize_account( N(dan) );
-      initialize_account( N(everyone) );
-      set_account_limits( N(dan), 0, 0, user_stake );
-      set_account_limits( N(everyone), 0, 0, (total_staked_tokens - user_stake) );
+      initialize_account( "dan"_n );
+      initialize_account( "everyone"_n );
+      set_account_limits( "dan"_n, 0, 0, user_stake );
+      set_account_limits( "everyone"_n, 0, 0, (total_staked_tokens - user_stake) );
       process_account_limit_updates();
 
       // dan cannot consume more than 34 us per day
-      BOOST_REQUIRE_THROW( add_transaction_usage( {N(dan)}, 35, 0, 1 ), tx_cpu_usage_exceeded );
+      BOOST_REQUIRE_THROW( add_transaction_usage( {"dan"_n}, 35, 0, 1 ), tx_cpu_usage_exceeded );
 
       // Ensure CPU usage is 0 by "waiting" for one day's worth of blocks to pass.
-      add_transaction_usage( {N(dan)}, 0, 0, 1 + blocks_per_day );
+      add_transaction_usage( {"dan"_n}, 0, 0, 1 + blocks_per_day );
 
       // But dan should be able to consume up to 34 us per day.
-      add_transaction_usage( {N(dan)}, 34, 0, 2 + blocks_per_day );
+      add_transaction_usage( {"dan"_n}, 34, 0, 2 + blocks_per_day );
    } FC_LOG_AND_RETHROW()
 
 BOOST_AUTO_TEST_SUITE_END()

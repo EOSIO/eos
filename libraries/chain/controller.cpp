@@ -2422,7 +2422,7 @@ struct controller_impl {
    {
       action on_block_act;
       on_block_act.account = config::system_account_name;
-      on_block_act.name = N(onblock);
+      on_block_act.name = "onblock"_n;
       on_block_act.authorization = vector<permission_level>{{config::system_account_name, config::active_name}};
       on_block_act.data = fc::raw::pack(self.head_block_header());
 

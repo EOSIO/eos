@@ -1867,7 +1867,7 @@ vector<asset> read_only::get_currency_balance( const read_only::get_currency_bal
    (void)get_table_type( abi, name("accounts") );
 
    vector<asset> results;
-   walk_key_value_table(p.code, p.account, N(accounts), [&](const key_value_object& obj){
+   walk_key_value_table(p.code, p.account, "accounts"_n, [&](const key_value_object& obj){
       EOS_ASSERT( obj.value.size() >= sizeof(asset), chain::asset_type_exception, "Invalid data on table");
 
       asset cursor;
@@ -1895,7 +1895,7 @@ fc::variant read_only::get_currency_stats( const read_only::get_currency_stats_p
 
    uint64_t scope = ( eosio::chain::string_to_symbol( 0, boost::algorithm::to_upper_copy(p.symbol).c_str() ) >> 8 );
 
-   walk_key_value_table(p.code, name(scope), N(stat), [&](const key_value_object& obj){
+   walk_key_value_table(p.code, name(scope), "stat"_n, [&](const key_value_object& obj){
       EOS_ASSERT( obj.value.size() >= sizeof(read_only::get_currency_stats_result), chain::asset_type_exception, "Invalid data on table");
 
       fc::datastream<const char *> ds(obj.value.data(), obj.value.size());
@@ -1913,24 +1913,24 @@ fc::variant read_only::get_currency_stats( const read_only::get_currency_stats_p
 }
 
 fc::variant get_global_row( const database& db, const abi_def& abi, const abi_serializer& abis, const fc::microseconds& abi_serializer_max_time_us, bool shorten_abi_errors ) {
-   const auto table_type = get_table_type(abi, N(global));
+   const auto table_type = get_table_type(abi, "global"_n);
    EOS_ASSERT(table_type == read_only::KEYi64, chain::contract_table_query_exception, "Invalid table type ${type} for table global", ("type",table_type));
 
-   const auto* const table_id = db.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple(config::system_account_name, config::system_account_name, N(global)));
+   const auto* const table_id = db.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple(config::system_account_name, config::system_account_name, "global"_n));
    EOS_ASSERT(table_id, chain::contract_table_query_exception, "Missing table global");
 
    const auto& kv_index = db.get_index<key_value_index, by_scope_primary>();
-   const auto it = kv_index.find(boost::make_tuple(table_id->id, N(global).to_uint64_t()));
+   const auto it = kv_index.find(boost::make_tuple(table_id->id, "global"_n.to_uint64_t()));
    EOS_ASSERT(it != kv_index.end(), chain::contract_table_query_exception, "Missing row in table global");
 
    vector<char> data;
    read_only::copy_inline_row(*it, data);
-   return abis.binary_to_variant(abis.get_table_type(N(global)), data, abi_serializer::create_yield_function( abi_serializer_max_time_us ), shorten_abi_errors );
+   return abis.binary_to_variant(abis.get_table_type("global"_n), data, abi_serializer::create_yield_function( abi_serializer_max_time_us ), shorten_abi_errors );
 }
 
 read_only::get_producers_result read_only::get_producers( const read_only::get_producers_params& p ) const try {
    const abi_def abi = eosio::chain_apis::get_abi(db, config::system_account_name);
-   const auto table_type = get_table_type(abi, N(producers));
+   const auto table_type = get_table_type(abi, "producers"_n);
    const abi_serializer abis{ abi, abi_serializer::create_yield_function( abi_serializer_max_time ) };
    EOS_ASSERT(table_type == KEYi64, chain::contract_table_query_exception, "Invalid table type ${type} for table producers", ("type",table_type));
 
@@ -1939,9 +1939,9 @@ read_only::get_producers_result read_only::get_producers( const read_only::get_p
 
    static const uint8_t secondary_index_num = 0;
    const auto* const table_id = d.find<chain::table_id_object, chain::by_code_scope_table>(
-           boost::make_tuple(config::system_account_name, config::system_account_name, N(producers)));
+           boost::make_tuple(config::system_account_name, config::system_account_name, "producers"_n));
    const auto* const secondary_table_id = d.find<chain::table_id_object, chain::by_code_scope_table>(
-           boost::make_tuple(config::system_account_name, config::system_account_name, name(N(producers).to_uint64_t() | secondary_index_num)));
+           boost::make_tuple(config::system_account_name, config::system_account_name, name("producers"_n.to_uint64_t() | secondary_index_num)));
    EOS_ASSERT(table_id && secondary_table_id, chain::contract_table_query_exception, "Missing producers table");
 
    const auto& kv_index = d.get_index<key_value_index, by_scope_primary>();
@@ -1970,7 +1970,7 @@ read_only::get_producers_result read_only::get_producers( const read_only::get_p
       }
       copy_inline_row(*kv_index.find(boost::make_tuple(table_id->id, it->primary_key)), data);
       if (p.json)
-         result.rows.emplace_back( abis.binary_to_variant( abis.get_table_type(N(producers)), data, abi_serializer::create_yield_function( abi_serializer_max_time ), shorten_abi_errors ) );
+         result.rows.emplace_back( abis.binary_to_variant( abis.get_table_type("producers"_n), data, abi_serializer::create_yield_function( abi_serializer_max_time ), shorten_abi_errors ) );
       else
          result.rows.emplace_back(fc::variant(data));
    }
@@ -2467,14 +2467,14 @@ read_only::get_account_results read_only::get_account( const get_account_params&
    if( abi_serializer::to_abi(code_account.abi, abi) ) {
       abi_serializer abis( abi, abi_serializer::create_yield_function( abi_serializer_max_time ) );
 
-      const auto token_code = N(eosio.token);
+      const auto token_code = "eosio.token"_n;
 
       auto core_symbol = extract_core_symbol();
 
       if (params.expected_core_symbol.valid())
          core_symbol = *(params.expected_core_symbol);
 
-      const auto* t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( token_code, params.account_name, N(accounts) ));
+      const auto* t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( token_code, params.account_name, "accounts"_n ));
       if( t_id != nullptr ) {
          const auto &idx = d.get_index<key_value_index, by_scope_primary>();
          auto it = idx.find(boost::make_tuple( t_id->id, core_symbol.to_symbol_code() ));
@@ -2489,7 +2489,7 @@ read_only::get_account_results read_only::get_account( const get_account_params&
          }
       }
 
-      t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( config::system_account_name, params.account_name, N(userres) ));
+      t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( config::system_account_name, params.account_name, "userres"_n ));
       if (t_id != nullptr) {
          const auto &idx = d.get_index<key_value_index, by_scope_primary>();
          auto it = idx.find(boost::make_tuple( t_id->id, params.account_name.to_uint64_t() ));
@@ -2500,7 +2500,7 @@ read_only::get_account_results read_only::get_account( const get_account_params&
          }
       }
 
-      t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( config::system_account_name, params.account_name, N(delband) ));
+      t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( config::system_account_name, params.account_name, "delband"_n ));
       if (t_id != nullptr) {
          const auto &idx = d.get_index<key_value_index, by_scope_primary>();
          auto it = idx.find(boost::make_tuple( t_id->id, params.account_name.to_uint64_t() ));
@@ -2511,7 +2511,7 @@ read_only::get_account_results read_only::get_account( const get_account_params&
          }
       }
 
-      t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( config::system_account_name, params.account_name, N(refunds) ));
+      t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( config::system_account_name, params.account_name, "refunds"_n ));
       if (t_id != nullptr) {
          const auto &idx = d.get_index<key_value_index, by_scope_primary>();
          auto it = idx.find(boost::make_tuple( t_id->id, params.account_name.to_uint64_t() ));
@@ -2522,7 +2522,7 @@ read_only::get_account_results read_only::get_account( const get_account_params&
          }
       }
 
-      t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( config::system_account_name, config::system_account_name, N(voters) ));
+      t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( config::system_account_name, config::system_account_name, "voters"_n ));
       if (t_id != nullptr) {
          const auto &idx = d.get_index<key_value_index, by_scope_primary>();
          auto it = idx.find(boost::make_tuple( t_id->id, params.account_name.to_uint64_t() ));
@@ -2533,7 +2533,7 @@ read_only::get_account_results read_only::get_account( const get_account_params&
          }
       }
 
-      t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( config::system_account_name, config::system_account_name, N(rexbal) ));
+      t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( config::system_account_name, config::system_account_name, "rexbal"_n ));
       if (t_id != nullptr) {
          const auto &idx = d.get_index<key_value_index, by_scope_primary>();
          auto it = idx.find(boost::make_tuple( t_id->id, params.account_name.to_uint64_t() ));
@@ -2628,7 +2628,7 @@ chain::symbol read_only::extract_core_symbol()const {
 
    // The following code makes assumptions about the contract deployed on eosio account (i.e. the system contract) and how it stores its data.
    const auto& d = db.db();
-   const auto* t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( N(eosio), N(eosio), N(rammarket) ));
+   const auto* t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( "eosio"_n, "eosio"_n, "rammarket"_n ));
    if( t_id != nullptr ) {
       const auto &idx = d.get_index<key_value_index, by_scope_primary>();
       auto it = idx.find(boost::make_tuple( t_id->id, eosio::chain::string_to_symbol_c(4,"RAMCORE") ));
