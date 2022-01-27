@@ -7,7 +7,7 @@ echo '--- :docker: Build or Pull Base Image :minidisc:'
 echo "Looking for '$HASHED_IMAGE_TAG' container in our registries."
 export EXISTS_DOCKER_HUB='false'
 export EXISTS_MIRROR='false'
-MANIFEST_COMMAND="docker manifest inspect '${MIRROR_REGISTRY:-$DOCKERHUB_CI_REGISTRY}:$HASHED_IMAGE_TAG'"
+MANIFEST_COMMAND="docker manifest inspect '${MIRROR_REGISTRY:-$DOCKER_CI_REGISTRY}:$HASHED_IMAGE_TAG'"
 echo "$ $MANIFEST_COMMAND"
 set +e
 eval $MANIFEST_COMMAND
@@ -28,23 +28,23 @@ if [[ "$EXISTS_MIRROR" == 'true' && ! -z "$MIRROR_REGISTRY" ]]; then
     # copy, if necessary
     if [[ "$EXISTS_DOCKER_HUB" == 'false' ]]; then
         # tag
-        DOCKER_TAG_COMMAND="docker tag '$MIRROR_REGISTRY:$HASHED_IMAGE_TAG' '$DOCKERHUB_CI_REGISTRY:$HASHED_IMAGE_TAG'"
+        DOCKER_TAG_COMMAND="docker tag '$MIRROR_REGISTRY:$HASHED_IMAGE_TAG' '$DOCKER_CI_REGISTRY:$HASHED_IMAGE_TAG'"
         echo "$ $DOCKER_TAG_COMMAND"
         eval $DOCKER_TAG_COMMAND
         # push
-        DOCKER_PUSH_COMMAND="docker push '$DOCKERHUB_CI_REGISTRY:$HASHED_IMAGE_TAG'"
+        DOCKER_PUSH_COMMAND="docker push '$DOCKER_CI_REGISTRY:$HASHED_IMAGE_TAG'"
         echo "$ $DOCKER_PUSH_COMMAND"
         eval $DOCKER_PUSH_COMMAND
         export EXISTS_DOCKER_HUB='true'
     fi
 elif [[ "$EXISTS_DOCKER_HUB" == 'true' ]]; then
-    DOCKER_PULL_COMMAND="docker pull '$DOCKERHUB_CI_REGISTRY:$HASHED_IMAGE_TAG'"
+    DOCKER_PULL_COMMAND="docker pull '$DOCKER_CI_REGISTRY:$HASHED_IMAGE_TAG'"
     echo "$ $DOCKER_PULL_COMMAND"
     eval $DOCKER_PULL_COMMAND
     # copy, if necessary
     if [[ "$EXISTS_MIRROR" == 'false' && ! -z "$MIRROR_REGISTRY" ]]; then
         # tag
-        DOCKER_TAG_COMMAND="docker tag '$DOCKERHUB_CI_REGISTRY:$HASHED_IMAGE_TAG' '$MIRROR_REGISTRY:$HASHED_IMAGE_TAG'"
+        DOCKER_TAG_COMMAND="docker tag '$DOCKER_CI_REGISTRY:$HASHED_IMAGE_TAG' '$MIRROR_REGISTRY:$HASHED_IMAGE_TAG'"
         echo "$ $DOCKER_TAG_COMMAND"
         eval $DOCKER_TAG_COMMAND
         # push

@@ -11,7 +11,7 @@ echo '$ echo ${#CONTRACT_REGISTRIES[@]} # array length'
 echo ${#CONTRACT_REGISTRIES[@]}
 echo '$ echo ${CONTRACT_REGISTRIES[@]} # array'
 echo ${CONTRACT_REGISTRIES[@]}
-export IMAGE="${MIRROR_REGISTRY:-$DOCKERHUB_CI_REGISTRY}:$PREFIX-$BUILDKITE_COMMIT-$PLATFORM_TYPE"
+export IMAGE="${MIRROR_REGISTRY:-$DOCKER_CI_REGISTRY}:$PREFIX-$BUILDKITE_COMMIT-$PLATFORM_TYPE"
 # pull
 echo '+++ :arrow_down: Pulling Container(s)'
 DOCKER_PULL_COMMAND="docker pull '$IMAGE'"
