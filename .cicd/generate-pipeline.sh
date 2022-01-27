@@ -95,7 +95,6 @@ for FILE in $(ls "$CICD_DIR/platforms/$PLATFORM_TYPE"); do
         "VERSION_MINOR": env.VERSION_MINOR,
         "VERSION_FULL": env.VERSION_FULL,
         "PLATFORM_NAME_FULL": env.PLATFORM_NAME_FULL,
-        "DOCKER_FULL_TAG": env.FULL_TAG,
         "HASHED_IMAGE_TAG": env.HASHED_IMAGE_TAG,
         "ICON": env.ICON,
         "ANKA_TAG_BASE": env.ANKA_TAG_BASE,
