@@ -136,11 +136,11 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       // packed deltas or packed traces. For now we're going to let it overflow and
       // ignore on read.
       stream.read((char*)&s, sizeof(s));
-      s = header.payload_size - sizeof(s);
-      bytes compressed(s);
-      if (s)
-         stream.read(compressed.data(), s);
-      result = zlib_decompress(compressed);
+      uint64_t s2 = header.payload_size - sizeof(s);
+      bytes    compressed(s2);
+      if (s2)
+         stream.read(compressed.data(), s2);
+      result = state_history::zlib_decompress(compressed);
    }
 
    void get_block(uint32_t block_num, fc::optional<bytes>& result) {
