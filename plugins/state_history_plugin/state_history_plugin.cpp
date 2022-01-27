@@ -139,7 +139,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       bytes    compressed(s2);
       if (s2)
          stream.read(compressed.data(), s2);
-      result = state_history::zlib_decompress(compressed);
+      result = zlib_decompress(compressed);
    }
 
    void get_block(uint32_t block_num, fc::optional<bytes>& result) {
