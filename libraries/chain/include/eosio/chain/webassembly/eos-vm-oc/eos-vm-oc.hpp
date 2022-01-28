@@ -50,6 +50,8 @@ enum eosvmoc_exitcode : int {
    EOSVMOC_EXIT_EXCEPTION
 };
 
+static constexpr uint8_t current_codegen_version = 1;
+
 }}}
 
 FC_REFLECT(eosio::chain::eosvmoc::no_offset, );

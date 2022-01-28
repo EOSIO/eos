@@ -140,7 +140,7 @@ struct compile_monitor_session {
                   reply.result = code_descriptor {
                      code.code_id,
                      code.vm_version,
-                     0,
+                     current_codegen_version,
                      (uintptr_t)code_ptr - (uintptr_t)_code_mapping,
                      result.start,
                      result.apply_offset,
