@@ -111,8 +111,8 @@ struct get_blocks_result_v0 {
    fc::optional<bytes>          deltas;
 };
 
-using state_request = fc::static_variant<get_status_request_v0, get_blocks_request_v0, get_blocks_ack_request_v0>;
-using state_result  = fc::static_variant<get_status_result_v0, get_blocks_result_v0>;
+using state_request = std::variant<get_status_request_v0, get_blocks_request_v0, get_blocks_ack_request_v0>;
+using state_result  = std::variant<get_status_result_v0, get_blocks_result_v0>;
 
 } // namespace state_history
 } // namespace eosio

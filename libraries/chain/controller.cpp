@@ -73,7 +73,7 @@ class maybe_session {
       }
 
       explicit maybe_session(database& db) {
-         _session = db.start_undo_session(true);
+         _session.emplace(db.start_undo_session(true));
       }
 
       maybe_session(const maybe_session&) = delete;
@@ -141,7 +141,7 @@ struct completed_block {
    block_state_ptr                   _block_state;
 };
 
-using block_stage_type = fc::static_variant<building_block, assembled_block, completed_block>;
+using block_stage_type = std::variant<building_block, assembled_block, completed_block>;
 
 struct pending_state {
    pending_state( maybe_session&& s, const block_header_state& prev,
@@ -159,35 +159,35 @@ struct pending_state {
 
    /** @pre _block_stage cannot hold completed_block alternative */
    const pending_block_header_state& get_pending_block_header_state()const {
-      if( _block_stage.contains<building_block>() )
-         return _block_stage.get<building_block>()._pending_block_header_state;
+      if( std::holds_alternative<building_block>(_block_stage) )
+         return std::get<building_block>(_block_stage)._pending_block_header_state;
 
-      return _block_stage.get<assembled_block>()._pending_block_header_state;
+      return std::get<assembled_block>(_block_stage)._pending_block_header_state;
    }
 
    const vector<transaction_receipt>& get_trx_receipts()const {
-      if( _block_stage.contains<building_block>() )
-         return _block_stage.get<building_block>()._pending_trx_receipts;
+      if( std::holds_alternative<building_block>(_block_stage) )
+         return std::get<building_block>(_block_stage)._pending_trx_receipts;
 
-      if( _block_stage.contains<assembled_block>() )
-         return _block_stage.get<assembled_block>()._unsigned_block->transactions;
+      if( std::holds_alternative<assembled_block>(_block_stage) )
+         return std::get<assembled_block>(_block_stage)._unsigned_block->transactions;
 
-      return _block_stage.get<completed_block>()._block_state->block->transactions;
-   }
+      return std::get<completed_block>(_block_stage)._block_state->block->transactions;
+    }
 
    vector<transaction_metadata_ptr> extract_trx_metas() {
-      if( _block_stage.contains<building_block>() )
-         return std::move( _block_stage.get<building_block>()._pending_trx_metas );
+      if( std::holds_alternative<building_block>(_block_stage) )
+         return std::move( std::get<building_block>(_block_stage)._pending_trx_metas );
 
-      if( _block_stage.contains<assembled_block>() )
-         return std::move( _block_stage.get<assembled_block>()._trx_metas );
+      if( std::holds_alternative<assembled_block>(_block_stage) )
+         return std::move( std::get<assembled_block>(_block_stage)._trx_metas );
 
-      return _block_stage.get<completed_block>()._block_state->extract_trxs_metas();
+      return std::get<completed_block>(_block_stage)._block_state->extract_trxs_metas();
    }
 
    bool is_protocol_feature_activated( const digest_type& feature_digest )const {
-      if( _block_stage.contains<building_block>() ) {
-         auto& bb = _block_stage.get<building_block>();
+      if( std::holds_alternative<building_block>(_block_stage) ) {
+        auto& bb = std::get<building_block>(_block_stage);
          const auto& activated_features = bb._pending_block_header_state.prev_activated_protocol_features->protocol_features;
 
          if( activated_features.find( feature_digest ) != activated_features.end() ) return true;
@@ -198,7 +198,7 @@ struct pending_state {
          return (std::find( bb._new_protocol_feature_activations.begin(), end, feature_digest ) != end);
       }
 
-      if( _block_stage.contains<assembled_block>() ) {
+      if( std::holds_alternative<assembled_block>(_block_stage) ) {
          // Calling is_protocol_feature_activated during the assembled_block stage is not efficient.
          // We should avoid doing it.
          // In fact for now it isn't even implemented.
@@ -207,7 +207,7 @@ struct pending_state {
          // TODO: implement this
       }
 
-      const auto& activated_features = _block_stage.get<completed_block>()._block_state->activated_protocol_features->protocol_features;
+      const auto& activated_features = std::get<completed_block>(_block_stage)._block_state->activated_protocol_features->protocol_features;
       return (activated_features.find( feature_digest ) != activated_features.end());
    }
 
@@ -434,7 +434,7 @@ struct controller_impl {
                rbitr = rbi.begin();
             }
          }
-      } catch( fc::exception& ) {
+      } catch( std::exception& ) {
          if( root_id != fork_db.root()->id ) {
             fork_db.advance_root( root_id );
          }
@@ -1120,7 +1120,7 @@ struct controller_impl {
 
    // The returned scoped_exit should not exceed the lifetime of the pending which existed when make_block_restore_point was called.
    fc::scoped_exit<std::function<void()>> make_block_restore_point() {
-      auto& bb = pending->_block_stage.get<building_block>();
+      auto& bb = std::get<building_block>(pending->_block_stage);
       auto orig_block_transactions_size = bb._pending_trx_receipts.size();
       auto orig_state_transactions_size = bb._pending_trx_metas.size();
       auto orig_action_receipt_digests_size = bb._action_receipt_digests.size();
@@ -1130,7 +1130,7 @@ struct controller_impl {
                                         orig_state_transactions_size,
                                         orig_action_receipt_digests_size]()
       {
-         auto& bb = pending->_block_stage.get<building_block>();
+         auto& bb = std::get<building_block>(pending->_block_stage);
          bb._pending_trx_receipts.resize(orig_block_transactions_size);
          bb._pending_trx_metas.resize(orig_state_transactions_size);
          bb._action_receipt_digests.resize(orig_action_receipt_digests_size);
@@ -1168,6 +1168,15 @@ struct controller_impl {
       trx_context.billed_cpu_time_us = billed_cpu_time_us;
       trx_context.enforce_whiteblacklist = enforce_whiteblacklist;
       transaction_trace_ptr trace = trx_context.trace;
+
+      auto handle_exception = [&](const auto& e)
+      {
+         cpu_time_to_bill_us = trx_context.update_billed_cpu_time( fc::time_point::now() );
+         trace->error_code = controller::convert_exception_to_error_code( e );
+         trace->except = e;
+         trace->except_ptr = std::current_exception();
+      };
+
       try {
          trx_context.init_for_implicit_trx();
          trx_context.published = gtrx.published;
@@ -1177,7 +1186,7 @@ struct controller_impl {
          auto restore = make_block_restore_point();
          trace->receipt = push_receipt( gtrx.trx_id, transaction_receipt::soft_fail,
                                         trx_context.billed_cpu_time_us, trace->net_usage );
-         fc::move_append( pending->_block_stage.get<building_block>()._action_receipt_digests,
+         fc::move_append( std::get<building_block>(pending->_block_stage)._action_receipt_digests,
                           std::move(trx_context.executed_action_receipt_digests) );
 
          trx_context.squash();
@@ -1187,11 +1196,15 @@ struct controller_impl {
          throw;
       } catch( const protocol_feature_bad_block_exception& ) {
          throw;
+      } catch ( const std::bad_alloc& ) {
+         throw;
+      } catch ( const boost::interprocess::bad_alloc& ) {
+         throw;
       } catch( const fc::exception& e ) {
-         cpu_time_to_bill_us = trx_context.update_billed_cpu_time( fc::time_point::now() );
-         trace->error_code = controller::convert_exception_to_error_code( e );
-         trace->except = e;
-         trace->except_ptr = std::current_exception();
+         handle_exception(e);
+      } catch ( const std::exception& e ) {
+         auto wrapper = fc::std_exception_wrapper::from_current_exception(e);
+         handle_exception(wrapper);
       }
       return trace;
    }
@@ -1298,6 +1311,16 @@ struct controller_impl {
       trx_context.billed_cpu_time_us = billed_cpu_time_us;
       trx_context.enforce_whiteblacklist = gtrx.sender.empty() ? true : !sender_avoids_whitelist_blacklist_enforcement( gtrx.sender );
       trace = trx_context.trace;
+
+      auto handle_exception = [&](const auto& e)
+      {
+         cpu_time_to_bill_us = trx_context.update_billed_cpu_time( fc::time_point::now() );
+         trace->error_code = controller::convert_exception_to_error_code( e );
+         trace->except = e;
+         trace->except_ptr = std::current_exception();
+         trace->elapsed = fc::time_point::now() - trx_context.start;
+      };
+
       try {
          trx_context.init_for_deferred_trx( gtrx.published );
 
@@ -1321,7 +1344,7 @@ struct controller_impl {
                                         trx_context.billed_cpu_time_us,
                                         trace->net_usage );
 
-         fc::move_append( pending->_block_stage.get<building_block>()._action_receipt_digests,
+         fc::move_append( std::get<building_block>(pending->_block_stage)._action_receipt_digests,
                           std::move(trx_context.executed_action_receipt_digests) );
 
          trace->account_ram_delta = account_delta( gtrx.payer, trx_removal_ram_delta );
@@ -1339,13 +1362,17 @@ struct controller_impl {
          throw;
       } catch( const protocol_feature_bad_block_exception& ) {
          throw;
+      } catch ( const std::bad_alloc& ) {
+         throw;
+      } catch ( const boost::interprocess::bad_alloc& ) {
+         throw;
       } catch( const fc::exception& e ) {
-         cpu_time_to_bill_us = trx_context.update_billed_cpu_time( fc::time_point::now() );
-         trace->error_code = controller::convert_exception_to_error_code( e );
-         trace->except = e;
-         trace->except_ptr = std::current_exception();
-         trace->elapsed = fc::time_point::now() - trx_context.start;
+        handle_exception(e);
+      } catch ( const std::exception& e) {
+        auto wrapper = fc::std_exception_wrapper::from_current_exception(e);
+        handle_exception(wrapper);
       }
+
       trx_context.undo();
 
       // Only subjective OR soft OR hard failure logic below:
@@ -1422,7 +1449,7 @@ struct controller_impl {
                                             uint64_t cpu_usage_us, uint64_t net_usage ) {
       uint64_t net_usage_words = net_usage / 8;
       EOS_ASSERT( net_usage_words*8 == net_usage, transaction_exception, "net_usage is not divisible by 8" );
-      auto& receipts = pending->_block_stage.get<building_block>()._pending_trx_receipts;
+      auto& receipts = std::get<building_block>(pending->_block_stage)._pending_trx_receipts;
       receipts.emplace_back( trx );
       transaction_receipt& r = receipts.back();
       r.cpu_usage_us         = cpu_usage_us;
@@ -1471,6 +1498,15 @@ struct controller_impl {
          trx_context.billed_cpu_time_us = billed_cpu_time_us;
          trx_context.subjective_cpu_bill_us = subjective_cpu_bill_us;
          trace = trx_context.trace;
+
+         auto handle_exception =[&](const auto& e)
+         {
+            trace->error_code = controller::convert_exception_to_error_code( e );
+            trace->except = e;
+            trace->except_ptr = std::current_exception();
+            trace->elapsed = fc::time_point::now() - trx_context.start;
+         };
+
          try {
             if( trx->implicit ) {
                trx_context.init_for_implicit_trx();
@@ -1505,7 +1541,7 @@ struct controller_impl {
                                                     : transaction_receipt::delayed;
                trace->receipt = push_receipt(*trx->packed_trx(), s, trx_context.billed_cpu_time_us, trace->net_usage);
                trx->billed_cpu_time_us = trx_context.billed_cpu_time_us;
-               pending->_block_stage.get<building_block>()._pending_trx_metas.emplace_back(trx);
+               std::get<building_block>(pending->_block_stage)._pending_trx_metas.emplace_back(trx);
             } else {
                transaction_receipt_header r;
                r.status = transaction_receipt::executed;
@@ -1514,7 +1550,7 @@ struct controller_impl {
                trace->receipt = r;
             }
 
-            fc::move_append( pending->_block_stage.get<building_block>()._action_receipt_digests,
+            fc::move_append( std::get<building_block>(pending->_block_stage)._action_receipt_digests,
                              std::move(trx_context.executed_action_receipt_digests) );
 
             // call the accept signal but only once for this transaction
@@ -1539,11 +1575,15 @@ struct controller_impl {
             throw;
          } catch( const protocol_feature_bad_block_exception& ) {
             throw;
+         } catch ( const std::bad_alloc& ) {
+           throw;
+         } catch ( const boost::interprocess::bad_alloc& ) {
+           throw;
          } catch (const fc::exception& e) {
-            trace->error_code = controller::convert_exception_to_error_code( e );
-            trace->except = e;
-            trace->except_ptr = std::current_exception();
-            trace->elapsed = fc::time_point::now() - trx_context.start;
+           handle_exception(e);
+         } catch (const std::exception& e) {
+           auto wrapper = fc::std_exception_wrapper::from_current_exception(e);
+           handle_exception(wrapper);
          }
 
          emit( self.accepted_transaction, trx );
@@ -1580,7 +1620,7 @@ struct controller_impl {
       pending->_block_status = s;
       pending->_producer_block_id = producer_block_id;
 
-      auto& bb = pending->_block_stage.get<building_block>();
+      auto& bb = std::get<building_block>(pending->_block_stage);
       const auto& pbhs = bb._pending_block_header_state;
 
       // modify state of speculative block only if we are in speculative read mode (otherwise we need clean state for head or read-only modes)
@@ -1670,7 +1710,7 @@ struct controller_impl {
             EOS_ASSERT( gpo.proposed_schedule.version == pbhs.active_schedule_version + 1,
                         producer_schedule_exception, "wrong producer schedule version specified" );
 
-            pending->_block_stage.get<building_block>()._new_pending_producer_schedule = producer_authority_schedule::from_shared(gpo.proposed_schedule);
+            std::get<building_block>(pending->_block_stage)._new_pending_producer_schedule = producer_authority_schedule::from_shared(gpo.proposed_schedule);
             db.modify( gpo, [&]( auto& gp ) {
                gp.proposed_schedule_block_num = optional<block_num_type>();
                gp.proposed_schedule.version=0;
@@ -1698,6 +1738,9 @@ struct controller_impl {
          } catch( const fc::exception& e ) {
             wlog( "on block transaction failed, but shouldn't impact block generation, system contract needs update" );
             edump((e.to_detail_string()));
+         } catch( const std::exception& e ) {
+            wlog( "on block transaction failed due to unexpected exception" );
+            edump((e.what()));
          } catch( ... ) {
             elog( "on block transaction failed due to unknown exception" );
          }
@@ -1712,7 +1755,7 @@ struct controller_impl {
    void finalize_block()
    {
       EOS_ASSERT( pending, block_validate_exception, "it is not valid to finalize when there is no pending block");
-      EOS_ASSERT( pending->_block_stage.contains<building_block>(), block_validate_exception, "already called finalize_block");
+      EOS_ASSERT( std::holds_alternative<building_block>(pending->_block_stage), block_validate_exception, "already called finalize_block");
 
       try {
 
@@ -1728,12 +1771,12 @@ struct controller_impl {
       );
       resource_limits.process_block_usage(pbhs.block_num);
 
-      auto& bb = pending->_block_stage.get<building_block>();
+      auto& bb = std::get<building_block>(pending->_block_stage);
 
       // Create (unsigned) block:
       auto block_ptr = std::make_shared<signed_block>( pbhs.make_block_header(
          bb._transaction_mroot ? *bb._transaction_mroot : calculate_trx_merkle( bb._pending_trx_receipts ),
-         merkle( std::move( pending->_block_stage.get<building_block>()._action_receipt_digests ) ),
+         merkle( std::move( std::get<building_block>(pending->_block_stage)._action_receipt_digests ) ),
          bb._new_pending_producer_schedule,
          std::move( bb._new_protocol_feature_activations ),
          protocol_features.get_protocol_feature_set()
@@ -1778,10 +1821,10 @@ struct controller_impl {
       });
 
       try {
-         EOS_ASSERT( pending->_block_stage.contains<completed_block>(), block_validate_exception,
+         EOS_ASSERT( std::holds_alternative<completed_block>(pending->_block_stage), block_validate_exception,
                      "cannot call commit_block until pending block is completed" );
 
-         auto bsp = pending->_block_stage.get<completed_block>()._block_state;
+         auto bsp = std::get<completed_block>(pending->_block_stage)._block_state;
 
          if( add_to_fork_db ) {
             fork_db.add( bsp );
@@ -1915,8 +1958,8 @@ struct controller_impl {
          } else {
             trx_metas.reserve( b->transactions.size() );
             for( const auto& receipt : b->transactions ) {
-               if( receipt.trx.contains<packed_transaction>()) {
-                  const auto& pt = receipt.trx.get<packed_transaction>();
+               if( std::holds_alternative<packed_transaction>(receipt.trx)) {
+                  const auto& pt = std::get<packed_transaction>(receipt.trx);
                   transaction_metadata_ptr trx_meta_ptr = trx_lookup ? trx_lookup( pt.id() ) : transaction_metadata_ptr{};
                   if( trx_meta_ptr && *trx_meta_ptr->packed_trx() != pt ) trx_meta_ptr = nullptr;
                   if( trx_meta_ptr && ( skip_auth_checks || !trx_meta_ptr->recovered_keys().empty() ) ) {
@@ -1939,23 +1982,23 @@ struct controller_impl {
 
          size_t packed_idx = 0;
          for( const auto& receipt : b->transactions ) {
-            const auto& trx_receipts = pending->_block_stage.get<building_block>()._pending_trx_receipts;
+            const auto& trx_receipts = std::get<building_block>(pending->_block_stage)._pending_trx_receipts;
             auto num_pending_receipts = trx_receipts.size();
-            if( receipt.trx.contains<packed_transaction>() ) {
+            if( std::holds_alternative<packed_transaction>(receipt.trx) ) {
                const auto& trx_meta = ( use_bsp_cached ? bsp->trxs_metas().at( packed_idx )
                                                        : ( !!std::get<0>( trx_metas.at( packed_idx ) ) ?
                                                              std::get<0>( trx_metas.at( packed_idx ) )
                                                              : std::get<1>( trx_metas.at( packed_idx ) ).get() ) );
                trace = push_transaction( trx_meta, fc::time_point::maximum(), receipt.cpu_usage_us, true, 0 );
                ++packed_idx;
-            } else if( receipt.trx.contains<transaction_id_type>() ) {
-               trace = push_scheduled_transaction( receipt.trx.get<transaction_id_type>(), fc::time_point::maximum(), receipt.cpu_usage_us, true );
+            } else if( std::holds_alternative<transaction_id_type>(receipt.trx) ) {
+               trace = push_scheduled_transaction( std::get<transaction_id_type>(receipt.trx), fc::time_point::maximum(), receipt.cpu_usage_us, true );
             } else {
                EOS_ASSERT( false, block_validate_exception, "encountered unexpected receipt type" );
             }
 
             bool transaction_failed =  trace && trace->except;
-            bool transaction_can_fail = receipt.status == transaction_receipt_header::hard_fail && receipt.trx.contains<transaction_id_type>();
+            bool transaction_can_fail = receipt.status == transaction_receipt_header::hard_fail && std::holds_alternative<transaction_id_type>(receipt.trx);
             if( transaction_failed && !transaction_can_fail) {
                edump((*trace));
                throw *trace->except;
@@ -1976,11 +2019,11 @@ struct controller_impl {
          }
 
          // validated in create_block_state_future()
-         pending->_block_stage.get<building_block>()._transaction_mroot = b->transaction_mroot;
+         std::get<building_block>(pending->_block_stage)._transaction_mroot = b->transaction_mroot;
 
          finalize_block();
 
-         auto& ab = pending->_block_stage.get<assembled_block>();
+         auto& ab = std::get<assembled_block>(pending->_block_stage);
 
          if( producer_block_id != ab._id ) {
             elog( "Validation block id does not match producer block id" );
@@ -1998,8 +2041,16 @@ struct controller_impl {
 
          commit_block(false);
          return;
+      } catch ( const std::bad_alloc& ) {
+         throw;
+      } catch ( const boost::interprocess::bad_alloc& ) {
+         throw;
       } catch ( const fc::exception& e ) {
          edump((e.to_detail_string()));
+         abort_block();
+         throw;
+      } catch ( const std::exception& e ) {
+         edump((e.what()));
          abort_block();
          throw;
       }
@@ -2130,7 +2181,7 @@ struct controller_impl {
             apply_block( new_head, s, trx_lookup );
             fork_db.mark_valid( new_head );
             head = new_head;
-         } catch ( const fc::exception& e ) {
+         } catch ( const std::exception& e ) {
             fork_db.remove( new_head->id );
             throw;
          }
@@ -2151,18 +2202,25 @@ struct controller_impl {
          }
 
          for( auto ritr = branches.first.rbegin(); ritr != branches.first.rend(); ++ritr ) {
-            optional<fc::exception> except;
+            auto except = std::exception_ptr{};
             try {
                apply_block( *ritr, (*ritr)->is_valid() ? controller::block_status::validated
                                                        : controller::block_status::complete, trx_lookup );
                fork_db.mark_valid( *ritr );
                head = *ritr;
+            } catch ( const std::bad_alloc& ) {
+              throw;
+            } catch ( const boost::interprocess::bad_alloc& ) {
+              throw;
             } catch (const fc::exception& e) {
-               except = e;
+               elog("exception thrown while switching forks ${e}", ("e", e.to_detail_string()));
+               except = std::current_exception();
+            } catch (const std::exception& e) {
+               elog("exception thrown while switching forks ${e}", ("e", e.what()));
+               except = std::current_exception();
             }
-            if( except ) {
-               elog("exception thrown while switching forks ${e}", ("e", except->to_detail_string()));
 
+            if( except ) {
                // ritr currently points to the block that threw
                // Remove the block that threw and all forks built off it.
                fork_db.remove( (*ritr)->id );
@@ -2181,7 +2239,7 @@ struct controller_impl {
                   apply_block( *ritr, controller::block_status::validated /* we previously validated these blocks*/, trx_lookup );
                   head = *ritr;
                }
-               throw *except;
+               std::rethrow_exception(except);
             } // end if exception
          } /// end for each block in branch
 
@@ -2675,7 +2733,7 @@ block_state_ptr controller::finalize_block( const signer_callback_type& signer_c
 
    my->finalize_block();
 
-   auto& ab = my->pending->_block_stage.get<assembled_block>();
+   auto& ab = std::get<assembled_block>(my->pending->_block_stage);
 
    auto bsp = std::make_shared<block_state>(
                   std::move( ab._pending_block_header_state ),
@@ -2833,8 +2891,8 @@ account_name  controller::fork_db_pending_head_block_producer()const {
 time_point controller::pending_block_time()const {
    EOS_ASSERT( my->pending, block_validate_exception, "no pending block" );
 
-   if( my->pending->_block_stage.contains<completed_block>() )
-      return my->pending->_block_stage.get<completed_block>()._block_state->header.timestamp;
+   if( std::holds_alternative<completed_block>(my->pending->_block_stage) )
+      return std::get<completed_block>(my->pending->_block_stage)._block_state->header.timestamp;
 
    return my->pending->get_pending_block_header_state().timestamp;
 }
@@ -2842,8 +2900,8 @@ time_point controller::pending_block_time()const {
 account_name controller::pending_block_producer()const {
    EOS_ASSERT( my->pending, block_validate_exception, "no pending block" );
 
-   if( my->pending->_block_stage.contains<completed_block>() )
-      return my->pending->_block_stage.get<completed_block>()._block_state->header.producer;
+   if( std::holds_alternative<completed_block>(my->pending->_block_stage) )
+      return std::get<completed_block>(my->pending->_block_stage)._block_state->header.producer;
 
    return my->pending->get_pending_block_header_state().producer;
 }
@@ -2851,8 +2909,8 @@ account_name controller::pending_block_producer()const {
 const block_signing_authority& controller::pending_block_signing_authority()const {
    EOS_ASSERT( my->pending, block_validate_exception, "no pending block" );
 
-   if( my->pending->_block_stage.contains<completed_block>() )
-      return my->pending->_block_stage.get<completed_block>()._block_state->valid_block_signing_authority;
+   if( std::holds_alternative<completed_block>(my->pending->_block_stage) )
+      return std::get<completed_block>(my->pending->_block_stage)._block_state->valid_block_signing_authority;
 
    return my->pending->get_pending_block_header_state().valid_block_signing_authority;
 }
@@ -3022,8 +3080,8 @@ const producer_authority_schedule&    controller::active_producers()const {
    if( !(my->pending) )
       return  my->head->active_schedule;
 
-   if( my->pending->_block_stage.contains<completed_block>() )
-      return my->pending->_block_stage.get<completed_block>()._block_state->active_schedule;
+   if( std::holds_alternative<completed_block>(my->pending->_block_stage) )
+      return std::get<completed_block>(my->pending->_block_stage)._block_state->active_schedule;
 
    return my->pending->get_pending_block_header_state().active_schedule;
 }
@@ -3032,17 +3090,17 @@ const producer_authority_schedule& controller::pending_producers()const {
    if( !(my->pending) )
       return  my->head->pending_schedule.schedule;
 
-   if( my->pending->_block_stage.contains<completed_block>() )
-      return my->pending->_block_stage.get<completed_block>()._block_state->pending_schedule.schedule;
+   if( std::holds_alternative<completed_block>(my->pending->_block_stage) )
+      return std::get<completed_block>(my->pending->_block_stage)._block_state->pending_schedule.schedule;
 
-   if( my->pending->_block_stage.contains<assembled_block>() ) {
-      const auto& new_prods_cache = my->pending->_block_stage.get<assembled_block>()._new_producer_authority_cache;
+   if( std::holds_alternative<assembled_block>(my->pending->_block_stage) ) {
+      const auto& new_prods_cache = std::get<assembled_block>(my->pending->_block_stage)._new_producer_authority_cache;
       if( new_prods_cache ) {
          return *new_prods_cache;
       }
    }
 
-   const auto& bb = my->pending->_block_stage.get<building_block>();
+   const auto& bb = std::get<building_block>(my->pending->_block_stage);
 
    if( bb._new_pending_producer_schedule )
       return *bb._new_pending_producer_schedule;
@@ -3377,10 +3435,10 @@ void controller::replace_producer_keys( const public_key_type& key ) {
    my->head->pending_schedule.schedule.version = version;
    for (auto& prod: my->head->active_schedule.producers ) {
       ilog("${n}", ("n", prod.producer_name));
-      prod.authority.visit([&](auto &auth) {
+      std::visit([&](auto &auth) {
          auth.threshold = 1;
          auth.keys = {key_weight{key, 1}};
-      });
+      }, prod.authority);
    }
 }
 

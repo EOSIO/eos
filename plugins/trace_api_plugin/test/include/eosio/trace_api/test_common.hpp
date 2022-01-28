@@ -212,7 +212,7 @@ namespace eosio::trace_api {
 
 namespace fc {
    template<typename ...Ts>
-   std::ostream& operator<<(std::ostream &os, const fc::static_variant<Ts...>& v ) {
+   std::ostream& operator<<(std::ostream &os, const std::variant<Ts...>& v ) {
       os << fc::json::to_string(v, fc::time_point::maximum());
       return os;
    }

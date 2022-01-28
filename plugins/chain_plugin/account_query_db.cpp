@@ -340,10 +340,10 @@ namespace eosio::chain_apis {
 
          for( const auto& r : bsp->block->transactions ) {
             chain::transaction_id_type id;
-            if( r.trx.contains<chain::transaction_id_type>()) {
-               id = r.trx.get<chain::transaction_id_type>();
+            if( std::holds_alternative<chain::transaction_id_type>(r.trx)) {
+               id = std::get<chain::transaction_id_type>(r.trx);
             } else {
-               id = r.trx.get<chain::packed_transaction>().id();
+               id = std::get<chain::packed_transaction>(r.trx).id();
             }
 
             const auto it = cached_trace_map.find( id );

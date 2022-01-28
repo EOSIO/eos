@@ -17,7 +17,7 @@ BOOST_AUTO_TEST_CASE(block_with_invalid_tx_test)
 
    // Make a copy of the valid block and corrupt the transaction
    auto copy_b = std::make_shared<signed_block>(std::move(*b));
-   auto signed_tx = copy_b->transactions.back().trx.get<packed_transaction>().get_signed_transaction();
+   auto signed_tx = std::get<packed_transaction>(copy_b->transactions.back().trx).get_signed_transaction();
    auto& act = signed_tx.actions.back();
    auto act_data = act.data_as<newaccount>();
    // Make the transaction invalid by having the new account name the same as the creator name
@@ -28,7 +28,7 @@ BOOST_AUTO_TEST_CASE(block_with_invalid_tx_test)
    signed_tx.sign(main.get_private_key(config::system_account_name, "active"), main.control->get_chain_id());
    // Replace the valid transaction with the invalid transaction
    auto invalid_packed_tx = packed_transaction(signed_tx);
-   copy_b->transactions.back().trx = invalid_packed_tx;
+   copy_b->transactions.back().trx = std::move(invalid_packed_tx);
 
    // Re-calculate the transaction merkle
    vector<digest_type> trx_digests;
@@ -60,7 +60,7 @@ std::pair<signed_block_ptr, signed_block_ptr> corrupt_trx_in_block(validating_te
 
    // Make a copy of the valid block and corrupt the transaction
    auto copy_b = std::make_shared<signed_block>(b->clone());
-   const auto& packed_trx = copy_b->transactions.back().trx.get<packed_transaction>();
+   const auto& packed_trx = std::get<packed_transaction>(copy_b->transactions.back().trx);
    auto signed_tx = packed_trx.get_signed_transaction();
    // Corrupt one signature
    signed_tx.signatures.clear();
@@ -68,7 +68,7 @@ std::pair<signed_block_ptr, signed_block_ptr> corrupt_trx_in_block(validating_te
 
    // Replace the valid transaction with the invalid transaction
    auto invalid_packed_tx = packed_transaction(signed_tx, packed_trx.get_compression());
-   copy_b->transactions.back().trx = invalid_packed_tx;
+   copy_b->transactions.back().trx = std::move(invalid_packed_tx);
 
    // Re-calculate the transaction merkle
    vector<digest_type> trx_digests;

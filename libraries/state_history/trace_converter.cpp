@@ -24,10 +24,10 @@ bytes trace_converter::pack(const chainbase::database& db, bool trace_debug_mode
       traces.push_back(*onblock_trace);
    for (auto& r : block_state->block->transactions) {
       transaction_id_type id;
-      if (r.trx.contains<transaction_id_type>())
-         id = r.trx.get<transaction_id_type>();
+      if (std::holds_alternative<transaction_id_type>(r.trx))
+         id = std::get<transaction_id_type>(r.trx);
       else
-         id = r.trx.get<packed_transaction>().id();
+         id = std::get<packed_transaction>(r.trx).id();
       auto it = cached_traces.find(id);
       EOS_ASSERT(it != cached_traces.end() && it->second.trace->receipt, plugin_exception,
                  "missing trace for transaction ${id}", ("id", id));
