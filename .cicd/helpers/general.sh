@@ -9,9 +9,9 @@ export DOCKER_REGISTRY='docker.io/eosio/eosio'
 export DOCKER_CI_REGISTRY="docker.io/eosio/ci"
 export DOCKER_CONTRACTS_REGISTRY="docker.io/eosio/ci-contracts-builder"
 if [[ "$(echo "$BUILDKITE_PIPELINE_SLUG" | grep -icP '^(eosio|eosio-build-unpinned|eosio-base-images.*)$')" == '0' ]] ; then
-    export REGISTRIES=("${BINARY_REGISTRY:-$EOSIO_REGISTRY}")
-    export CI_REGISTRIES=("${BASE_REGISTRY:-$MIRROR_REGISTRY}")
-    export CONTRACT_REGISTRIES=("${SOURCE_REGISTRY:-$MIRROR_REGISTRY}")
+    export REGISTRIES=("${REGISTRY_BINARY:-$EOSIO_REGISTRY}")
+    export CI_REGISTRIES=("${REGISTRY_BASE:-$MIRROR_REGISTRY}")
+    export CONTRACT_REGISTRIES=("${REGISTRY_SOURCE:-$MIRROR_REGISTRY}")
 else
     export REGISTRIES=("$DOCKER_REGISTRY" "$EOSIO_REGISTRY")
     export CI_REGISTRIES=("$DOCKER_CI_REGISTRY" "$MIRROR_REGISTRY")
