@@ -97,7 +97,7 @@ struct txn_test_gen_plugin_impl {
    uint64_t _txcount = 0;
 
    uint16_t                                             thread_pool_size;
-   fc::optional<eosio::chain::named_thread_pool>        thread_pool;
+   std::optional<eosio::chain::named_thread_pool>       thread_pool;
    std::shared_ptr<boost::asio::high_resolution_timer>  timer;
    name                                                 newaccountA;
    name                                                 newaccountB;

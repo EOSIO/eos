@@ -11,7 +11,7 @@ using chain::transaction_id_type;
 
 struct trace_converter {
    std::map<transaction_id_type, augmented_transaction_trace> cached_traces;
-   fc::optional<augmented_transaction_trace>                  onblock_trace;
+   std::optional<augmented_transaction_trace>                 onblock_trace;
 
    void  add_transaction(const transaction_trace_ptr& trace, const signed_transaction& transaction);
    bytes pack(const chainbase::database& db, bool trace_debug_mode, const block_state_ptr& block_state);

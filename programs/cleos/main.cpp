@@ -417,15 +417,15 @@ void print_action( const fc::variant& at ) {
 }
 
 //resolver for ABI serializer to decode actions in proposed transaction in multisig contract
-auto abi_serializer_resolver = [](const name& account) -> fc::optional<abi_serializer> {
-   static unordered_map<account_name, fc::optional<abi_serializer> > abi_cache;
+auto abi_serializer_resolver = [](const name& account) -> std::optional<abi_serializer> {
+   static unordered_map<account_name, std::optional<abi_serializer> > abi_cache;
    auto it = abi_cache.find( account );
    if ( it == abi_cache.end() ) {
       auto result = call(get_abi_func, fc::mutable_variant_object("account_name", account));
       auto abi_results = result.as<eosio::chain_apis::read_only::get_abi_results>();
 
-      fc::optional<abi_serializer> abis;
-      if( abi_results.abi.valid() ) {
+      std::optional<abi_serializer> abis;
+      if( abi_results.abi.has_value() ) {
          abis.emplace( *abi_results.abi, abi_serializer::create_yield_function( abi_serializer_max_time ) );
       } else {
          std::cerr << "ABI for contract " << account.to_string() << " not found. Action data will be shown in hex only." << std::endl;
@@ -440,7 +440,7 @@ auto abi_serializer_resolver = [](const name& account) -> fc::optional<abi_seria
 
 bytes variant_to_bin( const account_name& account, const action_name& action, const fc::variant& action_args_var ) {
    auto abis = abi_serializer_resolver( account );
-   FC_ASSERT( abis.valid(), "No ABI found for ${contract}", ("contract", account));
+   FC_ASSERT( abis, "No ABI found for ${contract}", ("contract", account));
 
    auto action_type = abis->get_action_type( action );
    FC_ASSERT( !action_type.empty(), "Unknown action ${action} in contract ${contract}", ("action", action)( "contract", account ));
@@ -449,7 +449,7 @@ bytes variant_to_bin( const account_name& account, const action_name& action, co
 
 fc::variant bin_to_variant( const account_name& account, const action_name& action, const bytes& action_args) {
    auto abis = abi_serializer_resolver( account );
-   FC_ASSERT( abis.valid(), "No ABI found for ${contract}", ("contract", account));
+   FC_ASSERT( abis, "No ABI found for ${contract}", ("contract", account));
 
    auto action_type = abis->get_action_type( action );
    FC_ASSERT( !action_type.empty(), "Unknown action ${action} in contract ${contract}", ("action", action)( "contract", account ));
@@ -521,7 +521,7 @@ void print_result( const fc::variant& result ) { try {
          cerr << " us\n";
 
          if( status == "failed" ) {
-            auto soft_except = processed["except"].as<fc::optional<fc::exception>>();
+            auto soft_except = processed["except"].as<std::optional<fc::exception>>();
             if( soft_except ) {
                edump((soft_except->to_detail_string()));
             }
@@ -2144,7 +2144,7 @@ void get_account( const string& accountName, const string& coresym, bool json_fo
       asset staked;
       asset unstaking;
 
-      if( res.core_liquid_balance.valid() ) {
+      if( res.core_liquid_balance ) {
          unstaking = asset( 0, res.core_liquid_balance->get_symbol() ); // Correct core symbol for unstaking asset.
          staked = asset( 0, res.core_liquid_balance->get_symbol() );    // Correct core symbol for staked asset.
       }
@@ -2330,7 +2330,7 @@ void get_account( const string& accountName, const string& coresym, bool json_fo
       std::cout << indent << std::left << std::setw(11) << "limit:"     << std::right << std::setw(18) << to_pretty_time( res.cpu_limit.max ) << "\n";
       std::cout << std::endl;
 
-      if( res.subjective_cpu_bill_limit.valid() ) {
+      if( res.subjective_cpu_bill_limit ) {
          std::cout << "subjective cpu bandwidth:" << std::endl;
          std::cout << indent << std::left << std::setw(11) << "used:"      << std::right << std::setw(18) << to_pretty_time( (res.subjective_cpu_bill_limit)->used ) << "\n";
          std::cout << std::endl;
@@ -2361,7 +2361,7 @@ void get_account( const string& accountName, const string& coresym, bool json_fo
          }
       }
 
-      if( res.core_liquid_balance.valid() ) {
+      if( res.core_liquid_balance ) {
          std::cout << res.core_liquid_balance->get_symbol().name() << " balances: " << std::endl;
          std::cout << indent << std::left << std::setw(11)
                    << "liquid:" << std::right << std::setw(18) << *res.core_liquid_balance << std::endl;
@@ -3363,7 +3363,7 @@ int main( int argc, char** argv ) {
       } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Invalid transaction format: '${data}'",
                                ("data", fc::json::to_string(trx_var, fc::time_point::maximum())))
 
-      fc::optional<chain_id_type> chain_id;
+      std::optional<chain_id_type> chain_id;
 
       if( str_chain_id.size() == 0 ) {
          ilog( "grabbing chain_id from ${n}", ("n", node_executable_name) );

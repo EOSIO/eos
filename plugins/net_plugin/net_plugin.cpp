@@ -268,8 +268,8 @@ namespace eosio {
 
       compat::channels::transaction_ack::channel_type::handle  incoming_transaction_ack_subscription;
 
-      uint16_t                                  thread_pool_size = 2;
-      optional<eosio::chain::named_thread_pool> thread_pool;
+      uint16_t                                       thread_pool_size = 2;
+      std::optional<eosio::chain::named_thread_pool> thread_pool;
 
    private:
       mutable std::mutex            chain_info_mtx; // protects chain_*
@@ -585,7 +585,7 @@ namespace eosio {
 
       void update_endpoints();
 
-      optional<peer_sync_state>    peer_requested;  // this peer is requesting info from us
+      std::optional<peer_sync_state> peer_requested;  // this peer is requesting info from us
 
       std::atomic<bool>                         socket_open{false};
 
@@ -622,18 +622,18 @@ namespace eosio {
 
       std::atomic<go_away_reason>           no_retry{no_reason};
 
-      mutable std::mutex          conn_mtx; //< mtx for last_req .. local_endpoint_port
-      optional<request_message>   last_req;
-      handshake_message           last_handshake_recv;
-      handshake_message           last_handshake_sent;
-      block_id_type               fork_head;
-      uint32_t                    fork_head_num{0};
-      fc::time_point              last_close;
-      fc::sha256                  conn_node_id;
-      string                      remote_endpoint_ip;
-      string                      remote_endpoint_port;
-      string                      local_endpoint_ip;
-      string                      local_endpoint_port;
+      mutable std::mutex               conn_mtx; //< mtx for last_req .. local_endpoint_port
+      std::optional<request_message>   last_req;
+      handshake_message                last_handshake_recv;
+      handshake_message                last_handshake_sent;
+      block_id_type                    fork_head;
+      uint32_t                         fork_head_num{0};
+      fc::time_point                   last_close;
+      fc::sha256                       conn_node_id;
+      string                           remote_endpoint_ip;
+      string                           remote_endpoint_port;
+      string                           local_endpoint_ip;
+      string                           local_endpoint_port;
 
       connection_status get_status()const;
 
@@ -967,7 +967,7 @@ namespace eosio {
       bool has_last_req = false;
       {
          std::lock_guard<std::mutex> g_conn( self->conn_mtx );
-         has_last_req = !!self->last_req;
+         has_last_req = self->last_req.has_value();
          self->last_handshake_recv = handshake_message();
          self->last_handshake_sent = handshake_message();
          self->last_close = fc::time_point::now();
@@ -3673,12 +3673,12 @@ namespace eosio {
       return "no known connection for host";
    }
 
-   optional<connection_status> net_plugin::status( const string& host )const {
+   std::optional<connection_status> net_plugin::status( const string& host )const {
       std::shared_lock<std::shared_mutex> g( my->connections_mtx );
       auto con = my->find_connection( host );
       if( con )
          return con->get_status();
-      return optional<connection_status>();
+      return std::optional<connection_status>();
    }
 
    vector<connection_status> net_plugin::connections()const {

@@ -38,7 +38,7 @@ namespace eosio { namespace chain {
          if( is_array )
             fc::raw::pack( ds, var.as<vector<T>>() );
          else if ( is_optional )
-            fc::raw::pack( ds, var.as<optional<T>>() );
+            fc::raw::pack( ds, var.as<std::optional<T>>() );
          else
             fc::raw::pack( ds,  var.as<T>());
       };
@@ -51,7 +51,7 @@ namespace eosio { namespace chain {
             if( is_array )
                return variant_from_stream<vector<T>>(stream);
             else if ( is_optional )
-               return variant_from_stream<optional<T>>(stream);
+               return variant_from_stream<std::optional<T>>(stream);
             return variant_from_stream<T>(stream);
          },
          pack_function<T>()
@@ -65,7 +65,7 @@ namespace eosio { namespace chain {
             if( is_array )
                return variant_from_stream<vector<T>>(stream);
             else if ( is_optional )
-               return variant_from_stream<optional<T>>(stream);
+               return variant_from_stream<std::optional<T>>(stream);
             return variant_from_stream<T>(stream, yield);
          },
          pack_function<T>()
@@ -606,10 +606,10 @@ namespace eosio { namespace chain {
       return type_name();
    }
 
-   optional<string> abi_serializer::get_error_message( uint64_t error_code )const {
+   std::optional<string> abi_serializer::get_error_message( uint64_t error_code )const {
       auto itr = error_messages.find( error_code );
       if( itr == error_messages.end() )
-         return optional<string>();
+         return std::optional<string>();
 
       return itr->second;
    }

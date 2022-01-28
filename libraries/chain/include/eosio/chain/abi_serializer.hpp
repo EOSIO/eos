@@ -62,7 +62,7 @@ struct abi_serializer {
    type_name get_table_type(name action)const;
    type_name get_action_result_type(name action_result)const;
 
-   optional<string>  get_error_message( uint64_t error_code )const;
+   std::optional<string>  get_error_message( uint64_t error_code )const;
 
    fc::variant binary_to_variant( const std::string_view& type, const bytes& binary, const yield_function_t& yield, bool short_path = false )const;
    [[deprecated("use the overload with yield_function_t[=create_yield_function(max_serialization_time)]")]]
@@ -421,7 +421,7 @@ namespace impl {
 
          try {
             auto abi = resolver(act.account);
-            if (abi.valid()) {
+            if (abi) {
                auto type = abi->get_action_type(act.name);
                if (!type.empty()) {
                   try {
@@ -612,7 +612,7 @@ namespace impl {
     * this will degrade to the common fc::to_variant as soon as the type no longer contains
     * ABI related info
     *
-    * @tparam Reslover - callable with the signature (const name& code_account) -> optional<abi_def>
+    * @tparam Reslover - callable with the signature (const name& code_account) -> std::optional<abi_def>
     */
    template<typename T, typename Resolver>
    class abi_to_variant_visitor
@@ -723,7 +723,7 @@ namespace impl {
                valid_empty_data = act.data.empty();
             } else if ( data.is_object() ) {
                auto abi = resolver(act.account);
-               if (abi.valid()) {
+               if (abi) {
                   auto type = abi->get_action_type(act.name);
                   if (!type.empty()) {
                      variant_to_binary_context _ctx(*abi, ctx, type);
@@ -800,7 +800,7 @@ namespace impl {
     * this will degrade to the common fc::from_variant as soon as the type no longer contains
     * ABI related info
     *
-    * @tparam Reslover - callable with the signature (const name& code_account) -> optional<abi_def>
+    * @tparam Reslover - callable with the signature (const name& code_account) -> std::optional<abi_def>
     */
    template<typename T, typename Resolver>
    class abi_from_variant_visitor : public reflector_init_visitor<T>

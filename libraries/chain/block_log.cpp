@@ -75,7 +75,7 @@ namespace eosio { namespace chain {
             uint64_t append(const signed_block_ptr& b);
 
             template <typename ChainContext, typename Lambda>
-            static fc::optional<ChainContext> extract_chain_context( const fc::path& data_dir, Lambda&& lambda );
+            static std::optional<ChainContext> extract_chain_context( const fc::path& data_dir, Lambda&& lambda );
       };
 
       void detail::block_log_impl::reopen() {
@@ -609,10 +609,10 @@ namespace eosio { namespace chain {
          new_block_stream.write( (char*)&actual_totem, sizeof(actual_totem) );
       }
 
-      std::exception_ptr     except_ptr;
-      vector<char>           incomplete_block_data;
-      optional<signed_block> bad_block;
-      uint32_t               block_num = 0;
+      std::exception_ptr          except_ptr;
+      vector<char>                incomplete_block_data;
+      std::optional<signed_block> bad_block;
+      uint32_t                    block_num = 0;
 
       block_id_type previous;
 
@@ -662,7 +662,7 @@ namespace eosio { namespace chain {
             break;
       }
 
-      if( bad_block.valid() ) {
+      if( bad_block ) {
          ilog( "Recovered only up to block number ${num}. Last block in block log was not properly committed:\n${last_block}",
                ("num", block_num)("last_block", *bad_block) );
       } else if( except_ptr ) {
@@ -702,7 +702,7 @@ namespace eosio { namespace chain {
    }
 
    template <typename ChainContext, typename Lambda>
-   fc::optional<ChainContext> detail::block_log_impl::extract_chain_context( const fc::path& data_dir, Lambda&& lambda ) {
+   std::optional<ChainContext> detail::block_log_impl::extract_chain_context( const fc::path& data_dir, Lambda&& lambda ) {
       EOS_ASSERT( fc::is_directory(data_dir) && fc::is_regular_file(data_dir / "blocks.log"), block_log_not_found,
                   "Block log not found in '${blocks_dir}'", ("blocks_dir", data_dir)          );
 
@@ -723,8 +723,8 @@ namespace eosio { namespace chain {
       return lambda(block_stream, version, first_block_num);
    }
 
-   fc::optional<genesis_state> block_log::extract_genesis_state( const fc::path& data_dir ) {
-      return detail::block_log_impl::extract_chain_context<genesis_state>(data_dir, [](std::fstream& block_stream, uint32_t version, uint32_t first_block_num ) -> fc::optional<genesis_state> {
+   std::optional<genesis_state> block_log::extract_genesis_state( const fc::path& data_dir ) {
+      return detail::block_log_impl::extract_chain_context<genesis_state>(data_dir, [](std::fstream& block_stream, uint32_t version, uint32_t first_block_num ) -> std::optional<genesis_state> {
          if (contains_genesis_state(version, first_block_num)) {
             genesis_state gs;
             fc::raw::unpack(block_stream, gs);
@@ -732,12 +732,12 @@ namespace eosio { namespace chain {
          }
 
          // current versions only have a genesis state if they start with block number 1
-         return fc::optional<genesis_state>();
+         return std::optional<genesis_state>();
       });
    }
 
    chain_id_type block_log::extract_chain_id( const fc::path& data_dir ) {
-      return *(detail::block_log_impl::extract_chain_context<chain_id_type>(data_dir, [](std::fstream& block_stream, uint32_t version, uint32_t first_block_num ) -> fc::optional<chain_id_type> {
+      return *(detail::block_log_impl::extract_chain_context<chain_id_type>(data_dir, [](std::fstream& block_stream, uint32_t version, uint32_t first_block_num ) -> std::optional<chain_id_type> {
          // supported versions either contain a genesis state, or else the chain id only
          if (contains_genesis_state(version, first_block_num)) {
             genesis_state gs;

@@ -762,7 +762,7 @@ BOOST_AUTO_TEST_CASE( push_block_returns_forked_transactions ) try {
    // test4 failed because it was tapos to a forked out block
    BOOST_CHECK_EQUAL( trace4->id, traces.at(3)->id );
    BOOST_CHECK( !traces.at(3)->receipt );
-   BOOST_CHECK( !!traces.at(3)->except );
+   BOOST_CHECK( traces.at(3)->except );
 
    // verify unapplied transactions ran
    BOOST_REQUIRE_EQUAL( c.control->get_account( "test1"_n ).name,  "test1"_n );

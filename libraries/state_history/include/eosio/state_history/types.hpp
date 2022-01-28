@@ -102,13 +102,13 @@ struct get_blocks_ack_request_v0 {
 };
 
 struct get_blocks_result_v0 {
-   block_position               head;
-   block_position               last_irreversible;
-   fc::optional<block_position> this_block;
-   fc::optional<block_position> prev_block;
-   fc::optional<bytes>          block;
-   fc::optional<bytes>          traces;
-   fc::optional<bytes>          deltas;
+   block_position                head;
+   block_position                last_irreversible;
+   std::optional<block_position> this_block;
+   std::optional<block_position> prev_block;
+   std::optional<bytes>          block;
+   std::optional<bytes>          traces;
+   std::optional<bytes>          deltas;
 };
 
 using state_request = std::variant<get_status_request_v0, get_blocks_request_v0, get_blocks_ack_request_v0>;

@@ -92,7 +92,7 @@ namespace {
    };
 
    template<typename Output, typename Input>
-   auto make_optional_authorizer(const Input& authorizer) -> fc::optional<Output> {
+   auto make_optional_authorizer(const Input& authorizer) -> std::optional<Output> {
       if constexpr (std::is_same_v<Input, Output>) {
          return authorizer;
       } else {

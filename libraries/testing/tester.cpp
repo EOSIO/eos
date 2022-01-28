@@ -110,12 +110,12 @@ namespace eosio { namespace testing {
    protocol_feature_set make_protocol_feature_set(const subjective_restriction_map& custom_subjective_restrictions) {
       protocol_feature_set pfs;
 
-      map< builtin_protocol_feature_t, optional<digest_type> > visited_builtins;
+      map< builtin_protocol_feature_t, std::optional<digest_type> > visited_builtins;
 
       std::function<digest_type(builtin_protocol_feature_t)> add_builtins =
       [&pfs, &visited_builtins, &add_builtins, &custom_subjective_restrictions]
       ( builtin_protocol_feature_t codename ) -> digest_type {
-         auto res = visited_builtins.emplace( codename, optional<digest_type>() );
+         auto res = visited_builtins.emplace( codename, std::optional<digest_type>() );
          if( !res.second ) {
             EOS_ASSERT( res.first->second, protocol_feature_exception,
                         "invariant failure: cycle found in builtin protocol feature dependencies"
@@ -150,7 +150,7 @@ namespace eosio { namespace testing {
      return control->head_block_id() == other.control->head_block_id();
    }
 
-   void base_tester::init(const setup_policy policy, db_read_mode read_mode, optional<uint32_t> genesis_max_inline_action_size, optional<uint32_t> config_max_nonprivileged_inline_action_size) {
+   void base_tester::init(const setup_policy policy, db_read_mode read_mode, std::optional<uint32_t> genesis_max_inline_action_size, std::optional<uint32_t> config_max_nonprivileged_inline_action_size) {
       auto def_conf = default_config(tempdir, genesis_max_inline_action_size, config_max_nonprivileged_inline_action_size);
       def_conf.first.read_mode = read_mode;
       cfg = def_conf.first;
@@ -264,12 +264,12 @@ namespace eosio { namespace testing {
       open( make_protocol_feature_set(), genesis );
    }
 
-   void base_tester::open( fc::optional<chain_id_type> expected_chain_id ) {
+   void base_tester::open( std::optional<chain_id_type> expected_chain_id ) {
       open( make_protocol_feature_set(), expected_chain_id );
    }
 
    template <typename Lambda>
-   void base_tester::open( protocol_feature_set&& pfs, fc::optional<chain_id_type> expected_chain_id, Lambda lambda ) {
+   void base_tester::open( protocol_feature_set&& pfs, std::optional<chain_id_type> expected_chain_id, Lambda lambda ) {
       if( !expected_chain_id ) {
          expected_chain_id = controller::extract_chain_id_from_db( cfg.state_dir );
          if( !expected_chain_id ) {
@@ -313,7 +313,7 @@ namespace eosio { namespace testing {
       });
    }
 
-   void base_tester::open( protocol_feature_set&& pfs, fc::optional<chain_id_type> expected_chain_id ) {
+   void base_tester::open( protocol_feature_set&& pfs, std::optional<chain_id_type> expected_chain_id ) {
       open(std::move(pfs), expected_chain_id, [&control=this->control]() {
          control->startup( []() { return false; } );
       });

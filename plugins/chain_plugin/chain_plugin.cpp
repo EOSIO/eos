@@ -145,16 +145,15 @@ public:
    bool                             api_accept_transactions = true;
    bool                             account_queries_enabled = false;
 
-
-   fc::optional<fork_database>      fork_db;
-   fc::optional<block_log>          block_logger;
-   fc::optional<controller::config> chain_config;
-   fc::optional<controller>         chain;
-   fc::optional<genesis_state>      genesis;
+   std::optional<fork_database>      fork_db;
+   std::optional<block_log>          block_logger;
+   std::optional<controller::config> chain_config;
+   std::optional<controller>         chain;
+   std::optional<genesis_state>      genesis;
    //txn_msg_rate_limits              rate_limits;
-   fc::optional<vm_type>            wasm_runtime;
-   fc::microseconds                 abi_serializer_max_time_us;
-   fc::optional<bfs::path>          snapshot_path;
+   std::optional<vm_type>            wasm_runtime;
+   fc::microseconds                  abi_serializer_max_time_us;
+   std::optional<bfs::path>          snapshot_path;
 
 
    // retained references to channels for easy publication
@@ -164,7 +163,7 @@ public:
    channels::irreversible_block::channel_type&     irreversible_block_channel;
    channels::accepted_transaction::channel_type&   accepted_transaction_channel;
    channels::applied_transaction::channel_type&    applied_transaction_channel;
-   incoming::channels::block::channel_type&         incoming_block_channel;
+   incoming::channels::block::channel_type&        incoming_block_channel;
 
    // retained references to methods for easy calling
    incoming::methods::block_sync::method_type&        incoming_block_sync_method;
@@ -177,15 +176,15 @@ public:
    methods::get_last_irreversible_block_number::method_type::handle  get_last_irreversible_block_number_provider;
 
    // scoped connections for chain controller
-   fc::optional<scoped_connection>                                   pre_accepted_block_connection;
-   fc::optional<scoped_connection>                                   accepted_block_header_connection;
-   fc::optional<scoped_connection>                                   accepted_block_connection;
-   fc::optional<scoped_connection>                                   irreversible_block_connection;
-   fc::optional<scoped_connection>                                   accepted_transaction_connection;
-   fc::optional<scoped_connection>                                   applied_transaction_connection;
+   std::optional<scoped_connection>                                   pre_accepted_block_connection;
+   std::optional<scoped_connection>                                   accepted_block_header_connection;
+   std::optional<scoped_connection>                                   accepted_block_connection;
+   std::optional<scoped_connection>                                   irreversible_block_connection;
+   std::optional<scoped_connection>                                   accepted_transaction_connection;
+   std::optional<scoped_connection>                                   applied_transaction_connection;
 
 
-   fc::optional<chain_apis::account_query_db>                        _account_query_db;
+   std::optional<chain_apis::account_query_db>                        _account_query_db;
    const producer_plugin* producer_plug;
 };
 
@@ -403,7 +402,7 @@ void clear_chainbase_files( const fc::path& p ) {
    fc::remove( p / "shared_memory.meta" );
 }
 
-optional<builtin_protocol_feature> read_builtin_protocol_feature( const fc::path& p  ) {
+std::optional<builtin_protocol_feature> read_builtin_protocol_feature( const fc::path& p  ) {
    try {
       return fc::json::from_file<builtin_protocol_feature>( p );
    } catch( const fc::exception& e ) {
@@ -475,7 +474,7 @@ protocol_feature_set initialize_protocol_features( const fc::path& p, bool popul
    map<builtin_protocol_feature_t, fc::path>  found_builtin_protocol_features;
    map<digest_type, std::pair<builtin_protocol_feature, bool> > builtin_protocol_features_to_add;
    // The bool in the pair is set to true if the builtin protocol feature has already been visited to add
-   map< builtin_protocol_feature_t, optional<digest_type> > visited_builtins;
+   map< builtin_protocol_feature_t, std::optional<digest_type> > visited_builtins;
 
    // Read all builtin protocol features
    if( directory_exists ) {
@@ -565,7 +564,7 @@ protocol_feature_set initialize_protocol_features( const fc::path& p, bool popul
    std::function<digest_type(builtin_protocol_feature_t)> add_missing_builtins =
    [&pfs, &visited_builtins, &output_protocol_feature, &log_recognized_protocol_feature, &add_missing_builtins, populate_missing_builtins]
    ( builtin_protocol_feature_t codename ) -> digest_type {
-      auto res = visited_builtins.emplace( codename, optional<digest_type>() );
+      auto res = visited_builtins.emplace( codename, std::optional<digest_type>() );
       if( !res.second ) {
          EOS_ASSERT( res.first->second, protocol_feature_exception,
                      "invariant failure: cycle found in builtin protocol feature dependencies"
@@ -774,7 +773,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
       my->chain_config->maximum_variable_signature_length = options.at( "maximum-variable-signature-length" ).as<uint32_t>();
 
       if( options.count( "extract-genesis-json" ) || options.at( "print-genesis-json" ).as<bool>()) {
-         fc::optional<genesis_state> gs;
+         std::optional<genesis_state> gs;
 
          if( fc::exists( my->blocks_dir / "blocks.log" )) {
             gs = block_log::extract_genesis_state( my->blocks_dir );
@@ -849,7 +848,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
       } else if( options.at( "fix-reversible-blocks" ).as<bool>()) {
          if( !recover_reversible_blocks( my->chain_config->blocks_dir / config::reversible_blocks_dir_name,
                                          my->chain_config->reversible_cache_size,
-                                         optional<fc::path>(),
+                                         std::optional<fc::path>(),
                                          options.at( "truncate-at-block" ).as<uint32_t>())) {
             ilog( "Reversible blocks database verified to not be corrupted. Now exiting..." );
          } else {
@@ -873,7 +872,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          wlog("The --import-reversible-blocks option should be used by itself.");
       }
 
-      fc::optional<chain_id_type> chain_id;
+      std::optional<chain_id_type> chain_id;
       if (options.count( "snapshot" )) {
          my->snapshot_path = options.at( "snapshot" ).as<bfs::path>();
          EOS_ASSERT( fc::exists(*my->snapshot_path), plugin_config_exception,
@@ -924,8 +923,8 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 
          chain_id = controller::extract_chain_id_from_db( my->chain_config->state_dir );
 
-         fc::optional<genesis_state> block_log_genesis;
-         fc::optional<chain_id_type> block_log_chain_id;
+         std::optional<genesis_state> block_log_genesis;
+         std::optional<chain_id_type> block_log_chain_id;
 
          if( fc::is_regular_file( my->blocks_dir / "blocks.log" ) ) {
             block_log_genesis = block_log::extract_genesis_state( my->blocks_dir );
@@ -1230,7 +1229,7 @@ bool chain_plugin::block_is_on_preferred_chain(const block_id_type& block_id) {
 }
 
 bool chain_plugin::recover_reversible_blocks( const fc::path& db_dir, uint32_t cache_size,
-                                              optional<fc::path> new_db_dir, uint32_t truncate_at_block ) {
+                                              std::optional<fc::path> new_db_dir, uint32_t truncate_at_block ) {
    try {
       chainbase::database reversible( db_dir, database::read_only); // Test if dirty
       // If it reaches here, then the reversible database is not dirty
@@ -1279,7 +1278,7 @@ bool chain_plugin::recover_reversible_blocks( const fc::path& db_dir, uint32_t c
 
    ilog( "Reconstructing '${reversible_dir}' from backed up reversible directory", ("reversible_dir", reversible_dir) );
 
-   optional<chainbase::database> old_reversible;
+   std::optional<chainbase::database> old_reversible;
 
    try {
       old_reversible = chainbase::database( backup_dir, database::read_only, 0, true );
@@ -2015,7 +2014,7 @@ read_only::get_producer_schedule_result read_only::get_producer_schedule( const 
 template<typename Api>
 struct resolver_factory {
    static auto make(const Api* api, abi_serializer::yield_function_t yield) {
-      return [api, yield{std::move(yield)}](const account_name &name) -> optional<abi_serializer> {
+      return [api, yield{std::move(yield)}](const account_name &name) -> std::optional<abi_serializer> {
          const auto* accnt = api->db.db().template find<account_object, by_name>(name);
          if (accnt != nullptr) {
             abi_def abi;
@@ -2024,7 +2023,7 @@ struct resolver_factory {
             }
          }
 
-         return optional<abi_serializer>();
+         return std::optional<abi_serializer>();
       };
    }
 };
@@ -2110,7 +2109,7 @@ read_only::get_scheduled_transactions( const read_only::get_scheduled_transactio
 
 fc::variant read_only::get_block(const read_only::get_block_params& params) const {
    signed_block_ptr block;
-   optional<uint64_t> block_num;
+   std::optional<uint64_t> block_num;
 
    EOS_ASSERT( !params.block_num_or_id.empty() && params.block_num_or_id.size() <= 64,
                chain::block_id_type_exception,
@@ -2121,7 +2120,7 @@ fc::variant read_only::get_block(const read_only::get_block_params& params) cons
       block_num = fc::to_uint64(params.block_num_or_id);
    } catch( ... ) {}
 
-   if( block_num.valid() ) {
+   if( block_num ) {
       block = db.fetch_block_by_number( *block_num );
    } else {
       try {
@@ -2145,13 +2144,13 @@ fc::variant read_only::get_block(const read_only::get_block_params& params) cons
 
 fc::variant read_only::get_block_header_state(const get_block_header_state_params& params) const {
    block_state_ptr b;
-   optional<uint64_t> block_num;
+   std::optional<uint64_t> block_num;
    std::exception_ptr e;
    try {
       block_num = fc::to_uint64(params.block_num_or_id);
    } catch( ... ) {}
 
-   if( block_num.valid() ) {
+   if( block_num ) {
       b = db.fetch_block_state_by_number(*block_num);
    } else {
       try {
@@ -2471,7 +2470,7 @@ read_only::get_account_results read_only::get_account( const get_account_params&
 
       auto core_symbol = extract_core_symbol();
 
-      if (params.expected_core_symbol.valid())
+      if (params.expected_core_symbol)
          core_symbol = *(params.expected_core_symbol);
 
       const auto* t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( token_code, params.account_name, "accounts"_n ));
@@ -2609,7 +2608,7 @@ read_only::get_transaction_id_result read_only::get_transaction_id( const read_o
 
 account_query_db::get_accounts_by_authorizers_result read_only::get_accounts_by_authorizers( const account_query_db::get_accounts_by_authorizers_params& args) const
 {
-   EOS_ASSERT(aqdb.valid(), plugin_config_exception, "Account Queries being accessed when not enabled");
+   EOS_ASSERT(aqdb.has_value(), plugin_config_exception, "Account Queries being accessed when not enabled");
    return aqdb->get_accounts_by_authorizers(args);
 }
 

@@ -182,10 +182,10 @@ struct se_wallet_impl {
       return pub;
    }
 
-   fc::optional<signature_type> try_sign_digest(const digest_type d, const public_key_type public_key) {
+   std::optional<signature_type> try_sign_digest(const digest_type d, const public_key_type public_key) {
       auto it = _keys.find(public_key);
       if(it == _keys.end())
-         return fc::optional<signature_type>{};
+         return std::optional<signature_type>{};
 
       fc::ecdsa_sig sig = ECDSA_SIG_new();
       CFErrorRef error = nullptr;
@@ -367,7 +367,7 @@ bool se_wallet::remove_key(string key) {
    return my->remove_key(key);
 }
 
-fc::optional<signature_type> se_wallet::try_sign_digest(const digest_type digest, const public_key_type public_key) {
+std::optional<signature_type> se_wallet::try_sign_digest(const digest_type digest, const public_key_type public_key) {
    return my->try_sign_digest(digest, public_key);
 }
 
