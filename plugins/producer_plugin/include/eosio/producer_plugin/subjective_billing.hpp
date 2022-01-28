@@ -90,8 +90,8 @@ private:
    void remove_subjective_billing( const block_state_ptr& bsp, uint32_t time_ordinal ) {
       if( !_trx_cache_index.empty() ) {
          for( const auto& receipt : bsp->block->transactions ) {
-            if( receipt.trx.contains<packed_transaction>() ) {
-               const auto& pt = receipt.trx.get<packed_transaction>();
+            if( std::holds_alternative<packed_transaction>(receipt.trx) ) {
+               const auto& pt = std::get<packed_transaction>(receipt.trx);
                remove_subjective_billing( pt.id(), time_ordinal );
             }
          }

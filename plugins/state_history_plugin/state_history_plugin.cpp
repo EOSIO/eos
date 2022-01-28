@@ -40,20 +40,20 @@ auto catch_and_log(F f) {
 }
 
 struct state_history_plugin_impl : std::enable_shared_from_this<state_history_plugin_impl> {
-   chain_plugin*                   chain_plug = nullptr;
-   fc::optional<state_history_log> trace_log;
-   fc::optional<state_history_log> chain_state_log;
-   bool                            trace_debug_mode = false;
-   bool                            stopping         = false;
-   fc::optional<scoped_connection> applied_transaction_connection;
-   fc::optional<scoped_connection> block_start_connection;
-   fc::optional<scoped_connection> accepted_block_connection;
-   string                          endpoint_address = "0.0.0.0";
-   uint16_t                        endpoint_port    = 8080;
-   std::unique_ptr<tcp::acceptor>  acceptor;
-   state_history::trace_converter  trace_converter;
+   chain_plugin*                    chain_plug = nullptr;
+   std::optional<state_history_log> trace_log;
+   std::optional<state_history_log> chain_state_log;
+   bool                             trace_debug_mode = false;
+   bool                             stopping         = false;
+   std::optional<scoped_connection> applied_transaction_connection;
+   std::optional<scoped_connection> block_start_connection;
+   std::optional<scoped_connection> accepted_block_connection;
+   string                           endpoint_address = "0.0.0.0";
+   uint16_t                         endpoint_port    = 8080;
+   std::unique_ptr<tcp::acceptor>   acceptor;
+   state_history::trace_converter   trace_converter;
 
-   void get_log_entry(state_history_log& log, uint32_t block_num, fc::optional<bytes>& result) {
+   void get_log_entry(state_history_log& log, uint32_t block_num, std::optional<bytes>& result) {
       if (block_num < log.begin_block() || block_num >= log.end_block())
          return;
       state_history_log_header header;
@@ -70,7 +70,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       result = state_history::zlib_decompress(compressed);
    }
 
-   void get_block(uint32_t block_num, fc::optional<bytes>& result) {
+   void get_block(uint32_t block_num, std::optional<bytes>& result) {
       chain::signed_block_ptr p;
       try {
          p = chain_plug->chain().fetch_block_by_number(block_num);
@@ -81,7 +81,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
          result = fc::raw::pack(*p);
    }
 
-   fc::optional<chain::block_id_type> get_block_id(uint32_t block_num) {
+   std::optional<chain::block_id_type> get_block_id(uint32_t block_num) {
       if (trace_log && block_num >= trace_log->begin_block() && block_num < trace_log->end_block())
          return trace_log->get_block_id(block_num);
       if (chain_state_log && block_num >= chain_state_log->begin_block() && block_num < chain_state_log->end_block())
@@ -101,7 +101,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       bool                                       sending  = false;
       bool                                       sent_abi = false;
       std::vector<std::vector<char>>             send_queue;
-      fc::optional<get_blocks_request_v0>        current_request;
+      std::optional<get_blocks_request_v0>       current_request;
       bool                                       need_to_send_update = false;
 
       session(std::shared_ptr<state_history_plugin_impl> plugin)
@@ -132,7 +132,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
                    fc::datastream<const char*> ds(d, s);
                    state_request               req;
                    fc::raw::unpack(ds, req);
-                   req.visit(*self);
+                   std::visit(*self, req);
                    self->start_read();
                 });
              });

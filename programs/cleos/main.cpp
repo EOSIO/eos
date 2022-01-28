@@ -76,7 +76,6 @@ Options:
 #include <fc/io/console.hpp>
 #include <fc/exception/exception.hpp>
 #include <fc/variant_object.hpp>
-#include <fc/static_variant.hpp>
 
 #include <eosio/chain/name.hpp>
 #include <eosio/chain/config.hpp>
@@ -129,7 +128,7 @@ using namespace eosio::client::http;
 using namespace eosio::client::localize;
 using namespace eosio::client::config;
 using namespace boost::filesystem;
-using auth_type = fc::static_variant<public_key_type, permission_level>;
+using auth_type = std::variant<public_key_type, permission_level>;
 
 FC_DECLARE_EXCEPTION( explained_exception, 9000000, "explained exception, see error log" );
 FC_DECLARE_EXCEPTION( localized_exception, 10000000, "an error occured" );
@@ -418,15 +417,15 @@ void print_action( const fc::variant& at ) {
 }
 
 //resolver for ABI serializer to decode actions in proposed transaction in multisig contract
-auto abi_serializer_resolver = [](const name& account) -> fc::optional<abi_serializer> {
-   static unordered_map<account_name, fc::optional<abi_serializer> > abi_cache;
+auto abi_serializer_resolver = [](const name& account) -> std::optional<abi_serializer> {
+   static unordered_map<account_name, std::optional<abi_serializer> > abi_cache;
    auto it = abi_cache.find( account );
    if ( it == abi_cache.end() ) {
       auto result = call(get_abi_func, fc::mutable_variant_object("account_name", account));
       auto abi_results = result.as<eosio::chain_apis::read_only::get_abi_results>();
 
-      fc::optional<abi_serializer> abis;
-      if( abi_results.abi.valid() ) {
+      std::optional<abi_serializer> abis;
+      if( abi_results.abi.has_value() ) {
          abis.emplace( *abi_results.abi, abi_serializer::create_yield_function( abi_serializer_max_time ) );
       } else {
          std::cerr << "ABI for contract " << account.to_string() << " not found. Action data will be shown in hex only." << std::endl;
@@ -441,7 +440,7 @@ auto abi_serializer_resolver = [](const name& account) -> fc::optional<abi_seria
 
 bytes variant_to_bin( const account_name& account, const action_name& action, const fc::variant& action_args_var ) {
    auto abis = abi_serializer_resolver( account );
-   FC_ASSERT( abis.valid(), "No ABI found for ${contract}", ("contract", account));
+   FC_ASSERT( abis, "No ABI found for ${contract}", ("contract", account));
 
    auto action_type = abis->get_action_type( action );
    FC_ASSERT( !action_type.empty(), "Unknown action ${action} in contract ${contract}", ("action", action)( "contract", account ));
@@ -450,7 +449,7 @@ bytes variant_to_bin( const account_name& account, const action_name& action, co
 
 fc::variant bin_to_variant( const account_name& account, const action_name& action, const bytes& action_args) {
    auto abis = abi_serializer_resolver( account );
-   FC_ASSERT( abis.valid(), "No ABI found for ${contract}", ("contract", account));
+   FC_ASSERT( abis, "No ABI found for ${contract}", ("contract", account));
 
    auto action_type = abis->get_action_type( action );
    FC_ASSERT( !action_type.empty(), "Unknown action ${action} in contract ${contract}", ("action", action)( "contract", account ));
@@ -522,7 +521,7 @@ void print_result( const fc::variant& result ) { try {
          cerr << " us\n";
 
          if( status == "failed" ) {
-            auto soft_except = processed["except"].as<fc::optional<fc::exception>>();
+            auto soft_except = processed["except"].as<std::optional<fc::exception>>();
             if( soft_except ) {
                edump((soft_except->to_detail_string()));
             }
@@ -597,8 +596,8 @@ chain::action create_newaccount(const name& creator, const name& newaccount, aut
       eosio::chain::newaccount{
          .creator      = creator,
          .name         = newaccount,
-         .owner        = owner.contains<public_key_type>() ? authority(owner.get<public_key_type>()) : authority(owner.get<permission_level>()),
-         .active       = active.contains<public_key_type>() ? authority(active.get<public_key_type>()) : authority(active.get<permission_level>())
+         .owner        = std::holds_alternative<public_key_type>(owner) ? authority(std::get<public_key_type>(owner)) : authority(std::get<permission_level>(owner)),
+         .active       = std::holds_alternative<public_key_type>(active) ? authority(std::get<public_key_type>(active)) : authority(std::get<permission_level>(active))
       }
    };
 }
@@ -1359,9 +1358,9 @@ struct get_schedule_subcommand {
          } else {
             printf( "    %-13s ", row["producer_name"].as_string().c_str() );
             auto a = row["authority"].as<block_signing_authority>();
-            static_assert( std::is_same<decltype(a), static_variant<block_signing_authority_v0>>::value,
+            static_assert( std::is_same<decltype(a), std::variant<block_signing_authority_v0>>::value,
                            "Updates maybe needed if block_signing_authority changes" );
-            block_signing_authority_v0 auth = a.get<block_signing_authority_v0>();
+            block_signing_authority_v0 auth = std::get<block_signing_authority_v0>(a);
             printf( "%s\n", fc::json::to_string( auth, fc::time_point::maximum() ).c_str() );
          }
       }
@@ -2145,7 +2144,7 @@ void get_account( const string& accountName, const string& coresym, bool json_fo
       asset staked;
       asset unstaking;
 
-      if( res.core_liquid_balance.valid() ) {
+      if( res.core_liquid_balance ) {
          unstaking = asset( 0, res.core_liquid_balance->get_symbol() ); // Correct core symbol for unstaking asset.
          staked = asset( 0, res.core_liquid_balance->get_symbol() );    // Correct core symbol for staked asset.
       }
@@ -2331,7 +2330,7 @@ void get_account( const string& accountName, const string& coresym, bool json_fo
       std::cout << indent << std::left << std::setw(11) << "limit:"     << std::right << std::setw(18) << to_pretty_time( res.cpu_limit.max ) << "\n";
       std::cout << std::endl;
 
-      if( res.subjective_cpu_bill_limit.valid() ) {
+      if( res.subjective_cpu_bill_limit ) {
          std::cout << "subjective cpu bandwidth:" << std::endl;
          std::cout << indent << std::left << std::setw(11) << "used:"      << std::right << std::setw(18) << to_pretty_time( (res.subjective_cpu_bill_limit)->used ) << "\n";
          std::cout << std::endl;
@@ -2362,7 +2361,7 @@ void get_account( const string& accountName, const string& coresym, bool json_fo
          }
       }
 
-      if( res.core_liquid_balance.valid() ) {
+      if( res.core_liquid_balance ) {
          std::cout << res.core_liquid_balance->get_symbol().name() << " balances: " << std::endl;
          std::cout << indent << std::left << std::setw(11)
                    << "liquid:" << std::right << std::setw(18) << *res.core_liquid_balance << std::endl;
@@ -3364,7 +3363,7 @@ int main( int argc, char** argv ) {
       } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Invalid transaction format: '${data}'",
                                ("data", fc::json::to_string(trx_var, fc::time_point::maximum())))
 
-      fc::optional<chain_id_type> chain_id;
+      std::optional<chain_id_type> chain_id;
 
       if( str_chain_id.size() == 0 ) {
          ilog( "grabbing chain_id from ${n}", ("n", node_executable_name) );
@@ -3443,7 +3442,7 @@ int main( int argc, char** argv ) {
       try {
          signed_transaction trx = trx_var.as<signed_transaction>();
          std::cout << fc::json::to_pretty_string( push_transaction( trx )) << std::endl;
-      } catch( fc::exception& ) {
+      } catch( const std::exception& ) {
          // unable to convert so try via abi
          signed_transaction trx;
          abi_serializer::from_variant( trx_var, trx, abi_serializer_resolver, abi_serializer::create_yield_function( abi_serializer_max_time ) );
@@ -3971,6 +3970,17 @@ int main( int argc, char** argv ) {
    auto rexexec        = rexexec_subcommand(rex);
    auto closerex       = closerex_subcommand(rex);
 
+   auto handle_error = [&](const auto& e)
+   {
+      // attempt to extract the error code if one is present
+      if (!print_recognized_errors(e, verbose)) {
+         // Error is not recognized
+         if (!print_help_text(e) || verbose) {
+            elog("Failed with error: ${e}", ("e", verbose ? e.to_detail_string() : e.to_string()));
+         }
+      }
+      return 1;
+   };
 
    try {
        app.parse(argc, argv);
@@ -3983,15 +3993,14 @@ int main( int argc, char** argv ) {
          elog("connect error: ${e}", ("e", e.to_detail_string()));
       }
       return 1;
+   } catch ( const std::bad_alloc& ) {
+     elog("bad alloc");
+   } catch( const boost::interprocess::bad_alloc& ) {
+     elog("bad alloc");
    } catch (const fc::exception& e) {
-      // attempt to extract the error code if one is present
-      if (!print_recognized_errors(e, verbose)) {
-         // Error is not recognized
-         if (!print_help_text(e) || verbose) {
-            elog("Failed with error: ${e}", ("e", verbose ? e.to_detail_string() : e.to_string()));
-         }
-      }
-      return 1;
+     return handle_error(e);
+   } catch (const std::exception& e) {
+      return handle_error(fc::std_exception_wrapper::from_current_exception(e)); 
    }
 
    return 0;

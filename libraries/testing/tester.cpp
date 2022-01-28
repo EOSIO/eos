@@ -110,12 +110,12 @@ namespace eosio { namespace testing {
    protocol_feature_set make_protocol_feature_set(const subjective_restriction_map& custom_subjective_restrictions) {
       protocol_feature_set pfs;
 
-      map< builtin_protocol_feature_t, optional<digest_type> > visited_builtins;
+      map< builtin_protocol_feature_t, std::optional<digest_type> > visited_builtins;
 
       std::function<digest_type(builtin_protocol_feature_t)> add_builtins =
       [&pfs, &visited_builtins, &add_builtins, &custom_subjective_restrictions]
       ( builtin_protocol_feature_t codename ) -> digest_type {
-         auto res = visited_builtins.emplace( codename, optional<digest_type>() );
+         auto res = visited_builtins.emplace( codename, std::optional<digest_type>() );
          if( !res.second ) {
             EOS_ASSERT( res.first->second, protocol_feature_exception,
                         "invariant failure: cycle found in builtin protocol feature dependencies"
@@ -150,7 +150,7 @@ namespace eosio { namespace testing {
      return control->head_block_id() == other.control->head_block_id();
    }
 
-   void base_tester::init(const setup_policy policy, db_read_mode read_mode, optional<uint32_t> genesis_max_inline_action_size, optional<uint32_t> config_max_nonprivileged_inline_action_size) {
+   void base_tester::init(const setup_policy policy, db_read_mode read_mode, std::optional<uint32_t> genesis_max_inline_action_size, std::optional<uint32_t> config_max_nonprivileged_inline_action_size) {
       auto def_conf = default_config(tempdir, genesis_max_inline_action_size, config_max_nonprivileged_inline_action_size);
       def_conf.first.read_mode = read_mode;
       cfg = def_conf.first;
@@ -264,12 +264,12 @@ namespace eosio { namespace testing {
       open( make_protocol_feature_set(), genesis );
    }
 
-   void base_tester::open( fc::optional<chain_id_type> expected_chain_id ) {
+   void base_tester::open( std::optional<chain_id_type> expected_chain_id ) {
       open( make_protocol_feature_set(), expected_chain_id );
    }
 
    template <typename Lambda>
-   void base_tester::open( protocol_feature_set&& pfs, fc::optional<chain_id_type> expected_chain_id, Lambda lambda ) {
+   void base_tester::open( protocol_feature_set&& pfs, std::optional<chain_id_type> expected_chain_id, Lambda lambda ) {
       if( !expected_chain_id ) {
          expected_chain_id = controller::extract_chain_id_from_db( cfg.state_dir );
          if( !expected_chain_id ) {
@@ -287,13 +287,13 @@ namespace eosio { namespace testing {
       chain_transactions.clear();
       control->accepted_block.connect([this]( const block_state_ptr& block_state ){
         FC_ASSERT( block_state->block );
-          for( const auto& receipt : block_state->block->transactions ) {
-              if( receipt.trx.contains<packed_transaction>() ) {
-                  auto &pt = receipt.trx.get<packed_transaction>();
-                  chain_transactions[pt.get_transaction().id()] = receipt;
+          for( auto receipt : block_state->block->transactions ) {
+              if( std::holds_alternative<packed_transaction>(receipt.trx) ) {
+                  auto &pt = std::get<packed_transaction>(receipt.trx);
+                  chain_transactions[pt.get_transaction().id()] = std::move(receipt);
               } else {
-                  auto& id = receipt.trx.get<transaction_id_type>();
-                  chain_transactions[id] = receipt;
+                  auto& id = std::get<transaction_id_type>(receipt.trx);
+                  chain_transactions[id] = std::move(receipt);
               }
           }
       });
@@ -313,7 +313,7 @@ namespace eosio { namespace testing {
       });
    }
 
-   void base_tester::open( protocol_feature_set&& pfs, fc::optional<chain_id_type> expected_chain_id ) {
+   void base_tester::open( protocol_feature_set&& pfs, std::optional<chain_id_type> expected_chain_id ) {
       open(std::move(pfs), expected_chain_id, [&control=this->control]() {
          control->startup( []() { return false; } );
       });
@@ -695,7 +695,7 @@ namespace eosio { namespace testing {
    } FC_CAPTURE_AND_RETHROW() }
 
    transaction_trace_ptr base_tester::push_reqauth( account_name from, const vector<permission_level>& auths, const vector<private_key_type>& keys ) {
-      variant pretty_trx = fc::mutable_variant_object()
+      fc::variant pretty_trx = fc::mutable_variant_object()
          ("actions", fc::variants({
             fc::mutable_variant_object()
                ("account", name(config::system_account_name))
@@ -729,7 +729,7 @@ namespace eosio { namespace testing {
 
    transaction_trace_ptr base_tester::push_dummy(account_name from, const string& v, uint32_t billed_cpu_time_us) {
       // use reqauth for a normal action, this could be anything
-      variant pretty_trx = fc::mutable_variant_object()
+      fc::variant pretty_trx = fc::mutable_variant_object()
          ("actions", fc::variants({
             fc::mutable_variant_object()
                ("account", name(config::system_account_name))
@@ -768,7 +768,7 @@ namespace eosio { namespace testing {
 
 
    transaction_trace_ptr base_tester::transfer( account_name from, account_name to, asset amount, string memo, account_name currency ) {
-      variant pretty_trx = fc::mutable_variant_object()
+      fc::variant pretty_trx = fc::mutable_variant_object()
          ("actions", fc::variants({
             fc::mutable_variant_object()
                ("account", currency)
@@ -797,7 +797,7 @@ namespace eosio { namespace testing {
 
 
    transaction_trace_ptr base_tester::issue( account_name to, string amount, account_name currency, string memo ) {
-      variant pretty_trx = fc::mutable_variant_object()
+      fc::variant pretty_trx = fc::mutable_variant_object()
          ("actions", fc::variants({
             fc::mutable_variant_object()
                ("account", currency)
@@ -1110,9 +1110,9 @@ namespace eosio { namespace testing {
       vector<legacy::producer_key> legacy_keys;
       legacy_keys.reserve(schedule.size());
       for (const auto &p : schedule) {
-         p.authority.visit([&legacy_keys, &p](const auto& auth){
+         std::visit([&legacy_keys, &p](const auto& auth){
             legacy_keys.emplace_back(legacy::producer_key{p.producer_name, auth.keys.front().key});
-         });
+         }, p.authority);
       }
 
       return push_action( config::system_account_name, "setprods"_n, config::system_account_name,

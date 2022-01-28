@@ -1689,7 +1689,7 @@ BOOST_AUTO_TEST_CASE( wtmsig_block_signing_inflight_legacy_test ) { try {
 
    // ensure the last legacy block contains a new_producers
    auto last_legacy_block = c.produce_block();
-   BOOST_REQUIRE_EQUAL(last_legacy_block->new_producers.valid(), true);
+   BOOST_REQUIRE_EQUAL(last_legacy_block->new_producers.has_value(), true);
 
    // promote to active schedule
    c.produce_block();
@@ -1723,7 +1723,7 @@ BOOST_AUTO_TEST_CASE( wtmsig_block_signing_inflight_extension_test ) { try {
 
    // ensure the first possible new block contains a producer_schedule_change_extension
    auto first_new_block = c.produce_block();
-   BOOST_REQUIRE_EQUAL(first_new_block->new_producers.valid(), false);
+   BOOST_REQUIRE_EQUAL(first_new_block->new_producers.has_value(), false);
    BOOST_REQUIRE_EQUAL(first_new_block->header_extensions.size(), 1);
    BOOST_REQUIRE_EQUAL(first_new_block->header_extensions.at(0).first, producer_schedule_change_extension::extension_id());
 

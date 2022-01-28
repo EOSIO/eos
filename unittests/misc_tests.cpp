@@ -186,7 +186,7 @@ BOOST_AUTO_TEST_CASE(variant_format_string_limited)
       for( int i = 0; i < 1024; ++i)
          b.data.push_back('b');
       variants c;
-      c.push_back(variant(a));
+      c.push_back(fc::variant(a));
       mu( "a", a );
       mu( "b", b );
       mu( "c", c );
@@ -701,7 +701,7 @@ BOOST_AUTO_TEST_CASE(transaction_test) { try {
    testing::TESTER test;
    signed_transaction trx;
 
-   variant pretty_trx = fc::mutable_variant_object()
+   fc::variant pretty_trx = fc::mutable_variant_object()
       ("actions", fc::variants({
          fc::mutable_variant_object()
             ("account", "eosio")
@@ -846,7 +846,7 @@ BOOST_AUTO_TEST_CASE(transaction_metadata_test) { try {
    testing::TESTER test;
    signed_transaction trx;
 
-   variant pretty_trx = fc::mutable_variant_object()
+   fc::variant pretty_trx = fc::mutable_variant_object()
       ("actions", fc::variants({
          fc::mutable_variant_object()
             ("account", "eosio")

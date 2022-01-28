@@ -34,19 +34,19 @@ namespace eosio { namespace chain {
 
       transaction_receipt():transaction_receipt_header(){}
       explicit transaction_receipt( const transaction_id_type& tid ):transaction_receipt_header(executed),trx(tid){}
-      explicit transaction_receipt( const packed_transaction& ptrx ):transaction_receipt_header(executed),trx(ptrx){}
+      explicit transaction_receipt( const packed_transaction& ptrx ):transaction_receipt_header(executed),trx(std::in_place_type<packed_transaction>, ptrx){}
 
-      fc::static_variant<transaction_id_type, packed_transaction> trx;
+      std::variant<transaction_id_type, packed_transaction> trx;
 
       digest_type digest()const {
          digest_type::encoder enc;
          fc::raw::pack( enc, status );
          fc::raw::pack( enc, cpu_usage_us );
          fc::raw::pack( enc, net_usage_words );
-         if( trx.contains<transaction_id_type>() )
-            fc::raw::pack( enc, trx.get<transaction_id_type>() );
+         if( std::holds_alternative<transaction_id_type>(trx) )
+            fc::raw::pack( enc, std::get<transaction_id_type>(trx) );
          else
-            fc::raw::pack( enc, trx.get<packed_transaction>().packed_digest() );
+            fc::raw::pack( enc, std::get<packed_transaction>(trx).packed_digest() );
          return enc.result();
       }
    };
@@ -73,7 +73,7 @@ namespace eosio { namespace chain {
    namespace detail {
       template<typename... Ts>
       struct block_extension_types {
-         using block_extension_t = fc::static_variant< Ts... >;
+         using block_extension_t = std::variant< Ts... >;
          using decompose_t = decompose< Ts... >;
       };
    }
@@ -94,6 +94,7 @@ namespace eosio { namespace chain {
       explicit signed_block( const signed_block_header& h ):signed_block_header(h){}
       signed_block( signed_block&& ) = default;
       signed_block& operator=(const signed_block&) = delete;
+      signed_block& operator=(signed_block&&) = default;
       signed_block clone() const { return *this; }
 
       vector<transaction_receipt>   transactions; /// new or generated transactions

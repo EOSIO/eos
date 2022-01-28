@@ -62,7 +62,7 @@ struct abi_serializer {
    type_name get_table_type(name action)const;
    type_name get_action_result_type(name action_result)const;
 
-   optional<string>  get_error_message( uint64_t error_code )const;
+   std::optional<string>  get_error_message( uint64_t error_code )const;
 
    fc::variant binary_to_variant( const std::string_view& type, const bytes& binary, const yield_function_t& yield, bool short_path = false )const;
    [[deprecated("use the overload with yield_function_t[=create_yield_function(max_serialization_time)]")]]
@@ -196,7 +196,7 @@ namespace impl {
       map<type_name, variant_def>::const_iterator variant_itr;
    };
 
-   using path_root = static_variant<empty_path_root, array_type_path_root, struct_type_path_root, variant_type_path_root>;
+   using path_root = std::variant<empty_path_root, array_type_path_root, struct_type_path_root, variant_type_path_root>;
 
    struct empty_path_item {};
 
@@ -215,7 +215,7 @@ namespace impl {
       uint32_t                                    variant_ordinal = 0;
    };
 
-   using path_item = static_variant<empty_path_item, array_index_path_item, field_path_item, variant_path_item>;
+   using path_item = std::variant<empty_path_item, array_index_path_item, field_path_item, variant_path_item>;
 
    struct abi_traverse_context_with_path : public abi_traverse_context {
       abi_traverse_context_with_path( const abi_serializer& abis, abi_serializer::yield_function_t yield, const std::string_view& type )
@@ -348,7 +348,7 @@ namespace impl {
       static void add( mutable_variant_object &mvo, const char* name, const vector<M>& v, Resolver resolver, abi_traverse_context& ctx )
       {
          auto h = ctx.enter_scope();
-         vector<variant> array;
+         vector<fc::variant> array;
          array.reserve(v.size());
 
          for (const auto& iter: v) {
@@ -391,12 +391,12 @@ namespace impl {
       };
 
       template<typename Resolver, typename... Args>
-      static void add( mutable_variant_object &mvo, const char* name, const fc::static_variant<Args...>& v, Resolver resolver, abi_traverse_context& ctx )
+      static void add( mutable_variant_object &mvo, const char* name, const std::variant<Args...>& v, Resolver resolver, abi_traverse_context& ctx )
       {
          auto h = ctx.enter_scope();
          mutable_variant_object obj_mvo;
          add_static_variant<Resolver> adder(obj_mvo, resolver, ctx);
-         v.visit(adder);
+         std::visit(adder, v);
          mvo(name, std::move(obj_mvo["_"]));
       }
 
@@ -421,7 +421,7 @@ namespace impl {
 
          try {
             auto abi = resolver(act.account);
-            if (abi.valid()) {
+            if (abi) {
                auto type = abi->get_action_type(act.name);
                if (!type.empty()) {
                   try {
@@ -544,7 +544,7 @@ namespace impl {
          // process contents of block.transaction_extensions
          auto exts = trx.validate_and_extract_extensions();
          if (exts.count(deferred_transaction_generation_context::extension_id()) > 0) {
-            const auto& deferred_transaction_generation = exts.lower_bound(deferred_transaction_generation_context::extension_id())->second.get<deferred_transaction_generation_context>();
+            const auto& deferred_transaction_generation = std::get<deferred_transaction_generation_context>(exts.lower_bound(deferred_transaction_generation_context::extension_id())->second);
             mvo("deferred_transaction_generation", deferred_transaction_generation);
          }
 
@@ -575,8 +575,9 @@ namespace impl {
          // process contents of block.header_extensions
          flat_multimap<uint16_t, block_header_extension> header_exts = block.validate_and_extract_header_extensions();
          if ( header_exts.count(protocol_feature_activation::extension_id() > 0) ) {
-            const auto& new_protocol_features = header_exts.lower_bound(protocol_feature_activation::extension_id())->second.get<protocol_feature_activation>().protocol_features;
-            vector<variant> pf_array;
+            const auto& new_protocol_features =
+                  std::get<protocol_feature_activation>(header_exts.lower_bound(protocol_feature_activation::extension_id())->second).protocol_features;
+            vector<fc::variant> pf_array;
             pf_array.reserve(new_protocol_features.size());
             for (auto feature : new_protocol_features) {
                mutable_variant_object feature_mvo;
@@ -586,7 +587,8 @@ namespace impl {
             mvo("new_protocol_features", pf_array);
          }
          if ( header_exts.count(producer_schedule_change_extension::extension_id())) {
-            const auto& new_producer_schedule = header_exts.lower_bound(producer_schedule_change_extension::extension_id())->second.get<producer_schedule_change_extension>();
+            const auto& new_producer_schedule =
+                  std::get<producer_schedule_change_extension>(header_exts.lower_bound(producer_schedule_change_extension::extension_id())->second);
             mvo("new_producer_schedule", new_producer_schedule);
          }
 
@@ -596,7 +598,8 @@ namespace impl {
          // process contents of block.block_extensions
          auto block_exts = block.validate_and_extract_extensions();
          if ( block_exts.count(additional_block_signatures_extension::extension_id()) > 0) {
-            const auto& additional_signatures = block_exts.lower_bound(additional_block_signatures_extension::extension_id())->second.get<additional_block_signatures_extension>();
+            const auto& additional_signatures =
+                  std::get<additional_block_signatures_extension>(block_exts.lower_bound(additional_block_signatures_extension::extension_id())->second);
             mvo("additional_signatures", additional_signatures);
          }
 
@@ -609,7 +612,7 @@ namespace impl {
     * this will degrade to the common fc::to_variant as soon as the type no longer contains
     * ABI related info
     *
-    * @tparam Reslover - callable with the signature (const name& code_account) -> optional<abi_def>
+    * @tparam Reslover - callable with the signature (const name& code_account) -> std::optional<abi_def>
     */
    template<typename T, typename Resolver>
    class abi_to_variant_visitor
@@ -648,7 +651,7 @@ namespace impl {
        * and can be degraded to the normal ::from_variant(...) processing
        */
       template<typename M, typename Resolver, not_require_abi_t<M> = 1>
-      static void extract( const variant& v, M& o, Resolver, abi_traverse_context& ctx )
+      static void extract( const fc::variant& v, M& o, Resolver, abi_traverse_context& ctx )
       {
          auto h = ctx.enter_scope();
          from_variant(v, o);
@@ -659,14 +662,14 @@ namespace impl {
        * for these types we create new ABI aware visitors
        */
       template<typename M, typename Resolver, require_abi_t<M> = 1>
-      static void extract( const variant& v, M& o, Resolver resolver, abi_traverse_context& ctx );
+      static void extract( const fc::variant& v, M& o, Resolver resolver, abi_traverse_context& ctx );
 
       /**
        * template which overloads extract for vectors of types which contain ABI information in their trees
        * for these members we call ::extract in order to trigger further processing
        */
       template<typename M, typename Resolver, require_abi_t<M> = 1>
-      static void extract( const variant& v, vector<M>& o, Resolver resolver, abi_traverse_context& ctx )
+      static void extract( const fc::variant& v, vector<M>& o, Resolver resolver, abi_traverse_context& ctx )
       {
          auto h = ctx.enter_scope();
          const variants& array = v.get_array();
@@ -684,7 +687,7 @@ namespace impl {
        * for these members we call ::extract in order to trigger further processing
        */
       template<typename M, typename Resolver, require_abi_t<M> = 1>
-      static void extract( const variant& v, std::shared_ptr<M>& o, Resolver resolver, abi_traverse_context& ctx )
+      static void extract( const fc::variant& v, std::shared_ptr<M>& o, Resolver resolver, abi_traverse_context& ctx )
       {
          auto h = ctx.enter_scope();
          const variant_object& vo = v.get_object();
@@ -699,7 +702,7 @@ namespace impl {
        * exploded and processed explicitly
        */
       template<typename Resolver>
-      static void extract( const variant& v, action& act, Resolver resolver, abi_traverse_context& ctx )
+      static void extract( const fc::variant& v, action& act, Resolver resolver, abi_traverse_context& ctx )
       {
          auto h = ctx.enter_scope();
          const variant_object& vo = v.get_object();
@@ -720,7 +723,7 @@ namespace impl {
                valid_empty_data = act.data.empty();
             } else if ( data.is_object() ) {
                auto abi = resolver(act.account);
-               if (abi.valid()) {
+               if (abi) {
                   auto type = abi->get_action_type(act.name);
                   if (!type.empty()) {
                      variant_to_binary_context _ctx(*abi, ctx, type);
@@ -746,7 +749,7 @@ namespace impl {
       }
 
       template<typename Resolver>
-      static void extract( const variant& v, packed_transaction& ptrx, Resolver resolver, abi_traverse_context& ctx )
+      static void extract( const fc::variant& v, packed_transaction& ptrx, Resolver resolver, abi_traverse_context& ctx )
       {
          auto h = ctx.enter_scope();
          const variant_object& vo = v.get_object();
@@ -797,7 +800,7 @@ namespace impl {
     * this will degrade to the common fc::from_variant as soon as the type no longer contains
     * ABI related info
     *
-    * @tparam Reslover - callable with the signature (const name& code_account) -> optional<abi_def>
+    * @tparam Reslover - callable with the signature (const name& code_account) -> std::optional<abi_def>
     */
    template<typename T, typename Resolver>
    class abi_from_variant_visitor : public reflector_init_visitor<T>
@@ -841,7 +844,7 @@ namespace impl {
    }
 
    template<typename M, typename Resolver, require_abi_t<M>>
-   void abi_from_variant::extract( const variant& v, M& o, Resolver resolver, abi_traverse_context& ctx )
+   void abi_from_variant::extract( const fc::variant& v, M& o, Resolver resolver, abi_traverse_context& ctx )
    {
       auto h = ctx.enter_scope();
       const variant_object& vo = v.get_object();
@@ -850,7 +853,7 @@ namespace impl {
 } /// namespace eosio::chain::impl
 
 template<typename T, typename Resolver>
-void abi_serializer::to_variant( const T& o, variant& vo, Resolver resolver, const yield_function_t& yield ) try {
+void abi_serializer::to_variant( const T& o, fc::variant& vo, Resolver resolver, const yield_function_t& yield ) try {
    mutable_variant_object mvo;
    impl::abi_traverse_context ctx( yield );
    impl::abi_to_variant::add(mvo, "_", o, resolver, ctx);
@@ -858,18 +861,18 @@ void abi_serializer::to_variant( const T& o, variant& vo, Resolver resolver, con
 } FC_RETHROW_EXCEPTIONS(error, "Failed to serialize: ${type}", ("type", boost::core::demangle( typeid(o).name() ) ))
 
 template<typename T, typename Resolver>
-void abi_serializer::to_variant( const T& o, variant& vo, Resolver resolver, const fc::microseconds& max_serialization_time ) {
+void abi_serializer::to_variant( const T& o, fc::variant& vo, Resolver resolver, const fc::microseconds& max_serialization_time ) {
    to_variant( o, vo, resolver, create_yield_function(max_serialization_time) );
 }
 
 template<typename T, typename Resolver>
-void abi_serializer::from_variant( const variant& v, T& o, Resolver resolver, const yield_function_t& yield ) try {
+void abi_serializer::from_variant( const fc::variant& v, T& o, Resolver resolver, const yield_function_t& yield ) try {
    impl::abi_traverse_context ctx( yield );
    impl::abi_from_variant::extract(v, o, resolver, ctx);
 } FC_RETHROW_EXCEPTIONS(error, "Failed to deserialize variant", ("variant",v))
 
 template<typename T, typename Resolver>
-void abi_serializer::from_variant( const variant& v, T& o, Resolver resolver, const fc::microseconds& max_serialization_time ) {
+void abi_serializer::from_variant( const fc::variant& v, T& o, Resolver resolver, const fc::microseconds& max_serialization_time ) {
    from_variant( v, o, resolver, create_yield_function(max_serialization_time) );
 }
 

@@ -51,7 +51,7 @@ BOOST_FIXTURE_TEST_CASE( test_abi_serializer, payloadless_tester ) {
    set_code( "payloadless"_n, contracts::payloadless_wasm() );
    set_abi( "payloadless"_n, contracts::payloadless_abi().data() );
 
-   variant pretty_trx = fc::mutable_variant_object()
+   fc::variant pretty_trx = fc::mutable_variant_object()
       ("actions", fc::variants({
          fc::mutable_variant_object()
             ("account", name("payloadless"_n))

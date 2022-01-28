@@ -124,7 +124,7 @@ namespace eosio::trace_api::detail {
         ("transactions", process_transactions(trace.transactions_v1, data_handler, yield ));
     }
     fc::variant response_formatter::process_block( const data_log_entry& trace, bool irreversible, const data_handler_function& data_handler, const yield_function& yield ) {
-        if (trace.contains<block_trace_v0>()) return process_block_trace(trace.get<block_trace_v0>(), irreversible, data_handler, yield);
-        else return process_block_trace(trace.get<block_trace_v1>(), irreversible, data_handler, yield);
+        if (std::holds_alternative<block_trace_v0>(trace)) return process_block_trace(std::get<block_trace_v0>(trace), irreversible, data_handler, yield);
+        else return process_block_trace(std::get<block_trace_v1>(trace), irreversible, data_handler, yield);
     }
 }

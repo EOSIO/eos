@@ -129,7 +129,7 @@ namespace detail {
             return {range.begin(), range.end()};
          }
 
-         static optional<permission_cache_status>
+         static std::optional<permission_cache_status>
          permission_status_in_cache( const permission_cache_type& permissions,
                                      const permission_level& level )
          {
@@ -141,7 +141,7 @@ namespace detail {
             if( itr != permissions.end() )
                return itr->second;
 
-            return optional<permission_cache_status>();
+            return std::optional<permission_cache_status>();
          }
 
       private:

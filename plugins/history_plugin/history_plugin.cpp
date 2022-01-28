@@ -141,7 +141,7 @@ namespace eosio {
          std::set<filter_entry> filter_on;
          std::set<filter_entry> filter_out;
          chain_plugin*          chain_plug = nullptr;
-         fc::optional<scoped_connection> applied_transaction_connection;
+         std::optional<scoped_connection> applied_transaction_connection;
 
           bool filter(const action_trace& act) {
             bool pass_on = false;
@@ -494,8 +494,8 @@ namespace eosio {
             if( blk || chain.is_building_block() ) {
                const vector<transaction_receipt>& receipts = blk ? blk->transactions : chain.get_pending_trx_receipts();
                for (const auto &receipt: receipts) {
-                    if (receipt.trx.contains<packed_transaction>()) {
-                        auto &pt = receipt.trx.get<packed_transaction>();
+                    if (std::holds_alternative<packed_transaction>(receipt.trx)) {
+                        auto &pt = std::get<packed_transaction>(receipt.trx);
                         if (pt.id() == result.id) {
                             fc::mutable_variant_object r("receipt", receipt);
                             r("trx", chain.to_variant_with_abi(pt.get_signed_transaction(), abi_serializer::create_yield_function( abi_serializer_max_time )));
@@ -503,7 +503,7 @@ namespace eosio {
                             break;
                         }
                     } else {
-                        auto &id = receipt.trx.get<transaction_id_type>();
+                        auto &id = std::get<transaction_id_type>(receipt.trx);
                         if (id == result.id) {
                             fc::mutable_variant_object r("receipt", receipt);
                             result.trx = move(r);
@@ -517,8 +517,8 @@ namespace eosio {
             bool found = false;
             if (blk) {
                for (const auto& receipt: blk->transactions) {
-                  if (receipt.trx.contains<packed_transaction>()) {
-                     auto& pt = receipt.trx.get<packed_transaction>();
+                  if (std::holds_alternative<packed_transaction>(receipt.trx)) {
+                     auto& pt = std::get<packed_transaction>(receipt.trx);
                      const auto& id = pt.id();
                      if( txn_id_matched(id) ) {
                         result.id = id;
@@ -532,7 +532,7 @@ namespace eosio {
                         break;
                      }
                   } else {
-                     auto& id = receipt.trx.get<transaction_id_type>();
+                     auto& id = std::get<transaction_id_type>(receipt.trx);
                      if( txn_id_matched(id) ) {
                         result.id = id;
                         result.last_irreversible_block = chain.last_irreversible_block_num();

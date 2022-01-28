@@ -8,7 +8,6 @@
 #include <fc/io/varint.hpp>
 #include <fc/io/enum_type.hpp>
 #include <fc/crypto/sha224.hpp>
-#include <fc/optional.hpp>
 #include <fc/safe.hpp>
 #include <fc/container/flat.hpp>
 #include <fc/string.hpp>
@@ -64,7 +63,6 @@ namespace eosio { namespace chain {
    using                               fc::variant_object;
    using                               fc::variant;
    using                               fc::enum_type;
-   using                               fc::optional;
    using                               fc::unsigned_int;
    using                               fc::signed_int;
    using                               fc::time_point_sec;
@@ -73,7 +71,7 @@ namespace eosio { namespace chain {
    using                               fc::flat_map;
    using                               fc::flat_multimap;
    using                               fc::flat_set;
-   using                               fc::static_variant;
+   using                               std::variant;
    using                               fc::ecc::range_proof_type;
    using                               fc::ecc::range_proof_info;
    using                               fc::ecc::commitment_type;
@@ -329,7 +327,7 @@ namespace eosio { namespace chain {
       struct decompose<> {
          template<typename ResultVariant>
          static auto extract( uint16_t id, const vector<char>& data, ResultVariant& result )
-         -> fc::optional<extract_match>
+         -> std::optional<extract_match>
          {
             return {};
          }
@@ -342,7 +340,7 @@ namespace eosio { namespace chain {
 
          template<typename ResultVariant>
          static auto extract( uint16_t id, const vector<char>& data, ResultVariant& result )
-         -> fc::optional<extract_match>
+         -> std::optional<extract_match>
          {
             if( id == head_t::extension_id() ) {
                result = fc::raw::unpack<head_t>( data );

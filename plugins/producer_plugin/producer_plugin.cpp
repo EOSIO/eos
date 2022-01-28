@@ -184,7 +184,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       {
       }
 
-      optional<fc::time_point> calculate_next_block_time(const account_name& producer_name, const block_timestamp_type& current_block_time) const;
+      std::optional<fc::time_point> calculate_next_block_time(const account_name& producer_name, const block_timestamp_type& current_block_time) const;
       void schedule_production_loop();
       void schedule_maybe_produce_block( bool exhausted );
       void produce_block();
@@ -208,7 +208,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       std::map<chain::account_name, producer_watermark>         _producer_watermarks;
       pending_block_mode                                        _pending_block_mode = pending_block_mode::speculating;
       unapplied_transaction_queue                               _unapplied_transactions;
-      fc::optional<named_thread_pool>                           _thread_pool;
+      std::optional<named_thread_pool>                          _thread_pool;
 
       std::atomic<int32_t>                                      _max_transaction_time_ms; // modified by app thread, read by net_plugin thread pool
       fc::microseconds                                          _max_irreversible_block_age_us;
@@ -240,9 +240,9 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       pending_snapshot_index                                   _pending_snapshot_index;
       subjective_billing                                       _subjective_billing;
 
-      fc::optional<scoped_connection>                          _accepted_block_connection;
-      fc::optional<scoped_connection>                          _accepted_block_header_connection;
-      fc::optional<scoped_connection>                          _irreversible_block_connection;
+      std::optional<scoped_connection>                          _accepted_block_connection;
+      std::optional<scoped_connection>                          _accepted_block_header_connection;
+      std::optional<scoped_connection>                          _irreversible_block_connection;
 
       /*
        * HACK ALERT
@@ -348,6 +348,13 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          });
 
          // push the new block
+         auto handle_error = [&](const auto& e)
+         {
+            elog((e.to_detail_string()));
+            app().get_channel<channels::rejected_block>().publish( priority::medium, block );
+            throw;
+         };
+
          try {
             chain.push_block( bsf, [this]( const branch_type& forked_branch ) {
                _unapplied_transactions.add_forked( forked_branch );
@@ -357,14 +364,14 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          } catch ( const guard_exception& e ) {
             chain_plugin::handle_guard_exception(e);
             return false;
-         } catch( const fc::exception& e ) {
-            elog((e.to_detail_string()));
-            app().get_channel<channels::rejected_block>().publish( priority::medium, block );
-            throw;
          } catch ( const std::bad_alloc& ) {
             chain_plugin::handle_bad_alloc();
          } catch ( boost::interprocess::bad_alloc& ) {
             chain_plugin::handle_db_exhaustion();
+         } catch( const fc::exception& e ) {
+            handle_error(e);
+         } catch (const std::exception& e) {
+            handle_error(fc::std_exception_wrapper::from_current_exception(e));
          }
 
          const auto& hbs = chain.head_block_state();
@@ -469,32 +476,32 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          bool exhausted = false;
          chain::controller& chain = chain_plug->chain();
 
-         auto send_response = [this, &trx, &chain, &next](const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>& response) {
+         auto send_response = [this, &trx, &chain, &next](const std::variant<fc::exception_ptr, transaction_trace_ptr>& response) {
             next(response);
-            if (response.contains<fc::exception_ptr>()) {
-               _transaction_ack_channel.publish(priority::low, std::pair<fc::exception_ptr, transaction_metadata_ptr>(response.get<fc::exception_ptr>(), trx));
+            if (std::holds_alternative<fc::exception_ptr>(response)) {
+               _transaction_ack_channel.publish(priority::low, std::pair<fc::exception_ptr, transaction_metadata_ptr>(std::get<fc::exception_ptr>(response), trx));
                if (_pending_block_mode == pending_block_mode::producing) {
                   fc_dlog(_trx_successful_trace_log, "[TRX_TRACE] Block ${block_num} for producer ${prod} is REJECTING tx: ${txid}, auth: ${a} : ${why} ",
                         ("block_num", chain.head_block_num() + 1)
                         ("prod", get_pending_block_producer())
                         ("txid", trx->id())
                         ("a", trx->packed_trx()->get_transaction().first_authorizer())
-                        ("why",response.get<fc::exception_ptr>()->what()));
+                        ("why",std::get<fc::exception_ptr>(response)->what()));
                   fc_dlog(_trx_failed_trace_log, "[TRX_TRACE] Block ${block_num} for producer ${prod} is REJECTING tx: ${txid}, auth: ${a} : ${why} ",
                         ("block_num", chain.head_block_num() + 1)
                         ("prod", get_pending_block_producer())
                         ("txid", trx->id())
                         ("a", trx->packed_trx()->get_transaction().first_authorizer())
-                        ("why",response.get<fc::exception_ptr>()->what()));
+                        ("why",std::get<fc::exception_ptr>(response)->what()));
                } else {
                   fc_dlog(_trx_successful_trace_log, "[TRX_TRACE] Speculative execution is REJECTING tx: ${txid}, auth: ${a} : ${why} ",
                           ("txid", trx->id())
                           ("a", trx->packed_trx()->get_transaction().first_authorizer())
-                          ("why",response.get<fc::exception_ptr>()->what()));
+                          ("why",std::get<fc::exception_ptr>(response)->what()));
                   fc_dlog(_trx_failed_trace_log, "[TRX_TRACE] Speculative execution is REJECTING tx: ${txid}, auth: ${a} : ${why} ",
                           ("txid", trx->id())
                           ("a", trx->packed_trx()->get_transaction().first_authorizer())
-                          ("why",response.get<fc::exception_ptr>()->what()));
+                          ("why",std::get<fc::exception_ptr>(response)->what()));
                }
             } else {
                _transaction_ack_channel.publish(priority::low, std::pair<fc::exception_ptr, transaction_metadata_ptr>(nullptr, trx));
@@ -634,8 +641,8 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
 
       fc::time_point calculate_pending_block_time() const;
       fc::time_point calculate_block_deadline( const fc::time_point& ) const;
-      void schedule_delayed_production_loop(const std::weak_ptr<producer_plugin_impl>& weak_this, optional<fc::time_point> wake_up_time);
-      optional<fc::time_point> calculate_producer_wake_up_time( const block_timestamp_type& ref_block_time ) const;
+      void schedule_delayed_production_loop(const std::weak_ptr<producer_plugin_impl>& weak_this, std::optional<fc::time_point> wake_up_time);
+      std::optional<fc::time_point> calculate_producer_wake_up_time( const block_timestamp_type& ref_block_time ) const;
 
 };
 
@@ -835,7 +842,7 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
             my->_signature_providers[key_id_to_wif_pair.first] = make_key_signature_provider(key_id_to_wif_pair.second);
             auto blanked_privkey = std::string(key_id_to_wif_pair.second.to_string().size(), '*' );
             wlog("\"private-key\" is DEPRECATED, use \"signature-provider=${pub}=KEY:${priv}\"", ("pub",key_id_to_wif_pair.first)("priv", blanked_privkey));
-         } catch ( fc::exception& e ) {
+         } catch ( const std::exception& e ) {
             elog("Malformed private key pair");
          }
       }
@@ -1061,8 +1068,14 @@ void producer_plugin::plugin_startup()
 void producer_plugin::plugin_shutdown() {
    try {
       my->_timer.cancel();
-   } catch(fc::exception& e) {
+   } catch ( const std::bad_alloc& ) {
+     chain_plugin::handle_bad_alloc();
+   } catch ( const boost::interprocess::bad_alloc& ) {
+     chain_plugin::handle_bad_alloc();
+   } catch(const fc::exception& e) {
       edump((e.to_detail_string()));
+   } catch(const std::exception& e) {
+      edump((fc::std_exception_wrapper::from_current_exception(e).to_detail_string()));
    }
 
    if( my->_thread_pool ) {
@@ -1153,7 +1166,7 @@ producer_plugin::runtime_options producer_plugin::get_runtime_options() const {
       my->_max_scheduled_transaction_time_per_block_ms,
       my->chain_plug->chain().get_subjective_cpu_leeway() ?
             my->chain_plug->chain().get_subjective_cpu_leeway()->count() :
-            fc::optional<int32_t>(),
+            std::optional<int32_t>(),
       my->_incoming_defer_ratio,
       my->chain_plug->chain().get_greylist_limit()
    };
@@ -1198,12 +1211,12 @@ producer_plugin::whitelist_blacklist producer_plugin::get_whitelist_blacklist() 
 
 void producer_plugin::set_whitelist_blacklist(const producer_plugin::whitelist_blacklist& params) {
    chain::controller& chain = my->chain_plug->chain();
-   if(params.actor_whitelist.valid()) chain.set_actor_whitelist(*params.actor_whitelist);
-   if(params.actor_blacklist.valid()) chain.set_actor_blacklist(*params.actor_blacklist);
-   if(params.contract_whitelist.valid()) chain.set_contract_whitelist(*params.contract_whitelist);
-   if(params.contract_blacklist.valid()) chain.set_contract_blacklist(*params.contract_blacklist);
-   if(params.action_blacklist.valid()) chain.set_action_blacklist(*params.action_blacklist);
-   if(params.key_blacklist.valid()) chain.set_key_blacklist(*params.key_blacklist);
+   if(params.actor_whitelist) chain.set_actor_whitelist(*params.actor_whitelist);
+   if(params.actor_blacklist) chain.set_actor_blacklist(*params.actor_blacklist);
+   if(params.contract_whitelist) chain.set_contract_whitelist(*params.contract_whitelist);
+   if(params.contract_blacklist) chain.set_contract_blacklist(*params.contract_blacklist);
+   if(params.action_blacklist) chain.set_action_blacklist(*params.action_blacklist);
+   if(params.key_blacklist) chain.set_key_blacklist(*params.key_blacklist);
 }
 
 producer_plugin::integrity_hash_information producer_plugin::get_integrity_hash() const {
@@ -1288,7 +1301,7 @@ void producer_plugin::create_snapshot(producer_plugin::next_function<producer_pl
    if( existing != pending_by_id.end() ) {
       // if a snapshot at this block is already pending, attach this requests handler to it
       pending_by_id.modify(existing, [&next]( auto& entry ){
-         entry.next = [prev = entry.next, next](const fc::static_variant<fc::exception_ptr, producer_plugin::snapshot_information>& res){
+         entry.next = [prev = entry.next, next](const std::variant<fc::exception_ptr, producer_plugin::snapshot_information>& res){
             prev(res);
             next(res);
          };
@@ -1417,7 +1430,7 @@ producer_plugin::get_account_ram_corrections( const get_account_ram_corrections_
    return result;
 }
 
-optional<fc::time_point> producer_plugin_impl::calculate_next_block_time(const account_name& producer_name, const block_timestamp_type& current_block_time) const {
+std::optional<fc::time_point> producer_plugin_impl::calculate_next_block_time(const account_name& producer_name, const block_timestamp_type& current_block_time) const {
    chain::controller& chain = chain_plug->chain();
    const auto& hbs = chain.head_block_state();
    const auto& active_schedule = hbs->active_schedule.producers;
@@ -1426,7 +1439,7 @@ optional<fc::time_point> producer_plugin_impl::calculate_next_block_time(const a
    auto itr = std::find_if(active_schedule.begin(), active_schedule.end(), [&](const auto& asp){ return asp.producer_name == producer_name; });
    if (itr == active_schedule.end()) {
       // this producer is not in the active producer set
-      return optional<fc::time_point>();
+      return std::optional<fc::time_point>();
    }
 
    size_t producer_index = itr - active_schedule.begin();
@@ -1609,9 +1622,17 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
          bool drop_features_to_activate = false;
          try {
             chain.validate_protocol_features( _protocol_features_to_activate );
+         } catch ( const std::bad_alloc& ) {
+           chain_plugin::handle_bad_alloc();
+         } catch ( const boost::interprocess::bad_alloc& ) {
+           chain_plugin::handle_bad_alloc();
          } catch( const fc::exception& e ) {
             wlog( "protocol features to activate are no longer all valid: ${details}",
                   ("details",e.to_detail_string()) );
+            drop_features_to_activate = true;
+         } catch( const std::exception& e ) {
+            wlog( "protocol features to activate are no longer all valid: ${details}",
+                  ("details",fc::std_exception_wrapper::from_current_exception(e).to_detail_string()) );
             drop_features_to_activate = true;
          }
 
@@ -2175,9 +2196,9 @@ void producer_plugin_impl::schedule_maybe_produce_block( bool exhausted ) {
          } ) );
 }
 
-optional<fc::time_point> producer_plugin_impl::calculate_producer_wake_up_time( const block_timestamp_type& ref_block_time ) const {
+std::optional<fc::time_point> producer_plugin_impl::calculate_producer_wake_up_time( const block_timestamp_type& ref_block_time ) const {
    // if we have any producers then we should at least set a timer for our next available slot
-   optional<fc::time_point> wake_up_time;
+   std::optional<fc::time_point> wake_up_time;
    for (const auto& p : _producers) {
       auto next_producer_block_time = calculate_next_block_time(p, ref_block_time);
       if (next_producer_block_time) {
@@ -2199,7 +2220,7 @@ optional<fc::time_point> producer_plugin_impl::calculate_producer_wake_up_time( 
    return wake_up_time;
 }
 
-void producer_plugin_impl::schedule_delayed_production_loop(const std::weak_ptr<producer_plugin_impl>& weak_this, optional<fc::time_point> wake_up_time) {
+void producer_plugin_impl::schedule_delayed_production_loop(const std::weak_ptr<producer_plugin_impl>& weak_this, std::optional<fc::time_point> wake_up_time) {
    if (wake_up_time) {
       fc_dlog(_log, "Scheduling Speculative/Production Change at ${time}", ("time", wake_up_time));
       static const boost::posix_time::ptime epoch(boost::gregorian::date(1970, 1, 1));
@@ -2237,7 +2258,7 @@ static auto make_debug_time_logger() {
    });
 }
 
-static auto maybe_make_debug_time_logger() -> fc::optional<decltype(make_debug_time_logger())> {
+static auto maybe_make_debug_time_logger() -> std::optional<decltype(make_debug_time_logger())> {
    if (_log.is_enabled( fc::log_level::debug ) ){
       return make_debug_time_logger();
    } else {

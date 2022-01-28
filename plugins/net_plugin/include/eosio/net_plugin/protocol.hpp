@@ -135,15 +135,15 @@ namespace eosio {
       uint32_t end_block{0};
    };
 
-   using net_message = static_variant<handshake_message,
-                                      chain_size_message,
-                                      go_away_message,
-                                      time_message,
-                                      notice_message,
-                                      request_message,
-                                      sync_request_message,
-                                      signed_block,         // which = 7
-                                      packed_transaction>;  // which = 8
+   using net_message = std::variant<handshake_message,
+                                    chain_size_message,
+                                    go_away_message,
+                                    time_message,
+                                    notice_message,
+                                    request_message,
+                                    sync_request_message,
+                                    signed_block,         // which = 7
+                                    packed_transaction>;  // which = 8
 
 } // namespace eosio
 

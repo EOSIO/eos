@@ -27,7 +27,7 @@ namespace eosio { namespace chain {
    namespace detail {
       template<typename... Ts>
       struct transaction_extension_types {
-         using transaction_extension_t = fc::static_variant< Ts... >;
+         using transaction_extension_t = std::variant< Ts... >;
          using decompose_t = decompose< Ts... >;
       };
    }

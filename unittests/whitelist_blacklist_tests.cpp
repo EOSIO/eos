@@ -58,7 +58,7 @@ class whitelist_blacklist_tester {
       }
 
       void shutdown() {
-         FC_ASSERT( chain.valid(), "chain is not up" );
+         FC_ASSERT( chain, "chain is not up" );
          last_produced_block = chain->get_last_produced_block_map();
          wdump((last_produced_block));
          chain.reset();
@@ -77,7 +77,7 @@ class whitelist_blacklist_tester {
    private:
       fc::temp_directory                tempdir; // Must come before chain
    public:
-      fc::optional<Tester>              chain;
+      std::optional<Tester>             chain;
       flat_set<account_name>            sender_bypass_whiteblacklist;
       flat_set<account_name>            actor_whitelist;
       flat_set<account_name>            actor_blacklist;

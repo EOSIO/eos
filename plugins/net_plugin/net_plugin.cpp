@@ -268,8 +268,8 @@ namespace eosio {
 
       compat::channels::transaction_ack::channel_type::handle  incoming_transaction_ack_subscription;
 
-      uint16_t                                  thread_pool_size = 2;
-      optional<eosio::chain::named_thread_pool> thread_pool;
+      uint16_t                                       thread_pool_size = 2;
+      std::optional<eosio::chain::named_thread_pool> thread_pool;
 
    private:
       mutable std::mutex            chain_info_mtx; // protects chain_*
@@ -585,7 +585,7 @@ namespace eosio {
 
       void update_endpoints();
 
-      optional<peer_sync_state>    peer_requested;  // this peer is requesting info from us
+      std::optional<peer_sync_state> peer_requested;  // this peer is requesting info from us
 
       std::atomic<bool>                         socket_open{false};
 
@@ -622,18 +622,18 @@ namespace eosio {
 
       std::atomic<go_away_reason>           no_retry{no_reason};
 
-      mutable std::mutex          conn_mtx; //< mtx for last_req .. local_endpoint_port
-      optional<request_message>   last_req;
-      handshake_message           last_handshake_recv;
-      handshake_message           last_handshake_sent;
-      block_id_type               fork_head;
-      uint32_t                    fork_head_num{0};
-      fc::time_point              last_close;
-      fc::sha256                  conn_node_id;
-      string                      remote_endpoint_ip;
-      string                      remote_endpoint_port;
-      string                      local_endpoint_ip;
-      string                      local_endpoint_port;
+      mutable std::mutex               conn_mtx; //< mtx for last_req .. local_endpoint_port
+      std::optional<request_message>   last_req;
+      handshake_message                last_handshake_recv;
+      handshake_message                last_handshake_sent;
+      block_id_type                    fork_head;
+      uint32_t                         fork_head_num{0};
+      fc::time_point                   last_close;
+      fc::sha256                       conn_node_id;
+      string                           remote_endpoint_ip;
+      string                           remote_endpoint_port;
+      string                           local_endpoint_ip;
+      string                           local_endpoint_port;
 
       connection_status get_status()const;
 
@@ -967,7 +967,7 @@ namespace eosio {
       bool has_last_req = false;
       {
          std::lock_guard<std::mutex> g_conn( self->conn_mtx );
-         has_last_req = !!self->last_req;
+         has_last_req = self->last_req.has_value();
          self->last_handshake_recv = handshake_message();
          self->last_handshake_sent = handshake_message();
          self->last_close = fc::time_point::now();
@@ -1176,10 +1176,14 @@ namespace eosio {
 
                c->enqueue_sync_block();
                c->do_queue_write();
-            } catch( const std::exception& ex ) {
-               fc_elog( logger, "Exception in do_queue_write to ${p} ${s}", ("p", c->peer_name())( "s", ex.what() ) );
+            } catch ( const std::bad_alloc& ) {
+              throw;
+            } catch ( const boost::interprocess::bad_alloc& ) {
+              throw;
             } catch( const fc::exception& ex ) {
                fc_elog( logger, "Exception in do_queue_write to ${p} ${s}", ("p", c->peer_name())( "s", ex.to_string() ) );
+            } catch( const std::exception& ex ) {
+               fc_elog( logger, "Exception in do_queue_write to ${p} ${s}", ("p", c->peer_name())( "s", ex.what() ) );
             } catch( ... ) {
                fc_elog( logger, "Exception in do_queue_write to ${p}", ("p", c->peer_name()) );
             }
@@ -1243,8 +1247,8 @@ namespace eosio {
    void connection::enqueue( const net_message& m ) {
       verify_strand_in_this_thread( strand, __func__, __LINE__ );
       go_away_reason close_after_send = no_reason;
-      if (m.contains<go_away_message>()) {
-         close_after_send = m.get<go_away_message>().reason;
+      if (std::holds_alternative<go_away_message>(m)) {
+         close_after_send = std::get<go_away_message>(m).reason;
       }
 
       const uint32_t payload_size = fc::raw::pack_size( m );
@@ -1946,8 +1950,8 @@ namespace eosio {
       update_block_num ubn( sb->block_num() );
       std::lock_guard<std::mutex> g( local_txns_mtx );
       for( const auto& recpt : sb->transactions ) {
-         const transaction_id_type& id = (recpt.trx.which() == 0) ? recpt.trx.get<transaction_id_type>()
-                                                                  : recpt.trx.get<packed_transaction>().id();
+         const transaction_id_type& id = (recpt.trx.index() == 0) ? std::get<transaction_id_type>(recpt.trx)
+                                                                  : std::get<packed_transaction>(recpt.trx).id();
          auto range = local_txns.get<by_id>().equal_range( id );
          for( auto itr = range.first; itr != range.second; ++itr ) {
             local_txns.modify( itr, ubn );
@@ -2419,13 +2423,22 @@ namespace eosio {
                      }
                      close_connection = true;
                   }
+               } 
+               catch ( const std::bad_alloc& ) 
+               {
+                 throw;
+               } 
+               catch ( const boost::interprocess::bad_alloc& ) 
+               {
+                 throw;
+               } 
+               catch(const fc::exception &ex) 
+               {
+                  fc_elog( logger, "Exception in handling read data ${s}", ("s",ex.to_string()) );
+                  close_connection = true;
                }
                catch(const std::exception &ex) {
                   fc_elog( logger, "Exception in handling read data: ${s}", ("s",ex.what()) );
-                  close_connection = true;
-               }
-               catch(const fc::exception &ex) {
-                  fc_elog( logger, "Exception in handling read data ${s}", ("s",ex.to_string()) );
                   close_connection = true;
                }
                catch (...) {
@@ -2504,7 +2517,7 @@ namespace eosio {
             constexpr auto additional_sigs_eid = additional_block_signatures_extension::extension_id();
             auto exts = ptr->validate_and_extract_extensions();
             if( exts.count( additional_sigs_eid ) ) {
-               const auto &additional_sigs = exts.lower_bound( additional_sigs_eid )->second.get<additional_block_signatures_extension>().signatures;
+               const auto &additional_sigs = std::get<additional_block_signatures_extension>(exts.lower_bound( additional_sigs_eid )->second).signatures;
                has_webauthn_sig |= std::any_of( additional_sigs.begin(), additional_sigs.end(), is_webauthn_sig );
             }
 
@@ -2534,7 +2547,7 @@ namespace eosio {
             net_message msg;
             fc::raw::unpack( ds, msg );
             msg_handler m( shared_from_this() );
-            msg.visit( m );
+            std::visit( m, msg );
          }
 
       } catch( const fc::exception& e ) {
@@ -2946,12 +2959,12 @@ namespace eosio {
       trx_in_progress_size += calc_trx_size( trx );
       app().post( priority::low, [trx{std::move(trx)}, weak = weak_from_this()]() {
          my_impl->chain_plug->accept_transaction( trx,
-            [weak, trx](const static_variant<fc::exception_ptr, transaction_trace_ptr>& result) mutable {
+            [weak, trx](const std::variant<fc::exception_ptr, transaction_trace_ptr>& result) mutable {
          // next (this lambda) called from application thread
-         if (result.contains<fc::exception_ptr>()) {
-            fc_dlog( logger, "bad packed_transaction : ${m}", ("m", result.get<fc::exception_ptr>()->what()) );
+         if (std::holds_alternative<fc::exception_ptr>(result)) {
+            fc_dlog( logger, "bad packed_transaction : ${m}", ("m", std::get<fc::exception_ptr>(result)->what()) );
          } else {
-            const transaction_trace_ptr& trace = result.get<transaction_trace_ptr>();
+            const transaction_trace_ptr& trace = std::get<transaction_trace_ptr>(result);
             if( !trace->except ) {
                fc_dlog( logger, "chain accepted transaction, bcast ${id}", ("id", trace->id) );
             } else {
@@ -3255,7 +3268,7 @@ namespace eosio {
          try {
             peer_key = crypto::public_key(msg.sig, msg.token, true);
          }
-         catch (fc::exception& /*e*/) {
+         catch (const std::exception& /*e*/) {
             fc_elog( logger, "Peer ${peer} sent a handshake with an unrecoverable key.", ("peer", msg.p2p_address) );
             return false;
          }
@@ -3660,12 +3673,12 @@ namespace eosio {
       return "no known connection for host";
    }
 
-   optional<connection_status> net_plugin::status( const string& host )const {
+   std::optional<connection_status> net_plugin::status( const string& host )const {
       std::shared_lock<std::shared_mutex> g( my->connections_mtx );
       auto con = my->find_connection( host );
       if( con )
          return con->get_status();
-      return optional<connection_status>();
+      return std::optional<connection_status>();
    }
 
    vector<connection_status> net_plugin::connections()const {

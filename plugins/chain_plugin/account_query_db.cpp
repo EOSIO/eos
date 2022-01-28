@@ -92,7 +92,7 @@ namespace {
    };
 
    template<typename Output, typename Input>
-   auto make_optional_authorizer(const Input& authorizer) -> fc::optional<Output> {
+   auto make_optional_authorizer(const Input& authorizer) -> std::optional<Output> {
       if constexpr (std::is_same_v<Input, Output>) {
          return authorizer;
       } else {
@@ -340,10 +340,10 @@ namespace eosio::chain_apis {
 
          for( const auto& r : bsp->block->transactions ) {
             chain::transaction_id_type id;
-            if( r.trx.contains<chain::transaction_id_type>()) {
-               id = r.trx.get<chain::transaction_id_type>();
+            if( std::holds_alternative<chain::transaction_id_type>(r.trx)) {
+               id = std::get<chain::transaction_id_type>(r.trx);
             } else {
-               id = r.trx.get<chain::packed_transaction>().id();
+               id = std::get<chain::packed_transaction>(r.trx).id();
             }
 
             const auto it = cached_trace_map.find( id );

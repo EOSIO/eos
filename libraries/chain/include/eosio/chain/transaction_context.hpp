@@ -119,12 +119,12 @@ namespace eosio { namespace chain {
       /// Fields:
       public:
 
-         controller&                   control;
-         const signed_transaction&     trx;
-         transaction_id_type           id;
-         optional<chainbase::database::session>  undo_session;
-         transaction_trace_ptr         trace;
-         fc::time_point                start;
+         controller&                                 control;
+         const signed_transaction&                   trx;
+         transaction_id_type                         id;
+         std::optional<chainbase::database::session> undo_session;
+         transaction_trace_ptr                       trace;
+         fc::time_point                              start;
 
          fc::time_point                published;
 

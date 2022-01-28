@@ -215,8 +215,8 @@ BOOST_AUTO_TEST_SUITE(block_extraction)
 
       BOOST_REQUIRE_EQUAL(max_lib, 0);
       BOOST_REQUIRE(data_log.size() == 1);
-      BOOST_REQUIRE(data_log.at(0).contains<block_trace_v1>());
-      BOOST_REQUIRE_EQUAL(data_log.at(0).get<block_trace_v1>(), expected_trace);
+      BOOST_REQUIRE(std::holds_alternative<block_trace_v1>(data_log.at(0)));
+      BOOST_REQUIRE_EQUAL(std::get<block_trace_v1>(data_log.at(0)), expected_trace);
    }
 
    BOOST_FIXTURE_TEST_CASE(basic_multi_transaction_block, extraction_test_fixture) {
@@ -323,8 +323,8 @@ BOOST_AUTO_TEST_SUITE(block_extraction)
 
       BOOST_REQUIRE_EQUAL(max_lib, 0);
       BOOST_REQUIRE(data_log.size() == 1);
-      BOOST_REQUIRE(data_log.at(0).contains<block_trace_v1>());
-      BOOST_REQUIRE_EQUAL(data_log.at(0).get<block_trace_v1>(), expected_trace);
+      BOOST_REQUIRE(std::holds_alternative<block_trace_v1>(data_log.at(0)));
+      BOOST_REQUIRE_EQUAL(std::get<block_trace_v1>(data_log.at(0)), expected_trace);
    }
 
    BOOST_FIXTURE_TEST_CASE(onerror_transaction_block, extraction_test_fixture)
@@ -385,8 +385,8 @@ BOOST_AUTO_TEST_SUITE(block_extraction)
 
       BOOST_REQUIRE_EQUAL(max_lib, 0);
       BOOST_REQUIRE(data_log.size() == 1);
-      BOOST_REQUIRE(data_log.at(0).contains<block_trace_v1>());
-      BOOST_REQUIRE_EQUAL(data_log.at(0).get<block_trace_v1>(), expected_trace);
+      BOOST_REQUIRE(std::holds_alternative<block_trace_v1>(data_log.at(0)));
+      BOOST_REQUIRE_EQUAL(std::get<block_trace_v1>(data_log.at(0)), expected_trace);
    }
 
 BOOST_AUTO_TEST_SUITE_END()

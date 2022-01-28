@@ -57,6 +57,16 @@ void apply_context::exec_one()
 
    const auto& cfg = control.get_global_properties().configuration;
    const account_metadata_object* receiver_account = nullptr;
+
+   auto handle_exception = [&](const auto& e)
+   {
+      action_trace& trace = trx_context.get_action_trace( action_ordinal );
+      trace.error_code = controller::convert_exception_to_error_code( e );
+      trace.except = e;
+      finalize_trace( trace, start );
+      throw;
+   };
+
    try {
       try {
          action_return_value.clear();
@@ -122,12 +132,15 @@ void apply_context::exec_one()
       } else {
          act_digest = digest_type::hash(*act);
       }
-   } catch( const fc::exception& e ) {
-      action_trace& trace = trx_context.get_action_trace( action_ordinal );
-      trace.error_code = controller::convert_exception_to_error_code( e );
-      trace.except = e;
-      finalize_trace( trace, start );
+   } catch ( const std::bad_alloc& ) {
       throw;
+   } catch ( const boost::interprocess::bad_alloc& ) {
+      throw;
+   } catch( const fc::exception& e ) {
+      handle_exception(e);
+   } catch ( const std::exception& e ) {
+      auto wrapper = fc::std_exception_wrapper::from_current_exception(e);
+      handle_exception(wrapper);
    }
 
    // Note: It should not be possible for receiver_account to be invalidated because:
@@ -408,7 +421,7 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
                      "only the deferred_transaction_generation_context extension is currently supported for deferred transactions"
          );
 
-         const auto& context = itr->second.get<deferred_transaction_generation_context>();
+         const auto& context = std::get<deferred_transaction_generation_context>(itr->second);
 
          EOS_ASSERT( context.sender == receiver, ill_formed_deferred_transaction_generation_context,
                      "deferred transaction generaction context contains mismatching sender",
