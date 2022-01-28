@@ -7,6 +7,7 @@ namespace eosio { namespace chain {
 
    enum class backing_store_type {
       CHAINBASE, // A name for regular users. Uses Chainbase.
+      ROCKSDB
    };
 
 }} // namespace eosio::chain
