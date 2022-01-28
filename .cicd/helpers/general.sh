@@ -8,7 +8,7 @@ export DOCKER_CLI_EXPERIMENTAL='enabled'
 export DOCKER_REGISTRY='docker.io/eosio/eosio'
 export DOCKER_CI_REGISTRY="docker.io/eosio/ci"
 export DOCKER_CONTRACTS_REGISTRY="docker.io/eosio/ci-contracts-builder"
-if [[ "$(echo "$BUILDKITE_PIPELINE_SLUG" | grep -icP '^(eosio|eosio-build-unpinned)$')" == '0' ]] ; then
+if [[ "$(echo "$BUILDKITE_PIPELINE_SLUG" | grep -icP '^(eosio|eosio-build-unpinned|eosio-base-images.*)$')" == '0' ]] ; then
     export REGISTRIES=("$EOSIO_REGISTRY")
     export CI_REGISTRIES=("$MIRROR_REGISTRY")
     export CONTRACT_REGISTRIES=("$MIRROR_REGISTRY")
