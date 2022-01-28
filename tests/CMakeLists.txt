@@ -101,6 +101,8 @@ if (DEFINED AMQP_CONN_STR)
   set_property(TEST amqp_tests-rabbit PROPERTY LABELS nonparallelizable_tests)
   add_test(NAME nodeos_high_transaction_lr_test-rabbitmq COMMAND tests/nodeos_high_transaction_test.py --amqp-address ${AMQP_CONN_STR} -v --clean-run --dump-error-detail -p 4 -n 8 --num-transactions 10000 --max-transactions-per-second 500 WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
   set_property(TEST nodeos_high_transaction_lr_test-rabbitmq PROPERTY LABELS long_running_tests)
+  add_test(NAME distributed-transactions-test-rabbitmq COMMAND tests/distributed-transactions-test.py -d 2 -p 4 -n 6 -v --clean-run --dump-error-detail --amqp-address ${AMQP_CONN_STR} WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+  set_property(TEST distributed-transactions-test-rabbitmq PROPERTY LABELS nonparallelizable_tests)
 endif()
 
 add_test(NAME producer-preactivate-feature-test COMMAND tests/prod_preactivation_test.py --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
