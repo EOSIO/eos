@@ -2717,23 +2717,20 @@ read_only::get_producers_result read_only::get_producers( const read_only::get_p
       }
 
       auto session = kv_database.get_kv_undo_stack()->top();
-      auto retrieve_primary_key = [&code,&scope,&producers_table,&session](uint64_t primary_key) {
-         auto full_primary_key = backing_store::db_key_value_format::create_full_primary_key(code, scope, producers_table, primary_key);
-         auto value = session.read(full_primary_key);
-         return *value;
-      };
+      auto prefix_primary_key =
+         backing_store::db_key_value_format::create_full_prefix_key(code, scope, producers_table, backing_store::db_key_value_format::key_type::primary);
 
       using done_func = decltype(done);
       using add_val_func = decltype(add_val);
-      using retrieve_prim_func = decltype(retrieve_primary_key);
+      using session_type = decltype(session);
 
       struct f64_secondary_key_receiver
       : backing_store::single_type_error_receiver<f64_secondary_key_receiver,
                                                   backing_store::secondary_index_view<float64_t>,
                                                   contract_table_query_exception> {
          f64_secondary_key_receiver(read_only::get_producers_result& result, done_func&& done,
-                                    add_val_func&& add_val, retrieve_prim_func&& retrieve_prim)
-         : result_(result), done_(done), add_val_(add_val), retrieve_primary_key_(retrieve_prim) {}
+                                    add_val_func&& add_val, eosio::session::shared_bytes&& prefix_primary_key, session_type& session)
+         : result_(result), done_(done), add_val_(add_val), prefix_primary_key_(std::move(prefix_primary_key)), session_(session) {}
 
          void add_only_row(const backing_store::secondary_index_view<float64_t>& row) {
             // needs to allow a second pass after limit is reached or time has passed, to allow "more" processing
@@ -2741,8 +2738,12 @@ read_only::get_producers_result read_only::get_producers( const read_only::get_p
                finished_ = true;
             }
             else {
-               auto value = retrieve_primary_key_(row.primary_key);
-               add_val_(backing_store::primary_index_view::create(row.primary_key, value.data(), value.size()));
+               auto full_primary_key = backing_store::db_key_value_format::create_full_primary_key(prefix_primary_key_, row.primary_key);
+               auto value = session_.read(full_primary_key);
+               EOS_ASSERT(value,
+                          contract_table_query_exception,
+                          "Secondary key lookup identified primary key: ${pk}, but primary key not found in database", ("pk",row.primary_key));
+               add_val_(backing_store::primary_index_view::create(row.primary_key, value->data(), value->size()));
             }
          }
 
@@ -2759,10 +2760,11 @@ read_only::get_producers_result read_only::get_producers( const read_only::get_p
          read_only::get_producers_result& result_;
          done_func done_;
          add_val_func add_val_;
-         retrieve_prim_func retrieve_primary_key_;
+         eosio::session::shared_bytes prefix_primary_key_;
+         session_type& session_;
          bool finished_ = false;
       };
-      f64_secondary_key_receiver receiver(result, std::move(done), std::move(add_val), std::move(retrieve_primary_key));
+      f64_secondary_key_receiver receiver(result, std::move(done), std::move(add_val), std::move(prefix_primary_key), session);
       auto kpe = receiver.keep_processing_entries();
       backing_store::rocksdb_contract_db_table_writer<f64_secondary_key_receiver, std::decay_t < decltype(kpe)>>
          writer(receiver, backing_store::key_context::standalone, kpe);
