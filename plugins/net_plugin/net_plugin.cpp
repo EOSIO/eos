@@ -1853,14 +1853,22 @@ namespace eosio {
       //
       //-----------------------------
 
-      if (head_id == msg.head_id) {
+      uint32_t network_latency = (std::chrono::system_clock::now().time_since_epoch().count() - msg.time); //calculating network latency ==> current_time - handshake message timestamp
+      uint32_t num_block_behind_by_latency = 1 + (std::chrono::milliseconds(network_latency) / std::chrono::milliseconds(config::block_interval_ms)); // Number of blocks produced during networl latency period
+      if (head_id == msg.head_id || ( lib_num < msg.last_irreversible_block_num && msg.last_irreversible_block_num - lib_num <= num_block_behind_by_latency)) {
          peer_ilog( c, "handshake lib ${lib}, head ${head}, head id ${id}.. sync 0",
                     ("lib", msg.last_irreversible_block_num)("head", msg.head_num)("id", msg.head_id.str().substr(8,16)) );
          c->syncing = false;
-         notice_message note;
-         note.known_blocks.mode = none;
-         note.known_trx.mode = catch_up;
-         note.known_trx.pending = 0;
+         notice_message note;         
+         note.known_blocks.mode = none; //block mode none
+         if (head_id != msg.head_id){
+            note.known_trx.mode = none; // transaction mode none, since it is a few blocks behind
+            note.known_trx.pending = head;
+         }
+         else{
+            note.known_trx.mode = catch_up;
+            note.known_trx.pending = 0;
+         }
          c->enqueue( note );
          return;
       }
