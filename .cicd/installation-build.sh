@@ -5,7 +5,7 @@ echo '--- :evergreen_tree: Configuring Environment'
 export ENABLE_INSTALL='true'
 export SANITIZED_BRANCH=$(sanitize "$BUILDKITE_BRANCH")
 echo "Branch '$BUILDKITE_BRANCH' sanitized as '$SANITIZED_BRANCH'."
-export CONTRACTS_BUILDER_TAG=$(echo "${DOCKER_CONTRACTS_REGISTRY}:base-ubuntu-18.04" | sed "s;^[^/]\+/;;")
+export CONTRACTS_BUILDER_TAG=$(echo "${DOCKER_CONTRACTS_REGISTRY:-$MIRROR_REGISTRY}:base-ubuntu-18.04" | sed "s;^[^/]\+/;;")
 export ARGS="--name ci-contracts-builder-$BUILDKITE_PIPELINE_SLUG-$BUILDKITE_BUILD_NUMBER --init -v \"\$(pwd):$MOUNTED_DIR\""
 BUILD_COMMAND="'$CICD_DIR/build.sh'"
 echo "$ $BUILD_COMMAND"
