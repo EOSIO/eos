@@ -7,7 +7,7 @@ echo '--- :docker: Build or Pull Base Image :minidisc:'
 echo "Looking for '$HASHED_IMAGE_TAG' container in our registries."
 export EXISTS_DOCKER_HUB='false'
 export EXISTS_MIRROR='false'
-MANIFEST_COMMAND="docker manifest inspect '${MIRROR_REGISTRY:-$DOCKER_CI_REGISTRY}:$HASHED_IMAGE_TAG'"
+MANIFEST_COMMAND="docker manifest inspect '${REGISTRY_BASE:-$DOCKER_CI_REGISTRY}:$HASHED_IMAGE_TAG'"
 echo "$ $MANIFEST_COMMAND"
 set +e
 eval $MANIFEST_COMMAND
@@ -21,14 +21,14 @@ if [[ "$MANIFEST_INSPECT_EXIT_STATUS" == '0' ]]; then
     fi
 fi
 # pull and copy as-necessary
-if [[ "$EXISTS_MIRROR" == 'true' && ! -z "$MIRROR_REGISTRY" ]]; then
-    DOCKER_PULL_COMMAND="docker pull '$MIRROR_REGISTRY:$HASHED_IMAGE_TAG'"
+if [[ "$EXISTS_MIRROR" == 'true' && ! -z "$REGISTRY_BASE" ]]; then
+    DOCKER_PULL_COMMAND="docker pull '$REGISTRY_BASE:$HASHED_IMAGE_TAG'"
     echo "$ $DOCKER_PULL_COMMAND"
     eval $DOCKER_PULL_COMMAND
     # copy, if necessary
-    if [[ "$EXISTS_DOCKER_HUB" == 'false' ]]; then
+    if [[ "$EXISTS_DOCKER_HUB" == 'false' && "$(echo "$BUILDKITE_PIPELINE_SLUG" | grep -icP '^(eosio|eosio-build-unpinned)$')" == '0' ]]; then
         # tag
-        DOCKER_TAG_COMMAND="docker tag '$MIRROR_REGISTRY:$HASHED_IMAGE_TAG' '$DOCKER_CI_REGISTRY:$HASHED_IMAGE_TAG'"
+        DOCKER_TAG_COMMAND="docker tag '$REGISTRY_BASE:$HASHED_IMAGE_TAG' '$DOCKER_CI_REGISTRY:$HASHED_IMAGE_TAG'"
         echo "$ $DOCKER_TAG_COMMAND"
         eval $DOCKER_TAG_COMMAND
         # push
@@ -42,13 +42,13 @@ elif [[ "$EXISTS_DOCKER_HUB" == 'true' ]]; then
     echo "$ $DOCKER_PULL_COMMAND"
     eval $DOCKER_PULL_COMMAND
     # copy, if necessary
-    if [[ "$EXISTS_MIRROR" == 'false' && ! -z "$MIRROR_REGISTRY" ]]; then
+    if [[ "$EXISTS_MIRROR" == 'false' && ! -z "$REGISTRY_BASE" ]]; then
         # tag
-        DOCKER_TAG_COMMAND="docker tag '$DOCKER_CI_REGISTRY:$HASHED_IMAGE_TAG' '$MIRROR_REGISTRY:$HASHED_IMAGE_TAG'"
+        DOCKER_TAG_COMMAND="docker tag '$DOCKER_CI_REGISTRY:$HASHED_IMAGE_TAG' '$REGISTRY_BASE:$HASHED_IMAGE_TAG'"
         echo "$ $DOCKER_TAG_COMMAND"
         eval $DOCKER_TAG_COMMAND
         # push
-        DOCKER_PUSH_COMMAND="docker push '$MIRROR_REGISTRY:$HASHED_IMAGE_TAG'"
+        DOCKER_PUSH_COMMAND="docker push '$REGISTRY_BASE:$HASHED_IMAGE_TAG'"
         echo "$ $DOCKER_PUSH_COMMAND"
         eval $DOCKER_PUSH_COMMAND
         export EXISTS_MIRROR='true'

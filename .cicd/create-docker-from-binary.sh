@@ -9,7 +9,7 @@ SANITIZED_TAG="$(sanitize "$BUILDKITE_TAG")"
 [[ -z "$SANITIZED_TAG" ]] || echo "Branch '$BUILDKITE_TAG' sanitized as '$SANITIZED_TAG'."
 # docker build
 echo "+++ :docker: Build Docker Container"
-IMAGE="${DOCKER_REGISTRY:-$EOSIO_REGISTRY}:${BUILDKITE_COMMIT:-latest}"
+IMAGE="${DOCKER_REGISTRY:-$REGISTRY_BINARY}:${BUILDKITE_COMMIT:-latest}"
 DOCKER_BUILD_ARGS="-t '$IMAGE' -f ./docker/dockerfile ."
 echo "$ docker build $DOCKER_BUILD_ARGS"
 echo "Appending proxy args: '${PROXY_DOCKER_BUILD_ARGS}'"
