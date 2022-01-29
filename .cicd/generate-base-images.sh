@@ -26,7 +26,7 @@ if [[ "$EXISTS_MIRROR" == 'true' && ! -z "$REGISTRY_BASE" ]]; then
     echo "$ $DOCKER_PULL_COMMAND"
     eval $DOCKER_PULL_COMMAND
     # copy, if necessary
-    if [[ "$EXISTS_DOCKER_HUB" == 'false' && "$(echo "$BUILDKITE_PIPELINE_SLUG" | grep -icP '^(eosio|eosio-build-unpinned)$')" == '0' ]]; then
+    if [[ "$EXISTS_DOCKER_HUB" == 'false' && "$(echo "$BUILDKITE_PIPELINE_SLUG" | grep -icP '^(eosio|eosio-build-unpinned|eosio-base-images.*)$')" != '0' ]]; then
         # tag
         DOCKER_TAG_COMMAND="docker tag '$REGISTRY_BASE:$HASHED_IMAGE_TAG' '$DOCKER_CI_REGISTRY:$HASHED_IMAGE_TAG'"
         echo "$ $DOCKER_TAG_COMMAND"
