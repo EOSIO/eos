@@ -13,6 +13,7 @@ elif [[ $(yum --version 2>/dev/null) ]]; then # RHEL family packaging
     perform 'yum install -y /eos/*.rpm'
 elif [[ $(brew --version 2>/dev/null) ]]; then # homebrew packaging
     perform 'brew update'
+    perform 'brew --version'
     perform 'mkdir homebrew-eosio'
     perform 'git init homebrew-eosio'
     perform 'cp *.rb homebrew-eosio'
@@ -22,6 +23,11 @@ elif [[ $(brew --version 2>/dev/null) ]]; then # homebrew packaging
     perform '{ python3 -m http.server 7800 & } && export HTTP_SERVER_PID=$!'
     perform 'sleep 20s'
     perform 'brew install eosio'
+    ret=$?
+    if [[ "$ret" -ne 0 ]]; then
+      echo "Try installing eosio again"
+      perform 'brew install eosio'
+    fi
     perform 'kill $HTTP_SERVER_PID'
 else
     echo 'ERROR: Package manager not detected!'
