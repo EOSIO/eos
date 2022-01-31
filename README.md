@@ -2,7 +2,10 @@
 
 ## Repo organization
 
-Current development is on the `main` branch. There aren't any releases yet; they'll eventually be on release branches.
+| branch                | description |
+| ------                | ----------- |
+| `main`                | Development for future releases |
+| `release/3.0.x`       | 3.0.x-* series of releases |
 
 ## Supported Operating Systems
 
