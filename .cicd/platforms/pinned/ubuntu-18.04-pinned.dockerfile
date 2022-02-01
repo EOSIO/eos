@@ -106,7 +106,7 @@ RUN git clone -b v0.5.0 https://github.com/stefanberger/swtpm && \
 RUN ldconfig
 # install nvm
 RUN curl -fsSLO https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.0/install.sh && \
-    bash -c install.sh && \
+    bash install.sh && \
     rm install.sh
 # load nvm in non-interactive shells
 RUN cp ~/.bashrc ~/.bashrc.bak && \
@@ -117,7 +117,7 @@ RUN cp ~/.bashrc ~/.bashrc.bak && \
 RUN bash -c '. ~/.bashrc; nvm install --lts=dubnium' && \
     ln -s "/root/.nvm/versions/node/$(ls -p /root/.nvm/versions/node | sort -Vr | head -1)bin/node" /usr/local/bin/node
 RUN curl -fsSLO https://deb.nodesource.com/setup_13.x && \
-    bash -c setup_13.x && \
+    bash setup_13.x && \
     rm setup_13.x
 RUN apt-get update && \
     apt-get install -y nodejs && \

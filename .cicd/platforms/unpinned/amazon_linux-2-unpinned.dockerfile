@@ -9,11 +9,11 @@ RUN yum update -y && \
     yum clean all && rm -rf /var/cache/yum
 # install erlang and rabbitmq
 RUN curl -fsSLO https://packagecloud.io/install/repositories/rabbitmq/erlang/script.rpm.sh && \
-    bash -c script.rpm.sh && \
+    bash script.rpm.sh && \
     rm script.rpm.sh && \
     yum install -y erlang
 RUN curl -fsSLO https://packagecloud.io/install/repositories/rabbitmq/rabbitmq-server/script.rpm.sh && \
-    bash -c script.rpm.sh && \
+    bash script.rpm.sh && \
     rm script.rpm.sh && \
     yum install -y rabbitmq-server
 # upgrade pip installation. request and requests_unixsocket module
@@ -40,7 +40,7 @@ RUN curl -fsSLO "https://boostorg.jfrog.io/artifactory/main/release/${BOOST_VERS
     rm -rf "boost_${BOOST_VERSION}.tar.bz2" "/boost_${BOOST_VERSION}"
 # install nvm
 RUN curl -fsSLO https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.0/install.sh && \
-    bash -c install.sh && \
+    bash install.sh && \
     rm install.sh
 # load nvm in non-interactive shells
 RUN echo 'export NVM_DIR="$HOME/.nvm"' > ~/.bashrc && \
