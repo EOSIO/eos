@@ -7,6 +7,7 @@
 #include <eosio/chain/block_timestamp.hpp>
 #include <chainbase/chainbase.hpp>
 #include <set>
+#include <fmt/args.h>
 
 namespace eosio { namespace chain { namespace resource_limits {
    namespace impl {

@@ -55,10 +55,11 @@ void resource_limits_manager::initialize_database() {
    const auto& config = _db.create<resource_limits_config_object>([this](resource_limits_config_object& config){
       // see default settings in the declaration
 
+      fmt::dynamic_format_arg_store<fmt::format_context> store;
+      store.push_back(config);
+      auto result = fmt::vformat("RLIMIT_OP CONFIG INS {}", store);
       if (auto dm_logger = _get_deep_mind_logger()) {
-         fc_dlog(*dm_logger, "RLIMIT_OP CONFIG INS ${data}",
-            ("data", config)
-         );
+         fc_dlog(*dm_logger, result);
       }
    });
 
@@ -259,15 +260,15 @@ void resource_limits_manager::add_pending_ram_usage( const account_name account,
       u.ram_usage += ram_delta;
 
       if (auto dm_logger = _get_deep_mind_logger()) {
-         fc_dlog(*dm_logger, "RAM_OP ${action_id} ${event_id} ${family} ${operation} ${legacy_tag} ${payer} ${new_usage} ${delta}",
-            ("action_id", trace.action_id)
-            ("event_id", trace.event_id)
-            ("family", trace.family)
-            ("operation", trace.operation)
-            ("legacy_tag", trace.legacy_tag)
-            ("payer", account)
-            ("new_usage", u.ram_usage)
-            ("delta", ram_delta)
+         fc_dlog(*dm_logger, fmt::format("RAM_OP {action_id} {event_id} {family} {operation} {legacy_tag} {payer} {new_usage} {delta}",
+                 fmt::arg("action_id", trace.action_id),
+                 fmt::arg("event_id", trace.event_id),
+                 fmt::arg("family", trace.family),
+                 fmt::arg("operation", trace.operation),
+                 fmt::arg("legacy_tag", trace.legacy_tag),
+                 fmt::arg("payer", account),
+                 fmt::arg("new_usage", u.ram_usage),
+                 fmt::arg("delta", ram_delta))
          );
       }
    });
