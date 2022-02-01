@@ -33,7 +33,7 @@ RUN curl -fsSLO "https://boostorg.jfrog.io/artifactory/main/release/${BOOST_VERS
     cd / && \
     rm -rf "boost_${BOOST_VERSION}.tar.bz2" "/boost_${BOOST_VERSION}"
 # install nvm
-RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.0/install.sh | bash
+RUN bash -c "$(curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.0/install.sh)"
 # load nvm in non-interactive shells
 RUN cp ~/.bashrc ~/.bashrc.bak && \
     cat ~/.bashrc.bak | tail -3 > ~/.bashrc && \
@@ -42,7 +42,8 @@ RUN cp ~/.bashrc ~/.bashrc.bak && \
 # install node 10
 RUN bash -c '. ~/.bashrc; nvm install --lts=dubnium' && \
     ln -s "/root/.nvm/versions/node/$(ls -p /root/.nvm/versions/node | sort -Vr | head -1)bin/node" /usr/local/bin/node
-RUN curl -sL https://deb.nodesource.com/setup_13.x | sudo -E bash -
-RUN sudo apt-get install -y nodejs && \
+RUN bash -c "$(curl -fsSL https://deb.nodesource.com/setup_13.x)"
+RUN apt-get update && \
+    apt-get install -y nodejs && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
