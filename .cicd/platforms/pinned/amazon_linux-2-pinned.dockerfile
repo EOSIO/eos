@@ -9,9 +9,13 @@ RUN yum update -y && \
     libuuid-devel libtasn1-devel expect socat libseccomp-devel && \
     yum clean all && rm -rf /var/cache/yum
 # install erlang and rabbitmq
-RUN bash -c "$(curl -fsSL https://packagecloud.io/install/repositories/rabbitmq/erlang/script.rpm.sh)" && \
+RUN curl -fsSLO https://packagecloud.io/install/repositories/rabbitmq/erlang/script.rpm.sh && \
+    bash -c script.rpm.sh && \
+    rm script.rpm.sh && \
     yum install -y erlang
-RUN bash -c "$(curl -fsSL https://packagecloud.io/install/repositories/rabbitmq/rabbitmq-server/script.rpm.sh)" && \
+RUN curl -fsSLO https://packagecloud.io/install/repositories/rabbitmq/rabbitmq-server/script.rpm.sh && \
+    bash -c script.rpm.sh && \
+    rm script.rpm.sh && \
     yum install -y rabbitmq-server
 # upgrade pip installation. request and requests_unixsocket module
 RUN pip3 install --upgrade pip && \
@@ -105,7 +109,9 @@ RUN git clone -b v0.5.0 https://github.com/stefanberger/swtpm && \
 RUN ldconfig
 # install nvm
 RUN touch ~/.bashrc
-RUN bash -c "$(curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.0/install.sh)"
+RUN curl -fsSLO https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.0/install.sh && \
+    bash -c install.sh && \
+    rm install.sh
 # load nvm in non-interactive shells
 RUN echo 'export NVM_DIR="$HOME/.nvm"' > ~/.bashrc && \
     echo '[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"' >> ~/.bashrc

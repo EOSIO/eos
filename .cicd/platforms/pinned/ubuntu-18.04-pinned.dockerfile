@@ -80,7 +80,7 @@ RUN tar xf tpm2-tss-3.0.1.tar.gz && \
     rm -rf tpm2-tss-3.0.1*
 
 # build TPM components used in unitests; tpm2-tools first
-RUN curl -fsSL https://github.com/tpm2-software/tpm2-tools/releases/download/4.3.0/tpm2-tools-4.3.0.tar.gz && \
+RUN curl -fsSLO https://github.com/tpm2-software/tpm2-tools/releases/download/4.3.0/tpm2-tools-4.3.0.tar.gz && \
     tar zxf tpm2-tools-4.3.0.tar.gz && \
     cd tpm2-tools-4.3.0 && \
     ./configure && \
@@ -105,7 +105,9 @@ RUN git clone -b v0.5.0 https://github.com/stefanberger/swtpm && \
     rm -rf swtpm
 RUN ldconfig
 # install nvm
-RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.0/install.sh | bash
+RUN curl -fsSLO https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.0/install.sh && \
+    bash -c install.sh && \
+    rm install.sh
 # load nvm in non-interactive shells
 RUN cp ~/.bashrc ~/.bashrc.bak && \
     cat ~/.bashrc.bak | tail -3 > ~/.bashrc && \
@@ -114,7 +116,10 @@ RUN cp ~/.bashrc ~/.bashrc.bak && \
 # install node 10
 RUN bash -c '. ~/.bashrc; nvm install --lts=dubnium' && \
     ln -s "/root/.nvm/versions/node/$(ls -p /root/.nvm/versions/node | sort -Vr | head -1)bin/node" /usr/local/bin/node
-RUN curl -sL https://deb.nodesource.com/setup_13.x | sudo -E bash -
-RUN apt-get update && apt-get install -y nodejs && \
+RUN curl -fsSLO https://deb.nodesource.com/setup_13.x && \
+    bash -c setup_13.x && \
+    rm setup_13.x
+RUN apt-get update && \
+    apt-get install -y nodejs && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
