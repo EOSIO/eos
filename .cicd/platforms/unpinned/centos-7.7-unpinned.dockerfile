@@ -11,9 +11,9 @@ RUN yum update -y && \
     libcurl-devel patch vim-common jq llvm-toolset-7.0-llvm-devel llvm-toolset-7.0-llvm-static && \
     yum clean all && rm -rf /var/cache/yum
 # install erlang and rabbitmq
-RUN curl -s https://packagecloud.io/install/repositories/rabbitmq/erlang/script.rpm.sh | bash && \
+RUN bash -c "$(curl -fsSL https://packagecloud.io/install/repositories/rabbitmq/erlang/script.rpm.sh)" && \
     yum install -y erlang
-RUN curl -s https://packagecloud.io/install/repositories/rabbitmq/rabbitmq-server/script.rpm.sh | bash && \
+RUN bash -c "$(curl -fsSL https://packagecloud.io/install/repositories/rabbitmq/rabbitmq-server/script.rpm.sh)" && \
     yum install -y rabbitmq-server
 RUN source /opt/rh/rh-python36/enable && \
     pip install --upgrade pip && pip install requests requests_unixsocket
@@ -40,7 +40,7 @@ RUN curl -fsSLO "https://boostorg.jfrog.io/artifactory/main/release/${BOOST_VERS
     cd / && \
     rm -rf "boost_${BOOST_VERSION}.tar.bz2" "/boost_${BOOST_VERSION}"
 # install nvm
-RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.0/install.sh | bash
+RUN bash -c "$(curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.0/install.sh)"
 # load nvm in non-interactive shells
 RUN cp ~/.bashrc ~/.bashrc.bak && \
     cat ~/.bashrc.bak | tail -3 > ~/.bashrc && \
