@@ -81,13 +81,13 @@ if [[ ("$EXISTS_DOCKER_HUB" == 'false' && "$EXISTS_MIRROR" == 'false') || "$FORC
                 eval $DOCKER_PUSH_COMMAND
                 # clean up
                 if  [[ "$FULL_TAG" != "$REGISTRY:$HASHED_IMAGE_TAG" ]]; then
-                    DOCKER_RMI_COMMAND="docker rmi '$REGISTRY:$HASHED_IMAGE_TAG'"
+                    DOCKER_RMI_COMMAND="docker rmi '$REGISTRY:$HASHED_IMAGE_TAG' || :"
                     echo "$ $DOCKER_RMI_COMMAND"
                     eval $DOCKER_RMI_COMMAND
                 fi
             fi
         done
-        DOCKER_RMI_COMMAND="docker rmi 'ci:$HASHED_IMAGE_TAG'"
+        DOCKER_RMI_COMMAND="docker rmi 'ci:$HASHED_IMAGE_TAG' || :"
         echo "$ $DOCKER_RMI_COMMAND"
         eval $DOCKER_RMI_COMMAND
     else
