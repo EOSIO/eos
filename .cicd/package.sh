@@ -26,8 +26,8 @@ else # Linux
     COMMANDS="echo \"+++ :package: Packaging EOSIO\" && $PRE_COMMANDS && $PACKAGE_COMMANDS"
     DOCKER_RUN_ARGS="$ARGS $(buildkite-intrinsics) '$FULL_TAG' bash -c '$COMMANDS'"
     echo "$ docker run $DOCKER_RUN_ARGS"
-    [[ -z "${PROXY_DOCKER_BUILD_ARGS:-}" ]] || echo "Appending proxy args: '${PROXY_DOCKER_BUILD_ARGS}'"
-    eval "docker run ${PROXY_DOCKER_RUN_ARGS}${DOCKER_RUN_ARGS}"
+    [[ -z "${PROXY_DOCKER_RUN_ARGS:-}" ]] || echo "Appending proxy args: '${PROXY_DOCKER_RUN_ARGS}'"
+    eval "docker run ${PROXY_DOCKER_RUN_ARGS:-}${DOCKER_RUN_ARGS}"
 fi
 cd build/packages
 [[ -d x86_64 ]] && cd 'x86_64' # backwards-compatibility with release/1.6.x

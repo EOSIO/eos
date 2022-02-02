@@ -13,7 +13,7 @@ IMAGE="${DOCKER_REGISTRY:-$REGISTRY_BINARY}:${BUILDKITE_COMMIT:-latest}"
 DOCKER_BUILD_ARGS="-t '$IMAGE' -f ./docker/dockerfile ."
 echo "$ docker build $DOCKER_BUILD_ARGS"
 [[ -z "${PROXY_DOCKER_BUILD_ARGS:-}" ]] || echo "Appending proxy args: '${PROXY_DOCKER_BUILD_ARGS}'"
-eval "docker build ${PROXY_DOCKER_BUILD_ARGS}${DOCKER_BUILD_ARGS}"
+eval "docker build ${PROXY_DOCKER_BUILD_ARGS:-}${DOCKER_BUILD_ARGS}"
 # docker tag
 echo '--- :label: Tag Container'
 for REG in ${REGISTRIES[@]}; do
