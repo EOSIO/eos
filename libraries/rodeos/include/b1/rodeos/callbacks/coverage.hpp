@@ -28,8 +28,8 @@ struct coverage_callbacks {
       return eosio::coverage::coverage_get_line_cnt(code, file_num, line_num);
    }
 
-   void coverage_dump(uint32_t n) {
-      eosio::coverage::coverage_dump(n);
+   uint64_t coverage_dump_funcnt(uint64_t code, uint32_t file_num, eosio::vm::span<const char> file_name, uint32_t max, bool append) {
+      return eosio::coverage::coverage_dump_funcnt(code, file_num, file_name.data(), file_name.size(), max, append);
    }
 
    void coverage_reset() {
@@ -43,7 +43,7 @@ struct coverage_callbacks {
       RODEOS_REGISTER_CALLBACK(Rft, Derived, coverage_inc_line_cnt);
       RODEOS_REGISTER_CALLBACK(Rft, Derived, coverage_get_fun_cnt);
       RODEOS_REGISTER_CALLBACK(Rft, Derived, coverage_get_line_cnt);
-      RODEOS_REGISTER_CALLBACK(Rft, Derived, coverage_dump);
+      RODEOS_REGISTER_CALLBACK(Rft, Derived, coverage_dump_funcnt);
       RODEOS_REGISTER_CALLBACK(Rft, Derived, coverage_reset);
    }
 }; // coverage_callbacks

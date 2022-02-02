@@ -123,7 +123,7 @@ REGISTER_HOST_FUNCTION(coverage_inc_fun_cnt)
 REGISTER_HOST_FUNCTION(coverage_inc_line_cnt)
 REGISTER_HOST_FUNCTION(coverage_get_fun_cnt)
 REGISTER_HOST_FUNCTION(coverage_get_line_cnt)
-REGISTER_HOST_FUNCTION(coverage_dump)
+REGISTER_HOST_FUNCTION(coverage_dump_funcnt)
 REGISTER_HOST_FUNCTION(coverage_reset)
 
 void interface::coverage_inc_fun_cnt(uint64_t code, uint32_t file_num, uint32_t func_num) {
@@ -142,8 +142,8 @@ uint32_t interface::coverage_get_line_cnt(uint64_t code, uint32_t file_num, uint
    return eosio::coverage::coverage_get_line_cnt(code, file_num, line_num);
 }
 
-void interface::coverage_dump(uint32_t n) {
-   eosio::coverage::coverage_dump(n);
+uint64_t interface::coverage_dump_funcnt(uint64_t code, uint32_t file_num, eosio::vm::span<const char> file_name, uint32_t max, bool append) {
+   return eosio::coverage::coverage_dump_funcnt(code, file_num, file_name.data(), file_name.size(), max, append);
 }
 
 void interface::coverage_reset() {
@@ -290,7 +290,7 @@ struct test_chain {
             eosio::chain::add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "coverage_inc_line_cnt" );
             eosio::chain::add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "coverage_get_fun_cnt" );
             eosio::chain::add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "coverage_get_line_cnt" );
-            eosio::chain::add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "coverage_dump" );
+            eosio::chain::add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "coverage_dump_funcnt" );
             eosio::chain::add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "coverage_reset" );
          } );
       }

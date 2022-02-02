@@ -48,48 +48,63 @@ inline uint32_t coverage_get_line_cnt( uint64_t code, uint32_t file_num, uint32_
    return linecnt[line_num];
 }
 
-inline void coverage_dump( uint32_t n ) {
-   auto fName = std::string( "call-counts" ) + std::to_string( n ) + std::string( ".json" );
-   std::ofstream out_json_file;
-   out_json_file.open( fName );
+// dump coverage output to file
+// if code == 0, dump all coverage for all codes, constrained by max argument
+//    max is only checked for every code, so it is possible to exceed the number
+// if code > 0, then only dump coverage for specific code and specific file_num
+//    in this mode, max is effectively ignored
+// returns the next code, or 0 if at end
+inline uint64_t coverage_dump_funcnt(uint64_t code, uint32_t file_num, const char* file_name, uint32_t file_name_size, uint32_t max, bool append ) {
+   std::ofstream out_bin_file;
+   auto flags = std::ofstream::out | std::ofstream::binary;
+   if (append)
+      flags = flags | std::ofstream::app;
+   else
+      flags = flags | std::ofstream::trunc;
 
-   // dont use auto JSON serialization because
-   // we want to convert maps to arrays
-   out_json_file << "{\n";
-   out_json_file << "\t\"functions\": {";
-   for( const auto& code_map: coverage_maps::instance().funcnt_map ) {
-      auto code_str = eosio::chain::name( code_map.first ).to_string();
-      out_json_file << "\t\t\"" << code_str << "\": [\n";
-      for( const auto& funcnt: code_map.second ) {
-         auto file_num = funcnt.first;
-         for( const auto& func: funcnt.second ) {
-            auto func_num = func.first;
-            auto calls = func.second;
-            out_json_file << "\t\t\t[" << file_num << ", " << func_num << ", " << calls << "]\n";
-         }
-      }
-      out_json_file << "\t\t]\n";
+   ilog("coverage_dump_funcnt: file_name= ${f} max= ${max} ${app}", ("f", file_name)("nax", max)("app", append));
+   out_bin_file.open(file_name, flags );
+   uint32_t i = 0;
+   auto funcnt_map = coverage_maps::instance().funcnt_map;
+   auto code_itr = funcnt_map.begin();
+   if (code > 0) {
+      code_itr = funcnt_map.find(code);
    }
-   out_json_file << "\t}\n";
-
-   out_json_file << "\t\"lines\": {";
-   for( const auto& code_map: coverage_maps::instance().linecnt_map ) {
-      auto code_str = eosio::chain::name( code_map.first ).to_string();
-      out_json_file << "\t\t\"" << code_str << "\": [\n";
-
-      for( const auto& linecnt: code_map.second ) {
-         auto file_num = linecnt.first;
-         for( const auto& line: linecnt.second ) {
-            auto line_num = line.first;
-            auto cnt = line.second;
-            out_json_file << "\t\t\t[" << file_num << ", " << line_num << ", " << cnt << "]\n";
-         }
+   while (code_itr != funcnt_map.end() && i < max) {
+      auto codenum = code_itr->first;
+      auto filenum_map = code_itr->second;
+      auto filenum_itr = filenum_map.begin();
+      if (code > 0) {
+         filenum_itr = filenum_map.find(file_num);
       }
-      out_json_file << "]\n";
+      while (filenum_itr != filenum_map.end()) {
+         auto filenum = filenum_itr->first;
+         auto funcnum_map = filenum_itr->second;
+         for (const auto& funcnum_itr : funcnum_map) {
+            auto funcnum = funcnum_itr.first;
+            auto calls = funcnum_itr.second;
+            out_bin_file.write(reinterpret_cast<const char*>(&codenum), sizeof(code));
+            out_bin_file.write(reinterpret_cast<const char*>(&filenum), sizeof(filenum));
+            out_bin_file.write(reinterpret_cast<const char*>(&funcnum), sizeof(funcnum));
+            out_bin_file.write(reinterpret_cast<const char*>(&calls), sizeof(calls));
+            ++i;
+         }
+         ++filenum_itr;
+         if (code > 0)
+            break;
+      }
+      ++code_itr;
+      if (code > 0);
+         break;
    }
-   out_json_file << "\t}\n";
-   out_json_file << "}\n";
-   out_json_file.close();
+
+   out_bin_file.flush();
+   out_bin_file.close();
+
+   uint64_t r = 0;
+   if(code_itr != funcnt_map.end())
+      r = code_itr->first;
+   return r;
 }
 
 inline void coverage_reset() {
