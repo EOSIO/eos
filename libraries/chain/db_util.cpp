@@ -35,6 +35,15 @@ namespace eosio { namespace chain { namespace db_util {
    void walk_index(const Util& utils, const chainbase::database& db, F&& function) {
       utils.walk(db, std::forward<F>(function));
    }
+
+   template <typename F>
+   void walk_index(const index_utils<table_id_multi_index>& utils, const chainbase::database& db, F&& function) {}
+
+   template <typename F>
+   void walk_index(const index_utils<database_header_multi_index>& utils, const chainbase::database& db, F&& function) {}
+
+   template <typename F>
+   void walk_index(const index_utils<kv_db_config_index>& utils, const chainbase::database& db, F&& function) {}
    
    void add_kv_table_to_snapshot(const snapshot_writer_ptr& snapshot, const chainbase::database& db) {
       snapshot->write_section<kv_object>([&db](auto& section) {
