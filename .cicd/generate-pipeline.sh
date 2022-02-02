@@ -3,7 +3,7 @@ set -eo pipefail
 # environment
 . ./.cicd/helpers/general.sh
 [[ -z "$ANKA_REMOTE" ]] && export ANKA_REMOTE="${BUILDKITE_PULL_REQUEST_REPO:-$BUILDKITE_REPO}"
-[[ -z "$BUILDKITE_BASIC_AGENT_QUEUE" ]] && BUILDKITE_BUILD_AGENT_QUEUE='automation-basic-builder-fleet'
+[[ -z "$BUILDKITE_BASIC_AGENT_QUEUE" ]] && BUILDKITE_BASIC_AGENT_QUEUE='automation-basic-builder-fleet'
 [[ -z "$BUILDKITE_BUILD_AGENT_QUEUE" ]] && BUILDKITE_BUILD_AGENT_QUEUE='automation-eks-eos-builder-fleet'
 [[ -z "$BUILDKITE_TEST_AGENT_QUEUE" ]] && BUILDKITE_TEST_AGENT_QUEUE='automation-eks-eos-tester-fleet'
 export PLATFORMS_JSON_ARRAY='[]'
