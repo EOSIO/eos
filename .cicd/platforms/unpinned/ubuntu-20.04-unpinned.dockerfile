@@ -13,7 +13,7 @@ RUN apt-get update && \
 # install request and requests_unixsocket module
 RUN pip3 install requests requests_unixsocket
 # build cmake
-RUN curl -LO https://github.com/Kitware/CMake/releases/download/v3.16.2/cmake-3.16.2.tar.gz && \
+RUN curl -fsSLO https://github.com/Kitware/CMake/releases/download/v3.16.2/cmake-3.16.2.tar.gz && \
     tar -xzf cmake-3.16.2.tar.gz && \
     cd cmake-3.16.2 && \
     ./bootstrap --prefix=/usr/local && \

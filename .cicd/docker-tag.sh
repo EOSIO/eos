@@ -1,5 +1,5 @@
 #!/bin/bash
-set -eo pipefail
+set -euo pipefail
 echo '--- :evergreen_tree: Configuring Environment'
 . ./.cicd/helpers/general.sh
 PREFIX='base-ubuntu-18.04'
@@ -11,7 +11,7 @@ echo '$ echo ${#CONTRACT_REGISTRIES[@]} # array length'
 echo ${#CONTRACT_REGISTRIES[@]}
 echo '$ echo ${CONTRACT_REGISTRIES[@]} # array'
 echo ${CONTRACT_REGISTRIES[@]}
-export IMAGE="${MIRROR_REGISTRY:-$DOCKERHUB_CI_REGISTRY}:$PREFIX-$BUILDKITE_COMMIT-$PLATFORM_TYPE"
+export IMAGE="${REGISTRY_SOURCE:-$DOCKER_CONTRACTS_REGISTRY}:$PREFIX-$BUILDKITE_COMMIT-$PLATFORM_TYPE"
 # pull
 echo '+++ :arrow_down: Pulling Container(s)'
 DOCKER_PULL_COMMAND="docker pull '$IMAGE'"

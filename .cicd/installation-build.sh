@@ -1,11 +1,10 @@
 #!/bin/bash
-set -eo pipefail
+set -euo pipefail
 echo '--- :evergreen_tree: Configuring Environment'
 . ./.cicd/helpers/general.sh
 export ENABLE_INSTALL='true'
 export SANITIZED_BRANCH=$(sanitize "$BUILDKITE_BRANCH")
 echo "Branch '$BUILDKITE_BRANCH' sanitized as '$SANITIZED_BRANCH'."
-export CONTRACTS_BUILDER_TAG="eosio/ci-contracts-builder:base-ubuntu-18.04"
 export ARGS="--name ci-contracts-builder-$BUILDKITE_PIPELINE_SLUG-$BUILDKITE_BUILD_NUMBER --init -v \"\$(pwd):$MOUNTED_DIR\""
 BUILD_COMMAND="'$CICD_DIR/build.sh'"
 echo "$ $BUILD_COMMAND"

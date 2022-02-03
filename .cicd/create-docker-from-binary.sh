@@ -9,18 +9,13 @@ SANITIZED_TAG="$(sanitize "$BUILDKITE_TAG")"
 [[ -z "$SANITIZED_TAG" ]] || echo "Branch '$BUILDKITE_TAG' sanitized as '$SANITIZED_TAG'."
 # docker build
 echo "+++ :docker: Build Docker Container"
-DOCKERHUB_REGISTRY='docker.io/eosio/eosio'
-IMAGE="${DOCKERHUB_REGISTRY}:${BUILDKITE_COMMIT:-latest}"
-DOCKER_BUILD="docker build -t '$IMAGE' -f ./docker/dockerfile ."
-echo "$ $DOCKER_BUILD"
-eval $DOCKER_BUILD
+IMAGE="${DOCKER_REGISTRY:-$REGISTRY_BINARY}:${BUILDKITE_COMMIT:-latest}"
+DOCKER_BUILD_ARGS="-t '$IMAGE' -f ./docker/dockerfile ."
+echo "$ docker build $DOCKER_BUILD_ARGS"
+[[ -z "${PROXY_DOCKER_BUILD_ARGS:-}" ]] || echo "Appending proxy args: '${PROXY_DOCKER_BUILD_ARGS}'"
+eval "docker build ${PROXY_DOCKER_BUILD_ARGS:-}${DOCKER_BUILD_ARGS}"
 # docker tag
 echo '--- :label: Tag Container'
-if [[ "$BUILDKITE_PIPELINE_SLUG" =~ "-sec" ]] ; then
-    REGISTRIES=("$EOSIO_REGISTRY")
-else
-    REGISTRIES=("$EOSIO_REGISTRY" "$DOCKERHUB_REGISTRY")
-fi
 for REG in ${REGISTRIES[@]}; do
     DOCKER_TAG_BRANCH="docker tag '$IMAGE' '$REG:$SANITIZED_BRANCH'"
     echo "$ $DOCKER_TAG_BRANCH"

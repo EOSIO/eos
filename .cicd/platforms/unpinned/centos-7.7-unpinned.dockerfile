@@ -11,14 +11,18 @@ RUN yum update -y && \
     libcurl-devel patch vim-common jq llvm-toolset-7.0-llvm-devel llvm-toolset-7.0-llvm-static && \
     yum clean all && rm -rf /var/cache/yum
 # install erlang and rabbitmq
-RUN curl -s https://packagecloud.io/install/repositories/rabbitmq/erlang/script.rpm.sh | bash && \
+RUN curl -fsSLO https://packagecloud.io/install/repositories/rabbitmq/erlang/script.rpm.sh && \
+    bash script.rpm.sh && \
+    rm script.rpm.sh && \
     yum install -y erlang
-RUN curl -s https://packagecloud.io/install/repositories/rabbitmq/rabbitmq-server/script.rpm.sh | bash && \
+RUN curl -fsSLO https://packagecloud.io/install/repositories/rabbitmq/rabbitmq-server/script.rpm.sh && \
+    bash script.rpm.sh && \
+    rm script.rpm.sh && \
     yum install -y rabbitmq-server
 RUN source /opt/rh/rh-python36/enable && \
     pip install --upgrade pip && pip install requests requests_unixsocket
 # build cmake
-RUN curl -LO https://github.com/Kitware/CMake/releases/download/v3.16.2/cmake-3.16.2.tar.gz && \
+RUN curl -fsSLO https://github.com/Kitware/CMake/releases/download/v3.16.2/cmake-3.16.2.tar.gz && \
     tar -xzf cmake-3.16.2.tar.gz && \
     cd cmake-3.16.2 && \
     source /opt/rh/devtoolset-8/enable && \
@@ -40,7 +44,9 @@ RUN curl -fsSLO "https://boostorg.jfrog.io/artifactory/main/release/${BOOST_VERS
     cd / && \
     rm -rf "boost_${BOOST_VERSION}.tar.bz2" "/boost_${BOOST_VERSION}"
 # install nvm
-RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.0/install.sh | bash
+RUN curl -fsSLO https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.0/install.sh && \
+    bash install.sh && \
+    rm install.sh
 # load nvm in non-interactive shells
 RUN cp ~/.bashrc ~/.bashrc.bak && \
     cat ~/.bashrc.bak | tail -3 > ~/.bashrc && \

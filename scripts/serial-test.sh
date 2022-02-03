@@ -12,8 +12,10 @@ if [[ "$(uname)" == 'Linux' ]]; then
     fi
     cd "$GIT_ROOT"
 fi
-echo "$ npm install"
-npm install
+if [[ "$NPM_INSTALL" == 'true' ]]; then
+    echo "$ npm install"
+    npm install
+fi
 cd "$GIT_ROOT/build"
 # tests
 if [[ -z "$TEST" ]]; then # run all serial tests

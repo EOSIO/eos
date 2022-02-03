@@ -5,14 +5,20 @@ export HELPERS_DIR="$CICD_DIR/helpers"
 export JOBS=${JOBS:-"$(getconf _NPROCESSORS_ONLN)"}
 export MOUNTED_DIR='/eos'
 export DOCKER_CLI_EXPERIMENTAL='enabled'
-export DOCKERHUB_CI_REGISTRY="docker.io/eosio/ci"
-export DOCKERHUB_CONTRACTS_REGISTRY="docker.io/eosio/ci-contracts-builder"
-if [[ "$BUILDKITE_PIPELINE_SLUG" =~ "-sec" ]] ; then
-    export CI_REGISTRIES=("$MIRROR_REGISTRY")
-    export CONTRACT_REGISTRIES=("$MIRROR_REGISTRY")
+export DOCKER_REGISTRY='docker.io/eosio/eosio'
+export DOCKER_CI_REGISTRY="docker.io/eosio/ci"
+export DOCKER_CONTRACTS_REGISTRY="docker.io/eosio/ci-contracts-builder"
+export REGISTRY_BASE=${REGISTRY_BASE:-$MIRROR_REGISTRY}
+export REGISTRY_BINARY=${REGISTRY_BINARY:-$EOSIO_REGISTRY}
+export REGISTRY_SOURCE=${REGISTRY_SOURCE:-$MIRROR_REGISTRY}
+if [[ "$(echo "$BUILDKITE_PIPELINE_SLUG" | grep -icP '^(eosio|eosio-build-unpinned|eosio-base-images.*)$')" == '0' ]] ; then
+    export REGISTRIES=("$REGISTRY_BINARY")
+    export CI_REGISTRIES=("$REGISTRY_BASE")
+    export CONTRACT_REGISTRIES=("$REGISTRY_SOURCE")
 else
-    export CI_REGISTRIES=("$DOCKERHUB_CI_REGISTRY" "$MIRROR_REGISTRY")
-    export CONTRACT_REGISTRIES=("$DOCKERHUB_CONTRACTS_REGISTRY" "$MIRROR_REGISTRY")
+    export REGISTRIES=("$DOCKER_REGISTRY" "$REGISTRY_BINARY")
+    export CI_REGISTRIES=("$DOCKER_CI_REGISTRY" "$REGISTRY_BASE")
+    export CONTRACT_REGISTRIES=("$DOCKER_CONTRACTS_REGISTRY" "$REGISTRY_SOURCE")
 fi
 
 # capitalize each word in a string
