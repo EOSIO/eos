@@ -5,45 +5,32 @@
 #include <string>
 #include <fstream>
 
+using cov_map_t = std::unordered_map<uint64_t, std::unordered_map<uint32_t, std::unordered_map<uint32_t, uint32_t> > >;
+
 // rodeos lib is not the ideal location for this as it is also used by eosio-tester but rodeos lib keeps it out of nodeos
 namespace eosio {
 namespace coverage {
 
-class coverage_maps {
-public:
-   static coverage_maps& instance() {
-      static coverage_maps instance;
-      return instance;
-   }
-   coverage_maps(const coverage_maps&) = delete;
-   void operator=(const coverage_maps&) = delete;
-
-   std::unordered_map<uint64_t, std::unordered_map<uint32_t, std::unordered_map<uint32_t, uint32_t> > > funcnt_map;
-   std::unordered_map<uint64_t, std::unordered_map<uint32_t, std::unordered_map<uint32_t, uint32_t> > > linecnt_map;
-private:
-   coverage_maps() = default;
-};
-
-inline void coverage_inc_fun_cnt( uint64_t code, uint32_t file_num, uint32_t func_num ) {
-   auto& code_map = coverage_maps::instance().funcnt_map[code];
+inline void coverage_inc_fun_cnt( uint64_t code, uint32_t file_num, uint32_t func_num, cov_map_t& funcnt_map) {
+   auto& code_map = funcnt_map[code];
    auto& funcnt = code_map[file_num];
    funcnt[func_num]++;
 }
 
-inline void coverage_inc_line_cnt( uint64_t code, uint32_t file_num, uint32_t line_num ) {
-   auto& code_map = coverage_maps::instance().linecnt_map[code];
+inline void coverage_inc_line_cnt( uint64_t code, uint32_t file_num, uint32_t line_num, cov_map_t& linecnt_map ) {
+   auto& code_map = linecnt_map[code];
    auto& linecnt = code_map[file_num];
    linecnt[line_num]++;
 }
 
-inline uint32_t coverage_get_fun_cnt( uint64_t code, uint32_t file_num, uint32_t func_num ) {
-   auto& code_map = coverage_maps::instance().funcnt_map[code];
+inline uint32_t coverage_get_fun_cnt( uint64_t code, uint32_t file_num, uint32_t func_num, cov_map_t& funcnt_map ) {
+   auto& code_map = funcnt_map[code];
    auto& funcnt = code_map[file_num];
    return funcnt[func_num];
 }
 
-inline uint32_t coverage_get_line_cnt( uint64_t code, uint32_t file_num, uint32_t line_num ) {
-   auto& code_map = coverage_maps::instance().linecnt_map[code];
+inline uint32_t coverage_get_line_cnt( uint64_t code, uint32_t file_num, uint32_t line_num, cov_map_t& linecnt_map ) {
+   auto& code_map = linecnt_map[code];
    auto& linecnt = code_map[file_num];
    return linecnt[line_num];
 }
@@ -52,9 +39,9 @@ inline uint32_t coverage_get_line_cnt( uint64_t code, uint32_t file_num, uint32_
 // if code == 0, dump all coverage for all codes, constrained by max argument
 //    max is only checked for every code, so it is possible to exceed the number
 // if code > 0, then only dump coverage for specific code and specific file_num
-//    in this mode, max is effectively ignored
+//    in this mode, max is effectively ignored (though should be > 0)
 // returns the next code, or 0 if at end
-inline uint64_t coverage_dump_funcnt(uint64_t code, uint32_t file_num, const char* file_name, uint32_t file_name_size, uint32_t max, bool append ) {
+inline uint64_t coverage_dump_funcnt(uint64_t code, uint32_t file_num, const char* file_name, uint32_t file_name_size, uint32_t max, bool append, cov_map_t& funcnt_map ) {
    std::ofstream out_bin_file;
    auto flags = std::ofstream::out | std::ofstream::binary;
    if (append)
@@ -65,7 +52,6 @@ inline uint64_t coverage_dump_funcnt(uint64_t code, uint32_t file_num, const cha
    ilog("coverage_dump_funcnt: file_name= ${f} max= ${max} ${app}", ("f", file_name)("nax", max)("app", append));
    out_bin_file.open(file_name, flags );
    uint32_t i = 0;
-   auto funcnt_map = coverage_maps::instance().funcnt_map;
    auto code_itr = funcnt_map.begin();
    if (code > 0) {
       code_itr = funcnt_map.find(code);
@@ -105,11 +91,6 @@ inline uint64_t coverage_dump_funcnt(uint64_t code, uint32_t file_num, const cha
    if(code_itr != funcnt_map.end())
       r = code_itr->first;
    return r;
-}
-
-inline void coverage_reset() {
-   coverage_maps::instance().funcnt_map.clear();
-   coverage_maps::instance().linecnt_map.clear();
 }
 
 } // namespace coverage
