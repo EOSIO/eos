@@ -1898,12 +1898,8 @@ namespace eosio { namespace chain { namespace webassembly {
          int32_t __unordtf2(uint64_t, uint64_t, uint64_t, uint64_t) const;
 
          // code coverage support functions 
-         void coverage_inc_fun_cnt(uint64_t code, uint32_t file_num, uint32_t func_num);
-         void coverage_inc_line_cnt(uint64_t code, uint32_t file_num, uint32_t line_num);
-         uint32_t coverage_get_fun_cnt(uint64_t code, uint32_t file_num, uint32_t func_num);
-         uint32_t coverage_get_line_cnt(uint64_t code, uint32_t file_num, uint32_t line_num);
-         uint64_t coverage_dump_funcnt(uint64_t code, uint32_t file_num, span<const char> file_name, uint32_t max, bool append);
-         void coverage_reset();
+         uint32_t coverage_getinc(uint64_t code, uint32_t file_num, uint32_t func_or_line_num, uint32_t mode, bool inc);
+         uint64_t coverage_dump(uint64_t code, uint32_t file_num, span<const char> file_name, uint32_t max, bool append, uint32_t mode, bool reset);
 
       private:
          apply_context& context;

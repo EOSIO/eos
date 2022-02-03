@@ -11,37 +11,25 @@ using cov_map_t = std::unordered_map<uint64_t, std::unordered_map<uint32_t, std:
 namespace eosio {
 namespace coverage {
 
-inline void coverage_inc_fun_cnt( uint64_t code, uint32_t file_num, uint32_t func_num, cov_map_t& funcnt_map) {
-   auto& code_map = funcnt_map[code];
-   auto& funcnt = code_map[file_num];
-   funcnt[func_num]++;
+inline void coverage_inc_cnt( uint64_t code, uint32_t file_num, uint32_t func_or_line_num, cov_map_t& cov_map) {
+   auto& code_map = cov_map[code];
+   auto& cnt_map = code_map[file_num];
+   cnt_map[func_or_line_num]++;
 }
 
-inline void coverage_inc_line_cnt( uint64_t code, uint32_t file_num, uint32_t line_num, cov_map_t& linecnt_map ) {
-   auto& code_map = linecnt_map[code];
-   auto& linecnt = code_map[file_num];
-   linecnt[line_num]++;
+inline uint32_t coverage_get_cnt( uint64_t code, uint32_t file_num, uint32_t func_or_line_num, cov_map_t& cov_map) {
+   auto& code_map = cov_map[code];
+   auto& cnt_map = code_map[file_num];
+   return cnt_map[func_or_line_num];
 }
 
-inline uint32_t coverage_get_fun_cnt( uint64_t code, uint32_t file_num, uint32_t func_num, cov_map_t& funcnt_map ) {
-   auto& code_map = funcnt_map[code];
-   auto& funcnt = code_map[file_num];
-   return funcnt[func_num];
-}
-
-inline uint32_t coverage_get_line_cnt( uint64_t code, uint32_t file_num, uint32_t line_num, cov_map_t& linecnt_map ) {
-   auto& code_map = linecnt_map[code];
-   auto& linecnt = code_map[file_num];
-   return linecnt[line_num];
-}
-
-// dump coverage output to file
-// if code == 0, dump all coverage for all codes, constrained by max argument
+// dump coverage output (function or line) to binary file
+// if code == 0, begin at first code in the map
 //    max is only checked for every code, so it is possible to exceed the number
-// if code > 0, then only dump coverage for specific code and specific file_num
-//    in this mode, max is effectively ignored (though should be > 0)
+// if max == 0, then only dump coverage for specific code and specific file_num
+//     in theis case code must be > 0
 // returns the next code, or 0 if at end
-inline uint64_t coverage_dump_funcnt(uint64_t code, uint32_t file_num, const char* file_name, uint32_t file_name_size, uint32_t max, bool append, cov_map_t& funcnt_map ) {
+inline uint64_t coverage_dump(uint64_t code, uint32_t file_num, const char* file_name, uint32_t file_name_size, uint32_t max, bool append, cov_map_t& cov_map) {
    std::ofstream out_bin_file;
    auto flags = std::ofstream::out | std::ofstream::binary;
    if (append)
@@ -52,35 +40,39 @@ inline uint64_t coverage_dump_funcnt(uint64_t code, uint32_t file_num, const cha
    ilog("coverage_dump_funcnt: file_name= ${f} max= ${max} ${app}", ("f", file_name)("nax", max)("app", append));
    out_bin_file.open(file_name, flags );
    uint32_t i = 0;
-   auto code_itr = funcnt_map.begin();
-   if (code > 0) {
-      code_itr = funcnt_map.find(code);
+   auto code_itr = cov_map.begin();
+   if (max == 0 && code == 0) {
+      elog("coverage_dump_funcnt: when max == 0, code must be > 0");
+      return 0;
    }
-   while (code_itr != funcnt_map.end() && i < max) {
+   if (code > 0) {
+      code_itr = cov_map.find(code);
+   }
+   while (code_itr != cov_map.end() && (max == 0 || i < max)) {
       auto codenum = code_itr->first;
-      auto filenum_map = code_itr->second;
+      auto& filenum_map = code_itr->second;
       auto filenum_itr = filenum_map.begin();
-      if (code > 0) {
+      if (max == 0) {
          filenum_itr = filenum_map.find(file_num);
       }
       while (filenum_itr != filenum_map.end()) {
          auto filenum = filenum_itr->first;
-         auto funcnum_map = filenum_itr->second;
+         auto& funcnum_map = filenum_itr->second;
          for (const auto& funcnum_itr : funcnum_map) {
-            auto funcnum = funcnum_itr.first;
+            auto func_or_line_num = funcnum_itr.first;
             auto calls = funcnum_itr.second;
             out_bin_file.write(reinterpret_cast<const char*>(&codenum), sizeof(code));
             out_bin_file.write(reinterpret_cast<const char*>(&filenum), sizeof(filenum));
-            out_bin_file.write(reinterpret_cast<const char*>(&funcnum), sizeof(funcnum));
+            out_bin_file.write(reinterpret_cast<const char*>(&func_or_line_num), sizeof(func_or_line_num));
             out_bin_file.write(reinterpret_cast<const char*>(&calls), sizeof(calls));
             ++i;
          }
          ++filenum_itr;
-         if (code > 0)
+         if (max == 0)
             break;
       }
       ++code_itr;
-      if (code > 0);
+      if (max == 0);
          break;
    }
 
@@ -88,7 +80,7 @@ inline uint64_t coverage_dump_funcnt(uint64_t code, uint32_t file_num, const cha
    out_bin_file.close();
 
    uint64_t r = 0;
-   if(code_itr != funcnt_map.end())
+   if(code_itr != cov_map.end())
       r = code_itr->first;
    return r;
 }
