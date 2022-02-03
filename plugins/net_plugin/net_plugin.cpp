@@ -344,6 +344,9 @@ namespace eosio {
    fc::logger logger;
    std::string peer_log_format;
 
+   auto new_logger = spdlog::stdout_logger_st("test");
+
+
    // peer_[x]log must be called from thread in connection strand
 #define peer_dlog( PEER, FORMAT, ... ) \
   FC_MULTILINE_MACRO_BEGIN \
@@ -3739,6 +3742,14 @@ namespace eosio {
 
    void net_plugin::plugin_initialize( const variables_map& options ) {
       fc_ilog( logger, "Initialize net plugin" );
+      // call spdlog logging method directly
+      new_logger->info("Initialize net plugin - spdlog method");
+      // call spdlog logging macro
+      new_logger->set_pattern("%v");
+      SPDLOG_LOGGER_INFO(new_logger, "Initialize net plugin - spdlog Macro");
+      // call updated fc logging macro
+      fc_new_ilog(new_logger, "Initialize net plugin - new fc Macro");
+
       try {
          peer_log_format = options.at( "peer-log-format" ).as<string>();
 
