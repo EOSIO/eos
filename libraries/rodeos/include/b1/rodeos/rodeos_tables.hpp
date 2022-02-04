@@ -79,7 +79,7 @@ struct block_info_kv : eosio::kv_table<block_info> {
                                       } };
 
    block_info_kv(eosio::kv_environment environment) : eosio::kv_table<block_info>{ std::move(environment) } {
-      init(state_account, eosio::name{ "block.info" }, state_database, primary_index, id_index);
+      init(state_account, state_database, primary_index, id_index);
    }
 };
 
@@ -88,7 +88,7 @@ struct global_property_kv : eosio::kv_table<global_property> {
                                            [](const auto& var) { return std::vector<char>{}; } };
 
    global_property_kv(eosio::kv_environment environment) : eosio::kv_table<global_property>{ std::move(environment) } {
-      init(state_account, eosio::name{ "global.prop" }, state_database, primary_index);
+      init(state_account, state_database, primary_index);
    }
 };
 
@@ -98,7 +98,7 @@ struct account_kv : eosio::kv_table<account> {
                                     } };
 
    account_kv(eosio::kv_environment environment) : eosio::kv_table<account>{ std::move(environment) } {
-      init(state_account, eosio::name{ "account" }, state_database, primary_index);
+      init(state_account, state_database, primary_index);
    }
 };
 
@@ -109,7 +109,7 @@ struct account_metadata_kv : eosio::kv_table<account_metadata> {
 
    account_metadata_kv(eosio::kv_environment environment)
        : eosio::kv_table<account_metadata>{ std::move(environment) } {
-      init(state_account, eosio::name{ "account.meta" }, state_database, primary_index);
+      init(state_account, state_database, primary_index);
    }
 };
 
@@ -122,7 +122,7 @@ struct code_kv : eosio::kv_table<code> {
    };
 
    code_kv(eosio::kv_environment environment) : eosio::kv_table<code>{ std::move(environment) } {
-      init(state_account, eosio::name{ "code" }, state_database, primary_index);
+      init(state_account, state_database, primary_index);
    }
 };
 
@@ -135,7 +135,7 @@ struct contract_table_kv : eosio::kv_table<contract_table> {
    };
 
    contract_table_kv(eosio::kv_environment environment) : eosio::kv_table<contract_table>{ std::move(environment) } {
-      init(state_account, eosio::name{ "contract.tab" }, state_database, primary_index);
+      init(state_account, state_database, primary_index);
    }
 };
 
@@ -150,7 +150,7 @@ struct contract_row_kv : eosio::kv_table<contract_row> {
                            } };
 
    contract_row_kv(eosio::kv_environment environment) : eosio::kv_table<contract_row>{ std::move(environment) } {
-      init(state_account, eosio::name{ "contract.row" }, state_database, primary_index);
+      init(state_account, state_database, primary_index);
    }
 };
 
@@ -176,7 +176,7 @@ struct contract_index64_kv : eosio::kv_table<contract_index64> {
 
    contract_index64_kv(eosio::kv_environment environment)
        : eosio::kv_table<contract_index64>{ std::move(environment) } {
-      init(state_account, eosio::name{ "contract.i1" }, state_database, primary_index, secondary_index);
+      init(state_account, state_database, primary_index, secondary_index);
    }
 };
 
@@ -202,7 +202,7 @@ struct contract_index128_kv : eosio::kv_table<contract_index128> {
 
    contract_index128_kv(eosio::kv_environment environment)
        : eosio::kv_table<contract_index128>{ std::move(environment) } {
-      init(state_account, eosio::name{ "contract.i2" }, state_database, primary_index, secondary_index);
+      init(state_account, state_database, primary_index, secondary_index);
    }
 };
 

@@ -54,7 +54,7 @@ namespace eosio { namespace chain {
    struct kv_resource_manager;
    struct kv_database_config;
    namespace db_util{
-      std::unique_ptr<kv_context> create_kv_context(const controller&, name, kv_resource_manager, const kv_database_config&);
+      std::unique_ptr<kv_context> create_kv_context(const controller&, name, const kv_resource_manager&, const kv_database_config&);
    };
 
    enum class db_read_mode {
@@ -398,7 +398,7 @@ namespace eosio { namespace chain {
       private:
          friend class apply_context;
          friend class transaction_context;
-         friend std::unique_ptr<kv_context> db_util::create_kv_context(const controller&, name, kv_resource_manager, const kv_database_config&);
+         friend std::unique_ptr<kv_context> db_util::create_kv_context(const controller&, name,const kv_resource_manager&, const kv_database_config&);
 
          chainbase::database& mutable_db()const;
 

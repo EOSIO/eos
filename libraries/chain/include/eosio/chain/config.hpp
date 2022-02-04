@@ -90,10 +90,6 @@ const static uint32_t   default_max_action_return_value_size         = 256;
 
 static_assert(MAX_SIZE_OF_BYTE_ARRAYS == 20*1024*1024, "Changing MAX_SIZE_OF_BYTE_ARRAYS breaks consensus. Make sure this is expected");
 
-const static uint32_t   default_max_kv_key_size                = 1024;
-const static uint32_t   default_max_kv_value_size              = 1024*1024; // Large enough to hold most contracts
-const static uint32_t   default_max_kv_iterators               = 1024;
-
 const static uint32_t default_max_wasm_mutable_global_bytes = 1024;
 const static uint32_t default_max_wasm_table_elements       = 1024;
 const static uint32_t default_max_wasm_section_elements     = 8192;

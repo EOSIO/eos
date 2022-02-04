@@ -37,7 +37,6 @@ using eosio::chain::digest_type;
 using eosio::chain::kv_bad_db_id;
 using eosio::chain::kv_bad_iter;
 using eosio::chain::kv_context;
-using eosio::chain::kvram_id;
 using eosio::chain::protocol_feature_exception;
 using eosio::chain::protocol_feature_set;
 using eosio::chain::signed_transaction;
@@ -1015,7 +1014,7 @@ struct callbacks {
    }
 
    kv_context& kv_get_db() {
-      return selected().kv_get_backing_store();
+      return selected().get_kv_context();
    }
 
    void kv_check_iterator(uint32_t itr) {

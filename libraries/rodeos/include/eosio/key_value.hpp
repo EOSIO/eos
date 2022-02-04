@@ -233,8 +233,6 @@ inline key_type make_key(T val) {
 }
 #endif
 
-static constexpr eosio::name kv_ram = "eosio.kvram"_n;
-
 struct default_constructor_tag;
 
 /**
@@ -952,13 +950,12 @@ protected:
    }
 
    template <typename PrimaryIndex, typename... SecondaryIndices>
-   void init(eosio::name contract, eosio::name table, eosio::name db, PrimaryIndex& prim_index, SecondaryIndices&... indices) {
+   void init(eosio::name contract, eosio::name table, PrimaryIndex& prim_index, SecondaryIndices&... indices) {
       validate_types(prim_index);
       (validate_types(indices), ...);
 
       contract_name = contract;
       table_name = table;
-      db_name = db.value;
 
       primary_index = &prim_index;
       primary_index->contract_name = contract_name;
@@ -975,7 +972,6 @@ protected:
 private:
    eosio::name contract_name;
    eosio::name table_name;
-   uint64_t db_name;
 
    eosio::name primary_index_name;
 
@@ -992,7 +988,7 @@ private:
 
 };
 
-template <typename T, eosio::name::raw SingletonName, eosio::name::raw DbName = "eosio.kvram"_n>
+template <typename T, eosio::name::raw SingletonName>
 class kv_singleton {
    kv_environment environment;
 

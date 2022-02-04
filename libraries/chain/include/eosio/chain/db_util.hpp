@@ -56,10 +56,10 @@ namespace eosio { namespace chain { namespace db_util {
 
    void destroy(const fc::path& p);
 
-   std::unique_ptr<kv_context> create_kv_context(const controller& c, 
-                                                 name receiver, 
-                                                 kv_resource_manager resource_manager,
-                                                 const kv_database_config& limits);
+   std::unique_ptr<kv_context> create_kv_context(const controller&            c, 
+                                                 name                         receiver, 
+                                                 const kv_resource_manager&   resource_manager,
+                                                 const kv_database_config&    limits);
 
    void add_to_snapshot(const chainbase::database&                                    db, 
                         const eosio::chain::snapshot_writer_ptr&                      snapshot, 

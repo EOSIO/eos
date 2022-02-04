@@ -703,7 +703,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_kv_snapshot, SNAPSHOT_SUITE, snapshot_suites)
                // Calling apply method which will increment the
                // current value stored
                signed_transaction trx;
-               trx.actions.push_back({{{contract, "active"_n}}, contract, "eosio.kvram"_n, {}});
+               trx.actions.push_back({{{contract, "active"_n}}, contract, contract, {}});
                chain.set_transaction_headers(trx);
                trx.sign(chain.get_private_key(contract, "active"), chain.control->get_chain_id());
                chain.push_transaction(trx);

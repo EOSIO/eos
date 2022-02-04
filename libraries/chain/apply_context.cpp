@@ -1065,19 +1065,19 @@ int apply_context::db_end_i64( name code, name scope, name table ) {
 }
 
 int64_t apply_context::kv_erase(uint64_t contract, const char* key, uint32_t key_size) {
-   return kv_get_backing_store().kv_erase(contract, key, key_size);
+   return get_kv_context().kv_erase(contract, key, key_size);
 }
 
 int64_t apply_context::kv_set(uint64_t contract, const char* key, uint32_t key_size, const char* value, uint32_t value_size, account_name payer) {
-   return kv_get_backing_store().kv_set(contract, key, key_size, value, value_size, payer);
+   return get_kv_context().kv_set(contract, key, key_size, value, value_size, payer);
 }
 
 bool apply_context::kv_get(uint64_t contract, const char* key, uint32_t key_size, uint32_t& value_size) {
-   return kv_get_backing_store().kv_get(contract, key, key_size, value_size);
+   return get_kv_context().kv_get(contract, key, key_size, value_size);
 }
 
 uint32_t apply_context::kv_get_data(uint32_t offset, char* data, uint32_t data_size) {
-   return kv_get_backing_store().kv_get_data(offset, data, data_size);
+   return get_kv_context().kv_get_data(offset, data, data_size);
 }
 
 uint32_t apply_context::kv_it_create(uint64_t contract, const char* prefix, uint32_t size) {
@@ -1091,7 +1091,7 @@ uint32_t apply_context::kv_it_create(uint64_t contract, const char* prefix, uint
       itr = kv_iterators.size();
       kv_iterators.emplace_back();
    }
-   kv_iterators[itr] = kv_get_backing_store().kv_it_create(contract, prefix, size);
+   kv_iterators[itr] = get_kv_context().kv_it_create(contract, prefix, size);
    return itr;
 }
 

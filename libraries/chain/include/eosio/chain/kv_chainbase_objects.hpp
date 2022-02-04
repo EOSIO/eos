@@ -2,7 +2,6 @@
 
 #include <chainbase/chainbase.hpp>
 #include <eosio/chain/config.hpp>
-#include <eosio/chain/backing_store/kv_context.hpp>
 #include <eosio/chain/multi_index_includes.hpp>
 #include <eosio/chain/types.hpp>
 #include <eosio/chain/backing_store.hpp>
