@@ -324,7 +324,7 @@ class RodeosCluster(object):
             # due to empty JSON response, which is expected
             pass
 
-        self.prodNode.pushMessage("eosio", "setkvparam", '[]', "--permission eosio")
+        self.prodNode.pushMessage("eosio", "setkvparam", '[\"ignored\"]', "--permission eosio")
         cmd="curl --data-binary '[\"eosio\",\"5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3\"]' %s/v1/txn_test_gen/create_test_accounts" % (self.prodNode.endpointHttp)
         Utils.Print("{}".format(cmd))
         try:
