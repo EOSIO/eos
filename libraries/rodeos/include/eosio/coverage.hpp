@@ -72,7 +72,7 @@ inline uint64_t coverage_dump(uint64_t code, uint32_t file_num, const char* file
             break;
       }
       ++code_itr;
-      if (max == 0);
+      if (max == 0)
          break;
    }
 
