@@ -160,7 +160,6 @@ uint64_t interface::coverage_dump(uint64_t code, uint32_t file_num, eosio::vm::s
    if (reset) {
       coverage_maps::instance().funcnt_map.clear();
       coverage_maps::instance().linecnt_map.clear();
-      return 0;
    }
    if (mode == 0) {
       return eosio::coverage::coverage_dump(code, file_num, file_name.data(), file_name.size(), max, append, coverage_maps::instance().funcnt_map);
@@ -168,6 +167,7 @@ uint64_t interface::coverage_dump(uint64_t code, uint32_t file_num, eosio::vm::s
    else if (mode == 1) {
       return eosio::coverage::coverage_dump(code, file_num, file_name.data(), file_name.size(), max, append, coverage_maps::instance().linecnt_map);
    }
+   return 0;
 }
 
 } // namespace eosio::chain::webassembly
