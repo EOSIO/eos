@@ -52,7 +52,7 @@ class iterator_cache {
       if (tables.size() != table_to_index.size() || tables.size() != end_iterators.size())
          throw std::runtime_error("internal error: tables.size() mismatch");
       auto result = tables.size();
-      if (result > std::numeric_limits<int32_t>::max())
+      if (result > static_cast<uint32_t>(std::numeric_limits<int32_t>::max()))
          throw std::runtime_error("too many open tables");
       tables.push_back(key);
       table_to_index[key] = result;
@@ -77,7 +77,7 @@ class iterator_cache {
             result = map_it->second;
          } else {
             // std::cout << "...new it\n";
-            if (iterators.size() > std::numeric_limits<int32_t>::max())
+            if (iterators.size() > static_cast<uint32_t>(std::numeric_limits<int32_t>::max()))
                throw std::runtime_error("too many iterators");
             result = iterators.size();
             iterators.emplace_back();

@@ -259,9 +259,9 @@ namespace eosio { namespace chain {
                   "cannot advance root to a block that has not yet been validated" );
 
 
-      vector<block_id_type> blocks_to_remove;
+      deque<block_id_type> blocks_to_remove;
       for( auto b = new_root; b; ) {
-         blocks_to_remove.push_back( b->header.previous );
+         blocks_to_remove.emplace_back( b->header.previous );
          b = get_block( blocks_to_remove.back() );
          EOS_ASSERT( b || blocks_to_remove.back() == my->root->id, fork_database_exception, "invariant violation: orphaned branch was present in forked database" );
       }
@@ -272,7 +272,7 @@ namespace eosio { namespace chain {
 
       // The other blocks to be removed are removed using the remove method so that orphaned branches do not remain in the fork database.
       for( const auto& block_id : blocks_to_remove ) {
-         remove( block_id );
+         remove_fork( block_id );
       }
 
       // Even though fork database no longer needs block or trxs when a block state becomes a root of the tree,
@@ -441,10 +441,10 @@ namespace eosio { namespace chain {
    } /// fetch_branch_from
 
    /// remove all of the invalid forks built off of this id including this id
-   void fork_database::remove( const block_id_type& id ) {
+   void fork_database::remove_fork( const block_id_type& id ) {
       vector<block_id_type> remove_queue{id};
       const auto& previdx = my->index.get<by_prev>();
-      const auto head_id = my->head->id;
+      const auto& head_id = my->head->id;
 
       for( uint32_t i = 0; i < remove_queue.size(); ++i ) {
          EOS_ASSERT( remove_queue[i] != head_id, fork_database_exception,
@@ -452,7 +452,7 @@ namespace eosio { namespace chain {
 
          auto previtr = previdx.lower_bound( remove_queue[i] );
          while( previtr != previdx.end() && (*previtr)->header.previous == remove_queue[i] ) {
-            remove_queue.push_back( (*previtr)->id );
+            remove_queue.emplace_back( (*previtr)->id );
             ++previtr;
          }
       }
@@ -462,6 +462,25 @@ namespace eosio { namespace chain {
          if( itr != my->index.end() )
             my->index.erase(itr);
       }
+   }
+
+   bool fork_database::is_head_block(uint32_t blocknum)  {
+      return my->head->block && my->head->block->block_num() == blocknum;
+   }
+
+   void fork_database::remove_head(uint32_t blocknum) {
+      EOS_ASSERT(is_head_block(blocknum), fork_database_exception, "trying to remove non-head block ${block_num}",
+                 ("blocknum", blocknum));
+      auto itr      = my->index.find(my->head->id);
+      auto prev_id = my->head->prev();
+      auto prev_itr = my->index.find( prev_id );
+      EOS_ASSERT(prev_itr != my->index.end(), fork_database_exception,
+                 "Unable to remove block ${block_num} because no previous block exists", ("blocknum", blocknum));
+      if( itr != my->index.end() ) {
+         my->index.erase(itr);
+      }
+      my->head = *prev_itr;
+      return;
    }
 
    void fork_database::mark_valid( const block_state_ptr& h ) {

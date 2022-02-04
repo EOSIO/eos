@@ -675,7 +675,10 @@ BOOST_AUTO_TEST_SUITE(trace_responses)
          10,  // cpu_usage_us
          5,    // net_usage_words
          std::vector<chain::signature_type>{ chain::signature_type() },  // signatures
-         { chain::time_point(), 1, 0, 100, 50, 0 }  //   trx_header
+         { chain::time_point(), 1, 0, 100, 50, 0 },  //   trx_header
+         1,  // block_num
+         chain::block_timestamp_type(0),   //block_time
+         chain::block_id_type{}  //producer_block_id
       };// trn end
 
       auto block_trace = block_trace_v2 {
@@ -705,6 +708,9 @@ BOOST_AUTO_TEST_SUITE(trace_responses)
          ("transactions", fc::variants({
             fc::mutable_variant_object()
                ("id", "0000000000000000000000000000000000000000000000000000000000000001")
+               ("block_num", 1)
+               ("block_time", "2000-01-01T00:00:00.000")
+               ("producer_block_id", "0000000000000000000000000000000000000000000000000000000000000000")
                ("actions", fc::variants({
                   fc::mutable_variant_object()
                      ("global_sequence", 0)
@@ -768,7 +774,10 @@ BOOST_AUTO_TEST_SUITE(trace_responses)
          10,
          5,
          std::vector<chain::signature_type>{ chain::signature_type() },
-         { chain::time_point(), 1, 0, 100, 50, 0 }
+         { chain::time_point(), 1, 0, 100, 50, 0 },
+         1,  // block_num
+         chain::block_timestamp_type(0),   //block_time
+         chain::block_id_type{}  //producer_block_id
       };
 
       auto block_trace = block_trace_v2 {
@@ -798,6 +807,9 @@ BOOST_AUTO_TEST_SUITE(trace_responses)
          ("transactions", fc::variants({
             fc::mutable_variant_object()
                ("id", "0000000000000000000000000000000000000000000000000000000000000001")
+               ("block_num", 1)
+               ("block_time", "2000-01-01T00:00:00.000")
+               ("producer_block_id", "0000000000000000000000000000000000000000000000000000000000000000")
                ("actions", fc::variants({
                   fc::mutable_variant_object()
                      ("global_sequence", 0)
@@ -880,7 +892,10 @@ BOOST_AUTO_TEST_SUITE(trace_responses)
          10,
          5,
          { chain::signature_type() },
-         { chain::time_point(), 1, 0, 100, 50, 0 }
+         { chain::time_point(), 1, 0, 100, 50, 0 },
+         1,  // block_num
+         chain::block_timestamp_type(0),   //block_time
+         chain::block_id_type{}  //producer_block_id
       };
 
       auto block_trace = block_trace_v2 {
@@ -910,6 +925,9 @@ BOOST_AUTO_TEST_SUITE(trace_responses)
          ("transactions", fc::variants({
             fc::mutable_variant_object()
             ("id", "0000000000000000000000000000000000000000000000000000000000000001")
+            ("block_num", 1)
+            ("block_time", "2000-01-01T00:00:00.000")
+            ("producer_block_id", "0000000000000000000000000000000000000000000000000000000000000000")
             ("actions", fc::variants({
                fc::mutable_variant_object()
                   ("global_sequence", 0)
@@ -1038,7 +1056,10 @@ BOOST_AUTO_TEST_SUITE(trace_responses)
          10,
          5,
          std::vector<chain::signature_type>{chain::signature_type()},
-         {chain::time_point(), 1, 0, 100, 50, 0}
+         {chain::time_point(), 1, 0, 100, 50, 0},
+         1,  // block_num
+         chain::block_timestamp_type(0),   //block_time
+         chain::block_id_type{}  //producer_block_id
       };
 
       auto block_trace = block_trace_v2 {

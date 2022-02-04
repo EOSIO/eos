@@ -1,33 +1,114 @@
-*.a
-*.sw*
-*.dylib
-*.ll
-*.bc
-*.wast
-*.wast.hpp
-*.s
-*.dot
-*.abi.hpp
+# archives
+*.7z
+*.7zip
+*.rar
+*.tar.gz
+*.tgz
+*.zip
+
+# binary files
+*.bin
+
+# build artifacts
+**/build
+**/.dist
+.dist.tar.gz
+
+# cmake
 *.cmake
-!.cicd
 !CMakeModules/*.cmake
-*.ninja
-\#*
-\.#*
 CMakeCache.txt
 CMakeFiles
 cmake_install.cmake
 cmake-build-debug/
 cmake-build-release/
 Makefile
-compile_commands.json
-moc_*
-*.moc
-.clangd/
 
+# data files
+*.csv
+/*.json
+*.tsv
+*.xls
+*.xlsx
+
+# doxygen
+doxygen
+eos.doxygen
+
+# editor files
+*.sw?
+.vscode
+.idea/
+
+# environment variable files
+.env
+
+# eslint
+.eslintcache
+
+# istanbul/jest
+**/coverage
+junit.xml
+
+# keys and certs
+*.cer
+*.crt
+*.key
+*.pem
+
+# logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.txt
+
+# macOS finder cache
+**/*.DS_Store
+
+# nodeJS + TypeScript
+**/build
+**/node_modules
+.node_repl_history
+**/.npm
+*.tgz
+**/typings
+
+# nodeos
 genesis.json
 hardfork.hpp
+wallet.json
+witness_node_data_dir
+*.wallet
 
+# pipeline-upload.sh artifacts
+/pipeline.yml
+/pipeline.yaml
+
+# python
+*.pyc
+*.pyo
+
+# swagger
+!*.swagger.*
+
+# terraform
+plan.out
+**/.terraform
+*.tfstate
+*.tfstate.*
+*.terraform.lock.hcl
+**/terraform/*.out
+
+# wasm
+*.wast
+*.wast.hpp
+
+# yarn
+.yarn-integrity
+
+### COMPONENTS ###
 libraries/egenesis/egenesis_brief.cpp
 libraries/egenesis/egenesis_full.cpp
 libraries/egenesis/embed_genesis
@@ -35,7 +116,6 @@ libraries/types/type_generator
 libraries/types/types_test
 libraries/fc/test/crypto/test_cypher_suites
 libraries/testing/chain_tester
-
 
 libraries/wallet/Doxyfile
 libraries/wallet/api_documentation.cpp
@@ -63,28 +143,24 @@ scripts/tn_init.sh
 tests/plugin_test
 unittests/unit_test
 
-doxygen
-eos.doxygen
-
-wallet.json
-witness_node_data_dir
-
-*.wallet
-
-*.pyc
-*.pyo
+### OTHER ###
+*.a
+*.dylib
+*.ll
+*.bc
+*.s
+*.dot
+*.abi.hpp
+*.ninja
+\#*
+\.#*
+moc_*
+*.moc
+.clangd/
 
 Testing/*
-build.tar.gz
-build/*
 build-debug/*
 
-etc/eosio/node_*
-var/lib/node_*
-.vscode
-.idea/
 *.iws
-.DS_Store
 
-!*.swagger.*
 .cache

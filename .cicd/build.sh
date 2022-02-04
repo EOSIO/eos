@@ -4,7 +4,7 @@ set -eo pipefail
 . ./.cicd/helpers/general.sh
 mkdir -p "$BUILD_DIR"
 [[ -z "$DCMAKE_BUILD_TYPE" ]] && export DCMAKE_BUILD_TYPE='Release'
-CMAKE_EXTRAS="$CMAKE_EXTRAS -DCMAKE_BUILD_TYPE=\"$DCMAKE_BUILD_TYPE\" -DENABLE_MULTIVERSION_PROTOCOL_TEST=\"true\" -DAMQP_CONN_STR=\"amqp://guest:guest@localhost:5672\""
+CMAKE_EXTRAS="$CMAKE_EXTRAS -DCMAKE_C_FLAGS=\"-Werror\" -DCMAKE_CXX_FLAGS=\"-Werror\" -DCMAKE_BUILD_TYPE=\"$DCMAKE_BUILD_TYPE\" -DENABLE_MULTIVERSION_PROTOCOL_TEST=\"true\" -DAMQP_CONN_STR=\"amqp://guest:guest@localhost:5672\""
 if [[ "$(uname)" == 'Darwin' && "$FORCE_LINUX" != 'true' ]]; then
     # You can't use chained commands in execute
     if [[ "$GITHUB_ACTIONS" == 'true' ]]; then
@@ -58,9 +58,10 @@ else # Linux
     fi
     . "$HELPERS_DIR/file-hash.sh" "$CICD_DIR/platforms/$PLATFORM_TYPE/$IMAGE_TAG.dockerfile"
     COMMANDS="$PRE_COMMANDS && $COMMANDS"
-    DOCKER_RUN="docker run $ARGS $(buildkite-intrinsics) --env CMAKE_EXTRAS='$CMAKE_EXTRAS' '$FULL_TAG' bash -c '$COMMANDS'"
-    echo "$ $DOCKER_RUN"
-    eval $DOCKER_RUN
+    DOCKER_RUN_ARGS="$ARGS $(buildkite-intrinsics) --env CMAKE_EXTRAS='$CMAKE_EXTRAS' '$FULL_TAG' bash -c '$COMMANDS'"
+    echo "$ docker run $DOCKER_RUN_ARGS"
+    [[ -z "${PROXY_DOCKER_RUN_ARGS:-}" ]] || echo "Appending proxy args: '${PROXY_DOCKER_RUN_ARGS}'"
+    eval "docker run ${PROXY_DOCKER_RUN_ARGS:-}${DOCKER_RUN_ARGS}"
 fi
 if [[ "$BUILDKITE" == 'true' && "$ENABLE_INSTALL" != 'true' ]]; then
     echo '--- :arrow_up: Uploading Artifacts'

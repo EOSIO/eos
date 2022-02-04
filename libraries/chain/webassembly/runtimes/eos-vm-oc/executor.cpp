@@ -10,6 +10,7 @@
 #include <eosio/chain/exceptions.hpp>
 #include <eosio/chain/types.hpp>
 #include <eosio/chain/global_property_object.hpp>
+#include <eosio/chain/bit.hpp>
 
 #include <fc/scoped_exit.hpp>
 
@@ -216,7 +217,7 @@ void executor::execute(const code_descriptor& code, memory& mem, void* context, 
       timer->set_expiration_callback(nullptr, nullptr);
 
       uint64_t base_pages = mem.size_of_memory_slice_mapping()/memory::stride - 1;
-      if(cb->current_linear_memory_pages > base_pages) {
+      if(std::bit_cast<uint64_t>(cb->current_linear_memory_pages) > base_pages) {
          mprotect(mem.full_page_memory_base() + base_pages * eosio::chain::wasm_constraints::wasm_page_size,
                   (cb->current_linear_memory_pages - base_pages) * eosio::chain::wasm_constraints::wasm_page_size, PROT_NONE);
       }

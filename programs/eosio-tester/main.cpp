@@ -89,10 +89,6 @@ struct assert_exception : std::exception {
    const char* what() const noexcept override { return msg.c_str(); }
 };
 
-// HACK: UB.  Unfortunately, I can't think of a way to allow a transaction_context
-// to be constructed outside of controller in 2.0 that doesn't have undefined behavior.
-// A better solution would be to factor database access out of apply_context, but
-// that can't really be backported to 2.0 at this point.
 namespace {
 struct __attribute__((__may_alias__)) xxx_transaction_checktime_timer {
    std::atomic_bool&             expired;
@@ -102,8 +98,7 @@ struct transaction_checktime_factory {
    eosio::chain::platform_timer              timer;
    std::atomic_bool                          expired;
    eosio::chain::transaction_checktime_timer get() {
-      xxx_transaction_checktime_timer result{ expired, timer };
-      return std::move(*reinterpret_cast<eosio::chain::transaction_checktime_timer*>(&result));
+      return { expired, timer };
    }
 };
 }; // namespace
@@ -372,8 +367,10 @@ struct test_chain {
    void finish_block() {
       start_if_needed();
       ilog("finish block ${n}", ("n", control->head_block_num()));
-      control->finalize_block([&](eosio::chain::digest_type d) { return std::vector{ producer_key.sign(d) }; });
-      control->commit_block();
+
+      control->finalize_block([&](eosio::chain::digest_type d) {
+         return std::vector{ producer_key.sign(d) };
+      }).get()();
    }
 };
 
@@ -787,7 +784,7 @@ struct callbacks {
       auto ptrx = std::make_shared<eosio::chain::packed_transaction>(
             std::move(signed_trx), true, eosio::chain::packed_transaction::compression_type::none);
       auto fut = eosio::chain::transaction_metadata::start_recover_keys(
-            ptrx, chain.control->get_thread_pool(), chain.control->get_chain_id(), fc::microseconds::maximum());
+            ptrx, chain.control->get_thread_pool(), chain.control->get_chain_id(), fc::microseconds::maximum(), eosio::chain::transaction_metadata::trx_type::input );
       auto start_time = std::chrono::steady_clock::now();
       auto result     = chain.control->push_transaction(fut.get(), fc::time_point::maximum(), 2000, true, 0);
       auto us = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - start_time);

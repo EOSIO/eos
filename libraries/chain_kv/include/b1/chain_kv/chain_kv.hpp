@@ -12,6 +12,7 @@
 #include <algorithm>
 
 #include <b1/session/shared_bytes.hpp>
+#include <eosio/chain/bit.hpp>
 
 namespace b1::chain_kv {
 
@@ -482,9 +483,10 @@ class undo_stack {
    void set_revision(uint64_t revision, bool write_now = true) {
       if (state.undo_stack.size() != 0)
          throw exception("cannot set revision while there is an existing undo stack");
-      if (revision > std::numeric_limits<int64_t>::max())
+      int64_t revision_signed = std::bit_cast<int64_t>(revision);
+      if (revision_signed < 0)
          throw exception("revision to set is too high");
-      if (static_cast<int64_t>(revision) < state.revision)
+      if (revision_signed < state.revision)
          throw exception("revision cannot decrease");
       state.revision = revision;
       if (write_now)

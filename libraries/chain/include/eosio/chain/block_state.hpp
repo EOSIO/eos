@@ -23,12 +23,12 @@ namespace eosio { namespace chain {
                    const protocol_feature_set& pfs,
                    const std::function<void( block_timestamp_type,
                                              const flat_set<digest_type>&,
-                                             const vector<digest_type>& )>& validator,
-                   const signer_callback_type& signer
-                );
+                                             const vector<digest_type>& )>& validator
+                 );
 
       block_state() = default;
 
+      void assign_signatures(std::vector<signature_type>&& sigs, bool wtmsig_enabled);
 
       signed_block_ptr                                    block;
 
@@ -65,7 +65,7 @@ namespace eosio { namespace chain {
    };
 
    using block_state_ptr = std::shared_ptr<block_state>;
-   using branch_type = std::vector<block_state_ptr>;
+   using branch_type = deque<block_state_ptr>;
 
 } } /// namespace eosio::chain
 

@@ -352,22 +352,10 @@ namespace eosio { namespace chain {
                                  const protocol_feature_set& pfs,
                                  const std::function<void( block_timestamp_type,
                                                            const flat_set<digest_type>&,
-                                                           const vector<digest_type>& )>& validator,
-                                 const signer_callback_type& signer
+                                                           const vector<digest_type>& )>& validator
    )&&
    {
-      auto pfa = prev_activated_protocol_features;
-
-      auto result = std::move(*this)._finish_next( h, pfs, validator );
-      result.sign( signer );
-      h.producer_signature = result.header.producer_signature;
-
-      if( !result.additional_signatures.empty() ) {
-         bool wtmsig_enabled = detail::is_builtin_activated(pfa, pfs, builtin_protocol_feature_t::wtmsig_block_signatures);
-         EOS_ASSERT(wtmsig_enabled, producer_schedule_exception, "Block was signed with multiple signatures before WTMsig block signatures are enabled" );
-      }
-
-      return result;
+      return std::move(*this)._finish_next( h, pfs, validator );
    }
 
    /**
@@ -396,9 +384,10 @@ namespace eosio { namespace chain {
    }
 
    void block_header_state::sign( const signer_callback_type& signer ) {
-      auto d = sig_digest();
-      auto sigs = signer( d );
+      assign_signatures(signer( sig_digest() ));
+   }
 
+   void block_header_state::assign_signatures(std::vector<signature_type>&& sigs) {
       EOS_ASSERT(!sigs.empty(), no_block_signatures, "Signer returned no signatures");
       header.producer_signature = sigs.back();
       sigs.pop_back();

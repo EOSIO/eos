@@ -55,7 +55,7 @@ public:
       {
          std::unique_lock<std::mutex> lk(mtx_);
          empty_cv_.wait(lk, [this]() {
-            return (!queue_.empty() && !paused_) || stopped_;
+            return (!queue_.empty() && paused_ <= 0) || stopped_;
          });
          if( stopped_ ) return false;
          t = std::move(queue_.front());
@@ -77,7 +77,7 @@ public:
       {
          std::scoped_lock<std::mutex> lk( mtx_ );
          --paused_;
-         if( paused_ < 0 ) {
+         if( paused_ < -1 ) {
             throw std::logic_error("blocking_queue unpaused when not paused");
          }
       }
@@ -88,6 +88,7 @@ public:
    void stop() {
       mtx_.lock();
       stopped_ = true;
+      queue_.clear();
       mtx_.unlock();
       empty_cv_.notify_all();
       full_cv_.notify_all();
@@ -96,7 +97,7 @@ public:
    /// also checks paused flag because a paused queue indicates processing is on-going or explicitly paused
    bool empty() const {
       std::scoped_lock<std::mutex> lk(mtx_);
-      return queue_.empty() && !paused_;
+      return queue_.empty() && paused_ <= 0;
    }
 
    template<typename Lamba>
@@ -173,6 +174,7 @@ public:
 
    /// separate run() because of shared_from_this
    void run() {
+      if( !running_ ) throw std::logic_error("restart not supported");
       queue_.pause(); // start paused, on_block_start will unpause
       thread_ = std::thread([self=this->shared_from_this()]() {
          fc::set_os_thread_name( "trxq" );
@@ -211,10 +213,15 @@ public:
       });
    }
 
-   /// shutdown queue processing
-   void stop() {
+   /// Stop queue processing
+   void signal_stop() {
       running_ = false;
       queue_.stop();
+   }
+
+   /// shutdown queue processing
+   void stop() {
+      signal_stop();
       if( thread_.joinable() ) {
          thread_.join();
       }
@@ -230,7 +237,8 @@ public:
 
    /// Should be called on each block finalize from app() thread
    void on_block_stop() {
-      if( started_ && ( allow_speculative_execution || prod_plugin_->is_producing_block() ) ) {
+      if( started_ && ( allow_speculative_execution || prod_plugin_->is_producing_block()
+                        || prod_plugin_->paused() ) ) {
          queue_.pause();
       }
    }
@@ -249,8 +257,8 @@ public:
    void push(chain::packed_transaction_ptr trx, uint64_t delivery_tag, producer_plugin::next_function<chain::transaction_trace_ptr> next) {
       fc::microseconds max_trx_cpu_usage = prod_plugin_->get_max_transaction_time();
       auto future = chain::transaction_metadata::start_recover_keys( trx, sig_thread_pool_, chain_id_, max_trx_cpu_usage,
-                                                                     configured_subjective_signature_length_limit_ );
-      q_item i{ .delivery_tag = delivery_tag, .trx = std::move(trx), .fut = std::move(future), .next = std::move(next) };
+                                                                     chain::transaction_metadata::trx_type::input, configured_subjective_signature_length_limit_ );
+      q_item i{ .delivery_tag = delivery_tag, .trx = trx, .fut = std::move(future), .next = std::move(next) };
       if( !queue_.push( std::move( i ) ) ) {
          ilog( "Queue stopped, unable to process transaction ${id}, not ack'ed to AMQP", ("id", trx->id()) );
       }

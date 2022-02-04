@@ -27,7 +27,10 @@ namespace eosio { namespace chain {
       public:
          transaction_checktime_timer() = delete;
          transaction_checktime_timer(const transaction_checktime_timer&) = delete;
-         transaction_checktime_timer(transaction_checktime_timer&&) = default;
+         transaction_checktime_timer(transaction_checktime_timer&&)      = default;
+         transaction_checktime_timer(std::atomic_bool& exp, platform_timer& timer)
+             : expired(exp)
+             , _timer(timer){};
          ~transaction_checktime_timer();
 
          void start(fc::time_point tp);

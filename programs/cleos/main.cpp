@@ -176,6 +176,9 @@ bool   tx_dont_broadcast = false;
 bool   tx_return_packed = false;
 bool   tx_skip_sign = false;
 bool   tx_print_json = false;
+bool   tx_ro_print_json = false;
+bool   tx_rtn_failure_trace = false;
+bool   tx_read_only = false;
 bool   tx_use_old_rpc = false;
 string tx_json_save_file;
 bool   print_request = false;
@@ -208,6 +211,7 @@ packed_transaction::compression_type to_compression_type( tx_compression_type t 
       case tx_compression_type::zlib: return packed_transaction::compression_type::zlib;
       case tx_compression_type::default_compression: return packed_transaction::compression_type::none;
    }
+   __builtin_unreachable();
 }
 
 void add_standard_transaction_options(CLI::App* cmd, string default_permission = "") {
@@ -464,7 +468,20 @@ fc::variant push_transaction( signed_transaction& trx, const std::vector<public_
             return result;
          } else {
             try {
-               return call( send_txn_func, packed_transaction_v0( trx, compression ) );
+               if (tx_read_only)
+               {
+                  tx_ro_print_json = true;
+                  packed_transaction_v0 pt_v0(trx, compression);
+                  name account_name = trx.actions.size() > 0 ? trx.actions[0].account : ""_n;
+                  auto args = fc::mutable_variant_object()
+                          ("account_name", account_name)
+                          ("transaction", pt_v0);
+                  return call(push_ro_txns_func, args);
+               }
+               else {
+                  return call(send_txn_func, packed_transaction_v0(trx, compression));  
+                  EOSC_ASSERT( !tx_rtn_failure_trace, "ERROR: --return-failure-trace can only be used along with --read-only" );
+               }
             } catch( chain::missing_chain_api_plugin_exception& ) {
                std::cerr << "New RPC send_transaction may not be supported. "
                             "Add flag --use-old-rpc to use old RPC push_transaction instead." << std::endl;
@@ -657,7 +674,10 @@ void send_actions(std::vector<chain::action>&& actions, const std::vector<public
       out << jsonstr;
       out.close();
    }
-   if( tx_print_json ) {
+   if( tx_print_json || tx_ro_print_json) {
+      if (tx_ro_print_json){
+          tx_ro_print_json = false;
+      }
       if (jsonstr.length() == 0) {
          jsonstr = fc::json::to_pretty_string( result );
       }
@@ -808,6 +828,7 @@ authority parse_json_authority_or_key(const std::string& authorityJsonOrFile) {
       } EOS_RETHROW_EXCEPTIONS(public_key_type_exception, "Invalid public key: ${public_key}", ("public_key", authorityJsonOrFile))
    } else {
       auto result = parse_json_authority(authorityJsonOrFile);
+      result.sort_fields();
       EOS_ASSERT( eosio::chain::validate(result), authority_type_exception, "Authority failed validation! ensure that keys, accounts, and waits are sorted and that the threshold is valid and satisfiable!");
       return result;
    }
@@ -3061,7 +3082,6 @@ int main( int argc, char** argv ) {
       std::cout << fc::json::to_pretty_string(call(get_key_accounts_func, arg)) << std::endl;
    });
 
-
    // get servants
    string controllingAccount;
    auto getServants = get->add_subcommand("servants", localized("Retrieve accounts which are servants of a given account "));
@@ -3071,7 +3091,7 @@ int main( int argc, char** argv ) {
       std::cout << fc::json::to_pretty_string(call(get_controlled_accounts_func, arg)) << std::endl;
    });
 
-   // get transaction
+   // get transaction (history api plugin)
    string transaction_id_str;
    uint32_t block_num_hint = 0;
    auto getTransaction = get->add_subcommand("transaction", localized("Retrieve a transaction from the blockchain"));
@@ -3083,6 +3103,24 @@ int main( int argc, char** argv ) {
          arg = arg("block_num_hint", block_num_hint);
       }
       std::cout << fc::json::to_pretty_string(call(get_transaction_func, arg)) << std::endl;
+   });
+
+   // get transaction_trace (trace api plugin)
+   auto getTransactionTrace = get->add_subcommand("transaction_trace", localized("Retrieve a transaction from trace logs"));
+   getTransactionTrace->add_option("id", transaction_id_str, localized("ID of the transaction to retrieve"))->required();
+   getTransactionTrace->callback([&] {
+      auto arg= fc::mutable_variant_object( "id", transaction_id_str);
+      std::cout << fc::json::to_pretty_string(call(get_transaction_trace_func, arg)) << std::endl;
+   });
+
+   // get block_trace
+   string blockNum;
+   auto getBlockTrace = get->add_subcommand("block_trace", localized("Retrieve a block from trace logs"));
+   getBlockTrace->add_option("block", blockNum, localized("The number of the block to retrieve"))->required();
+
+   getBlockTrace->callback([&] {
+      auto arg= fc::mutable_variant_object( "block_num", blockNum);
+      std::cout << fc::json::to_pretty_string(call(get_block_trace_func, arg)) << std::endl;
    });
 
    // get actions
@@ -3182,7 +3220,7 @@ int main( int argc, char** argv ) {
       }
    });
 
-   auto getSchedule = get_schedule_subcommand{get};
+   get_schedule_subcommand{get};
    auto getTransactionId = get_transaction_id_subcommand{get};
 
    auto getCmd = get->add_subcommand("best", localized("Display message based on account name"));
@@ -3913,6 +3951,8 @@ int main( int argc, char** argv ) {
    trxSubcommand->add_option("transaction", trx_to_push, localized("The JSON string or filename defining the transaction to push"))->required();
    trxSubcommand->add_option("--signature", extra_sig_opt_callback, localized("append a signature to the transaction; repeat this option to append multiple signatures"))->type_size(0, 1000);
    add_standard_transaction_options_plus_signing(trxSubcommand);
+   trxSubcommand->add_flag("-o,--read-only", tx_read_only, localized("Specify a transaction is read-only"));
+   trxSubcommand->add_flag("-t,--return-failure-trace", tx_rtn_failure_trace, localized("Return partial traces on failed transactions, use it along with --read-only)"));
 
    trxSubcommand->callback([&] {
       fc::variant trx_var = json_from_file_or_string(trx_to_push);
@@ -3938,7 +3978,6 @@ int main( int argc, char** argv ) {
       auto trxs_result = call(push_txns_func, trx_var);
       std::cout << fc::json::to_pretty_string(trxs_result) << std::endl;
    });
-
 
    // multisig subcommand
    auto msig = app.add_subcommand("multisig", localized("Multisig contract commands"));

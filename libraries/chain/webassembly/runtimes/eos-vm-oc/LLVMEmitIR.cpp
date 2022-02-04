@@ -148,9 +148,9 @@ namespace LLVMJIT
 		, llvmModule(new llvm::Module("",context))
 		{
 			auto zeroAsMetadata = llvm::ConstantAsMetadata::get(emitLiteral(I32(0)));
-			auto i32MaxAsMetadata = llvm::ConstantAsMetadata::get(emitLiteral(I32(INT32_MAX)));
-			likelyFalseBranchWeights = llvm::MDTuple::getDistinct(context,{llvm::MDString::get(context,"branch_weights"),zeroAsMetadata,i32MaxAsMetadata});
-			likelyTrueBranchWeights = llvm::MDTuple::getDistinct(context,{llvm::MDString::get(context,"branch_weights"),i32MaxAsMetadata,zeroAsMetadata});
+         auto i32MaxAsMetadata = llvm::ConstantAsMetadata::get(emitLiteral(I32(INT32_MAX)));
+			likelyFalseBranchWeights = llvm::MDTuple::getDistinct(context,std::array<llvm::Metadata*, 3>{llvm::MDString::get(context,"branch_weights"),zeroAsMetadata,i32MaxAsMetadata});
+         likelyTrueBranchWeights = llvm::MDTuple::getDistinct(context,std::array<llvm::Metadata*, 3>{llvm::MDString::get(context,"branch_weights"),i32MaxAsMetadata,zeroAsMetadata});
 
 		}
 		llvm::Module* emit();
@@ -1096,9 +1096,9 @@ namespace LLVMJIT
 		EMIT_INT_BINARY_OP(ge_u, coerceBoolToI32(irBuilder.CreateICmpUGE(left, right)))
 #endif
 
-		EMIT_INT_UNARY_OP(clz,createCall(getLLVMIntrinsic({operand->getType()},llvm::Intrinsic::ctlz),llvm::ArrayRef<llvm::Value*>({operand,emitLiteral(false)})))
-		EMIT_INT_UNARY_OP(ctz,createCall(getLLVMIntrinsic({operand->getType()},llvm::Intrinsic::cttz),llvm::ArrayRef<llvm::Value*>({operand,emitLiteral(false)})))
-		EMIT_INT_UNARY_OP(popcnt,createCall(getLLVMIntrinsic({operand->getType()},llvm::Intrinsic::ctpop),llvm::ArrayRef<llvm::Value*>({operand})))
+		EMIT_INT_UNARY_OP(clz,createCall(getLLVMIntrinsic({operand->getType()},llvm::Intrinsic::ctlz),std::array<llvm::Value*, 2>{operand,emitLiteral(false)}))
+		EMIT_INT_UNARY_OP(ctz,createCall(getLLVMIntrinsic({operand->getType()},llvm::Intrinsic::cttz),std::array<llvm::Value*, 2>{operand,emitLiteral(false)}))
+		EMIT_INT_UNARY_OP(popcnt,createCall(getLLVMIntrinsic({operand->getType()},llvm::Intrinsic::ctpop),std::array<llvm::Value*, 1>({operand})))
 		EMIT_INT_UNARY_OP(eqz,coerceBoolToI32(irBuilder.CreateICmpEQ(operand,typedZeroConstants[(Uptr)type])))
 
 		//
@@ -1109,11 +1109,11 @@ namespace LLVMJIT
 		EMIT_FP_BINARY_OP(sub,irBuilder.CreateFSub(left,right))
 		EMIT_FP_BINARY_OP(mul,irBuilder.CreateFMul(left,right))
 		EMIT_FP_BINARY_OP(div,irBuilder.CreateFDiv(left,right))
-		EMIT_FP_BINARY_OP(copysign,createCall(getLLVMIntrinsic({left->getType()},llvm::Intrinsic::copysign),llvm::ArrayRef<llvm::Value*>({left,right})))
+		EMIT_FP_BINARY_OP(copysign,createCall(getLLVMIntrinsic({left->getType()},llvm::Intrinsic::copysign),std::array<llvm::Value*,2>({left,right})))
 
 		EMIT_FP_UNARY_OP(neg,irBuilder.CreateFNeg(operand))
-		EMIT_FP_UNARY_OP(abs,createCall(getLLVMIntrinsic({operand->getType()},llvm::Intrinsic::fabs),llvm::ArrayRef<llvm::Value*>({operand})))
-		EMIT_FP_UNARY_OP(sqrt,createCall(getLLVMIntrinsic({operand->getType()},llvm::Intrinsic::sqrt),llvm::ArrayRef<llvm::Value*>({operand})))
+		EMIT_FP_UNARY_OP(abs,createCall(getLLVMIntrinsic({operand->getType()},llvm::Intrinsic::fabs),std::array<llvm::Value*, 1>({operand})))
+		EMIT_FP_UNARY_OP(sqrt,createCall(getLLVMIntrinsic({operand->getType()},llvm::Intrinsic::sqrt),std::array<llvm::Value*, 1>({operand})))
 
 		EMIT_FP_BINARY_OP(eq,coerceBoolToI32(irBuilder.CreateFCmpOEQ(left,right)))
 		EMIT_FP_BINARY_OP(ne,coerceBoolToI32(irBuilder.CreateFCmpUNE(left,right)))
@@ -1277,9 +1277,9 @@ namespace LLVMJIT
 			        } else {
 			                auto baseType = asLLVMType(global.type.valueType)->getPointerTo()->getPointerTo(256);
 				        auto basePtr = emitLiteralPointer((void*)OFFSET_OF_CONTROL_BLOCK_MEMBER(globals), baseType);
-				        auto structTy = llvm::StructType::get(context, {baseType, llvmI64Type});
+				        auto structTy = llvm::StructType::get(context, std::array<llvm::Type*, 2>{baseType, llvmI64Type});
 				        I64 typeSize = IR::getTypeBitWidth(global.type.valueType)/8;
-				        globals.push_back(llvm::ConstantStruct::get(structTy, {basePtr, emitLiteral((I64)current_prologue/typeSize)}));
+				        globals.push_back(llvm::ConstantStruct::get(structTy, std::array<llvm::Constant*, 2>{basePtr, emitLiteral((I64)current_prologue/typeSize)}));
 			        }
 				current_prologue -= 8;
 			}
@@ -1295,7 +1295,7 @@ namespace LLVMJIT
 		}
 
 		if(module.tables.size()) {
-			auto tableElementType = llvm::StructType::get(context,{llvmI8PtrType, llvmI64Type});
+			auto tableElementType = llvm::StructType::get(context,std::array<llvm::Type*, 2>{llvmI8PtrType, llvmI64Type});
 			llvm::Type* tableArrayTy = llvm::ArrayType::get(tableElementType, module.tables.defs[0].type.size.min);
 			defaultTablePointer = new llvm::GlobalVariable(*llvmModule, tableArrayTy, true, llvm::GlobalValue::ExternalLinkage, llvm::ConstantAggregateZero::get(tableArrayTy), getTableSymbolName());
 			defaultTablePointer->setVisibility(llvm::GlobalValue::ProtectedVisibility); // Don't use the GOT.

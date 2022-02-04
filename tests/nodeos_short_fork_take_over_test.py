@@ -149,6 +149,7 @@ try:
     specificExtraNodeosArgs={}
     # producer nodes will be mapped to 0 through totalProducerNodes-1, so the number totalProducerNodes will be the non-producing node
     specificExtraNodeosArgs[totalProducerNodes]="--plugin eosio::test_control_api_plugin"
+    traceNodeosArgs = " --plugin eosio::trace_api_plugin --trace-no-abis "
 
 
     # ***   setup topogrophy   ***
@@ -156,7 +157,7 @@ try:
     # "bridge" shape connects defprocera through defproducerk (in node0) to each other and defproducerl through defproduceru (in node01)
     # and the only connection between those 2 groups is through the bridge node
     if cluster.launch(prodCount=2, topo="bridge", pnodes=totalProducerNodes,
-                      totalNodes=totalNodes, totalProducers=totalProducers,
+                      totalNodes=totalNodes, totalProducers=totalProducers, extraNodeosArgs=traceNodeosArgs,
                       useBiosBootFile=False, specificExtraNodeosArgs=specificExtraNodeosArgs, onlySetProds=True) is False:
         Utils.cmdError("launcher")
         Utils.errorExit("Failed to stand up eos cluster.")

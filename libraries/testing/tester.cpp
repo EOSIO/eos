@@ -432,17 +432,16 @@ namespace eosio { namespace testing {
          }
       });
 
-      control->finalize_block( [&]( digest_type d ) {
-         std::vector<signature_type> result;
-         result.reserve(signing_keys.size());
-         for (const auto& k: signing_keys)
-             result.emplace_back(k.sign(d));
+      control->finalize_block([&](digest_type d) {
+         std::vector<signature_type> sigs;
+         sigs.reserve(signing_keys.size());
+         std::transform(signing_keys.begin(), signing_keys.end(), std::back_inserter(sigs),
+                        [&d](const auto& k) { return k.sign(d); });
+         return sigs;
+      }).get()(); 
 
-         return result;
-      } );
-
-      control->commit_block();
-      last_produced_block[control->head_block_state()->header.producer] = control->head_block_state()->id;
+      last_produced_block[control->head_block_state()->header.producer] =
+          control->head_block_state()->id;
 
       return control->head_block_state()->block;
    }
@@ -574,7 +573,7 @@ namespace eosio { namespace testing {
       auto time_limit = deadline == fc::time_point::maximum() ?
             fc::microseconds::maximum() :
             fc::microseconds( deadline - fc::time_point::now() );
-      auto fut = transaction_metadata::start_recover_keys( ptrx, control->get_thread_pool(), control->get_chain_id(), time_limit );
+      auto fut = transaction_metadata::start_recover_keys( ptrx, control->get_thread_pool(), control->get_chain_id(), time_limit, transaction_metadata::trx_type::input );
       auto r = control->push_transaction( fut.get(), deadline, billed_cpu_time_us, billed_cpu_time_us > 0, 0 );
       if( r->except_ptr ) std::rethrow_exception( r->except_ptr );
       if( r->except ) throw *r->except;
@@ -599,7 +598,7 @@ namespace eosio { namespace testing {
             fc::microseconds::maximum() :
             fc::microseconds( deadline - fc::time_point::now() );
       auto ptrx = std::make_shared<packed_transaction>( signed_transaction(trx), true, c );
-      auto fut = transaction_metadata::start_recover_keys( std::move( ptrx ), control->get_thread_pool(), control->get_chain_id(), time_limit );
+      auto fut = transaction_metadata::start_recover_keys( std::move( ptrx ), control->get_thread_pool(), control->get_chain_id(), time_limit, transaction_metadata::trx_type::input );
       auto r = control->push_transaction( fut.get(), deadline, billed_cpu_time_us, billed_cpu_time_us > 0, 0 );
       if (no_throw) return r;
       if( r->except_ptr ) std::rethrow_exception( r->except_ptr );

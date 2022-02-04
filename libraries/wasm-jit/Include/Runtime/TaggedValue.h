@@ -34,7 +34,7 @@ namespace Runtime
 		#if ENABLE_SIMD_PROTOTYPE
 		UntaggedValue(IR::V128 inV128) { v128 = inV128; }
 		#endif
-		UntaggedValue() {memset(this,0,sizeof(*this));}
+		UntaggedValue() {memset((void*)this,0,sizeof(*this));}
 	};
 
 	// A boxed value: may hold any value that can be passed to a function invoked through the runtime.

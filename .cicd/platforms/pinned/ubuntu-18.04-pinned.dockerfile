@@ -15,7 +15,7 @@ RUN apt-get update && \
 # install request and requests_unixsocket module
 RUN pip3 install requests requests_unixsocket
 # build cmake
-RUN curl -LO https://github.com/Kitware/CMake/releases/download/v3.16.2/cmake-3.16.2.tar.gz && \
+RUN curl -fsSLO https://github.com/Kitware/CMake/releases/download/v3.16.2/cmake-3.16.2.tar.gz && \
     tar -xzf cmake-3.16.2.tar.gz && \
     cd cmake-3.16.2 && \
     ./bootstrap --prefix=/usr/local && \
@@ -42,10 +42,12 @@ RUN git clone --depth 1 --single-branch --branch llvmorg-10.0.0 https://github.c
     make install && \
     cd / && \
     rm -rf /llvm
-# build boost
-RUN curl -LO https://boostorg.jfrog.io/artifactory/main/release/1.72.0/source/boost_1_72_0.tar.bz2 && \
+# download Boost, apply fix for CVE-2016-9840 and build
+ENV BEAST_FIX_URL https://raw.githubusercontent.com/boostorg/beast/3fd090af3b7e69ed7871c64a4b4b86fae45e98da/include/boost/beast/zlib/detail/inflate_stream.ipp
+RUN curl -fsSLO https://boostorg.jfrog.io/artifactory/main/release/1.72.0/source/boost_1_72_0.tar.bz2 && \
     tar -xjf boost_1_72_0.tar.bz2 && \
     cd boost_1_72_0 && \
+    curl -fsSLo boost/beast/zlib/detail/inflate_stream.ipp "${BEAST_FIX_URL}" && \
     ./bootstrap.sh --with-toolset=clang --prefix=/usr/local && \
     ./b2 toolset=clang cxxflags='-stdlib=libc++ -D__STRICT_ANSI__ -nostdinc++ -I/usr/local/include/c++/v1 -D_FORTIFY_SOURCE=2 -fstack-protector-strong -fpie' linkflags='-stdlib=libc++ -pie' link=static threading=multi --with-iostreams --with-date_time --with-filesystem --with-system --with-program_options --with-chrono --with-test -q -j$(nproc) install && \
     cd / && \
@@ -54,7 +56,7 @@ RUN curl -LO https://boostorg.jfrog.io/artifactory/main/release/1.72.0/source/bo
 # TPM support; this is a little tricky because we'd like nodeos static linked with it, but the tpm2-tools needed
 # for unit testing will need to be dynamic linked
 
-RUN curl -LO https://github.com/tpm2-software/tpm2-tss/releases/download/3.0.1/tpm2-tss-3.0.1.tar.gz
+RUN curl -fsSLO https://github.com/tpm2-software/tpm2-tss/releases/download/3.0.1/tpm2-tss-3.0.1.tar.gz
 
 # build static tpm2-tss; this needs some "patching" by way of removing some duplicate symbols at end of tcti impls
 RUN tar xf tpm2-tss-3.0.1.tar.gz && \
@@ -78,12 +80,13 @@ RUN tar xf tpm2-tss-3.0.1.tar.gz && \
     rm -rf tpm2-tss-3.0.1*
 
 # build TPM components used in unitests; tpm2-tools first
-RUN curl -L https://github.com/tpm2-software/tpm2-tools/releases/download/4.3.0/tpm2-tools-4.3.0.tar.gz | tar zx && \
+RUN curl -fsSLO https://github.com/tpm2-software/tpm2-tools/releases/download/4.3.0/tpm2-tools-4.3.0.tar.gz && \
+    tar zxf tpm2-tools-4.3.0.tar.gz && \
     cd tpm2-tools-4.3.0 && \
     ./configure && \
     make -j$(nproc) install && \
     cd .. && \
-    rm -rf tpm2-tools-4.3.0
+    rm -rf tpm2-tools-4.3.0*
 # build libtpms
 RUN git clone -b v0.7.3 https://github.com/stefanberger/libtpms && \
     cd libtpms && \
@@ -101,22 +104,10 @@ RUN git clone -b v0.5.0 https://github.com/stefanberger/swtpm && \
     cd .. && \
     rm -rf swtpm
 RUN ldconfig
-# install libpq, postgresql-13
-ENV TZ=America/Chicago
-RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone && \
-    echo "deb http://apt.postgresql.org/pub/repos/apt bionic-pgdg main" > /etc/apt/sources.list.d/pgdg.list && \
-    curl -sL https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add - && \
-    apt-get update && apt-get -y install libpq-dev postgresql-13 && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
-#build libpqxx
-RUN curl -L https://github.com/jtv/libpqxx/archive/7.2.1.tar.gz | tar zxvf - && \
-    cd  libpqxx-7.2.1  && \
-    cmake -DCMAKE_TOOLCHAIN_FILE=/tmp/clang.cmake -DSKIP_BUILD_TEST=ON -DPostgreSQL_TYPE_INCLUDE_DIR=/usr/include/postgresql -DCMAKE_BUILD_TYPE=Release -S . -B build && \
-    cmake --build build && cmake --install build && \
-    cd .. && rm -rf libpqxx-7.2.1
 # install nvm
-RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.0/install.sh | bash
+RUN curl -fsSLO https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.0/install.sh && \
+    bash install.sh && \
+    rm install.sh
 # load nvm in non-interactive shells
 RUN cp ~/.bashrc ~/.bashrc.bak && \
     cat ~/.bashrc.bak | tail -3 > ~/.bashrc && \
@@ -125,7 +116,10 @@ RUN cp ~/.bashrc ~/.bashrc.bak && \
 # install node 10
 RUN bash -c '. ~/.bashrc; nvm install --lts=dubnium' && \
     ln -s "/root/.nvm/versions/node/$(ls -p /root/.nvm/versions/node | sort -Vr | head -1)bin/node" /usr/local/bin/node
-RUN curl -sL https://deb.nodesource.com/setup_13.x | sudo -E bash -
-RUN apt-get update && apt-get install -y nodejs && \
+RUN curl -fsSLO https://deb.nodesource.com/setup_13.x && \
+    bash setup_13.x && \
+    rm setup_13.x
+RUN apt-get update && \
+    apt-get install -y nodejs && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*

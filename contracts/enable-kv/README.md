@@ -7,7 +7,7 @@ This README illustrates the steps for usage of enable-kv.sh script with kv_map a
 ## Steps
 Bring up nodeos in a different terminal
 1. export PATH=$EOS_2_1_0/build/bin:$PATH
-1. nodeos -e -p eosio --plugin eosio::producer_plugin --plugin eosio::producer_api_plugin --plugin eosio::chain_api_plugin --plugin eosio::http_plugin --plugin eosio::history_plugin --plugin eosio::history_api_plugin --filter-on=* --access-control-allow-origin=* --contracts-console --http-validate-host=false --verbose-http-errors --max-transaction-time=1000 --backing-store chainbase --data-dir=datadir
+1. nodeos -e -p eosio --plugin eosio::producer_plugin --plugin eosio::producer_api_plugin --plugin eosio::chain_api_plugin --plugin eosio::http_plugin --access-control-allow-origin=* --contracts-console --http-validate-host=false --verbose-http-errors --max-transaction-time=1000 --backing-store chainbase --data-dir=datadir
 
 In the first terminal
 1. $EOS_2_1_0/contracts/enable-kv/enable-kv.sh -c $EOS_2_1_0/build/contracts/contracts/

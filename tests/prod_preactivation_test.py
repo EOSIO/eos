@@ -62,9 +62,10 @@ try:
         cluster.killall(allInstances=killAll)
         cluster.cleanup()
         Print("Stand up cluster")
+        traceNodeosArgs=" --plugin eosio::trace_api_plugin --trace-no-abis "
         if cluster.launch(pnodes=prodCount, totalNodes=prodCount, prodCount=1, onlyBios=onlyBios,
                          dontBootstrap=dontBootstrap, useBiosBootFile=False,
-                         pfSetupPolicy=PFSetupPolicy.NONE, extraNodeosArgs=" --plugin eosio::producer_api_plugin  --http-max-response-time-ms 990000 ") is False:
+                         pfSetupPolicy=PFSetupPolicy.NONE, extraNodeosArgs=" --plugin eosio::producer_api_plugin  --http-max-response-time-ms 990000 " + traceNodeosArgs) is False:
             cmdError("launcher")
             errorExit("Failed to stand up eos cluster.")
 

@@ -8,12 +8,11 @@ class pending_snapshot {
 public:
    using next_t = producer_plugin::next_function<producer_plugin::snapshot_information>;
 
-   pending_snapshot(const chain::block_id_type& block_id, next_t& next, std::string pending_path, std::string final_path, blockvault::block_vault_interface* bv)
+   pending_snapshot(const chain::block_id_type& block_id, next_t& next, std::string pending_path, std::string final_path)
    : block_id(block_id)
    , next(next)
    , pending_path(pending_path)
    , final_path(final_path)
-   , blockvault(bv)
    {}
 
    uint32_t get_height() const {
@@ -34,11 +33,10 @@ public:
 
    producer_plugin::snapshot_information finalize( const chain::controller& chain ) const;
 
-   chain::block_id_type               block_id;
-   next_t                             next;
-   std::string                        pending_path;
-   std::string                        final_path;
-   blockvault::block_vault_interface* blockvault;
+   chain::block_id_type     block_id;
+   next_t                   next;
+   std::string              pending_path;
+   std::string              final_path;
 };
 
 } // namespace eosio

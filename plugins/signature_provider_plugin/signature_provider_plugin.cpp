@@ -5,6 +5,8 @@
 #include <fc/network/url.hpp>
 
 #include <boost/algorithm/string.hpp>
+#include <thread>
+#include <chrono>
 
 #ifdef __APPLE__
 #include <eosio/se-helpers/se-helpers.hpp>
@@ -19,12 +21,18 @@ namespace eosio {
 class signature_provider_plugin_impl {
    public:
       fc::microseconds  _keosd_provider_timeout_us;
+      std::chrono::microseconds _signing_delay_ms;
 
       signature_provider_plugin::signature_provider_type
       make_key_signature_provider(const chain::private_key_type& key) const {
-         return [key]( const chain::digest_type& digest ) {
-            return key.sign(digest);
-         };
+         if (_signing_delay_ms.count() == 0) {
+            return [key](const chain::digest_type& digest) { return key.sign(digest); };
+         } else {
+            return [key, delay = _signing_delay_ms](const chain::digest_type& digest) {
+               std::this_thread::sleep_for(delay);
+               return key.sign(digest);
+            };
+         }
       }
 
 #ifdef __APPLE__
@@ -90,16 +98,17 @@ signature_provider_plugin::signature_provider_plugin():my(new signature_provider
 signature_provider_plugin::~signature_provider_plugin(){}
 
 void signature_provider_plugin::set_program_options(options_description&, options_description& cfg) {
-   cfg.add_options()
-         ("keosd-provider-timeout", boost::program_options::value<int32_t>()->default_value(5),
-          "Limits the maximum time (in milliseconds) that is allowed for sending requests to a keosd provider for signing")
-         ;
+   cfg.add_options()("keosd-provider-timeout", boost::program_options::value<int32_t>()->default_value(5),
+                     "Limits the maximum time (in milliseconds) that is allowed for sending requests to a keosd "
+                     "provider for signing")
+                    ("signing-delay", boost::program_options::value<uint32_t>()->default_value(0),
+                     "milliseconds to delay the signature signing when using default signature provider");
 }
 
 const char* const signature_provider_plugin::signature_provider_help_text() const {
    return "Key=Value pairs in the form <public-key>=<provider-spec>\n"
           "Where:\n"
-          "   <public-key>    \tis a string form of a vaild EOSIO public key\n\n"
+          "   <public-key>    \tis a string form of a valid EOSIO public key\n\n"
           "   <provider-spec> \tis a string in the form <provider-type>:<data>\n\n"
           "   <provider-type> \tis one of the types below\n\n"
           "   KEY:<data>      \tis a string form of a valid EOSIO private key which maps to the provided public key\n\n"
@@ -119,7 +128,8 @@ const char* const signature_provider_plugin::signature_provider_help_text() cons
 }
 
 void signature_provider_plugin::plugin_initialize(const variables_map& options) {
-   my->_keosd_provider_timeout_us = fc::milliseconds( options.at("keosd-provider-timeout").as<int32_t>() );
+   my->_keosd_provider_timeout_us = fc::milliseconds(options.at("keosd-provider-timeout").as<int32_t>());
+   my->_signing_delay_ms = std::chrono::milliseconds( options.at("signing-delay").as<uint32_t>() );
 }
 
 std::pair<chain::public_key_type,signature_provider_plugin::signature_provider_type>
