@@ -345,12 +345,12 @@ namespace webassembly {
          * @ingroup crypto
          * @param digest - digest of the message that was signed.
          * @param sig - signature.
-         * @param[out] pub - pointer to output buffer for the public key result.
+         * @param[inout] pub - pointer to output buffer for the public key result.
          * @param[inout] publen - pointer to an integer initially set to the expected size of output, and overwritten by the written size
          *
          * @return 0 when success, or error code
          */
-         int32_t recover_key_safe(legacy_ptr<const fc::sha256> digest, legacy_span<const char> sig, legacy_ptr<char> pub, legacy_ptr<uint32_t> publen) const;
+         int32_t recover_key_safe(span<const char> digest, span<const char> sig, span<char> pub, uint32_t* publen) const;
 
          /**
           * Tests if the sha256 hash generated from data matches the provided digest.

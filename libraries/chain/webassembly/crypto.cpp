@@ -66,10 +66,10 @@ namespace eosio { namespace chain { namespace webassembly {
       }
    }
 
-   int32_t interface::recover_key_safe( legacy_ptr<const fc::sha256> digest,
-                                        legacy_span<const char> sig,
-                                        legacy_ptr<char> pub,
-                                        legacy_ptr<uint32_t> publen) const {
+   int32_t interface::recover_key_safe( span<const char> digest,
+                                        span<const char> sig,
+                                        span<char> pub,
+                                        uint32_t* publen) const {
       using error_code = eosio::chain::webassembly::error_codes::recover_key_safe;
 
       try {
@@ -77,7 +77,7 @@ namespace eosio { namespace chain { namespace webassembly {
          try {
             datastream<const char*> ds( sig.data(), sig.size() );
             fc::raw::unpack(ds, s);
-         } catch (...) {
+         } catch ( fc::exception& ) {
             return error_code::invalid_signature_format;
          }
 
@@ -89,22 +89,29 @@ namespace eosio { namespace chain { namespace webassembly {
             EOS_ASSERT(s.variable_size() <= context.control.configured_subjective_signature_length_limit(),
                        sig_variable_size_limit_exception, "signature variable length component size greater than subjective maximum");
 
+         fc::sha256 _digest;
+         try {
+           _digest = fc::sha256(digest.data(), digest.size());
+         } catch ( fc::exception& ) {
+            return error_code::invalid_message_digest;
+         }
+
          fc::crypto::public_key recovered;
          try {
-            recovered = fc::crypto::public_key(s, *digest, false);
-         } catch (...) {
+            recovered = fc::crypto::public_key(s, _digest, false);
+         } catch ( fc::exception& ) {
             return error_code::invalid_signature_data;
          }
 
          auto packed_pubkey = fc::raw::pack(recovered);
-         if( *publen.get() < packed_pubkey.size() ) {
+         if( pub.size() < packed_pubkey.size() ) {
             return error_code::insufficient_output_buffer;
          }
-         std::memcpy(pub.get(), packed_pubkey.data(), packed_pubkey.size());
-         *publen.get() = packed_pubkey.size();
+         std::memcpy(pub.data(), packed_pubkey.data(), packed_pubkey.size());
+         *publen = packed_pubkey.size();
       } catch( const eosio::chain::sig_variable_size_limit_exception& ) {
          throw;
-      } catch (...) {
+      } catch ( fc::exception& ) {
          return error_code::undefined;
       }
       return error_code::none;
