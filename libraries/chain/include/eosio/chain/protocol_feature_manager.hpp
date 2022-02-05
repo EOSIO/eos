@@ -29,7 +29,8 @@ enum class builtin_protocol_feature_t : uint32_t {
    blockchain_parameters,
    security_group,
    resource_payer,
-   get_wasm_parameters_packed_fix
+   get_wasm_parameters_packed_fix,
+   recover_key_safe,
 };
 
 struct protocol_feature_subjective_restrictions {

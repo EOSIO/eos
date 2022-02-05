@@ -276,7 +276,8 @@ constexpr auto intrinsic_table = boost::hana::make_tuple(
    "env.add_security_group_participants"_s,
    "env.remove_security_group_participants"_s,
    "env.in_active_security_group"_s,
-   "env.get_active_security_group"_s,	
+   "env.get_active_security_group"_s,
+   "env.recover_key_safe"_s,
    // the following should always be in the end of the tuple
    "env.push_data"_s,
    "env.print_time_us"_s,
