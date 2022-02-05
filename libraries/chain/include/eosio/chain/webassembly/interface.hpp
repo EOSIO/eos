@@ -346,7 +346,7 @@ namespace webassembly {
          * @param digest - digest of the message that was signed.
          * @param sig - signature.
          * @param[inout] pub - pointer to output buffer for the public key result.
-         * @param[inout] publen - pointer to an integer initially set to the expected size of output, and overwritten by the written size
+         * @param[out] publen - pointer to the size of output buffer of the public key pub. This value can be used when error_code::insufficient_output_buffer is returned to determine required size of pub.
          *
          * @return 0 when success, or error code
          */
