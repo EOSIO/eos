@@ -34,8 +34,6 @@ namespace eosio { namespace chain {
       class resource_limits_manager;
    };
 
-   class combined_database;
-
    struct controller_impl;
    using chainbase::database;
    using chainbase::pinnable_mapped_file;
@@ -52,6 +50,13 @@ namespace eosio { namespace chain {
    using trx_meta_cache_lookup = std::function<transaction_metadata_ptr( const transaction_id_type&)>;
 
    class fork_database;
+
+   struct kv_context;
+   struct kv_resource_manager;
+   struct kv_database_config;
+   namespace db_util{
+      std::unique_ptr<kv_context> create_kv_context(const controller&, name, const kv_resource_manager&, const kv_database_config&);
+   };
 
    enum class db_read_mode {
       SPECULATIVE,
@@ -83,12 +88,8 @@ namespace eosio { namespace chain {
             uint16_t                 thread_pool_size           = chain::config::default_controller_thread_pool_size;
             uint16_t                 max_retained_block_files   = chain::config::default_max_retained_block_files;
             uint64_t                 blocks_log_stride          = chain::config::default_blocks_log_stride;
+            /* backing_store is deprecated and remains for backward compatibility only */
             backing_store_type       backing_store              = backing_store_type::CHAINBASE;
-            uint16_t                 persistent_storage_num_threads = 0; // Will be set to number of cores dynamically or by user configuration;
-            int                      persistent_storage_max_num_files = chain::config::default_persistent_storage_max_num_files;
-            uint64_t                 persistent_storage_write_buffer_size = chain::config::default_persistent_storage_write_buffer_size;
-            uint64_t                 persistent_storage_bytes_per_sync = chain::config::default_persistent_storage_bytes_per_sync;
-            uint32_t                 persistent_storage_mbytes_batch = chain::config::default_persistent_storage_mbytes_batch;
             fc::microseconds         abi_serializer_max_time_us = fc::microseconds(chain::config::default_abi_serializer_max_time_us);
             uint32_t   max_nonprivileged_inline_action_size =  chain::config::default_max_nonprivileged_inline_action_size;
             bool                     read_only                  = false;
@@ -395,12 +396,11 @@ namespace eosio { namespace chain {
          void replace_producer_keys( const public_key_type& key );
          void replace_account_keys( name account, name permission, const public_key_type& key );
 
-         eosio::chain::combined_database& kv_db()const;
-
       private:
          friend class apply_context;
          friend class transaction_context;
          friend struct ::test_chain;
+         friend std::unique_ptr<kv_context> db_util::create_kv_context(const controller&, name,const kv_resource_manager&, const kv_database_config&);
 
          chainbase::database& mutable_db()const;
 

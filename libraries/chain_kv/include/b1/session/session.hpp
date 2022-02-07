@@ -23,7 +23,7 @@ overloaded(Ts...) -> overloaded<Ts...>;
 /// \brief Defines a session for reading/write data to a cache and persistent data store.
 /// \tparam Parent The parent type of this session
 /// \remarks Specializations of this type can be created to create new parent types that
-/// modify a different data store.  For an example refer to the rocks_session type in this folder.
+/// modify a different data store.
 template <typename Parent>
 class session {
  public:

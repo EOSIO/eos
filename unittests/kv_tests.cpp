@@ -604,24 +604,23 @@ class kv_tester : public tester {
    void test_max_iterators() {
       BOOST_TEST_REQUIRE(set_kv_limits(1024, 1024, 7) == "");
       // individual limits
-      BOOST_TEST(iterlimit({{"eosio.kvram"_n, 7, false}}) == "");
-      BOOST_TEST(iterlimit({{"eosio.kvram"_n, 2000, false}}) == "Too many iterators");
+      BOOST_TEST(iterlimit({{"test"_n, 7, false}}) == "");
+      BOOST_TEST(iterlimit({{"test"_n, 2000, false}}) == "Too many iterators");
       // erase iterators and create more
-      BOOST_TEST(iterlimit({{"eosio.kvram"_n, 6, false},
-                            {"eosio.kvram"_n, 2, true},
-                            {"eosio.kvram"_n, 3, false}}) == "");
-      BOOST_TEST(iterlimit({{"eosio.kvram"_n, 6, false},
-                            {"eosio.kvram"_n, 2, true},
-                            {"eosio.kvram"_n, 4, false}}) == "Too many iterators");
+      BOOST_TEST(iterlimit({{"test"_n, 6, false},
+                            {"test"_n, 2, true},
+                            {"test"_n, 3, false}}) == "");
+      BOOST_TEST(iterlimit({{"test"_n, 6, false},
+                            {"test"_n, 2, true},
+                            {"test"_n, 4, false}}) == "Too many iterators");
       // fallback limit - testing this is impractical because it uses too much memory
       // This many iterators would consume at least 400 GiB.
-      // BOOST_TEST_REQUIRE(set_kv_limits("eosio.kvram"_n, 1024, 1024, 0xFFFFFFFF) == "");
-      // BOOST_TEST_REQUIRE(set_kv_limits("eosio.kvram"_n, 1024, 1024, 0xFFFFFFFF) == "");
-      // BOOST_TEST(iterlimit({{"eosio.kvram"_n, 0xFFFFFFFF, false}, {"eosio.kvram"_n, 1, false}}) == "Too many iterators");
+      // BOOST_TEST_REQUIRE(set_kv_limits("test"_n, 1024, 1024, 0xFFFFFFFF) == "");
+      // BOOST_TEST_REQUIRE(set_kv_limits("test"_n, 1024, 1024, 0xFFFFFFFF) == "");
+      // BOOST_TEST(iterlimit({{"test"_n, 0xFFFFFFFF, false}, {"test"_n, 1, false}}) == "Too many iterators");
    }
 
    // Make sure that a failed transaction correctly rolls back changes to the database,
-   // for both rocksdb and chainbase.
    void test_undo() {
       setmany("", "kvtest"_n,
               {
@@ -695,11 +694,6 @@ class kv_chainbase_tester : public kv_tester {
    kv_chainbase_tester() : kv_tester(backing_store_type::CHAINBASE) { }
 };
 
-class kv_rocksdb_tester : public kv_tester {
- public:
-   kv_rocksdb_tester() : kv_tester(backing_store_type::ROCKSDB) { }
-};
-
 BOOST_AUTO_TEST_SUITE(kv_tests)
 
 BOOST_FIXTURE_TEST_CASE(kv_basic, kv_chainbase_tester) try {
@@ -742,117 +736,33 @@ BOOST_FIXTURE_TEST_CASE(kv_key_value_limit, kv_chainbase_tester) try { //
 }
 FC_LOG_AND_RETHROW()
 
-constexpr name databases[] = { "eosio.kvram"_n };
-
-BOOST_DATA_TEST_CASE_F(kv_chainbase_tester, kv_inc_dec_usage, bdata::make(databases), db) try { //
+BOOST_FIXTURE_TEST_CASE(kv_inc_dec_usage, kv_chainbase_tester) try { //
    test_kv_inc_dec_usage();
 }
 FC_LOG_AND_RETHROW()
 
-BOOST_DATA_TEST_CASE_F(kv_chainbase_tester, kv_inc_usage_and_limit, bdata::make(databases), db) try { //
+BOOST_FIXTURE_TEST_CASE(kv_inc_usage_and_limit, kv_chainbase_tester) try { //
    test_kv_inc_usage_and_limit();
 }
 FC_LOG_AND_RETHROW()
 
-BOOST_DATA_TEST_CASE_F(kv_chainbase_tester, kv_dec_limit_and_usage, bdata::make(databases), db) try { //
+BOOST_FIXTURE_TEST_CASE(kv_dec_limit_and_usage, kv_chainbase_tester) try { //
    test_kv_dec_limit_and_usage();
 }
 FC_LOG_AND_RETHROW()
 
-BOOST_DATA_TEST_CASE_F(kv_chainbase_tester, get_data, bdata::make(databases), db) try { //
+BOOST_FIXTURE_TEST_CASE(get_data, kv_chainbase_tester) try { //
    test_get_data();
 }
 FC_LOG_AND_RETHROW()
 
-BOOST_DATA_TEST_CASE_F(kv_chainbase_tester, other_contract, bdata::make(databases), db) try { //
+BOOST_FIXTURE_TEST_CASE(other_contract, kv_chainbase_tester) try { //
    test_other_contract();
 }
 FC_LOG_AND_RETHROW()
 
 BOOST_FIXTURE_TEST_CASE(max_iterators, kv_chainbase_tester) try { //
    test_max_iterators();
-}
-FC_LOG_AND_RETHROW()
-
-// RocksDB related test cases
-
-BOOST_FIXTURE_TEST_CASE(kv_basic_rocksdb, kv_rocksdb_tester) try {
-   test_kv_basic_common();
-}
-FC_LOG_AND_RETHROW()
-
-BOOST_FIXTURE_TEST_CASE(kv_scan_rocksdb, kv_rocksdb_tester) try {
-   test_kv_scan_common();
-}
-FC_LOG_AND_RETHROW()
-
-BOOST_FIXTURE_TEST_CASE(kv_scanrev_rocksdb, kv_rocksdb_tester) try {
-   test_kv_scanrev_common();
-}
-FC_LOG_AND_RETHROW()
-
-BOOST_FIXTURE_TEST_CASE(kv_scanrev2_rocksdb, kv_rocksdb_tester) try { //
-   test_kv_scanrev2_common();
-}
-FC_LOG_AND_RETHROW()
-
-BOOST_FIXTURE_TEST_CASE(kv_iterase_rocksdb, kv_rocksdb_tester) try { //
-   test_kv_iterase_common();
-}
-FC_LOG_AND_RETHROW()
-
-BOOST_FIXTURE_TEST_CASE(kv_ram_usage_rocksdb, kv_rocksdb_tester) try { //
-   test_kv_ram_usage_common();
-}
-FC_LOG_AND_RETHROW()
-
-BOOST_FIXTURE_TEST_CASE(kv_resource_limit_rocksdb, kv_rocksdb_tester) try { //
-   test_kv_resource_limit_common();
-}
-FC_LOG_AND_RETHROW()
-
-BOOST_FIXTURE_TEST_CASE(kv_key_value_limit_rocksdb, kv_rocksdb_tester) try { //
-   test_kv_key_value_limit_common();
-}
-FC_LOG_AND_RETHROW()
-
-BOOST_DATA_TEST_CASE_F(kv_rocksdb_tester, kv_inc_dec_usage_rocksdb, bdata::make(databases), db) try { //
-   test_kv_inc_dec_usage();
-}
-FC_LOG_AND_RETHROW()
-
-BOOST_DATA_TEST_CASE_F(kv_rocksdb_tester, kv_inc_usage_and_limit_rocksdb, bdata::make(databases), db) try { //
-   test_kv_inc_usage_and_limit();
-}
-FC_LOG_AND_RETHROW()
-
-BOOST_DATA_TEST_CASE_F(kv_rocksdb_tester, kv_dec_limit_and_usage_rocksdb, bdata::make(databases), db) try { //
-   test_kv_dec_limit_and_usage();
-}
-FC_LOG_AND_RETHROW()
-
-BOOST_DATA_TEST_CASE_F(kv_rocksdb_tester, get_data_rocksdb, bdata::make(databases), db) try { //
-   test_get_data();
-}
-FC_LOG_AND_RETHROW()
-
-BOOST_DATA_TEST_CASE_F(kv_rocksdb_tester, other_contract_rocksdb, bdata::make(databases), db) try { //
-   test_other_contract();
-}
-FC_LOG_AND_RETHROW()
-
-BOOST_FIXTURE_TEST_CASE(max_iterators_rocksdb, kv_rocksdb_tester) try { //
-   test_max_iterators();
-}
-FC_LOG_AND_RETHROW()
-
-BOOST_DATA_TEST_CASE_F(kv_chainbase_tester, undo, bdata::make(databases) * bdata::make({false, true}), db, rocks) try { //
-   test_undo();
-}
-FC_LOG_AND_RETHROW()
-
-BOOST_DATA_TEST_CASE_F(kv_rocksdb_tester, rocksdb_undo, bdata::make(databases) * bdata::make({false, true}), db, rocks) try { //
-   test_undo();
 }
 FC_LOG_AND_RETHROW()
 
@@ -943,16 +853,16 @@ static const char kv_notified_wast[] = R"=====(
 )
 )=====";
 
-BOOST_DATA_TEST_CASE_F(tester, notify, bdata::make(databases), db) {
+BOOST_FIXTURE_TEST_CASE(notify, tester) {
    create_accounts({ "setup"_n, "notified"_n, "notify"_n });
    set_code( "setup"_n, kv_setup_wast );
    push_action( "eosio"_n, "setpriv"_n, "eosio"_n, mutable_variant_object()("account", "setup"_n)("is_priv", 1));
-   BOOST_TEST_REQUIRE(push_action( action({}, "setup"_n, db, construct_names_payload({"notified"_n, "notify"_n})), "setup"_n.to_uint64_t() ) == "");
+   BOOST_TEST_REQUIRE(push_action( action({}, "setup"_n, "ignored"_n, construct_names_payload({"notified"_n, "notify"_n})), "setup"_n.to_uint64_t() ) == "");
 
    set_code( "notify"_n, kv_notify_wast );
    set_code( "notified"_n, kv_notified_wast );
 
-   BOOST_TEST_REQUIRE(push_action( action({}, "notify"_n, db, {}), "notify"_n.to_uint64_t() ) == "");
+   BOOST_TEST_REQUIRE(push_action( action({}, "notify"_n, "ignored"_n, {}), "notify"_n.to_uint64_t() ) == "");
 }
 
 // Check corner cases of alias checks for the kv_set and kv_get intrinsics
@@ -996,19 +906,19 @@ static const char kv_alias_general_wast[] = R"=====(
 )
 )=====";
 
-BOOST_DATA_TEST_CASE_F(tester, alias, bdata::make(databases), db) {
+BOOST_FIXTURE_TEST_CASE(alias, tester) {
    const name alias_pass_account{"alias.pass"_n};
    const name alias_general_account{"alias.gen"_n};
 
    create_accounts({ "setup"_n, alias_pass_account, alias_general_account });
    set_code( "setup"_n, kv_setup_wast );
    push_action( "eosio"_n, "setpriv"_n, "eosio"_n, mutable_variant_object()("account", "setup"_n)("is_priv", 1));
-   BOOST_TEST_REQUIRE(push_action( action({}, "setup"_n, db, construct_names_payload({alias_pass_account, alias_general_account})), "setup"_n.to_uint64_t() ) == "");
+   BOOST_TEST_REQUIRE(push_action( action({}, "setup"_n, "ignored"_n, construct_names_payload({alias_pass_account, alias_general_account})), "setup"_n.to_uint64_t() ) == "");
 
    set_code( alias_pass_account, kv_alias_pass_wast );
    set_code( alias_general_account, kv_alias_general_wast );
 
-   BOOST_TEST_CHECK(push_action( action({}, alias_pass_account, db, {}), alias_pass_account.to_uint64_t() ) == "");
+   BOOST_TEST_CHECK(push_action( action({}, alias_pass_account, "ignored"_n, {}), alias_pass_account.to_uint64_t() ) == "");
 
    auto construct_span_payload = [](uint32_t span_start, uint32_t span_size) -> std::vector<char> {
       std::vector<char> result;
@@ -1024,28 +934,28 @@ BOOST_DATA_TEST_CASE_F(tester, alias, bdata::make(databases), db) {
 
    static const char* const alias_error_msg = "pointers not allowed to alias";
 
-   BOOST_TEST_CHECK(push_action( action({}, alias_general_account, db, construct_span_payload(31, 1)), alias_general_account.to_uint64_t() ) == "");
-   BOOST_TEST_CHECK(push_action( action({}, alias_general_account, db, construct_span_payload(36, 28)), alias_general_account.to_uint64_t() ) == "");
-   BOOST_TEST_CHECK(push_action( action({}, alias_general_account, db, construct_span_payload(68, 60)), alias_general_account.to_uint64_t() ) == "");
-   BOOST_TEST_CHECK(push_action( action({}, alias_general_account, db, construct_span_payload(132, 1)), alias_general_account.to_uint64_t() ) == "");
+   BOOST_TEST_CHECK(push_action( action({}, alias_general_account, "ignored"_n, construct_span_payload(31, 1)), alias_general_account.to_uint64_t() ) == "");
+   BOOST_TEST_CHECK(push_action( action({}, alias_general_account, "ignored"_n, construct_span_payload(36, 28)), alias_general_account.to_uint64_t() ) == "");
+   BOOST_TEST_CHECK(push_action( action({}, alias_general_account, "ignored"_n, construct_span_payload(68, 60)), alias_general_account.to_uint64_t() ) == "");
+   BOOST_TEST_CHECK(push_action( action({}, alias_general_account, "ignored"_n, construct_span_payload(132, 1)), alias_general_account.to_uint64_t() ) == "");
 
-   BOOST_TEST_CHECK(push_action( action({}, alias_general_account, db, construct_span_payload(31, 2)), alias_general_account.to_uint64_t() ) == alias_error_msg);
-   BOOST_TEST_CHECK(push_action( action({}, alias_general_account, db, construct_span_payload(32, 1)), alias_general_account.to_uint64_t() ) == alias_error_msg);
-   BOOST_TEST_CHECK(push_action( action({}, alias_general_account, db, construct_span_payload(33, 1)), alias_general_account.to_uint64_t() ) == alias_error_msg);
-   BOOST_TEST_CHECK(push_action( action({}, alias_general_account, db, construct_span_payload(35, 1)), alias_general_account.to_uint64_t() ) == alias_error_msg);
-   BOOST_TEST_CHECK(push_action( action({}, alias_general_account, db, construct_span_payload(35, 2)), alias_general_account.to_uint64_t() ) == alias_error_msg);
+   BOOST_TEST_CHECK(push_action( action({}, alias_general_account, "ignored"_n, construct_span_payload(31, 2)), alias_general_account.to_uint64_t() ) == alias_error_msg);
+   BOOST_TEST_CHECK(push_action( action({}, alias_general_account, "ignored"_n, construct_span_payload(32, 1)), alias_general_account.to_uint64_t() ) == alias_error_msg);
+   BOOST_TEST_CHECK(push_action( action({}, alias_general_account, "ignored"_n, construct_span_payload(33, 1)), alias_general_account.to_uint64_t() ) == alias_error_msg);
+   BOOST_TEST_CHECK(push_action( action({}, alias_general_account, "ignored"_n, construct_span_payload(35, 1)), alias_general_account.to_uint64_t() ) == alias_error_msg);
+   BOOST_TEST_CHECK(push_action( action({}, alias_general_account, "ignored"_n, construct_span_payload(35, 2)), alias_general_account.to_uint64_t() ) == alias_error_msg);
 
-   BOOST_TEST_CHECK(push_action( action({}, alias_general_account, db, construct_span_payload(63, 2)), alias_general_account.to_uint64_t() ) == alias_error_msg);
-   BOOST_TEST_CHECK(push_action( action({}, alias_general_account, db, construct_span_payload(64, 1)), alias_general_account.to_uint64_t() ) == alias_error_msg);
-   BOOST_TEST_CHECK(push_action( action({}, alias_general_account, db, construct_span_payload(65, 1)), alias_general_account.to_uint64_t() ) == alias_error_msg);
-   BOOST_TEST_CHECK(push_action( action({}, alias_general_account, db, construct_span_payload(67, 1)), alias_general_account.to_uint64_t() ) == alias_error_msg);
-   BOOST_TEST_CHECK(push_action( action({}, alias_general_account, db, construct_span_payload(67, 2)), alias_general_account.to_uint64_t() ) == alias_error_msg);
+   BOOST_TEST_CHECK(push_action( action({}, alias_general_account, "ignored"_n, construct_span_payload(63, 2)), alias_general_account.to_uint64_t() ) == alias_error_msg);
+   BOOST_TEST_CHECK(push_action( action({}, alias_general_account, "ignored"_n, construct_span_payload(64, 1)), alias_general_account.to_uint64_t() ) == alias_error_msg);
+   BOOST_TEST_CHECK(push_action( action({}, alias_general_account, "ignored"_n, construct_span_payload(65, 1)), alias_general_account.to_uint64_t() ) == alias_error_msg);
+   BOOST_TEST_CHECK(push_action( action({}, alias_general_account, "ignored"_n, construct_span_payload(67, 1)), alias_general_account.to_uint64_t() ) == alias_error_msg);
+   BOOST_TEST_CHECK(push_action( action({}, alias_general_account, "ignored"_n, construct_span_payload(67, 2)), alias_general_account.to_uint64_t() ) == alias_error_msg);
 
-   BOOST_TEST_CHECK(push_action( action({}, alias_general_account, db, construct_span_payload(127, 2)), alias_general_account.to_uint64_t() ) == alias_error_msg);
-   BOOST_TEST_CHECK(push_action( action({}, alias_general_account, db, construct_span_payload(128, 1)), alias_general_account.to_uint64_t() ) == alias_error_msg);
-   BOOST_TEST_CHECK(push_action( action({}, alias_general_account, db, construct_span_payload(129, 1)), alias_general_account.to_uint64_t() ) == alias_error_msg);
-   BOOST_TEST_CHECK(push_action( action({}, alias_general_account, db, construct_span_payload(131, 1)), alias_general_account.to_uint64_t() ) == alias_error_msg);
-   BOOST_TEST_CHECK(push_action( action({}, alias_general_account, db, construct_span_payload(131, 2)), alias_general_account.to_uint64_t() ) == alias_error_msg);
+   BOOST_TEST_CHECK(push_action( action({}, alias_general_account, "ignored"_n, construct_span_payload(127, 2)), alias_general_account.to_uint64_t() ) == alias_error_msg);
+   BOOST_TEST_CHECK(push_action( action({}, alias_general_account, "ignored"_n, construct_span_payload(128, 1)), alias_general_account.to_uint64_t() ) == alias_error_msg);
+   BOOST_TEST_CHECK(push_action( action({}, alias_general_account, "ignored"_n, construct_span_payload(129, 1)), alias_general_account.to_uint64_t() ) == alias_error_msg);
+   BOOST_TEST_CHECK(push_action( action({}, alias_general_account, "ignored"_n, construct_span_payload(131, 1)), alias_general_account.to_uint64_t() ) == alias_error_msg);
+   BOOST_TEST_CHECK(push_action( action({}, alias_general_account, "ignored"_n, construct_span_payload(131, 2)), alias_general_account.to_uint64_t() ) == alias_error_msg);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
