@@ -27,7 +27,10 @@ class coverage_maps {
       coverage_maps() = default;
 };
 
-enum coverage_mode { func, line };
+enum class coverage_mode : uint32_t {
+   func=0,
+   line=1
+};
 
 inline void coverage_inc_cnt( uint64_t code, uint32_t file_num, uint32_t func_or_line_num, cov_map_t& cov_map) {
    auto& code_map = cov_map[code];

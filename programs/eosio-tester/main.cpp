@@ -120,23 +120,23 @@ REGISTER_HOST_FUNCTION(coverage_dump)
 using eosio::coverage::coverage_maps;
 using eosio::coverage::coverage_mode;
 
-constexpr auto TESTCHAIN_N = eosio::name{"testchain"}.value;
+constexpr auto testchain_n = eosio::name{"testchain"}.value;
 
 uint32_t interface::coverage_getinc(uint64_t code, uint32_t file_num, uint32_t func_or_line_num, uint32_t mode, bool inc) {
    uint32_t r = 0;
    if(inc) {
       if (mode == coverage_mode::func) {
-         eosio::coverage::coverage_inc_cnt(code, file_num, func_or_line_num, coverage_maps<TESTCHAIN_N>::instance().funcnt_map);
+         eosio::coverage::coverage_inc_cnt(code, file_num, func_or_line_num, coverage_maps<testchain_n>::instance().funcnt_map);
       } else if (mode == coverage_mode::line) {
-         eosio::coverage::coverage_inc_cnt(code, file_num, func_or_line_num, coverage_maps<TESTCHAIN_N>::instance().linecnt_map);
+         eosio::coverage::coverage_inc_cnt(code, file_num, func_or_line_num, coverage_maps<testchain_n>::instance().linecnt_map);
       }
    }
    else {
       if (mode == coverage_mode::func) {
-         r = eosio::coverage::coverage_get_cnt(code, file_num, func_or_line_num, coverage_maps<TESTCHAIN_N>::instance().funcnt_map);
+         r = eosio::coverage::coverage_get_cnt(code, file_num, func_or_line_num, coverage_maps<testchain_n>::instance().funcnt_map);
       }
       else if (mode == coverage_mode::line) {
-         r = eosio::coverage::coverage_get_cnt(code, file_num, func_or_line_num, coverage_maps<TESTCHAIN_N>::instance().linecnt_map);
+         r = eosio::coverage::coverage_get_cnt(code, file_num, func_or_line_num, coverage_maps<testchain_n>::instance().linecnt_map);
       }
    }
    return r;
@@ -144,15 +144,15 @@ uint32_t interface::coverage_getinc(uint64_t code, uint32_t file_num, uint32_t f
 
 uint64_t interface::coverage_dump(uint64_t code, uint32_t file_num, eosio::vm::span<const char> file_name, uint32_t max, bool append, uint32_t mode, bool reset) {
    if (reset) {
-      coverage_maps<TESTCHAIN_N>::instance().funcnt_map.clear();
-      coverage_maps<TESTCHAIN_N>::instance().linecnt_map.clear();
+      coverage_maps<testchain_n>::instance().funcnt_map.clear();
+      coverage_maps<testchain_n>::instance().linecnt_map.clear();
       return 0;
    }
    if (mode == 0) {
-      return eosio::coverage::coverage_dump(code, file_num, file_name.data(), file_name.size(), max, append, coverage_maps<TESTCHAIN_N>::instance().funcnt_map);
+      return eosio::coverage::coverage_dump(code, file_num, file_name.data(), file_name.size(), max, append, coverage_maps<testchain_n>::instance().funcnt_map);
    }
    else if (mode == 1) {
-      return eosio::coverage::coverage_dump(code, file_num, file_name.data(), file_name.size(), max, append, coverage_maps<TESTCHAIN_N>::instance().linecnt_map);
+      return eosio::coverage::coverage_dump(code, file_num, file_name.data(), file_name.size(), max, append, coverage_maps<testchain_n>::instance().linecnt_map);
    }
    return 0;
 }
