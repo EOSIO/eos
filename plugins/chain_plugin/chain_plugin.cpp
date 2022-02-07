@@ -409,6 +409,8 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
           "print build environment information to console as JSON and exit")
          ("extract-build-info", bpo::value<bfs::path>(),
           "extract build environment information as JSON, write into specified file, and exit")
+         ("snapshot-to-json", bpo::value<bfs::path>(),
+          "snapshot file to convert to JSON format, writes to <file>.json (tmp state dir used), and exit")
          ("force-all-checks", bpo::bool_switch()->default_value(false),
           "do not skip any validation checks while replaying blocks (useful for replaying blocks from untrusted source)")
          ("disable-replay-opts", bpo::bool_switch()->default_value(false),
@@ -915,6 +917,57 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          EOS_THROW( extract_genesis_state_exception, "extracted genesis state from blocks.log" );
       }
 
+      std::optional<chain_id_type> chain_id;
+      if( options.count("snapshot-to-json") ) {
+         my->snapshot_path = options.at( "snapshot-to-json" ).as<bfs::path>();
+         EOS_ASSERT( fc::exists(*my->snapshot_path), plugin_config_exception,
+                     "Cannot load snapshot, ${name} does not exist", ("name", my->snapshot_path->generic_string()) );
+
+         // recover genesis information from the snapshot
+         // used for validation code below
+         auto infile = std::ifstream(my->snapshot_path->generic_string(), (std::ios::in | std::ios::binary));
+         istream_snapshot_reader reader(infile);
+         reader.validate();
+         chain_id = controller::extract_chain_id(reader);
+         infile.close();
+
+         boost::filesystem::path temp_dir = boost::filesystem::temp_directory_path() / boost::filesystem::unique_path();
+         my->chain_config->state_dir = temp_dir / "state";
+         my->blocks_dir = temp_dir / "blocks";
+         my->chain_config->blog.log_dir = my->blocks_dir;
+         try {
+            auto shutdown = [](){ return app().quit(); };
+            auto check_shutdown = [](){ return app().is_quiting(); };
+            auto infile = std::ifstream(my->snapshot_path->generic_string(), (std::ios::in | std::ios::binary));
+            auto reader = std::make_shared<istream_snapshot_reader>(infile);
+            my->chain.emplace( *my->chain_config, std::move(pfs), *chain_id );
+            my->chain->add_indices();
+            my->chain->startup(shutdown, check_shutdown, reader);
+            infile.close();
+            app().quit(); // shutdown as we will be finished after writing the snapshot
+
+            ilog("Writing snapshot: ${s}", ("s", my->snapshot_path->generic_string() + ".json"));
+            auto snap_out = std::ofstream( my->snapshot_path->generic_string() + ".json", (std::ios::out) );
+            auto writer = std::make_shared<ostream_json_snapshot_writer>( snap_out );
+            my->chain->write_snapshot( writer );
+            writer->finalize();
+            snap_out.flush();
+            snap_out.close();
+         } catch (const database_guard_exception& e) {
+            log_guard_exception(e);
+            // make sure to properly close the db
+            my->chain.reset();
+            fc::remove_all(temp_dir);
+            throw;
+         }
+         my->chain.reset();
+         fc::remove_all(temp_dir);
+         ilog("Completed writing snapshot: ${s}", ("s", my->snapshot_path->generic_string() + ".json"));
+         ilog("==== Ignore any additional log messages. ====");
+
+         EOS_THROW( node_management_success, "extracted json from snapshot" );
+      }
+
       // move fork_db to new location
       upgrade_from_reversible_to_fork_db( my.get() );
 
@@ -935,7 +988,6 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          wlog( "The --truncate-at-block option can only be used with --hard-replay-blockchain." );
       }
 
-      std::optional<chain_id_type> chain_id;
       if (options.count( "snapshot" )) {
          my->snapshot_path = options.at( "snapshot" ).as<bfs::path>();
          EOS_ASSERT( fc::exists(*my->snapshot_path), plugin_config_exception,

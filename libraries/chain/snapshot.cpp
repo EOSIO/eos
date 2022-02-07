@@ -1,6 +1,7 @@
 #include <eosio/chain/snapshot.hpp>
 #include <eosio/chain/exceptions.hpp>
 #include <fc/scoped_exit.hpp>
+#include <fc/io/json.hpp>
 
 namespace eosio { namespace chain {
 
@@ -189,6 +190,45 @@ void ostream_snapshot_writer::finalize() {
    // write a placeholder for the section size
    snapshot.write((char*)&end_marker, sizeof(end_marker));
 }
+
+ostream_json_snapshot_writer::ostream_json_snapshot_writer(std::ostream& snapshot)
+      :snapshot(snapshot)
+      ,row_count(0)
+{
+   snapshot << "{\n";
+   // write magic number
+   auto totem = magic_number;
+   snapshot << "\"magic_number\":" << fc::json::to_string(totem, fc::time_point::maximum()) << "\n";
+
+   // write version
+   auto version = current_snapshot_version;
+   snapshot << ",\"version\":" << fc::json::to_string(version, fc::time_point::maximum()) << "\n";
+}
+
+void ostream_json_snapshot_writer::write_start_section( const std::string& section_name )
+{
+   row_count = 0;
+   snapshot.inner << "," << fc::json::to_string(section_name, fc::time_point::maximum()) << ":{\n";
+}
+
+void ostream_json_snapshot_writer::write_row( const detail::abstract_snapshot_row_writer& row_writer ) {
+   const auto yield = [&](size_t s) {};
+
+   if(row_count != 0) snapshot.inner << ",";
+   snapshot.inner << "\"row_" << row_count << "\":" << fc::json::to_string(row_writer.to_variant(), yield) << "\n";
+   ++row_count;
+}
+
+void ostream_json_snapshot_writer::write_end_section( ) {
+   snapshot.inner << "}\n";
+   row_count = 0;
+}
+
+void ostream_json_snapshot_writer::finalize() {
+   snapshot.inner << "}\n";
+   snapshot.inner.flush();
+}
+
 
 istream_snapshot_reader::istream_snapshot_reader(std::istream& snapshot)
 :snapshot(snapshot)

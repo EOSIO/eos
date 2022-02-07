@@ -342,7 +342,22 @@ namespace eosio { namespace chain {
          std::streampos          header_pos;
          std::streampos          section_pos;
          uint64_t                row_count;
+   };
 
+   class ostream_json_snapshot_writer : public snapshot_writer {
+      public:
+         explicit ostream_json_snapshot_writer(std::ostream& snapshot);
+
+         void write_start_section( const std::string& section_name ) override;
+         void write_row( const detail::abstract_snapshot_row_writer& row_writer ) override;
+         void write_end_section() override;
+         void finalize();
+
+         static const uint32_t magic_number = 0x30510550;
+
+      private:
+         detail::ostream_wrapper snapshot;
+         uint64_t                row_count;
    };
 
    class istream_snapshot_reader : public snapshot_reader {
