@@ -11,6 +11,24 @@ using cov_map_t = std::unordered_map<uint64_t, std::unordered_map<uint32_t, std:
 namespace eosio {
 namespace coverage {
 
+template<uint64_t Unique>
+class coverage_maps {
+   public:
+      static coverage_maps& instance() {
+         static coverage_maps instance;
+         return instance;
+      }
+      coverage_maps(const coverage_maps&) = delete;
+      void operator=(const coverage_maps&) = delete;
+
+      cov_map_t funcnt_map;
+      cov_map_t linecnt_map;
+   private:
+      coverage_maps() = default;
+};
+
+enum coverage_mode { func, line };
+
 inline void coverage_inc_cnt( uint64_t code, uint32_t file_num, uint32_t func_or_line_num, cov_map_t& cov_map) {
    auto& code_map = cov_map[code];
    auto& cnt_map = code_map[file_num];

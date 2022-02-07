@@ -89,10 +89,6 @@ struct assert_exception : std::exception {
    const char* what() const noexcept override { return msg.c_str(); }
 };
 
-// HACK: UB.  Unfortunately, I can't think of a way to allow a transaction_context
-// to be constructed outside of controller in 2.0 that doesn't have undefined behavior.
-// A better solution would be to factor database access out of apply_context, but
-// that can't really be backported to 2.0 at this point.
 namespace {
 struct __attribute__((__may_alias__)) xxx_transaction_checktime_timer {
    std::atomic_bool&             expired;
@@ -102,29 +98,13 @@ struct transaction_checktime_factory {
    eosio::chain::platform_timer              timer;
    std::atomic_bool                          expired;
    eosio::chain::transaction_checktime_timer get() {
-      xxx_transaction_checktime_timer result{ expired, timer };
-      return std::move(*reinterpret_cast<eosio::chain::transaction_checktime_timer*>(&result));
+      return { expired, timer };
    }
 };
 }; // namespace
 
 // Defined here to keep it out of nodeos
 namespace eosio::chain::webassembly {
-
-class coverage_maps {
-public:
-   static coverage_maps& instance() {
-      static coverage_maps instance;
-      return instance;
-   }
-   coverage_maps(const coverage_maps&) = delete;
-   void operator=(const coverage_maps&) = delete;
-
-   cov_map_t funcnt_map;
-   cov_map_t linecnt_map;
-private:
-   coverage_maps() = default;
-};
 
 #define REGISTER_HOST_FUNCTION(NAME, ...)                                                                              \
    static host_function_registrator<&interface::NAME, core_precondition, context_aware_check, ##__VA_ARGS__>           \
@@ -137,35 +117,42 @@ private:
 REGISTER_HOST_FUNCTION(coverage_getinc)
 REGISTER_HOST_FUNCTION(coverage_dump)
 
+using eosio::coverage::coverage_maps;
+using eosio::coverage::coverage_mode;
+
+constexpr auto TESTCHAIN_N = eosio::name{"testchain"}.value;
+
 uint32_t interface::coverage_getinc(uint64_t code, uint32_t file_num, uint32_t func_or_line_num, uint32_t mode, bool inc) {
+   uint32_t r = 0;
    if(inc) {
-      if (mode == 0) {
-         eosio::coverage::coverage_inc_cnt(code, file_num, func_or_line_num, coverage_maps::instance().funcnt_map);
-      } else if (mode == 1) {
-         eosio::coverage::coverage_inc_cnt(code, file_num, func_or_line_num, coverage_maps::instance().linecnt_map);
+      if (mode == coverage_mode::func) {
+         eosio::coverage::coverage_inc_cnt(code, file_num, func_or_line_num, coverage_maps<TESTCHAIN_N>::instance().funcnt_map);
+      } else if (mode == coverage_mode::line) {
+         eosio::coverage::coverage_inc_cnt(code, file_num, func_or_line_num, coverage_maps<TESTCHAIN_N>::instance().linecnt_map);
       }
    }
    else {
-      if (mode == 0) {
-         return eosio::coverage::coverage_get_cnt(code, file_num, func_or_line_num, coverage_maps::instance().funcnt_map);
+      if (mode == coverage_mode::func) {
+         r = eosio::coverage::coverage_get_cnt(code, file_num, func_or_line_num, coverage_maps<TESTCHAIN_N>::instance().funcnt_map);
       }
-      else if (mode == 1) {
-         return eosio::coverage::coverage_get_cnt(code, file_num, func_or_line_num, coverage_maps::instance().linecnt_map);
+      else if (mode == coverage_mode::line) {
+         r = eosio::coverage::coverage_get_cnt(code, file_num, func_or_line_num, coverage_maps<TESTCHAIN_N>::instance().linecnt_map);
       }
    }
-   return 0;
+   return r;
 }
 
 uint64_t interface::coverage_dump(uint64_t code, uint32_t file_num, eosio::vm::span<const char> file_name, uint32_t max, bool append, uint32_t mode, bool reset) {
    if (reset) {
-      coverage_maps::instance().funcnt_map.clear();
-      coverage_maps::instance().linecnt_map.clear();
+      coverage_maps<TESTCHAIN_N>::instance().funcnt_map.clear();
+      coverage_maps<TESTCHAIN_N>::instance().linecnt_map.clear();
+      return 0;
    }
    if (mode == 0) {
-      return eosio::coverage::coverage_dump(code, file_num, file_name.data(), file_name.size(), max, append, coverage_maps::instance().funcnt_map);
+      return eosio::coverage::coverage_dump(code, file_num, file_name.data(), file_name.size(), max, append, coverage_maps<TESTCHAIN_N>::instance().funcnt_map);
    }
    else if (mode == 1) {
-      return eosio::coverage::coverage_dump(code, file_num, file_name.data(), file_name.size(), max, append, coverage_maps::instance().linecnt_map);
+      return eosio::coverage::coverage_dump(code, file_num, file_name.data(), file_name.size(), max, append, coverage_maps<TESTCHAIN_N>::instance().linecnt_map);
    }
    return 0;
 }
@@ -372,8 +359,10 @@ struct test_chain {
    void finish_block() {
       start_if_needed();
       ilog("finish block ${n}", ("n", control->head_block_num()));
-      control->finalize_block([&](eosio::chain::digest_type d) { return std::vector{ producer_key.sign(d) }; });
-      control->commit_block();
+
+      control->finalize_block([&](eosio::chain::digest_type d) {
+         return std::vector{ producer_key.sign(d) };
+      }).get()();
    }
 };
 
@@ -787,7 +776,7 @@ struct callbacks {
       auto ptrx = std::make_shared<eosio::chain::packed_transaction>(
             std::move(signed_trx), true, eosio::chain::packed_transaction::compression_type::none);
       auto fut = eosio::chain::transaction_metadata::start_recover_keys(
-            ptrx, chain.control->get_thread_pool(), chain.control->get_chain_id(), fc::microseconds::maximum());
+            ptrx, chain.control->get_thread_pool(), chain.control->get_chain_id(), fc::microseconds::maximum(), eosio::chain::transaction_metadata::trx_type::input );
       auto start_time = std::chrono::steady_clock::now();
       auto result     = chain.control->push_transaction(fut.get(), fc::time_point::maximum(), 2000, true, 0);
       auto us = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - start_time);
