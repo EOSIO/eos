@@ -106,21 +106,6 @@ struct transaction_checktime_factory {
 // Defined here to keep it out of nodeos
 namespace eosio::chain::webassembly {
 
-class coverage_maps {
-public:
-   static coverage_maps& instance() {
-      static coverage_maps instance;
-      return instance;
-   }
-   coverage_maps(const coverage_maps&) = delete;
-   void operator=(const coverage_maps&) = delete;
-
-   cov_map_t funcnt_map;
-   cov_map_t linecnt_map;
-private:
-   coverage_maps() = default;
-};
-
 #define REGISTER_HOST_FUNCTION(NAME, ...)                                                                              \
    static host_function_registrator<&interface::NAME, core_precondition, context_aware_check, ##__VA_ARGS__>           \
        NAME##_registrator_impl() {                                                                                     \
@@ -132,35 +117,42 @@ private:
 REGISTER_HOST_FUNCTION(coverage_getinc)
 REGISTER_HOST_FUNCTION(coverage_dump)
 
+using eosio::coverage::coverage_maps;
+using eosio::coverage::coverage_mode;
+
+constexpr auto TESTCHAIN_N = eosio::name{"testchain"}.value;
+
 uint32_t interface::coverage_getinc(uint64_t code, uint32_t file_num, uint32_t func_or_line_num, uint32_t mode, bool inc) {
+   uint32_t r = 0;
    if(inc) {
-      if (mode == 0) {
-         eosio::coverage::coverage_inc_cnt(code, file_num, func_or_line_num, coverage_maps::instance().funcnt_map);
-      } else if (mode == 1) {
-         eosio::coverage::coverage_inc_cnt(code, file_num, func_or_line_num, coverage_maps::instance().linecnt_map);
+      if (mode == coverage_mode::func) {
+         eosio::coverage::coverage_inc_cnt(code, file_num, func_or_line_num, coverage_maps<TESTCHAIN_N>::instance().funcnt_map);
+      } else if (mode == coverage_mode::line) {
+         eosio::coverage::coverage_inc_cnt(code, file_num, func_or_line_num, coverage_maps<TESTCHAIN_N>::instance().linecnt_map);
       }
    }
    else {
-      if (mode == 0) {
-         return eosio::coverage::coverage_get_cnt(code, file_num, func_or_line_num, coverage_maps::instance().funcnt_map);
+      if (mode == coverage_mode::func) {
+         r = eosio::coverage::coverage_get_cnt(code, file_num, func_or_line_num, coverage_maps<TESTCHAIN_N>::instance().funcnt_map);
       }
-      else if (mode == 1) {
-         return eosio::coverage::coverage_get_cnt(code, file_num, func_or_line_num, coverage_maps::instance().linecnt_map);
+      else if (mode == coverage_mode::line) {
+         r = eosio::coverage::coverage_get_cnt(code, file_num, func_or_line_num, coverage_maps<TESTCHAIN_N>::instance().linecnt_map);
       }
    }
-   return 0;
+   return r;
 }
 
 uint64_t interface::coverage_dump(uint64_t code, uint32_t file_num, eosio::vm::span<const char> file_name, uint32_t max, bool append, uint32_t mode, bool reset) {
    if (reset) {
-      coverage_maps::instance().funcnt_map.clear();
-      coverage_maps::instance().linecnt_map.clear();
+      coverage_maps<TESTCHAIN_N>::instance().funcnt_map.clear();
+      coverage_maps<TESTCHAIN_N>::instance().linecnt_map.clear();
+      return 0;
    }
    if (mode == 0) {
-      return eosio::coverage::coverage_dump(code, file_num, file_name.data(), file_name.size(), max, append, coverage_maps::instance().funcnt_map);
+      return eosio::coverage::coverage_dump(code, file_num, file_name.data(), file_name.size(), max, append, coverage_maps<TESTCHAIN_N>::instance().funcnt_map);
    }
    else if (mode == 1) {
-      return eosio::coverage::coverage_dump(code, file_num, file_name.data(), file_name.size(), max, append, coverage_maps::instance().linecnt_map);
+      return eosio::coverage::coverage_dump(code, file_num, file_name.data(), file_name.size(), max, append, coverage_maps<TESTCHAIN_N>::instance().linecnt_map);
    }
    return 0;
 }
