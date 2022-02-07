@@ -148,10 +148,10 @@ uint64_t interface::coverage_dump(uint64_t code, uint32_t file_num, eosio::vm::s
       coverage_maps<testchain_n>::instance().linecnt_map.clear();
       return 0;
    }
-   if (mode == 0) {
+   if (mode == coverage_mode::func) {
       return eosio::coverage::coverage_dump(code, file_num, file_name.data(), file_name.size(), max, append, coverage_maps<testchain_n>::instance().funcnt_map);
    }
-   else if (mode == 1) {
+   else if (mode == coverage_mode::line) {
       return eosio::coverage::coverage_dump(code, file_num, file_name.data(), file_name.size(), max, append, coverage_maps<testchain_n>::instance().linecnt_map);
    }
    return 0;

@@ -26,10 +26,10 @@ struct coverage_callbacks {
          }
       }
       else {
-         if (mode == 0) {
+         if (mode == coverage_mode::func) {
             return eosio::coverage::coverage_get_cnt(code, file_num, func_or_line_num, coverage_maps<rodeos_n>::instance().funcnt_map);
          }
-         else if (mode == 1) {
+         else if (mode == coverage_mode::line) {
             return eosio::coverage::coverage_get_cnt(code, file_num, func_or_line_num, coverage_maps<rodeos_n>::instance().linecnt_map);
          }
       }
@@ -41,10 +41,10 @@ struct coverage_callbacks {
          coverage_maps<rodeos_n>::instance().funcnt_map.clear();
          coverage_maps<rodeos_n>::instance().linecnt_map.clear();
       }
-      else if (mode == 0) {
+      else if (mode == coverage_mode::func) {
          return eosio::coverage::coverage_dump(code, file_num, file_name.data(), file_name.size(), max, append, coverage_maps<rodeos_n>::instance().funcnt_map);
       }
-      else if (mode == 1) {
+      else if (mode == coverage_mode::line) {
          return eosio::coverage::coverage_dump(code, file_num, file_name.data(), file_name.size(), max, append, coverage_maps<rodeos_n>::instance().linecnt_map);
       }
       return 0;
