@@ -21,6 +21,8 @@
 
 namespace eosio { namespace chain {
 
+   using namespace db_util;
+
    transaction_checktime_timer::transaction_checktime_timer(platform_timer& timer)
          : expired(timer.expired), _timer(timer) {
       expired = 0;
@@ -49,7 +51,7 @@ namespace eosio { namespace chain {
                                              fc::time_point s )
    :control(c)
    ,packed_trx(t)
-   ,undo_session(!c.skip_db_sessions() ? c.kv_db().make_session() : c.kv_db().make_no_op_session())
+   ,undo_session(!c.skip_db_sessions() ? maybe_session(c.mutable_db()) : maybe_session())
    ,trace(std::make_shared<transaction_trace>())
    ,start(s)
    ,transaction_timer(std::move(tmr))

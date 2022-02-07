@@ -253,24 +253,6 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_exhaustive_snapshot_cb_to_cb, SNAPSHOT_SUITE,
                                        eosio::chain::backing_store_type::CHAINBASE);
 }
 
-BOOST_AUTO_TEST_CASE_TEMPLATE(test_exhaustive_snapshot_cb_to_rdb, SNAPSHOT_SUITE, snapshot_suites)
-{
-   exhaustive_snapshot<SNAPSHOT_SUITE>(eosio::chain::backing_store_type::CHAINBASE,
-                                       eosio::chain::backing_store_type::ROCKSDB);
-}
-
-BOOST_AUTO_TEST_CASE_TEMPLATE(test_exhaustive_snapshot_rdb_to_cb, SNAPSHOT_SUITE, snapshot_suites)
-{
-   exhaustive_snapshot<SNAPSHOT_SUITE>(eosio::chain::backing_store_type::ROCKSDB,
-                                       eosio::chain::backing_store_type::CHAINBASE);
-}
-
-BOOST_AUTO_TEST_CASE_TEMPLATE(test_exhaustive_snapshot_rdb_to_rdb, SNAPSHOT_SUITE, snapshot_suites)
-{
-   exhaustive_snapshot<SNAPSHOT_SUITE>(eosio::chain::backing_store_type::ROCKSDB,
-                                       eosio::chain::backing_store_type::ROCKSDB);
-}
-
 BOOST_AUTO_TEST_CASE_TEMPLATE(test_replay_over_snapshot, SNAPSHOT_SUITE, snapshot_suites)
 {
    tester chain;
@@ -656,8 +638,8 @@ static const char kv_snapshot_bios[] = R"=====(
 )=====";
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(test_kv_snapshot, SNAPSHOT_SUITE, snapshot_suites) {
-   for (backing_store_type origin_backing_store : { backing_store_type::CHAINBASE, backing_store_type::ROCKSDB }) {
-      for (backing_store_type resulting_backing_store: { backing_store_type::CHAINBASE, backing_store_type::ROCKSDB }) {
+   for (backing_store_type origin_backing_store : { backing_store_type::CHAINBASE }) {
+      for (backing_store_type resulting_backing_store: { backing_store_type::CHAINBASE }) {
          tester chain {setup_policy::full, db_read_mode::SPECULATIVE, std::optional<uint32_t>{}, std::optional<uint32_t>{}, origin_backing_store};
 
          chain.create_accounts({"manager"_n});
@@ -721,7 +703,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_kv_snapshot, SNAPSHOT_SUITE, snapshot_suites)
                // Calling apply method which will increment the
                // current value stored
                signed_transaction trx;
-               trx.actions.push_back({{{contract, "active"_n}}, contract, "eosio.kvram"_n, {}});
+               trx.actions.push_back({{{contract, "active"_n}}, contract, contract, {}});
                chain.set_transaction_headers(trx);
                trx.sign(chain.get_private_key(contract, "active"), chain.control->get_chain_id());
                chain.push_transaction(trx);

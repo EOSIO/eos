@@ -93,7 +93,7 @@ add_library( eosio_chain
              block_header_state.cpp
              block_state.cpp
              fork_database.cpp
-             combined_database.cpp
+             db_util.cpp
              controller.cpp
              authorization_manager.cpp
              resource_limits.cpp
@@ -134,10 +134,6 @@ add_library( eosio_chain
              platform_timer_accuracy.cpp
              backing_store/kv_context.cpp
              backing_store/db_context.cpp
-             backing_store/db_context_chainbase.cpp
-             backing_store/db_context_rocksdb.cpp
-             backing_store/db_key_value_format.cpp
-             backing_store/db_key_value_any_lookup.cpp
              ${PLATFORM_TIMER_IMPL}
              ${HEADERS}
              )
@@ -189,8 +185,6 @@ if(EOSIO_REQUIRE_CHAIN_ID)
 
    target_compile_definitions(eosio_chain PUBLIC "EOSIO_REQUIRE_CHAIN_ID=\"${EOSIO_REQUIRE_CHAIN_ID}\"")
 endif()
-
-add_subdirectory ( backing_store/tests )
 
 install( TARGETS eosio_chain
    RUNTIME DESTINATION ${CMAKE_INSTALL_FULL_BINDIR}

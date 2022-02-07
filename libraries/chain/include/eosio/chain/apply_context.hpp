@@ -391,18 +391,16 @@ class apply_context {
 
       void update_db_usage( const account_name& payer, int64_t delta, const storage_usage_trace& trace );
 
-      int  db_store_i64_chainbase( name scope, name table, const account_name& payer, uint64_t id, const char* buffer, size_t buffer_size );
-      void db_update_i64_chainbase( int iterator, account_name payer, const char* buffer, size_t buffer_size );
-      void db_remove_i64_chainbase( int iterator );
-      int  db_get_i64_chainbase( int iterator, char* buffer, size_t buffer_size );
-      int  db_next_i64_chainbase( int iterator, uint64_t& primary );
-      int  db_previous_i64_chainbase( int iterator, uint64_t& primary );
-      int  db_find_i64_chainbase( name code, name scope, name table, uint64_t id );
-      int  db_lowerbound_i64_chainbase( name code, name scope, name table, uint64_t id );
-      int  db_upperbound_i64_chainbase( name code, name scope, name table, uint64_t id );
-      int  db_end_i64_chainbase( name code, name scope, name table );
-
-      backing_store::db_context& db_get_context();
+      int  db_store_i64( name scope, name table, const account_name& payer, uint64_t id, const char* buffer, size_t buffer_size );
+      void db_update_i64( int iterator, account_name payer, const char* buffer, size_t buffer_size );
+      void db_remove_i64( int iterator );
+      int  db_get_i64( int iterator, char* buffer, size_t buffer_size );
+      int  db_next_i64( int iterator, uint64_t& primary );
+      int  db_previous_i64( int iterator, uint64_t& primary );
+      int  db_find_i64( name code, name scope, name table, uint64_t id );
+      int  db_lowerbound_i64( name code, name scope, name table, uint64_t id );
+      int  db_upperbound_i64( name code, name scope, name table, uint64_t id );
+      int  db_end_i64( name code, name scope, name table );
 
    private:
 
@@ -427,7 +425,7 @@ class apply_context {
       int32_t  kv_it_lower_bound(uint32_t itr, const char* key, uint32_t size, uint32_t* found_key_size, uint32_t* found_value_size);
       int32_t  kv_it_key(uint32_t itr, uint32_t offset, char* dest, uint32_t size, uint32_t& actual_size);
       int32_t  kv_it_value(uint32_t itr, uint32_t offset, char* dest, uint32_t size, uint32_t& actual_size);
-      kv_context& kv_get_backing_store() {
+      kv_context& get_kv_context() {
          EOS_ASSERT( kv_backing_store, action_validate_exception, "KV APIs cannot access state (null backing_store)" );
          return *kv_backing_store;
       }
@@ -498,8 +496,6 @@ class apply_context {
       vector<uint32_t>                                         _cfa_inline_actions; ///< action_ordinals of queued inline context-free actions
       std::string                                              _pending_console_output;
       flat_set<account_delta>                                  _account_ram_deltas; ///< flat_set of account_delta so json is an array of objects
-
-      std::unique_ptr<backing_store::db_context>               _db_context;
 };
 
 using apply_handler = std::function<void(apply_context&)>;

@@ -646,24 +646,6 @@ namespace eosio { namespace testing {
       bool                     skip_validate = false;
    };
 
-   class rocksdb_tester : public tester {
-   public:
-      rocksdb_tester(setup_policy policy = setup_policy::full, db_read_mode read_mode = db_read_mode::SPECULATIVE,
-             std::optional<uint32_t> genesis_max_inline_action_size = std::optional<uint32_t>{},
-             std::optional<uint32_t> config_max_nonprivileged_inline_action_size = std::optional<uint32_t>{}) {
-         init(policy, read_mode, genesis_max_inline_action_size, config_max_nonprivileged_inline_action_size,
-              backing_store_type::ROCKSDB);
-      }
-   };
-
-   class rocksdb_validating_tester : public validating_tester {
-   public:
-      virtual ~rocksdb_validating_tester() {}
-
-      rocksdb_validating_tester(const flat_set<account_name>& trusted_producers = flat_set<account_name>())
-      : validating_tester(trusted_producers, {backing_store_type::ROCKSDB}){}
-   };
-
    /**
     * Utility predicate to check whether an fc::exception code is equivalent to a given value
     */

@@ -14,8 +14,7 @@
 #include <eosio/chain/types.hpp>
 #include <eosio/chain/fixed_bytes.hpp>
 #include <eosio/chain/backing_store/kv_context.hpp>
-#include <eosio/chain/backing_store/db_combined.hpp>
-#include <eosio/chain/combined_database.hpp>
+#include <eosio/chain/db_util.hpp>
 #include <b1/session/shared_bytes.hpp>
 #include <eosio/to_key.hpp>
 
@@ -462,62 +461,30 @@ public:
 
    get_scheduled_transactions_result get_scheduled_transactions( const get_scheduled_transactions_params& params ) const;
 
-   eosio::chain::backing_store_type get_backing_store() const;
-
    enum class row_requirements { required, optional };
    template<typename Function>
    bool get_primary_key_internal(name code, name scope, name table, uint64_t primary_key, row_requirements require_table,
                                  row_requirements require_primary, Function&& f) const {
-      const auto db_backing_store = get_backing_store();
-      if (db_backing_store == eosio::chain::backing_store_type::CHAINBASE) {
-         const auto* const table_id =
-               db.db().find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple(code, scope, table));
-         if (require_table == row_requirements::optional && !table_id) {
-            return false;
-         }
-         EOS_ASSERT(table_id, chain::contract_table_query_exception,
-                    "Missing code: ${code}, scope: ${scope}, table: ${table}",
-                    ("code",code.to_string())("scope",scope.to_string())("table",table.to_string()));
-         const auto& kv_index = db.db().get_index<chain::key_value_index, chain::by_scope_primary>();
-         const auto it = kv_index.find(boost::make_tuple(table_id->id, primary_key));
-         if (require_primary == row_requirements::optional && it == kv_index.end()) {
-            return false;
-         }
-         EOS_ASSERT(it != kv_index.end(), chain::contract_table_query_exception,
-                    "Missing row for primary_key: ${primary} in code: ${code}, scope: ${scope}, table: ${table}",
-                    ("primary", primary_key)("code",code.to_string())("scope",scope.to_string())
-                    ("table",table.to_string()));
-         f(*it);
-         return true;
+      
+      const auto* const table_id =
+            db.db().find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple(code, scope, table));
+      if (require_table == row_requirements::optional && !table_id) {
+         return false;
       }
-      else {
-         using namespace eosio::chain;
-         EOS_ASSERT(db_backing_store == backing_store_type::ROCKSDB,
-                    chain::contract_table_query_exception,
-                    "Support for configured backing_store has not been added to get_primary_key");
-         const auto& kv_database = db.kv_db();
-         const auto full_key = chain::backing_store::db_key_value_format::create_full_primary_key(code, scope, table, primary_key);
-         auto current_session = kv_database.get_kv_undo_stack()->top();
-         const auto value = current_session.read(full_key);
-         // check if we didn't actually find the key
-         if (!value) {
-            // only need to bother to do table search if we require it, so that we can report the correct error
-            if (require_table == row_requirements::required) {
-               const auto whole_table_prefix(backing_store::db_key_value_format::create_full_key_prefix(full_key, backing_store::db_key_value_format::end_of_prefix::pre_type));
-               const auto value = current_session.read(whole_table_prefix);
-               EOS_ASSERT(value, chain::contract_table_query_exception,
-                          "Missing code: ${code}, scope: ${scope}, table: ${table}",
-                          ("code",code.to_string())("scope",scope.to_string())("table",table.to_string()));
-            }
-            EOS_ASSERT(require_primary == row_requirements::optional, chain::contract_table_query_exception,
-                       "Missing row for primary_key: ${primary} in code: ${code}, scope: ${scope}, table: ${table}",
-                       ("primary", primary_key)("code",code.to_string())("scope",scope.to_string())
-                       ("table",table.to_string()));
-            return false;
-         }
-         f(chain::backing_store::primary_index_view::create(primary_key, value->data(), value->size()));
-         return true;
+      EOS_ASSERT(table_id, chain::contract_table_query_exception,
+                  "Missing code: ${code}, scope: ${scope}, table: ${table}",
+                  ("code",code.to_string())("scope",scope.to_string())("table",table.to_string()));
+      const auto& kv_index = db.db().get_index<chain::key_value_index, chain::by_scope_primary>();
+      const auto it = kv_index.find(boost::make_tuple(table_id->id, primary_key));
+      if (require_primary == row_requirements::optional && it == kv_index.end()) {
+         return false;
       }
+      EOS_ASSERT(it != kv_index.end(), chain::contract_table_query_exception,
+                  "Missing row for primary_key: ${primary} in code: ${code}, scope: ${scope}, table: ${table}",
+                  ("primary", primary_key)("code",code.to_string())("scope",scope.to_string())
+                  ("table",table.to_string()));
+      f(*it);
+      return true;
    }
 
    template<typename T, typename Function>
@@ -599,106 +566,26 @@ public:
       memcpy( data.data(), obj.value.data(), obj.value.size() );
    }
 
-   template<typename Func>
-   struct primary_key_receiver
-   : chain::backing_store::single_type_error_receiver<primary_key_receiver<Func>, chain::backing_store::primary_index_view, chain::contract_table_query_exception> {
-      primary_key_receiver(Func f) : f_(f) {}
-
-      void add_only_row(const chain::backing_store::primary_index_view& row) {
-         if(!f_(row))
-            done_ = true;
-      }
-
-      void add_table_row(const chain::backing_store::table_id_object_view& ) {
-         // used for only one table, so we already know the context of the table
-      }
-
-      auto keep_processing_entries() {
-         return [&done=done_]() {
-            return !done;
-         };
-      };
-
-      Func f_;
-      bool done_ = false;
-   };
-
    template<typename Function>
    void walk_key_value_table(const name& code, const name& scope, const name& table, Function f) const
    {
-      const auto db_backing_store = get_backing_store();
-      if (db_backing_store == eosio::chain::backing_store_type::CHAINBASE) {
-         const auto& d = db.db();
-         const auto* t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple(code, scope, table));
-         if (t_id != nullptr) {
-            const auto &idx = d.get_index<chain::key_value_index, chain::by_scope_primary>();
-            decltype(t_id->id) next_tid(t_id->id._id + 1);
-            auto lower = idx.lower_bound(boost::make_tuple(t_id->id));
-            auto upper = idx.lower_bound(boost::make_tuple(next_tid));
+      const auto& d = db.db();
+      const auto* t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple(code, scope, table));
+      if (t_id != nullptr) {
+         const auto &idx = d.get_index<chain::key_value_index, chain::by_scope_primary>();
+         decltype(t_id->id) next_tid(t_id->id._id + 1);
+         auto lower = idx.lower_bound(boost::make_tuple(t_id->id));
+         auto upper = idx.lower_bound(boost::make_tuple(next_tid));
 
-            for (auto itr = lower; itr != upper; ++itr) {
-               if (!f(*itr)) {
-                  break;
-               }
+         for (auto itr = lower; itr != upper; ++itr) {
+            if (!f(*itr)) {
+               break;
             }
          }
-      }
-      else {
-         using namespace eosio::chain;
-         EOS_ASSERT(db_backing_store == backing_store_type::ROCKSDB,
-                    chain::contract_table_query_exception,
-                    "Support for configured backing_store has not been added to get_primary_key");
-            primary_key_receiver<Function> receiver(f);
-         auto kp = receiver.keep_processing_entries();
-         backing_store::rocksdb_contract_db_table_writer<primary_key_receiver<Function>, std::decay_t < decltype(kp)>> writer(receiver, backing_store::key_context::standalone, kp);
-         const auto& kv_database = db.kv_db();
-         using key_type = chain::backing_store::db_key_value_format::key_type;
-         auto start = chain::backing_store::db_key_value_format::create_full_prefix_key(code, scope, table, key_type::primary);
-         auto end = start.next();
-         eosio::chain::backing_store::walk_rocksdb_entries_with_prefix(kv_database.get_kv_undo_stack(), start, end, writer);
       }
    }
 
    static uint64_t get_table_index_name(const read_only::get_table_rows_params& p, bool& primary);
-
-
-   template<typename Index, typename Function>
-   struct secondary_key_receiver
-   : chain::backing_store::single_type_error_receiver<secondary_key_receiver<Index, Function>, chain::backing_store::secondary_index_view<Index>, chain::contract_table_query_exception> {
-      secondary_key_receiver(read_only::get_table_rows_result& result, Function f, const read_only::get_table_rows_params& params)
-      : result_(result), f_(f), params_(params) {}
-
-      void add_only_row(const chain::backing_store::secondary_index_view<Index>& row) {
-         // needs to allow a second pass after limit is reached or time has passed, to allow "more" processing
-         if (reached_limit_ || !kp_()) {
-            result_.more = true;
-            result_.next_key = convert_to_string(row.secondary_key, params_.key_type, params_.encode_type, "next_key - next lower bound");
-            done_ = true;
-         }
-         else {
-            f_(row, result_.rows);
-            reached_limit_ |= result_.rows.size() >= params_.limit;
-         }
-      }
-
-      void add_table_row(const chain::backing_store::table_id_object_view& ) {
-         // used for only one table, so we already know the context of the table
-      }
-
-      auto keep_processing_entries() {
-         return [&done=done_]() {
-            return !done;
-         };
-      };
-
-      read_only::get_table_rows_result& result_;
-      Function f_;
-      const read_only::get_table_rows_params& params_;
-      bool reached_limit_ = false;
-      bool done_ = false;
-      keep_processing kp_;
-   };
-
 
    template <typename IndexType, typename SecKeyType, typename ConvFn>
    read_only::get_table_rows_result get_table_rows_by_seckey( const read_only::get_table_rows_params& p, const abi_def& abi, ConvFn conv )const {
@@ -748,75 +635,43 @@ public:
          return result;
 
       const bool reverse = p.reverse && *p.reverse;
-      const auto db_backing_store = get_backing_store();
       auto get_prim_key_val = get_primary_key_value(p.table, abis, p.json, p.show_payer);
-      if (db_backing_store == eosio::chain::backing_store_type::CHAINBASE) {
-         const auto* t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple(p.code, scope, p.table));
-         const auto* index_t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple(p.code, scope, name(table_with_index)));
-         if( t_id != nullptr && index_t_id != nullptr ) {
+      const auto* t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple(p.code, scope, p.table));
+      const auto* index_t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple(p.code, scope, name(table_with_index)));
+      if( t_id != nullptr && index_t_id != nullptr ) {
 
-            const auto& secidx = d.get_index<IndexType, chain::by_secondary>();
-            auto lower_bound_lookup_tuple = std::make_tuple( index_t_id->id._id,
-                                                            secondary_key_lower,
-                                                            primary_key_lower );
-            auto upper_bound_lookup_tuple = std::make_tuple( index_t_id->id._id,
-                                                            secondary_key_upper,
-                                                            primary_key_upper );
+         const auto& secidx = d.get_index<IndexType, chain::by_secondary>();
+         auto lower_bound_lookup_tuple = std::make_tuple( index_t_id->id._id,
+                                                         secondary_key_lower,
+                                                         primary_key_lower );
+         auto upper_bound_lookup_tuple = std::make_tuple( index_t_id->id._id,
+                                                         secondary_key_upper,
+                                                         primary_key_upper );
 
-            auto walk_table_row_range = [&]( auto itr, auto end_itr ) {
-               keep_processing kp;
-               vector<char> data;
-               for( unsigned int count = 0; kp() && count < p.limit && itr != end_itr; ++itr ) {
-                  const auto* itr2 = d.find<chain::key_value_object, chain::by_scope_primary>( boost::make_tuple(t_id->id, itr->primary_key) );
-                  if( itr2 == nullptr ) continue;
+         auto walk_table_row_range = [&]( auto itr, auto end_itr ) {
+            keep_processing kp;
+            vector<char> data;
+            for( unsigned int count = 0; kp() && count < p.limit && itr != end_itr; ++itr ) {
+               const auto* itr2 = d.find<chain::key_value_object, chain::by_scope_primary>( boost::make_tuple(t_id->id, itr->primary_key) );
+               if( itr2 == nullptr ) continue;
 
-                  result.rows.emplace_back( get_prim_key_val(*itr2) );
+               result.rows.emplace_back( get_prim_key_val(*itr2) );
 
-                  ++count;
-               }
-               if( itr != end_itr ) {
-                  result.more = true;
-                  result.next_key = convert_to_string(itr->secondary_key, p.key_type, p.encode_type, "next_key - next lower bound");
-               }
-            };
-
-            auto lower = secidx.lower_bound( lower_bound_lookup_tuple );
-            auto upper = secidx.upper_bound( upper_bound_lookup_tuple );
-            if( reverse ) {
-               walk_table_row_range( boost::make_reverse_iterator(upper), boost::make_reverse_iterator(lower) );
-            } else {
-               walk_table_row_range( lower, upper );
+               ++count;
             }
-         }
-      }
-      else {
-         using namespace eosio::chain;
-         EOS_ASSERT(db_backing_store == backing_store_type::ROCKSDB,
-                    chain::contract_table_query_exception,
-                    "Support for configured backing_store has not been added to get_primary_key");
-         const auto context = (reverse) ? backing_store::key_context::standalone_reverse : backing_store::key_context::standalone;
-         auto lower = chain::backing_store::db_key_value_format::create_full_prefix_secondary_key(p.code, scope, name(table_with_index), secondary_key_lower);
-         auto upper = chain::backing_store::db_key_value_format::create_full_prefix_secondary_key(p.code, scope, name(table_with_index), secondary_key_upper);
-         if (reverse) {
-            lower = eosio::session::shared_bytes::truncate_key(lower);
-         }
-         // since upper is either the upper_bound of a forward search, or the reverse iterator <= for the beginning of the end of
-         // this secondary type, we need to move it to just before the beginning of the next type
-         upper = upper.next();
-         const auto& kv_database = db.kv_db();
-         auto session = kv_database.get_kv_undo_stack()->top();
-         auto get_primary = [code=p.code,scope,table=p.table,&session,&get_prim_key_val](const chain::backing_store::secondary_index_view<secondary_key_type>& row, vector<fc::variant>& rows) {
-            auto full_key = chain::backing_store::db_key_value_format::create_full_primary_key(code, scope, table, row.primary_key);
-            auto value = session.read(full_key);
-            if( !value ) return;
-
-            rows.emplace_back(get_prim_key_val(chain::backing_store::primary_index_view::create(row.primary_key, value->data(), value->size())));
+            if( itr != end_itr ) {
+               result.more = true;
+               result.next_key = convert_to_string(itr->secondary_key, p.key_type, p.encode_type, "next_key - next lower bound");
+            }
          };
-         using secondary_receiver = secondary_key_receiver<secondary_key_type, decltype(get_primary)>;
-         secondary_receiver receiver(result, get_primary, p);
-         auto kp = receiver.keep_processing_entries();
-         backing_store::rocksdb_contract_db_table_writer<secondary_receiver, std::decay_t < decltype(kp)>> writer(receiver, context, kp);
-         eosio::chain::backing_store::walk_rocksdb_entries_with_prefix(kv_database.get_kv_undo_stack(), lower, upper, writer);
+
+         auto lower = secidx.lower_bound( lower_bound_lookup_tuple );
+         auto upper = secidx.upper_bound( upper_bound_lookup_tuple );
+         if( reverse ) {
+            walk_table_row_range( boost::make_reverse_iterator(upper), boost::make_reverse_iterator(lower) );
+         } else {
+            walk_table_row_range( lower, upper );
+         }
       }
 
       return result;
@@ -865,67 +720,31 @@ public:
       };
 
       const bool reverse = p.reverse && *p.reverse;
-      const auto db_backing_store = get_backing_store();
-      if (db_backing_store == eosio::chain::backing_store_type::CHAINBASE) {
-         const auto* t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple(p.code, scope, p.table));
-         if( t_id != nullptr ) {
-            const auto& idx = d.get_index<IndexType, chain::by_scope_primary>();
-            auto lower_bound_lookup_tuple = std::make_tuple( t_id->id, primary_lower );
-            auto upper_bound_lookup_tuple = std::make_tuple( t_id->id, primary_upper );
+      
+      const auto* t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple(p.code, scope, p.table));
+      if( t_id != nullptr ) {
+         const auto& idx = d.get_index<IndexType, chain::by_scope_primary>();
+         auto lower_bound_lookup_tuple = std::make_tuple( t_id->id, primary_lower );
+         auto upper_bound_lookup_tuple = std::make_tuple( t_id->id, primary_upper );
 
-            auto walk_table_row_range = [&]( auto itr, auto end_itr ) {
-               keep_processing kp;
-               vector<char> data;
-               for( unsigned int count = 0; kp() && count < p.limit && itr != end_itr; ++count, ++itr ) {
-                  result.rows.emplace_back( get_prim_key(*itr) );
-               }
-               if( itr != end_itr ) {
-                  handle_more(*itr);
-               }
-            };
-
-            auto lower = idx.lower_bound( lower_bound_lookup_tuple );
-            auto upper = idx.upper_bound( upper_bound_lookup_tuple );
-            if( reverse ) {
-               walk_table_row_range( boost::make_reverse_iterator(upper), boost::make_reverse_iterator(lower) );
-            } else {
-               walk_table_row_range( lower, upper );
+         auto walk_table_row_range = [&]( auto itr, auto end_itr ) {
+            keep_processing kp;
+            vector<char> data;
+            for( unsigned int count = 0; kp() && count < p.limit && itr != end_itr; ++count, ++itr ) {
+               result.rows.emplace_back( get_prim_key(*itr) );
             }
-         }
-      }
-      else {
-         using namespace eosio::chain;
-         EOS_ASSERT(db_backing_store == backing_store_type::ROCKSDB,
-                    chain::contract_table_query_exception,
-                    "Support for configured backing_store has not been added to get_primary_key");
-         const auto context = (reverse) ? backing_store::key_context::standalone_reverse : backing_store::key_context::standalone;
-         auto lower = chain::backing_store::db_key_value_format::create_full_primary_key(p.code, scope, p.table, primary_lower);
-         auto upper = chain::backing_store::db_key_value_format::create_full_primary_key(p.code, scope, p.table, primary_upper);
-         if (reverse) {
-            lower = eosio::session::shared_bytes::truncate_key(lower);
-         }
-         // since upper is either the upper_bound of a forward search, or the reverse iterator <= for the beginning of the end of
-         // this secondary type, we need to move it to just before the beginning of the next type
-         upper = upper.next();
-         const auto& kv_database = db.kv_db();
-
-         keep_processing kp;
-         auto filter_primary_key = [&kp,&result,&p,&get_prim_key,&handle_more](const backing_store::primary_index_view& row) {
-            if (!kp() || result.rows.size() >= p.limit) {
-               handle_more(row);
-               return false;
-            }
-            else {
-               result.rows.emplace_back(get_prim_key(row));
-               return true;
+            if( itr != end_itr ) {
+               handle_more(*itr);
             }
          };
 
-         using primary_receiver = primary_key_receiver<decltype(filter_primary_key)>;
-         primary_receiver receiver(filter_primary_key);
-         auto keep_processing_entries = receiver.keep_processing_entries();
-         backing_store::rocksdb_contract_db_table_writer<primary_receiver, std::decay_t < decltype(keep_processing_entries)>> writer(receiver, context, keep_processing_entries);
-         eosio::chain::backing_store::walk_rocksdb_entries_with_prefix(kv_database.get_kv_undo_stack(), lower, upper, writer);
+         auto lower = idx.lower_bound( lower_bound_lookup_tuple );
+         auto upper = idx.upper_bound( upper_bound_lookup_tuple );
+         if( reverse ) {
+            walk_table_row_range( boost::make_reverse_iterator(upper), boost::make_reverse_iterator(lower) );
+         } else {
+            walk_table_row_range( lower, upper );
+         }
       }
       return result;
    }

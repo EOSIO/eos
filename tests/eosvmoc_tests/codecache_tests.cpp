@@ -25,29 +25,30 @@ BOOST_AUTO_TEST_SUITE(eosvmoc_cc_tests)
 BOOST_DATA_TEST_CASE(there_and_back_again, data::make(mapped_and_heap) * data::make(mapped_and_heap), first, second) { try {
    fc::temp_directory tmp_code_cache;
 
-   const eosvmoc::code_descriptor* first_desc = nullptr;
+   eosvmoc::code_descriptor first_desc;
 
    eosvmoc::config first_eosvmoc_config = {32u*1024u*1024u, 1u, first};
    eosvmoc::config second_eosvmoc_config = {32u*1024u*1024u, 1u, second};
 
    {
       eosvmoc::code_cache_sync cc(tmp_code_cache.path(), first_eosvmoc_config, get_some_wasm);
-      first_desc = cc.get_descriptor_for_code_sync(digest_type(), UINT8_C(0));
-      BOOST_REQUIRE(first_desc);
+      const eosvmoc::code_descriptor* desc_tmp = cc.get_descriptor_for_code_sync(digest_type(), UINT8_C(0));
+      BOOST_REQUIRE(desc_tmp);
+      first_desc = *desc_tmp;
    }
 
    {
       eosvmoc::code_cache_sync cc(tmp_code_cache.path(), second_eosvmoc_config, get_some_wasm);
       const eosvmoc::code_descriptor* const second_desc = cc.get_descriptor_for_code_sync(digest_type(), UINT8_C(0));
       BOOST_REQUIRE(second_desc);
-      BOOST_REQUIRE_EQUAL(first_desc->code_begin, second_desc->code_begin);
+      BOOST_REQUIRE_EQUAL(first_desc.code_begin, second_desc->code_begin);
    }
 
    {
       eosvmoc::code_cache_sync cc(tmp_code_cache.path(), first_eosvmoc_config, get_some_wasm);
       const eosvmoc::code_descriptor* const desc = cc.get_descriptor_for_code_sync(digest_type(), UINT8_C(0));
       BOOST_REQUIRE(desc);
-      BOOST_REQUIRE_EQUAL(first_desc->code_begin, desc->code_begin);
+      BOOST_REQUIRE_EQUAL(first_desc.code_begin, desc->code_begin);
    }
 } FC_LOG_AND_RETHROW() }
 
