@@ -124,18 +124,19 @@ constexpr auto testchain_n = eosio::name{"testchain"}.value;
 
 uint32_t interface::coverage_getinc(uint64_t code, uint32_t file_num, uint32_t func_or_line_num, uint32_t mode, bool inc) {
    uint32_t r = 0;
+   auto cov_mode = static_cast<coverage_mode>(mode);
    if(inc) {
-      if (mode == coverage_mode::func) {
+      if (cov_mode == coverage_mode::func) {
          eosio::coverage::coverage_inc_cnt(code, file_num, func_or_line_num, coverage_maps<testchain_n>::instance().funcnt_map);
-      } else if (mode == coverage_mode::line) {
+      } else if (cov_mode == coverage_mode::line) {
          eosio::coverage::coverage_inc_cnt(code, file_num, func_or_line_num, coverage_maps<testchain_n>::instance().linecnt_map);
       }
    }
    else {
-      if (mode == coverage_mode::func) {
+      if (cov_mode == coverage_mode::func) {
          r = eosio::coverage::coverage_get_cnt(code, file_num, func_or_line_num, coverage_maps<testchain_n>::instance().funcnt_map);
       }
-      else if (mode == coverage_mode::line) {
+      else if (cov_mode == coverage_mode::line) {
          r = eosio::coverage::coverage_get_cnt(code, file_num, func_or_line_num, coverage_maps<testchain_n>::instance().linecnt_map);
       }
    }
@@ -143,15 +144,16 @@ uint32_t interface::coverage_getinc(uint64_t code, uint32_t file_num, uint32_t f
 }
 
 uint64_t interface::coverage_dump(uint64_t code, uint32_t file_num, eosio::vm::span<const char> file_name, uint32_t max, bool append, uint32_t mode, bool reset) {
+   auto cov_mode = static_cast<coverage_mode>(mode);
    if (reset) {
       coverage_maps<testchain_n>::instance().funcnt_map.clear();
       coverage_maps<testchain_n>::instance().linecnt_map.clear();
       return 0;
    }
-   if (mode == coverage_mode::func) {
+   if (cov_mode == coverage_mode::func) {
       return eosio::coverage::coverage_dump(code, file_num, file_name.data(), file_name.size(), max, append, coverage_maps<testchain_n>::instance().funcnt_map);
    }
-   else if (mode == coverage_mode::line) {
+   else if (cov_mode == coverage_mode::line) {
       return eosio::coverage::coverage_dump(code, file_num, file_name.data(), file_name.size(), max, append, coverage_maps<testchain_n>::instance().linecnt_map);
    }
    return 0;
