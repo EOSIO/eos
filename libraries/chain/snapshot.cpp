@@ -207,6 +207,7 @@ ostream_json_snapshot_writer::ostream_json_snapshot_writer(std::ostream& snapsho
 
 void ostream_json_snapshot_writer::write_start_section( const std::string& section_name )
 {
+   row_count = 0;
    snapshot.inner << "," << fc::json::to_string(section_name, fc::time_point::maximum()) << ":{\n";
 }
 

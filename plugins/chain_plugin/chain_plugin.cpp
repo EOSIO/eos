@@ -428,7 +428,7 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          ("extract-build-info", bpo::value<bfs::path>(),
           "extract build environment information as JSON, write into specified file, and exit")
          ("snapshot-to-json", bpo::value<bfs::path>(),
-          "convert snapshot to JSON format, and exit")
+          "snapshot file to convert to JSON format, writes to <file>.json (tmp state dir used), and exit")
          ("force-all-checks", bpo::bool_switch()->default_value(false),
           "do not skip any validation checks while replaying blocks (useful for replaying blocks from untrusted source)")
          ("disable-replay-opts", bpo::bool_switch()->default_value(false),
