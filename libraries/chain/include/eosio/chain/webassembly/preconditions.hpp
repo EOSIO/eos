@@ -3,6 +3,9 @@
 #include <eosio/chain/types.hpp>
 #include <eosio/chain/webassembly/common.hpp>
 #include <eosio/chain/webassembly/eos-vm.hpp>
+#ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
+#include <eosio/chain/webassembly/eos-vm-oc.hpp>
+#endif
 
 #include <eosio/vm/backend.hpp>
 #include <eosio/vm/host_function.hpp>
@@ -166,5 +169,17 @@ namespace eosio { namespace chain { namespace webassembly {
          EOS_VM_INVOKE_ONCE([&](auto&&... args) {
             static_assert( are_whitelisted_legacy_types_v<std::decay_t<decltype(args)>...>, "legacy whitelisted type violation");
          }));
+
+   template <auto HostFunction, typename... Preconditions>
+   struct host_function_registrator {
+      template <typename Mod, typename Name>
+      constexpr host_function_registrator(Mod mod_name, Name fn_name) {
+         using rhf_t = eos_vm_host_functions_t;
+         rhf_t::add<HostFunction, Preconditions...>(mod_name.c_str(), fn_name.c_str());
+   #ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
+         eosvmoc::register_eosvm_oc<HostFunction, std::tuple<Preconditions...>>(mod_name + BOOST_HANA_STRING(".") + fn_name);
+   #endif
+      }
+   };
 
 }}} // ns eosio::chain::webassembly

@@ -1897,6 +1897,10 @@ namespace eosio { namespace chain { namespace webassembly {
          int32_t __lttf2(uint64_t, uint64_t, uint64_t, uint64_t) const;
          int32_t __unordtf2(uint64_t, uint64_t, uint64_t, uint64_t) const;
 
+         // code coverage support functions 
+         uint32_t coverage_getinc(uint64_t code, uint32_t file_num, uint32_t func_or_line_num, uint32_t mode, bool inc);
+         uint64_t coverage_dump(uint64_t code, uint32_t file_num, span<const char> file_name, uint32_t max, bool append, uint32_t mode, bool reset);
+
       private:
          apply_context& context;
    };

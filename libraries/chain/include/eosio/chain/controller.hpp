@@ -12,6 +12,7 @@
 #include <eosio/chain/block_log_config.hpp>
 #include <eosio/chain/backing_store.hpp>
 
+struct test_chain;
 namespace chainbase {
    class database;
 }
@@ -398,6 +399,7 @@ namespace eosio { namespace chain {
       private:
          friend class apply_context;
          friend class transaction_context;
+         friend struct ::test_chain;
          friend std::unique_ptr<kv_context> db_util::create_kv_context(const controller&, name,const kv_resource_manager&, const kv_database_config&);
 
          chainbase::database& mutable_db()const;

@@ -1,6 +1,11 @@
+#include <eosio/coverage.hpp>
 #include <eosio/chain/apply_context.hpp>
 #include <eosio/chain/controller.hpp>
 #include <eosio/chain/transaction_context.hpp>
+#include <eosio/chain/whitelisted_intrinsics.hpp>
+#include <eosio/chain/webassembly/common.hpp>
+#include <eosio/chain/webassembly/interface.hpp>
+#include <eosio/chain/webassembly/preconditions.hpp>
 #include <eosio/state_history/create_deltas.hpp>
 #include <eosio/state_history/serialization.hpp>
 #include <eosio/state_history/trace_converter.hpp>
@@ -10,6 +15,7 @@
 #include <fc/crypto/sha256.hpp>
 #include <fc/crypto/sha512.hpp>
 #include <fc/exception/exception.hpp>
+#include <boost/hana/string.hpp>
 
 #undef N
 
@@ -97,6 +103,65 @@ struct transaction_checktime_factory {
 };
 }; // namespace
 
+// Defined here to keep it out of nodeos
+namespace eosio::chain::webassembly {
+
+#define REGISTER_HOST_FUNCTION(NAME, ...)                                                                              \
+   static host_function_registrator<&interface::NAME, core_precondition, context_aware_check, ##__VA_ARGS__>           \
+       NAME##_registrator_impl() {                                                                                     \
+      return {BOOST_HANA_STRING("env"), BOOST_HANA_STRING(#NAME)};                                                     \
+   }                                                                                                                   \
+   inline static auto NAME##_registrator = NAME##_registrator_impl();
+
+// code coverage API
+REGISTER_HOST_FUNCTION(coverage_getinc)
+REGISTER_HOST_FUNCTION(coverage_dump)
+
+using eosio::coverage::coverage_maps;
+using eosio::coverage::coverage_mode;
+
+constexpr auto testchain_n = eosio::name{"testchain"}.value;
+
+uint32_t interface::coverage_getinc(uint64_t code, uint32_t file_num, uint32_t func_or_line_num, uint32_t mode, bool inc) {
+   uint32_t r = 0;
+   auto cov_mode = static_cast<coverage_mode>(mode);
+   if(inc) {
+      if (cov_mode == coverage_mode::func) {
+         eosio::coverage::coverage_inc_cnt(code, file_num, func_or_line_num, coverage_maps<testchain_n>::instance().funcnt_map);
+      } else if (cov_mode == coverage_mode::line) {
+         eosio::coverage::coverage_inc_cnt(code, file_num, func_or_line_num, coverage_maps<testchain_n>::instance().linecnt_map);
+      }
+   }
+   else {
+      if (cov_mode == coverage_mode::func) {
+         r = eosio::coverage::coverage_get_cnt(code, file_num, func_or_line_num, coverage_maps<testchain_n>::instance().funcnt_map);
+      }
+      else if (cov_mode == coverage_mode::line) {
+         r = eosio::coverage::coverage_get_cnt(code, file_num, func_or_line_num, coverage_maps<testchain_n>::instance().linecnt_map);
+      }
+   }
+   return r;
+}
+
+uint64_t interface::coverage_dump(uint64_t code, uint32_t file_num, eosio::vm::span<const char> file_name, uint32_t max, bool append, uint32_t mode, bool reset) {
+   auto cov_mode = static_cast<coverage_mode>(mode);
+   if (reset) {
+      coverage_maps<testchain_n>::instance().funcnt_map.clear();
+      coverage_maps<testchain_n>::instance().linecnt_map.clear();
+      return 0;
+   }
+   if (cov_mode == coverage_mode::func) {
+      return eosio::coverage::coverage_dump(code, file_num, file_name.data(), file_name.size(), max, append, coverage_maps<testchain_n>::instance().funcnt_map);
+   }
+   else if (cov_mode == coverage_mode::line) {
+      return eosio::coverage::coverage_dump(code, file_num, file_name.data(), file_name.size(), max, append, coverage_maps<testchain_n>::instance().linecnt_map);
+   }
+   return 0;
+}
+
+} // namespace eosio::chain::webassembly
+
+
 struct intrinsic_context {
    eosio::chain::controller&                          control;
    eosio::chain::packed_transaction                   trx;
@@ -179,6 +244,12 @@ struct test_chain {
 
    test_chain(const char* snapshot) {
       eosio::chain::genesis_state genesis;
+      // increase default limits to allow for code coverage
+      genesis.initial_configuration.max_transaction_net_usage *= 2;
+      genesis.initial_configuration.max_block_net_usage *= 2;
+      genesis.initial_configuration.max_block_cpu_usage *= 2;
+      genesis.initial_configuration.max_transaction_cpu_usage *= 2;
+
       genesis.initial_timestamp = fc::time_point::from_iso_string("2020-01-01T00:00:00.000");
       cfg                       = std::make_unique<eosio::chain::controller::config>();
       cfg->blog.log_dir         = dir.path() / "blocks";
@@ -223,6 +294,10 @@ struct test_chain {
          control->start_block(control->head_block_time() + fc::microseconds(block_interval_us), 0,
                               { *control->get_protocol_feature_manager().get_builtin_digest(
                                     eosio::chain::builtin_protocol_feature_t::preactivate_feature) });
+         control->mutable_db().modify( control->mutable_db().get<eosio::chain::protocol_state_object>(), [&]( auto& ps ) {
+            eosio::chain::add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "coverage_getinc" );
+            eosio::chain::add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "coverage_dump" );
+         } );
       }
    }
 
@@ -1119,7 +1194,6 @@ struct callbacks {
          return out_ds.tellp();
       }
    }
-
 
 }; // callbacks
 

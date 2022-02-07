@@ -7,11 +7,7 @@
 //eos-vm includes
 #include <eosio/vm/backend.hpp>
 #include <eosio/chain/webassembly/preconditions.hpp>
-#ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
-#include <eosio/chain/webassembly/eos-vm-oc.hpp>
-#endif
 #include <boost/hana/string.hpp>
-#include <boost/hana/equal.hpp>
 
 namespace eosio { namespace chain { namespace webassembly { namespace eos_vm_runtime {
 
@@ -288,18 +284,6 @@ std::unique_ptr<wasm_instantiated_module_interface> eos_vm_profile_runtime::inst
 }
 
 }
-
-template <auto HostFunction, typename... Preconditions>
-struct host_function_registrator {
-   template <typename Mod, typename Name>
-   constexpr host_function_registrator(Mod mod_name, Name fn_name) {
-      using rhf_t = eos_vm_host_functions_t;
-      rhf_t::add<HostFunction, Preconditions...>(mod_name.c_str(), fn_name.c_str());
-#ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
-      eosvmoc::register_eosvm_oc<HostFunction, std::tuple<Preconditions...>>(mod_name + BOOST_HANA_STRING(".") + fn_name);
-#endif
-   }
-};
 
 #define REGISTER_HOST_FUNCTION(NAME, ...)                                                                              \
    static host_function_registrator<&interface::NAME, core_precondition, context_aware_check, ##__VA_ARGS__>           \
