@@ -2169,6 +2169,10 @@ void producer_plugin_impl::schedule_maybe_produce_block( bool exhausted ) {
       auto deadline_str = spdlog::fmt_lib::vformat("{}", store);
       fc_new_dlog(new_log, "fc_new_dlog: Scheduling Block Production on Normal Block {} for {}", chain.head_block_num() + 1, deadline_str);
 
+      auto str = fmt::format("fc_new_dlog: Scheduling Block Production on Normal Block #{num} for {time}",
+                   fmt::arg("time", deadline_str), fmt::arg("num", chain.head_block_num() + 1));
+      fc_new_dlog( new_log, "{}", str);
+
    } else {
       EOS_ASSERT( chain.is_building_block(), missing_pending_block_state, "producing without pending_block_state" );
       _timer.expires_from_now( boost::posix_time::microseconds( 0 ) );
