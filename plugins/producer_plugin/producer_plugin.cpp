@@ -68,6 +68,9 @@ using boost::signals2::scoped_connection;
 const std::string logger_name("producer_plugin");
 fc::logger _log;
 
+//auto new_log = spdlog::create<spdlog::sinks::stdout_sink_st>("producer_plugin");
+auto new_log = spdlog::stdout_logger_st("producer_plugin");
+
 const std::string trx_successful_trace_logger_name("transaction_success_tracing");
 fc::logger       _trx_successful_trace_log;
 
@@ -2150,8 +2153,22 @@ void producer_plugin_impl::schedule_maybe_produce_block( bool exhausted ) {
       EOS_ASSERT( chain.is_building_block(), missing_pending_block_state,
                   "producing without pending_block_state, start_block succeeded" );
       _timer.expires_at( epoch + boost::posix_time::microseconds( deadline.time_since_epoch().count() ) );
+
       fc_dlog( _log, "Scheduling Block Production on Normal Block #${num} for ${time}",
-               ("num", chain.head_block_num() + 1)( "time", deadline ) );
+               ( "time", deadline )("num", chain.head_block_num() + 1) );
+
+      // spdlog default level is `info`
+      new_log->set_level(spdlog::level::debug);
+      // use the new formatter defined in fc/time.hpp to format custom type `fc::time_point`
+      fc_new_dlog( new_log, "fc_new_dlog: Scheduling Block Production on Normal Block {} for {}",
+                   chain.head_block_num() + 1, deadline );
+
+      // use fmt::vformat to format custom type `fc::time_point`
+      fmt::dynamic_format_arg_store<fmt::format_context> store;
+      store.push_back(deadline);
+      auto deadline_str = spdlog::fmt_lib::vformat("{}", store);
+      fc_new_dlog(new_log, "fc_new_dlog: Scheduling Block Production on Normal Block {} for {}", chain.head_block_num() + 1, deadline_str);
+
    } else {
       EOS_ASSERT( chain.is_building_block(), missing_pending_block_state, "producing without pending_block_state" );
       _timer.expires_from_now( boost::posix_time::microseconds( 0 ) );
