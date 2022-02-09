@@ -481,14 +481,12 @@ fc::variant push_transaction( signed_transaction& trx, const std::vector<public_
                auto args = fc::mutable_variant_object()
                            ("return_failure_traces", tx_rtn_failure_trace)
                            ("transaction", pt_v0);
-               if (tx_read_only)
-               {
+               if (tx_read_only) {
                   tx_ro_print_json = true;
                   return call(send_ro_txns_func, args);
                }
                else {
                   return call(send_txn_func_v2, args);
-                  EOSC_ASSERT( !tx_rtn_failure_trace, "ERROR: --return-failure-trace can only be used along with --read-only" );
                }
             } catch( chain::missing_chain_api_plugin_exception& ) {
                if (tx_read_only || tx_rtn_failure_trace) {
