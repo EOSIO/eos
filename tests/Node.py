@@ -135,6 +135,8 @@ class Node(object):
         cntxt=Node.Context(trans, "trans")
         # could be a transaction response
         if cntxt.hasKey("processed"):
+            if trans["processed"]["except"] is not None:
+                return "error"
             cntxt.add("processed")
             cntxt.add("receipt")
             return cntxt.add("status")
@@ -858,7 +860,10 @@ class Node(object):
             if Utils.Debug:
                 end=time.perf_counter()
                 Utils.Print("cmd Duration: %.3f sec" % (end-start))
-            return (True, trans)
+            succeeded = True
+            if Node.isTrans(trans) and Node.getTransStatus(trans) == "error":
+                succeeded = False
+            return (succeeded, trans)
         except subprocess.CalledProcessError as ex:
             msg=ex.output.decode("utf-8")
             if not silentErrors:
