@@ -808,6 +808,10 @@ class Node(object):
                 # retMap["stdout"]=ex.stdout
                 # retMap["stderr"]=ex.stderr
                 return retMap
+        else:
+            # this happens when return transaction failure trace is enabled
+            if Node.getTransStatus(trans) == "error":
+                return {"returncode" : 0, "cmd" : cmd, "output" : bytearray(json.dumps(trans), "utf-8")}
 
         if shouldFail:
             Utils.Print("ERROR: The publish contract did not fail as expected.")
