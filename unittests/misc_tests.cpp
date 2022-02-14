@@ -1415,7 +1415,7 @@ BOOST_AUTO_TEST_CASE(public_key_from_hash) {
    std::memcpy(&data.data[1], hash.data(), hash.data_size() );
    fc::ecc::public_key_shim shim(data);
    fc::crypto::public_key eos_unknown_pk(std::move(shim));
-   ilog( "public key with no known private key: ${k}", ("k", eos_unknown_pk) );
+   ilog( "public key with no known private key: ${k}", ("k", eos_unknown_pk.to_string()) );
 }
 
 BOOST_AUTO_TEST_SUITE_END()

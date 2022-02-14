@@ -481,7 +481,8 @@ BOOST_AUTO_TEST_CASE( producer_watermark_test ) try {
    wdump((alice_last_produced_block_num));
 
    {
-      wdump((c.control->head_block_state()->producer_to_last_produced));
+      //TODO: add formatter for type `flat_map<account_name,uint32_t>` used in block_header_state.hpp
+//      wdump((c.control->head_block_state()->producer_to_last_produced));
       const auto& last_produced = c.control->head_block_state()->producer_to_last_produced;
       auto alice_itr = last_produced.find( "alice"_n );
       BOOST_REQUIRE( alice_itr != last_produced.end() );
