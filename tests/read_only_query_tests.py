@@ -149,7 +149,7 @@ try:
                         "authorization": [{"actor": readtestaccount.name, "permission": "active"}],
                         "data": ""}]
           }
-    success, transaction = node.pushTransaction(trx, opts='--read-only --return-failure-trace true', permissions=readtestaccount.name)
+    success, transaction = node.pushTransaction(trx, opts='--read-only', permissions=readtestaccount.name)
 
     assert success
     assert 8 == len(transaction['result']['action_traces'][0]['return_value_data']), 'Combined kv tables roqm and roqf should contain 8 rows'

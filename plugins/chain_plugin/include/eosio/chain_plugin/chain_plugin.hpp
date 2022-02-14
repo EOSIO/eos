@@ -576,7 +576,7 @@ public:
    }
 
    struct send_ro_transaction_params_v1 {
-      bool return_failure_traces = false;
+      bool return_failure_traces = true;
       fc::variant transaction;
    };
 
@@ -992,7 +992,7 @@ public:
    void send_transaction(const send_transaction_params_v1& params, chain::plugin_interface::next_function<send_transaction_results> next);
 
    struct send_transaction_params_v2 {
-      bool return_failure_traces = false;
+      bool return_failure_traces = true;
       fc::variant transaction;
    };
    void send_transaction(const send_transaction_params_v2& params, chain::plugin_interface::next_function<send_transaction_results> next);

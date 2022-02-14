@@ -518,11 +518,22 @@ try:
     action="transfer"
     data="{\"from\":\"defproducera\",\"to\":\"currency1111\",\"quantity\":"
     data +="\"00.0151 CUR\",\"memo\":\"test\"}"
-    opts="--permission defproducera@active"
-    trans=node.pushMessage(contract, action, data, opts, True)
-    if trans is None or trans[0]:
-        cmdError("%s push message currency1111 transfer should have failed" % (ClientName))
-        errorExit("Failed to reject invalid transfer message to currency1111 contract")
+    # test error with return-failure-trace being true and false
+    opts = { "--permission defproducera@active" : True, 
+             "--return-failure-trace false --permission defproducera@active" : False }
+    for opt, hasTrace in opts.items():
+        success, trans=node.pushMessage(contract, action, data, opt, True)
+        if Utils.Debug: Print("node.pushMessage returned: ", json.dumps(trans, indent=1))
+        if isinstance(trans, str):
+            assert not hasTrace, "hasTrace is %s transaction must not be valid json: %s" % (hasTrace, trans)
+        elif isinstance(trans, dict):
+            assert hasTrace, "hasTrace is %s transaction must be valid json: %s" % (hasTrace, trans)
+        else:
+            cmdError("node.pushMessage returned {}".format(type(trans)))
+            success = False
+        if success is not False:
+            cmdError("%s push message currency1111 transfer should have failed" % (ClientName))
+            errorExit("Failed to reject invalid transfer message to currency1111 contract")
 
     Print("read current contract balance")
     amountStr=node.getTableAccountBalance("currency1111", defproduceraAccount.name)
