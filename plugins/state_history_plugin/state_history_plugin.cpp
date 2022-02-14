@@ -136,7 +136,8 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       template <typename T>
       std::enable_if_t<std::is_base_of_v<get_blocks_request_v0,T>>
       operator()(T&& req) {
-         fc_ilog(_log, "received get_blocks_request = ${req}", ("req",req) );
+         //TODO: add formatter for custom type `get_blocks_request_v0`
+         //fc_ilog(_log, "received get_blocks_request = {req}", ("req",req) );
          auto request_span = fc_create_trace("get_blocks_request");
          to_send_block_num = req.start_block_num;
          for (auto& cp : req.have_positions) {
@@ -163,7 +164,8 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       }
 
       void operator()(get_blocks_ack_request_v0&& ack_req) {
-         fc_ilog(_log, "received get_blocks_ack_request_v0 = ${req}", ("req",ack_req));
+         //TODO: add formatter for custom type `get_blocks_ack_request_v0`
+         //fc_ilog(_log, "received get_blocks_ack_request_v0 = ${req}", ("req",ack_req));
          if (!current_request.has_value()) {
             fc_dlog(_log, " no current get_blocks_request_v0, discarding the get_blocks_ack_request_v0");
             return;
@@ -265,7 +267,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
          if( fresh_block || (result.this_block && result.this_block->block_num % 1000 == 0) ) {
             fc_ilog(_log, "pushing result {\"head\":{\"block_num\":${head}},\"last_irreversible\":{\"block_num\":${last_irr}},\"this_block\":{\"block_num\":${this_block}, \"id\": ${id}}} to send queue", 
                   ("head", result.head.block_num)("last_irr", result.last_irreversible.block_num)
-                  ("this_block", result.this_block ? result.this_block->block_num : fc::variant())
+                  ("this_block", result.this_block ? result.this_block->block_num : fc::variant().as_uint64())
                   ("id", block_id ? block_id->_hash[3] : 0 ));
          }
 

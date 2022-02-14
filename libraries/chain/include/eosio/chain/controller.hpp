@@ -365,7 +365,7 @@ namespace eosio { namespace chain {
                   abi_def abi;
                   if( abi_serializer::to_abi( a.abi, abi ))
                      return abi_serializer( abi, yield );
-               } FC_CAPTURE_AND_LOG((n))
+               } FC_CAPTURE_AND_LOG((n.to_string()))
             }
             return std::optional<abi_serializer>();
          }

@@ -666,10 +666,11 @@ struct controller_impl {
          const auto& idx = db.get_index<account_index>();
          for (auto& row : idx.indices()) {
             if (row.abi.size() != 0) {
-               fc_dlog(*dm_logger, "ABIDUMP ABI ${contract} ${abi}",
-                  ("contract", row.name)
-                  ("abi", row.abi)
-               );
+               //TODO: add formatter for custom type `shared_blob`
+//               fc_dlog(*dm_logger, "ABIDUMP ABI ${contract} ${abi}",
+//                  ("contract", row.name.to_string())
+//                  ("abi", row.abi)
+//               );
             }
          }
          fc_dlog(*dm_logger, "ABIDUMP END");
@@ -1437,10 +1438,11 @@ struct controller_impl {
          {
             // Promote proposed schedule to pending schedule.
             if( !replay_head_time ) {
-               ilog( "promoting proposed schedule (set in block ${proposed_num}) to pending; current block: ${n} lib: ${lib} schedule: ${schedule} ",
-                     ("proposed_num", *gpo.proposed_schedule_block_num)("n", pbhs.block_num)
-                     ("lib", pbhs.dpos_irreversible_blocknum)
-                     ("schedule", producer_authority_schedule::from_shared(gpo.proposed_schedule) ) );
+               //TODO: add formatter for custom type `shared_producer_authority_schedule`
+//               ilog( "promoting proposed schedule (set in block ${proposed_num}) to pending; current block: ${n} lib: ${lib} schedule: ${schedule} ",
+//                     ("proposed_num", *gpo.proposed_schedule_block_num)("n", pbhs.block_num)
+//                     ("lib", pbhs.dpos_irreversible_blocknum)
+//                     ("schedule", producer_authority_schedule::from_shared(gpo.proposed_schedule) ) );
             }
 
             EOS_ASSERT( gpo.proposed_schedule.version == pbhs.active_schedule_version + 1,
@@ -1734,7 +1736,8 @@ struct controller_impl {
             bool transaction_failed =  trace && trace->except;
             bool transaction_can_fail = receipt.status == transaction_receipt_header::hard_fail && std::holds_alternative<transaction_id_type>(receipt.trx);
             if( transaction_failed && !transaction_can_fail) {
-               edump((*trace));
+               //TODO: add formatter for custom type `transaction_trace`
+//               edump((*trace));
                throw *trace->except;
             }
 
@@ -2451,7 +2454,7 @@ void controller::preactivate_feature( uint32_t action_id, const digest_type& fea
       fc_dlog(*dm_logger, "FEATURE_OP PRE_ACTIVATE ${action_id} ${feature_digest} ${feature}",
          ("action_id", action_id)
          ("feature_digest", feature_digest)
-         ("feature", feature.to_variant())
+         ("feature", feature.to_variant().as_string())
       );
    }
 
@@ -3132,7 +3135,7 @@ void controller::add_to_ram_correction( account_name account, uint64_t ram_bytes
          ("action_id", action_id)
          ("correction_id", correction_object_id)
          ("event_id", event_id)
-         ("payer", account)
+         ("payer", account.to_string())
          ("delta", ram_bytes)
       );
    }
@@ -3225,7 +3228,7 @@ std::optional<chain_id_type> controller::extract_chain_id_from_db( const path& s
 }
 
 void controller::replace_producer_keys( const public_key_type& key ) {
-   ilog("Replace producer keys with ${k}", ("k", key));
+   ilog("Replace producer keys with ${k}", ("k", key.to_string()));
    mutable_db().modify( db().get<global_property_object>(), [&]( auto& gp ) {
       gp.proposed_schedule_block_num = {};
       gp.proposed_schedule.version = 0;
@@ -3235,7 +3238,7 @@ void controller::replace_producer_keys( const public_key_type& key ) {
    my->head->pending_schedule = {};
    my->head->pending_schedule.schedule.version = version;
    for (auto& prod: my->head->active_schedule.producers ) {
-      ilog("${n}", ("n", prod.producer_name));
+      ilog("${n}", ("n", prod.producer_name.to_string()));
       std::visit([&](auto &auth) {
          auth.threshold = 1;
          auth.keys = {key_weight{key, 1}};
@@ -3283,7 +3286,7 @@ void controller_impl::on_activation<builtin_protocol_feature_t::replace_deferred
       if( itr->ram_correction > static_cast<uint64_t>(current_ram_usage) ) {
          ram_delta = -current_ram_usage;
          elog( "account ${name} was to be reduced by ${adjust} bytes of RAM despite only using ${current} bytes of RAM",
-               ("name", itr->name)("adjust", itr->ram_correction)("current", current_ram_usage) );
+               ("name", itr->name.to_string())("adjust", itr->ram_correction)("current", current_ram_usage) );
       }
 
       std::string event_id;

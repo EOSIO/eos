@@ -24,20 +24,20 @@ std::string db_context::table_event(name code, name scope, name table, name qual
 void db_context::log_insert_table(fc::logger& deep_mind_logger, uint32_t action_id, name code, name scope, name table, account_name payer) {
    fc_dlog(deep_mind_logger, "TBL_OP INS ${action_id} ${code} ${scope} ${table} ${payer}",
       ("action_id", action_id)
-      ("code", code)
-      ("scope", scope)
-      ("table", table)
-      ("payer", payer)
+      ("code", code.to_string())
+      ("scope", scope.to_string())
+      ("table", table.to_string())
+      ("payer", payer.to_string())
    );
 }
 
 void db_context::log_remove_table(fc::logger& deep_mind_logger, uint32_t action_id, name code, name scope, name table, account_name payer) {
    fc_dlog(deep_mind_logger, "TBL_OP REM ${action_id} ${code} ${scope} ${table} ${payer}",
       ("action_id", action_id)
-      ("code", code)
-      ("scope", scope)
-      ("table", table)
-      ("payer", payer)
+      ("code", code.to_string())
+      ("scope", scope.to_string())
+      ("table", table.to_string())
+      ("payer", payer.to_string())
    );
 }
 
@@ -45,11 +45,11 @@ void db_context::log_row_insert(fc::logger& deep_mind_logger, uint32_t action_id
                                  account_name payer, account_name primkey, const char* buffer, size_t buffer_size) {
    fc_dlog(deep_mind_logger, "DB_OP INS ${action_id} ${payer} ${table_code} ${scope} ${table_name} ${primkey} ${ndata}",
       ("action_id", action_id)
-      ("payer", payer)
-      ("table_code", code)
-      ("scope", scope)
-      ("table_name", table)
-      ("primkey", primkey)
+      ("payer", payer.to_string())
+      ("table_code", code.to_string())
+      ("scope", scope.to_string())
+      ("table_name", table.to_string())
+      ("primkey", primkey.to_string())
       ("ndata", fc::to_hex(buffer, buffer_size))
    );
 }
@@ -59,12 +59,12 @@ void db_context::log_row_update(fc::logger& deep_mind_logger, uint32_t action_id
                                  const char* old_buffer, size_t old_buffer_size, const char* new_buffer, size_t new_buffer_size) {
    fc_dlog(deep_mind_logger, "DB_OP UPD ${action_id} ${opayer}:${npayer} ${table_code} ${scope} ${table_name} ${primkey} ${odata}:${ndata}",
       ("action_id", action_id)
-      ("opayer", old_payer)
-      ("npayer", new_payer)
-      ("table_code", code)
-      ("scope", scope)
-      ("table_name", table)
-      ("primkey", primkey)
+      ("opayer", old_payer.to_string())
+      ("npayer", new_payer.to_string())
+      ("table_code", code.to_string())
+      ("scope", scope.to_string())
+      ("table_name", table.to_string())
+      ("primkey", primkey.to_string())
       ("odata", to_hex(old_buffer, old_buffer_size))
       ("ndata", to_hex(new_buffer, new_buffer_size))
    );
@@ -74,11 +74,11 @@ void db_context::log_row_remove(fc::logger& deep_mind_logger, uint32_t action_id
                                   account_name payer, account_name primkey, const char* buffer, size_t buffer_size) {
    fc_dlog(deep_mind_logger, "DB_OP REM ${action_id} ${payer} ${table_code} ${scope} ${table_name} ${primkey} ${odata}",
       ("action_id", action_id)
-      ("payer", payer)
-      ("table_code", code)
-      ("scope", scope)
-      ("table_name", table)
-      ("primkey", primkey)
+      ("payer", payer.to_string())
+      ("table_code", code.to_string())
+      ("scope", scope.to_string())
+      ("table_name", table.to_string())
+      ("primkey", primkey.to_string())
       ("odata", fc::to_hex(buffer, buffer_size))
    );
 }

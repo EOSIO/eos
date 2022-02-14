@@ -890,7 +890,7 @@ namespace eosio { namespace chain {
 
       ilog("Data at tail end of block log which should contain the (incomplete) serialization of block ${num} "
             "has been written out to '${tail_path}'.",
-            ("num", block_num + 1)("tail_path", tail_path));
+            ("num", block_num + 1)("tail_path", tail_path.string()));
       
    }
 
@@ -933,7 +933,7 @@ namespace eosio { namespace chain {
    fc::path block_log::repair_log(const fc::path& data_dir, uint32_t truncate_at_block, const char* reversible_block_dir_name) {
       ilog("Recovering Block Log...");
       EOS_ASSERT(fc::is_directory(data_dir) && fc::is_regular_file(data_dir / "blocks.log"), block_log_not_found,
-                 "Block log not found in '${blocks_dir}'", ("blocks_dir", data_dir));
+                 "Block log not found in '${blocks_dir}'", ("blocks_dir", data_dir.string()));
                  
       if (truncate_at_block == 0)
          truncate_at_block = UINT32_MAX;
@@ -956,7 +956,7 @@ namespace eosio { namespace chain {
       if (strlen(reversible_block_dir_name) && fc::is_directory(blocks_dir/reversible_block_dir_name)) {
          fc::rename(blocks_dir/ reversible_block_dir_name, backup_dir/ reversible_block_dir_name);
       }
-      ilog("Moved existing blocks directory to backup location: '${new_blocks_dir}'", ("new_blocks_dir", backup_dir));
+      ilog("Moved existing blocks directory to backup location: '${new_blocks_dir}'", ("new_blocks_dir", backup_dir.string()));
 
       const auto block_log_path  = blocks_dir / "blocks.log";
       const auto block_file_name = block_log_path.generic_string();

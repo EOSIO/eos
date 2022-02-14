@@ -585,9 +585,9 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
       if (auto dm_logger = control.get_deep_mind_logger()) {
          fc_dlog(*dm_logger, "DTRX_OP MODIFY_CANCEL ${action_id} ${sender} ${sender_id} ${payer} ${published} ${delay} ${expiration} ${trx_id} ${trx}",
             ("action_id", get_action_id())
-            ("sender", receiver)
+            ("sender", receiver.to_string())
             ("sender_id", sender_id)
-            ("payer", ptr->payer)
+            ("payer", ptr->payer.to_string())
             ("published", ptr->published)
             ("delay", ptr->delay_until)
             ("expiration", ptr->expiration)
@@ -616,9 +616,9 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
 
             fc_dlog(*dm_logger, "DTRX_OP MODIFY_CREATE ${action_id} ${sender} ${sender_id} ${payer} ${published} ${delay} ${expiration} ${trx_id} ${trx}",
                ("action_id", get_action_id())
-               ("sender", receiver)
+               ("sender", receiver.to_string())
                ("sender_id", sender_id)
-               ("payer", payer)
+               ("payer", payer.to_string())
                ("published", gtx.published)
                ("delay", gtx.delay_until)
                ("expiration", gtx.expiration)
@@ -645,9 +645,9 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
 
             fc_dlog(*dm_logger, "DTRX_OP CREATE ${action_id} ${sender} ${sender_id} ${payer} ${published} ${delay} ${expiration} ${trx_id} ${trx}",
                ("action_id", get_action_id())
-               ("sender", receiver)
+               ("sender", receiver.to_string())
                ("sender_id", sender_id)
-               ("payer", payer)
+               ("payer", payer.to_string())
                ("published", gtx.published)
                ("delay", gtx.delay_until)
                ("expiration", gtx.expiration)
@@ -679,9 +679,9 @@ bool apply_context::cancel_deferred_transaction( const uint128_t& sender_id, acc
 
          fc_dlog(*dm_logger, "DTRX_OP CANCEL ${action_id} ${sender} ${sender_id} ${payer} ${published} ${delay} ${expiration} ${trx_id} ${trx}",
             ("action_id", get_action_id())
-            ("sender", receiver)
+            ("sender", receiver.to_string())
             ("sender_id", sender_id)
-            ("payer", gto->payer)
+            ("payer", gto->payer.to_string())
             ("published", gto->published)
             ("delay", gto->delay_until)
             ("expiration", gto->expiration)
