@@ -248,6 +248,7 @@ void add_standard_transaction_options(CLI::App* cmd, string default_permission =
    cmd->add_option("--max-net-usage", tx_max_net_usage, localized("Set an upper limit on the net usage budget, in bytes, for the transaction (defaults to 0 which means no limit)"));
 
    cmd->add_option("--delay-sec", delaysec, localized("Set the delay_sec seconds, defaults to 0s"));
+   cmd->add_option("-t,--return-failure-trace", tx_rtn_failure_trace, localized("Return partial traces on failed transactions"));
 }
 
 bool is_public_key_str(const std::string& potential_key_str) {
@@ -3934,7 +3935,6 @@ int main( int argc, char** argv ) {
    actionsSubcommand->add_option("action", action,
                                  localized("A JSON string or filename defining the action to execute on the contract"), true)->required();
    actionsSubcommand->add_option("data", data, localized("The arguments to the contract"))->required();
-   actionsSubcommand->add_option("-t,--return-failure-trace", tx_rtn_failure_trace, localized("Return partial traces on failed transaction"));
 
    add_standard_transaction_options_plus_signing(actionsSubcommand);
    actionsSubcommand->callback([&] {
