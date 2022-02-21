@@ -173,7 +173,7 @@ namespace eosio { namespace chain {
    signed_block_header pending_block_header_state::make_block_header(
                                                       const checksum256_type& transaction_mroot,
                                                       const checksum256_type& action_mroot,
-                                                      const optional<producer_authority_schedule>& new_producers,
+                                                      const std::optional<producer_authority_schedule>& new_producers,
                                                       vector<digest_type>&& new_protocol_feature_activations,
                                                       const protocol_feature_set& pfs
    )const
@@ -208,10 +208,11 @@ namespace eosio { namespace chain {
             legacy::producer_schedule_type downgraded_producers;
             downgraded_producers.version = new_producers->version;
             for (const auto &p : new_producers->producers) {
-               p.authority.visit([&downgraded_producers, &p](const auto& auth){
+               std::visit([&downgraded_producers, &p](const auto& auth)
+               {
                   EOS_ASSERT(auth.keys.size() == 1 && auth.keys.front().weight == auth.threshold, producer_schedule_exception, "multisig block signing present before enabled!");
                   downgraded_producers.producers.emplace_back(legacy::producer_key{p.producer_name, auth.keys.front().key});
-               });
+               }, p.authority);
             }
             h.new_producers = std::move(downgraded_producers);
          }
@@ -263,7 +264,7 @@ namespace eosio { namespace chain {
          EOS_ASSERT(wtmsig_enabled, producer_schedule_exception, "Block header producer_schedule_change_extension before activation of WTMsig Block Signatures" );
          EOS_ASSERT( !was_pending_promoted, producer_schedule_exception, "cannot set pending producer schedule in the same block in which pending was promoted to active" );
 
-         const auto& new_producer_schedule = exts.lower_bound(producer_schedule_change_extension::extension_id())->second.get<producer_schedule_change_extension>();
+         const auto& new_producer_schedule = std::get<producer_schedule_change_extension>(exts.lower_bound(producer_schedule_change_extension::extension_id())->second);
 
          EOS_ASSERT( new_producer_schedule.version == active_schedule.version + 1, producer_schedule_exception, "wrong producer schedule version specified" );
          EOS_ASSERT( prev_pending_schedule.schedule.producers.empty(), producer_schedule_exception,
@@ -276,7 +277,7 @@ namespace eosio { namespace chain {
       protocol_feature_activation_set_ptr new_activated_protocol_features;
       { // handle protocol_feature_activation
          if( exts.count(protocol_feature_activation::extension_id() > 0) ) {
-            const auto& new_protocol_features = exts.lower_bound(protocol_feature_activation::extension_id())->second.get<protocol_feature_activation>().protocol_features;
+            const auto& new_protocol_features = std::get<protocol_feature_activation>(exts.lower_bound(protocol_feature_activation::extension_id())->second).protocol_features;
             validator( timestamp, prev_activated_protocol_features->protocol_features, new_protocol_features );
 
             new_activated_protocol_features =   std::make_shared<protocol_feature_activation_set>(
@@ -292,7 +293,7 @@ namespace eosio { namespace chain {
 
       block_header_state result( std::move( *static_cast<detail::block_header_state_common*>(this) ) );
 
-      result.id      = h.id();
+      result.id      = h.calculate_id();
       result.header  = h;
 
       result.header_exts = std::move(exts);
@@ -409,7 +410,7 @@ namespace eosio { namespace chain {
 
    void block_header_state::verify_signee( )const {
 
-      size_t num_keys_in_authority = valid_block_signing_authority.visit([](const auto &a){ return a.keys.size(); });
+      auto num_keys_in_authority = std::visit([](const auto &a){ return a.keys.size(); }, valid_block_signing_authority);
       EOS_ASSERT(1 + additional_signatures.size() <= num_keys_in_authority, wrong_signing_key,
                  "number of block signatures (${num_block_signatures}) exceeds number of keys in block signing authority (${num_keys})",
                  ("num_block_signatures", 1 + additional_signatures.size())
@@ -449,7 +450,7 @@ namespace eosio { namespace chain {
       if( header_exts.count(protocol_feature_activation::extension_id()) == 0 )
          return no_activations;
 
-      return header_exts.lower_bound(protocol_feature_activation::extension_id())->second.get<protocol_feature_activation>().protocol_features;
+      return std::get<protocol_feature_activation>(header_exts.lower_bound(protocol_feature_activation::extension_id())->second).protocol_features;
    }
 
    block_header_state::block_header_state( legacy::snapshot_block_header_state_v2&& snapshot )

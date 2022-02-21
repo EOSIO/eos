@@ -88,7 +88,7 @@ try:
     # Wait until the block where set prods is executed become irreversible so the producer schedule
     def isSetProdsBlockNumIrr():
             return producerNode.getIrreversibleBlockNum() >= setProdsBlockNum
-    Utils.waitForBool(isSetProdsBlockNumIrr, timeout=30, sleepTime=0.1)
+    Utils.waitForTruth(isSetProdsBlockNumIrr, timeout=30, sleepTime=0.1)
     # Once it is irreversible, immediately pause the producer so the promoted producer schedule is not cleared
     producerNode.processCurlCmd("producer", "pause", "")
 
@@ -102,7 +102,7 @@ try:
 
     # Restart irr node and ensure the snapshot is still identical
     irrNode.kill(signal.SIGTERM)
-    isRelaunchSuccess = irrNode.relaunch(irrNodeId, "", timeout=5, cachePopen=True)
+    isRelaunchSuccess = irrNode.relaunch(timeout=5, cachePopen=True)
     assert isRelaunchSuccess, "Fail to relaunch"
     res = irrNode.createSnapshot()
     afterShutdownSnapshotPath = res["snapshot_name"]

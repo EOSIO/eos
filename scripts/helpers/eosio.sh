@@ -37,8 +37,6 @@ function setup() {
         echo "PROCEED: ${PROCEED}"
         echo "ENABLE_COVERAGE_TESTING: ${ENABLE_COVERAGE_TESTING}"
         echo "ENABLE_DOXYGEN: ${ENABLE_DOXYGEN}"
-        echo "ENABLE_MONGO: ${ENABLE_MONGO}"
-        echo "INSTALL_MONGO: ${INSTALL_MONGO}"
         echo "SUDO_LOCATION: ${SUDO_LOCATION}"
         echo "PIN_COMPILER: ${PIN_COMPILER}"
     fi
@@ -52,10 +50,6 @@ function setup() {
     execute mkdir -p $VAR_DIR/log
     execute mkdir -p $ETC_DIR
     execute mkdir -p $LIB_DIR
-    if $ENABLE_MONGO; then
-        execute mkdir -p $MONGODB_LOG_DIR
-        execute mkdir -p $MONGODB_DATA_DIR
-    fi
 }
 
 function ensure-which() {
@@ -134,24 +128,9 @@ function print_supported_linux_distros_and_exit() {
    exit 1
 }
 
-function prompt-mongo-install() {
-    if $ENABLE_MONGO; then
-        while true; do
-            [[ $NONINTERACTIVE == false ]] && printf "${COLOR_YELLOW}You have chosen to include MongoDB support. Do you want for us to install MongoDB as well? (y/n)?${COLOR_NC}" && read -p " " PROCEED
-            echo ""
-            case $PROCEED in
-                "" ) echo "What would you like to do?";;
-                0 | true | [Yy]* ) export INSTALL_MONGO=true; break;;
-                1 | false | [Nn]* ) echo "${COLOR_RED} - Existing MongoDB will be used.${COLOR_NC}"; break;;
-                * ) echo "Please type 'y' for yes or 'n' for no.";;
-            esac
-        done
-    fi
-}
-
 function ensure-compiler() {
     # Support build-essentials on ubuntu
-    if [[ $NAME == "CentOS Linux" ]] || [[ $VERSION_ID == "16.04" ]] || ( $PIN_COMPILER && [[ $VERSION_ID == "18.04" ]] ); then
+    if [[ $NAME == "CentOS Linux" ]] || [[ $VERSION_ID == "16.04" ]] || ( $PIN_COMPILER && ( [[ $VERSION_ID == "18.04" ]] || [[ $VERSION_ID == "20.04" ]] ) ); then
         export CXX=${CXX:-'g++'}
         export CC=${CC:-'gcc'}
     fi
@@ -174,9 +153,9 @@ function ensure-compiler() {
                 [[ $( $(which $CXX) --version | cut -d ' ' -f 4 | cut -d '.' -f 1 | head -n 1 ) -lt 10 ]] && export NO_CPP17=true
             else
                 if [[ $( $(which $CXX) --version | cut -d ' ' -f 3 | head -n 1 | cut -d '.' -f1) =~ ^[0-9]+$ ]]; then # Check if the version message cut returns an integer
-                    [[ $( $(which $CXX) --version | cut -d ' ' -f 3 | head -n 1 | cut -d '.' -f1) < 6 ]] && export NO_CPP17=true
+                    [[ $( $(which $CXX) --version | cut -d ' ' -f 3 | head -n 1 | cut -d '.' -f1) -lt 6 ]] && export NO_CPP17=true
                 elif [[ $(clang --version | cut -d ' ' -f 4 | head -n 1 | cut -d '.' -f1) =~ ^[0-9]+$ ]]; then # Check if the version message cut returns an integer
-                    [[ $( $(which $CXX) --version | cut -d ' ' -f 4 | cut -d '.' -f 1 | head -n 1 ) < 6 ]] && export NO_CPP17=true
+                    [[ $( $(which $CXX) --version | cut -d ' ' -f 4 | cut -d '.' -f 1 | head -n 1 ) -lt 6 ]] && export NO_CPP17=true
                 fi
             fi
         else
@@ -254,7 +233,7 @@ function ensure-boost() {
             local SDKROOT="$(xcrun --sdk macosx --show-sdk-path)"
         fi
         execute bash -c "cd $SRC_DIR && \
-        curl -LO https://dl.bintray.com/boostorg/release/$BOOST_VERSION_MAJOR.$BOOST_VERSION_MINOR.$BOOST_VERSION_PATCH/source/boost_$BOOST_VERSION.tar.bz2 \
+        curl -LO https://boostorg.jfrog.io/artifactory/main/release/$BOOST_VERSION_MAJOR.$BOOST_VERSION_MINOR.$BOOST_VERSION_PATCH/source/boost_$BOOST_VERSION.tar.bz2 \
         && tar -xjf boost_$BOOST_VERSION.tar.bz2 \
         && cd $BOOST_ROOT \
         && SDKROOT="$SDKROOT" ./bootstrap.sh ${BOOTSTRAP_FLAGS} --prefix=$BOOST_ROOT \
@@ -271,8 +250,10 @@ function ensure-boost() {
 }
 
 function ensure-llvm() {
+    echo "${COLOR_CYAN}[Ensuring LLVM support]${COLOR_NC}"
     if $PIN_COMPILER || $BUILD_CLANG; then
         if [[ -d $LLVM_ROOT ]]; then
+            echo "LLVM_ROOT ($LLVM_ROOT) already exists!"
             return
         fi
         LLVM_TEMP_DIR=$(mktemp -d)
@@ -281,9 +262,9 @@ function ensure-llvm() {
         fi
         trap "rm -rf '$LLVM_TEMP_DIR'" EXIT
         execute bash -c "cd '$LLVM_TEMP_DIR' \
-        && git clone --depth 1 --single-branch --branch $LLVM_VERSION https://github.com/llvm-mirror/llvm.git llvm && cd llvm \
+        && git clone --depth 1 --single-branch --branch $LLVM_VERSION https://github.com/llvm/llvm-project llvm && cd llvm/llvm \
         && mkdir build && cd build \
-        && ${CMAKE} -DCMAKE_INSTALL_PREFIX='${LLVM_ROOT}' -DLLVM_TARGETS_TO_BUILD=host -DLLVM_BUILD_TOOLS=false -DLLVM_ENABLE_RTTI=1 -DCMAKE_BUILD_TYPE=Release $LLVM_PINNED_CMAKE_ARGS .. \
+        && ${CMAKE} -DCMAKE_INSTALL_PREFIX='${LLVM_ROOT}' -DLLVM_TARGETS_TO_BUILD=host -DLLVM_BUILD_TOOLS=false -DLLVM_ENABLE_RTTI=1 -DCMAKE_BUILD_TYPE=Release -DLLVM_ENABLE_TERMINFO=OFF $LLVM_PINNED_CMAKE_ARGS .. \
         && make -j${JOBS} install"
         echo " - LLVM successfully installed @ ${LLVM_ROOT}"
     elif [[ $NAME == "Ubuntu" ]]; then
@@ -301,42 +282,90 @@ function build-clang() {
         echo "${COLOR_CYAN}[Ensuring Clang support]${COLOR_NC}"
         if [[ ! -d $CLANG_ROOT ]]; then
             execute bash -c "cd ${TEMP_DIR} \
-            && rm -rf clang8 \
-            && git clone --single-branch --branch $PINNED_COMPILER_BRANCH https://git.llvm.org/git/llvm.git clang8 \
-            && cd clang8 && git checkout $PINNED_COMPILER_LLVM_COMMIT \
-            && cd tools \
-            && git clone --single-branch --branch $PINNED_COMPILER_BRANCH https://git.llvm.org/git/lld.git \
-            && cd lld && git checkout $PINNED_COMPILER_LLD_COMMIT && cd ../ \
-            && git clone --single-branch --branch $PINNED_COMPILER_BRANCH https://git.llvm.org/git/polly.git \
-            && cd polly && git checkout $PINNED_COMPILER_POLLY_COMMIT && cd ../ \
-            && git clone --single-branch --branch $PINNED_COMPILER_BRANCH https://git.llvm.org/git/clang.git clang && cd clang \
-            && git checkout $PINNED_COMPILER_CLANG_COMMIT \
-            && patch -p2 < \"$REPO_ROOT/scripts/clang-devtoolset8-support.patch\" \
-            && cd tools && mkdir extra && cd extra \
-            && git clone --single-branch --branch $PINNED_COMPILER_BRANCH https://git.llvm.org/git/clang-tools-extra.git \
-            && cd clang-tools-extra && git checkout $PINNED_COMPILER_CLANG_TOOLS_EXTRA_COMMIT && cd .. \
-            && cd ../../../../projects \
-            && git clone --single-branch --branch $PINNED_COMPILER_BRANCH https://git.llvm.org/git/libcxx.git \
-            && cd libcxx && git checkout $PINNED_COMPILER_LIBCXX_COMMIT && cd ../ \
-            && git clone --single-branch --branch $PINNED_COMPILER_BRANCH https://git.llvm.org/git/libcxxabi.git \
-            && cd libcxxabi && git checkout $PINNED_COMPILER_LIBCXXABI_COMMIT && cd ../ \
-            && git clone --single-branch --branch $PINNED_COMPILER_BRANCH https://git.llvm.org/git/libunwind.git \
-            && cd libunwind && git checkout $PINNED_COMPILER_LIBUNWIND_COMMIT && cd ../ \
-            && git clone --single-branch --branch $PINNED_COMPILER_BRANCH https://git.llvm.org/git/compiler-rt.git \
-            && cd compiler-rt && git checkout $PINNED_COMPILER_COMPILER_RT_COMMIT && cd ../ \
-            && cd ${TEMP_DIR}/clang8 \
+            && rm -rf clang10 \
+            && git clone --single-branch --branch $PINNED_COMPILER_BRANCH https://github.com/llvm/llvm-project clang10 \
+            && cd clang10 \
             && mkdir build && cd build \
-            && ${CMAKE} -G 'Unix Makefiles' -DCMAKE_INSTALL_PREFIX='${CLANG_ROOT}' -DLLVM_BUILD_EXTERNAL_COMPILER_RT=ON -DLLVM_BUILD_LLVM_DYLIB=ON -DLLVM_ENABLE_LIBCXX=ON -DLLVM_ENABLE_RTTI=ON -DLLVM_INCLUDE_DOCS=OFF -DLLVM_OPTIMIZED_TABLEGEN=ON -DLLVM_TARGETS_TO_BUILD=all -DCMAKE_BUILD_TYPE=Release .. \
+            && ${CMAKE} -G 'Unix Makefiles' -DCMAKE_INSTALL_PREFIX='${CLANG_ROOT}' -DLLVM_ENABLE_PROJECTS='lld;polly;clang;clang-tools-extra;libcxx;libcxxabi;libunwind;compiler-rt' -DLLVM_BUILD_LLVM_DYLIB=ON -DLLVM_ENABLE_RTTI=ON -DLLVM_INCLUDE_DOCS=OFF -DLLVM_TARGETS_TO_BUILD=host -DCMAKE_BUILD_TYPE=Release ../llvm \
             && make -j${JOBS} \
-            && make install \
-            && rm -rf ${TEMP_DIR}/clang8"
-            echo " - Clang 8 successfully installed @ ${CLANG_ROOT}"
+            && make install"
+            echo " - Clang 10 successfully installed @ ${CLANG_ROOT}"
             echo ""
         else
-            echo " - Clang 8 found @ ${CLANG_ROOT}"
+            echo " - Clang 10 found @ ${CLANG_ROOT}"
             echo ""
         fi
         export CXX=$CPP_COMP
         export CC=$CC_COMP
+    fi
+}
+
+function install_libpqxx_from_source() {
+    if [ ! -d ${OPT_DIR}/pqxx ]; then
+        execute bash -c "cd $SRC_DIR && \
+            curl -L https://github.com/jtv/libpqxx/archive/7.2.1.tar.gz | tar zxvf - && \
+            cd libpqxx-7.2.1 && mkdir build && cd build && \
+            ${CMAKE} $CXX_SPEC $EXTRA_CMAKE_FLAGS -DCMAKE_INSTALL_PREFIX=${OPT_DIR}/pqxx -DSKIP_BUILD_TEST=ON -DCMAKE_BUILD_TYPE=Release .. && \
+            make -j${JOBS} && make install && \
+            cd ../.. && rm -rf libpqxx-7.2.1"
+    fi
+
+    if [ -z "$PKG_CONFIG_PATH" ]; then
+        export PKG_CONFIG_PATH="${OPT_DIR}/pqxx/lib/pkgconfig"
+    else
+        export PKG_CONFIG_PATH="${PKG_CONFIG_PATH}:${OPT_DIR}/pqxx/lib/pkgconfig"
+    fi
+} 
+
+function ensure-libpq-and-libpqxx() {  
+
+    if [[ $ARCH == "Darwin" ]]; then
+        #install libpq
+        [ -f /usr/local/opt/libpq/lib/pkgconfig/libpq.pc ] || brew install libpq
+        #install libpqxx
+        if $PIN_COMPILER; then
+            EXTRA_CMAKE_FLAGS="-DPostgreSQL_ROOT=/usr/local/opt/libpq"
+            install_libpqxx_from_source
+        elif [ ! -f /usr/local/lib/pkgconfig/libpqxx.pc ]; then
+            brew install libpqxx
+        fi
+    fi
+
+    if [[ $ARCH == "Linux" ]]; then
+        if [[ $CURRENT_USER != "root" ]] ; then
+            LIBPQ_SUDO="$SUDO_LOCATION"
+        fi
+        if [[ $NAME == "Amazon Linux" ]]; then
+            #install libpq
+            if [ ! -d /usr/include/libpq ]; then
+                $LIBPQ_SUDO amazon-linux-extras enable postgresql11 && \
+                    $LIBPQ_SUDO yum install -y libpq-devel
+            fi
+            EXTRA_CMAKE_FLAGS="-DPostgreSQL_TYPE_INCLUDE_DIR=/usr/include/libpq"
+        elif [[ $NAME == "CentOS Linux" ]]; then
+            #install libpq
+            if [ ! -d /usr/pgsql-13 ]; then
+                CENTOS_VERSION=$(rpm -E %{rhel})
+                $LIBPQ_SUDO yum install -y https://download.postgresql.org/pub/repos/yum/reporpms/EL-$CENTOS_VERSION-x86_64/pgdg-redhat-repo-latest.noarch.rpm
+                [ $CENTOS_VERSION -lt 8 ] || $LIBPQ_SUDO dnf -qy module disable postgresql
+                $LIBPQ_SUDO yum install -y postgresql13-devel
+            fi
+            export PostgreSQL_ROOT=/usr/pgsql-13   
+            export PKG_CONFIG_PATH=/usr/pgsql-13/lib/pkgconfig
+        elif [[ $NAME == "Ubuntu" ]]; then
+            # install libpq
+            if [ ! -d /usr/include/postgresql ]; then
+              $LIBPQ_SUDO bash -c 'source /etc/os-release; echo "deb http://apt.postgresql.org/pub/repos/apt ${VERSION_CODENAME}-pgdg main" > /etc/apt/sources.list.d/pgdg.list && \
+                    curl -sL https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add - && \
+                    apt-get update && apt-get -y install libpq-dev'
+            fi
+            EXTRA_CMAKE_FLAGS="-DPostgreSQL_TYPE_INCLUDE_DIR=/usr/include/postgresql"     
+        fi
+        #build libpqxx
+        if $PIN_COMPILER || $BUILD_CLANG; then
+            CXX_SPEC="-DCMAKE_TOOLCHAIN_FILE=$BUILD_DIR/pinned_toolchain.cmake"
+        fi
+
+        install_libpqxx_from_source
     fi
 }

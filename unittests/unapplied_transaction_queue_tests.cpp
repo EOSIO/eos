@@ -8,16 +8,18 @@ using namespace eosio::chain;
 
 BOOST_AUTO_TEST_SUITE(unapplied_transaction_queue_tests)
 
-auto unique_trx_meta_data() {
+auto unique_trx_meta_data( fc::time_point expire = fc::time_point::now() + fc::seconds( 120 ) ) {
 
    static uint64_t nextid = 0;
    ++nextid;
 
    signed_transaction trx;
    account_name creator = config::system_account_name;
+   trx.expiration = expire;
    trx.actions.emplace_back( vector<permission_level>{{creator,config::active_name}},
                              onerror{ nextid, "test", 4 });
-   return transaction_metadata::create_no_recover_keys( packed_transaction( trx ), transaction_metadata::trx_type::input );
+   return transaction_metadata::create_no_recover_keys( std::make_shared<packed_transaction>( std::move(trx), true ),
+                                                        transaction_metadata::trx_type::input );
 }
 
 auto next( unapplied_transaction_queue& q ) {
@@ -30,7 +32,7 @@ auto next( unapplied_transaction_queue& q ) {
    return trx;
 }
 
-auto create_test_block_state( std::vector<transaction_metadata_ptr> trx_metas ) {
+auto create_test_block_state( deque<transaction_metadata_ptr> trx_metas ) {
    signed_block_ptr block = std::make_shared<signed_block>();
    for( auto& trx_meta : trx_metas ) {
       block->transactions.emplace_back( *trx_meta->packed_trx() );
@@ -296,6 +298,19 @@ BOOST_AUTO_TEST_CASE( unapplied_transaction_queue_test ) try {
    BOOST_REQUIRE( next( q ) == nullptr );
    BOOST_CHECK( q.empty() );
 
+   auto trx20 = unique_trx_meta_data( fc::time_point::now() - fc::seconds( 1 ) );
+   auto trx21 = unique_trx_meta_data( fc::time_point::now() - fc::seconds( 1 ) );
+   auto trx22 = unique_trx_meta_data( fc::time_point::now() + fc::seconds( 120 ) );
+   auto trx23 = unique_trx_meta_data( fc::time_point::now() + fc::seconds( 120 ) );
+   q.add_aborted( { trx20, trx22 } );
+   q.add_persisted( trx21 );
+   q.add_persisted( trx23 );
+   q.clear_expired( fc::time_point::now(), fc::time_point::now() + fc::seconds( 300 ), [](auto, auto){} );
+   BOOST_CHECK( q.size() == 2 );
+   BOOST_REQUIRE( next( q ) == trx23 );
+   BOOST_REQUIRE( next( q ) == trx22 );
+   BOOST_CHECK( q.empty() );
+
    q.add_forked( { bs3, bs2, bs1 } );
    q.add_aborted( { trx9, trx11 } );
    q.add_persisted( trx8 );
@@ -306,5 +321,179 @@ BOOST_AUTO_TEST_CASE( unapplied_transaction_queue_test ) try {
 
 } FC_LOG_AND_RETHROW() /// unapplied_transaction_queue_test
 
+
+BOOST_AUTO_TEST_CASE( unapplied_transaction_queue_erase_add ) try {
+
+   unapplied_transaction_queue q;
+   BOOST_CHECK( q.empty() );
+   BOOST_CHECK( q.size() == 0 );
+
+   auto trx1 = unique_trx_meta_data();
+   auto trx2 = unique_trx_meta_data();
+   auto trx3 = unique_trx_meta_data();
+   auto trx4 = unique_trx_meta_data();
+   auto trx5 = unique_trx_meta_data();
+   auto trx6 = unique_trx_meta_data();
+   auto trx7 = unique_trx_meta_data();
+   auto trx8 = unique_trx_meta_data();
+   auto trx9 = unique_trx_meta_data();
+
+   q.add_incoming( trx1, false, [](auto){} );
+   q.add_incoming( trx2, false, [](auto){} );
+   q.add_incoming( trx3, false, [](auto){} );
+   q.add_incoming( trx4, false, [](auto){} );
+   q.add_incoming( trx5, false, [](auto){} );
+   q.add_incoming( trx6, false, [](auto){} );
+
+   auto itr = q.incoming_begin();
+   auto end = q.incoming_end();
+
+   auto count = q.incoming_size();
+
+   // count required to avoid infinite loop
+   while( count && itr != end ) {
+      auto trx_meta = itr->trx_meta;
+      if( count == 6 ) BOOST_CHECK( trx_meta == trx1 );
+      if( count == 5 ) BOOST_CHECK( trx_meta == trx2 );
+      if( count == 4 ) BOOST_CHECK( trx_meta == trx3 );
+      if( count == 3 ) BOOST_CHECK( trx_meta == trx4 );
+      if( count == 2 ) BOOST_CHECK( trx_meta == trx5 );
+      if( count == 1 ) BOOST_CHECK( trx_meta == trx6 );
+      itr = q.erase( itr );
+      q.add_incoming( trx_meta, false, [](auto){} );
+      --count;
+   }
+
+   BOOST_CHECK( q.size() == 6 );
+   BOOST_REQUIRE( next( q ) == trx1 );
+   BOOST_REQUIRE( next( q ) == trx2 );
+   BOOST_REQUIRE( next( q ) == trx3 );
+   BOOST_REQUIRE( next( q ) == trx4 );
+   BOOST_REQUIRE( next( q ) == trx5 );
+   BOOST_REQUIRE( next( q ) == trx6 );
+   BOOST_CHECK( q.empty() );
+
+   // incoming ++itr w/ erase
+   q.add_incoming( trx1, false, [](auto){} );
+   q.add_incoming( trx2, false, [](auto){} );
+   q.add_incoming( trx3, false, [](auto){} );
+   q.add_incoming( trx4, false, [](auto){} );
+   q.add_incoming( trx5, false, [](auto){} );
+   q.add_incoming( trx6, false, [](auto){} );
+
+   itr = q.incoming_begin();
+   end = q.incoming_end();
+
+   count = q.incoming_size();
+   while( itr != end ) {
+      if( count % 2 == 0) {
+         itr = q.erase( itr );
+      } else {
+         ++itr;
+      }
+      --count;
+   }
+   BOOST_REQUIRE( count == 0 );
+   q.clear();
+
+   // persisted
+   q.add_persisted( trx1 );
+   q.add_persisted( trx2 );
+   q.add_persisted( trx3 );
+   q.add_persisted( trx4 );
+   q.add_persisted( trx5 );
+   q.add_persisted( trx6 );
+   q.add_incoming( trx7, false, [](auto){} );
+
+   itr = q.persisted_begin();
+   end = q.persisted_end();
+   count = q.size() - 1;
+
+   while( count > 0 && itr != end ) {
+      auto trx_meta = itr->trx_meta;
+      if( count == 6 ) BOOST_CHECK( trx_meta == trx1 );
+      if( count == 5 ) BOOST_CHECK( trx_meta == trx2 );
+      if( count == 4 ) BOOST_CHECK( trx_meta == trx3 );
+      if( count == 3 ) BOOST_CHECK( trx_meta == trx4 );
+      if( count == 2 ) BOOST_CHECK( trx_meta == trx5 );
+      if( count == 1 ) BOOST_CHECK( trx_meta == trx6 );
+      itr = q.erase( itr );
+      q.add_persisted( trx_meta );
+      --count;
+   }
+   q.clear();
+
+   q.add_persisted( trx1 );
+   q.add_persisted( trx2 );
+   q.add_persisted( trx3 );
+   q.add_persisted( trx4 );
+   q.add_persisted( trx5 );
+   q.add_persisted( trx6 );
+   q.add_incoming( trx7, false, [](auto){} );
+
+   itr = q.unapplied_begin();
+   end = q.unapplied_end();
+
+   count = q.size() - 1;
+   while( itr != end ) {
+      if( count % 2 == 0) {
+         itr = q.erase( itr );
+      } else {
+         ++itr;
+      }
+      --count;
+   }
+   BOOST_REQUIRE( count == 0 );
+   q.clear();
+
+} FC_LOG_AND_RETHROW() /// unapplied_transaction_queue_test
+
+BOOST_AUTO_TEST_CASE( unapplied_transaction_queue_incoming_count ) try {
+
+   unapplied_transaction_queue q;
+   BOOST_CHECK( q.empty() );
+   BOOST_CHECK( q.size() == 0 );
+
+   auto trx1 = unique_trx_meta_data();
+   auto trx2 = unique_trx_meta_data();
+   auto trx3 = unique_trx_meta_data();
+   auto trx4 = unique_trx_meta_data();
+   auto trx5 = unique_trx_meta_data();
+   auto trx6 = unique_trx_meta_data();
+
+   q.add_incoming( trx1, false, [](auto){} );
+   q.add_incoming( trx2, false, [](auto){} );
+   q.add_incoming( trx3, false, [](auto){} );
+   q.add_incoming( trx4, false, [](auto){} );
+   q.add_incoming( trx5, false, [](auto){} );
+   q.add_incoming( trx6, false, [](auto){} );
+
+   auto expected = q.size();
+
+   BOOST_CHECK( q.incoming_size() == expected );
+
+   auto itr = q.begin();
+   auto end = q.end();
+
+   while( itr != end ) {
+      q.add_persisted( itr->trx_meta );
+      --expected;
+      BOOST_CHECK( q.incoming_size() == expected );
+      ++itr;
+   }
+
+   BOOST_CHECK( q.incoming_size() == 0 );
+
+   itr = q.begin();
+   end = q.end();
+
+   while( itr != end ) {
+      q.add_incoming( itr->trx_meta, false, [](auto){} );
+      ++expected;
+      BOOST_CHECK( q.incoming_size() == expected );
+      ++itr;
+   }
+
+} FC_LOG_AND_RETHROW() /// unapplied_transaction_queue_incoming_count
 
 BOOST_AUTO_TEST_SUITE_END()

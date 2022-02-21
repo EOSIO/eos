@@ -149,7 +149,7 @@ namespace eosio { namespace client { namespace http {
       // non error results are guaranteed to return a non-empty range
       vector<string> resolved_addresses;
       resolved_addresses.reserve(result.size());
-      optional<uint16_t> resolved_port;
+      std::optional<uint16_t> resolved_port;
       bool is_loopback = true;
 
       for(const auto& r : result) {
@@ -195,7 +195,7 @@ namespace eosio { namespace client { namespace http {
    boost::asio::streambuf request;
    std::ostream request_stream(&request);
    auto host_header_value = format_host_header(url);
-   request_stream << "POST " << url.path << " HTTP/1.0\r\n";
+   request_stream << "POST " << url.path << " HTTP/1.1\r\n";
    request_stream << "Host: " << host_header_value << "\r\n";
    request_stream << "content-length: " << postjson.size() << "\r\n";
    request_stream << "Accept: */*\r\n";
@@ -253,41 +253,52 @@ namespace eosio { namespace client { namespace http {
       throw;
    }
 
-   const auto response_result = fc::json::from_string(re);
+   fc::variant response_result;
+   try {
+      response_result = fc::json::from_string(re);
+   } catch(...) {
+      // re reported below if print_response requested
+      print_response = true;
+   }
+
    if( print_response ) {
       std::cerr << "RESPONSE:" << std::endl
                 << "---------------------" << std::endl
-                << fc::json::to_pretty_string( response_result ) << std::endl
+                << ( response_result.is_null() ? re : fc::json::to_pretty_string( response_result ) ) << std::endl
                 << "---------------------" << std::endl;
    }
-   if( status_code == 200 || status_code == 201 || status_code == 202 ) {
-      return response_result;
-   } else if( status_code == 404 ) {
-      // Unknown endpoint
-      if (url.path.compare(0, chain_func_base.size(), chain_func_base) == 0) {
-         throw chain::missing_chain_api_plugin_exception(FC_LOG_MESSAGE(error, "Chain API plugin is not enabled"));
-      } else if (url.path.compare(0, wallet_func_base.size(), wallet_func_base) == 0) {
-         throw chain::missing_wallet_api_plugin_exception(FC_LOG_MESSAGE(error, "Wallet is not available"));
-      } else if (url.path.compare(0, history_func_base.size(), history_func_base) == 0) {
-         throw chain::missing_history_api_plugin_exception(FC_LOG_MESSAGE(error, "History API plugin is not enabled"));
-      } else if (url.path.compare(0, net_func_base.size(), net_func_base) == 0) {
-         throw chain::missing_net_api_plugin_exception(FC_LOG_MESSAGE(error, "Net API plugin is not enabled"));
-      }
-   } else {
-      auto &&error_info = response_result.as<eosio::error_results>().error;
-      // Construct fc exception from error
-      const auto &error_details = error_info.details;
 
-      fc::log_messages logs;
-      for (auto itr = error_details.begin(); itr != error_details.end(); itr++) {
-         const auto& context = fc::log_context(fc::log_level::error, itr->file.data(), itr->line_number, itr->method.data());
-         logs.emplace_back(fc::log_message(context, itr->message));
-      }
+   if( !response_result.is_null() ) {
+      if( status_code == 200 || status_code == 201 || status_code == 202 ) {
+         return response_result;
+      } else if( status_code == 404 ) {
+         // Unknown endpoint
+         if (url.path.compare(0, chain_func_base.size(), chain_func_base) == 0) {
+            throw chain::missing_chain_api_plugin_exception(FC_LOG_MESSAGE(error, "Chain API plugin is not enabled"));
+         } else if (url.path.compare(0, wallet_func_base.size(), wallet_func_base) == 0) {
+            throw chain::missing_wallet_api_plugin_exception(FC_LOG_MESSAGE(error, "Wallet is not available"));
+         } else if (url.path.compare(0, history_func_base.size(), history_func_base) == 0) {
+            throw chain::missing_history_api_plugin_exception(FC_LOG_MESSAGE(error, "History API plugin is not enabled"));
+         } else if (url.path.compare(0, net_func_base.size(), net_func_base) == 0) {
+            throw chain::missing_net_api_plugin_exception(FC_LOG_MESSAGE(error, "Net API plugin is not enabled"));
+         }
+      } else {
+         auto &&error_info = response_result.as<eosio::error_results>().error;
+         // Construct fc exception from error
+         const auto &error_details = error_info.details;
 
-      throw fc::exception(logs, error_info.code, error_info.name, error_info.what);
+         fc::log_messages logs;
+         for (auto itr = error_details.begin(); itr != error_details.end(); itr++) {
+            const auto& context = fc::log_context(fc::log_level::error, itr->file.data(), itr->line_number, itr->method.data());
+            logs.emplace_back(fc::log_message(context, itr->message));
+         }
+
+         throw fc::exception(logs, error_info.code, error_info.name, error_info.what);
+      }
    }
 
-   EOS_ASSERT( status_code == 200, http_request_fail, "Error code ${c}\n: ${msg}\n", ("c", status_code)("msg", re) );
+   EOS_ASSERT( status_code == 200 && !response_result.is_null(), http_request_fail,
+               "Error code ${c}\n: ${msg}\n", ("c", status_code)("msg", re) );
    return response_result;
    }
 }}}

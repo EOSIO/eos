@@ -1,4 +1,27 @@
 {
+    "eosio-code-coverage":
+    {
+        "exclude": [ // ignore coverage reports from source filenames matching these PCREs
+            "^/build/",
+            "^/coverage/",
+            "^/.git/",
+            "^/libraries/eos-vm/",
+            "^/libraries/wasm-jit/",
+            "^/node_modules/",
+            "^/unittests/"
+        ],
+        "expect": [ // expect coverage reports from source filenames matching these PCREs
+            "[.]c(pp)?([.]in)?$",
+            "[.]h(pp)?([.]in)?$"
+        ]
+    },
+    "eosio-docker-builds":
+    {
+        "environment":
+        {
+            "BUILDER_TAG": "v2.0.0"
+        }
+    },
     "eos-multiversion-tests":
     {
         "environment":
@@ -10,40 +33,13 @@
             "170=v1.7.0"
         ]
     },
-    "eosio-docker-builds":
-    {
-        "environment":
-        {
-            "BUILDER_TAG": "v2.0.0"
-        }
-    },
-    "eosio-sync-tests":
-    {
-        "environment":
-        {
-            "SKIP_PRE_V180": "true",
-            "SKIP_V180": "true",
-            "SKIP_V200": "false"
-        }
-    },
-    "eosio-replay-tests":
-    {
-        "environment":
-        {
-            "SKIP_PRE_V180": "true",
-            "SKIP_V180": "true",
-            "SKIP_V200": "false"
-        }
-    },
+    // eosio-resume-from-state documentation: https://github.com/EOSIO/auto-eks-sync-nodes/blob/master/pipelines/eosio-resume-from-state/README.md
     "eosio-resume-from-state":
     {
         "test":
         [
             {
-                "tag": "v2.0.0-rc2"
-            },
-            {
-                "tag": "v2.0.0-rc3"
+                "commit": "16074742f8cfd481b029073e6f01bb920a1bad38"
             }
         ]
     }

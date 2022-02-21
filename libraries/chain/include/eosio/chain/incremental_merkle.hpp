@@ -247,5 +247,5 @@ typedef incremental_merkle_impl<digest_type>               incremental_merkle;
 typedef incremental_merkle_impl<digest_type,shared_vector> shared_incremental_merkle;
 
 } } /// eosio::chain
-
+// @swap _active_nodes
 FC_REFLECT( eosio::chain::incremental_merkle, (_active_nodes)(_node_count) );

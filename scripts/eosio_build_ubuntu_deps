@@ -8,7 +8,6 @@ doxygen,dpkg -s
 graphviz,dpkg -s
 libgmp3-dev,dpkg -s
 autotools-dev,dpkg -s
-libicu-dev,dpkg -s
 python2.7,dpkg -s
 python2.7-dev,dpkg -s
 python3,dpkg -s
@@ -23,3 +22,5 @@ libusb-1.0-0-dev,dpkg -s
 libcurl4-gnutls-dev,dpkg -s
 pkg-config,dpkg -s
 patch,dpkg -s
+lsb-release,dpkg -s
+gnupg,dpkg -s

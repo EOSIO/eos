@@ -24,6 +24,16 @@ namespace eosio { namespace chain {
             }
          }
 
+         template<typename Secondary, typename F>
+         static void walk( const chainbase::database& db, F function ) {
+            auto const& index = db.get_index<Index, Secondary>();
+            const auto& first = index.begin();
+            const auto& last = index.end();
+            for (auto itr = first; itr != last; ++itr) {
+               function(*itr);
+            }
+         }
+
          template<typename Secondary, typename Key, typename F>
          static void walk_range( const chainbase::database& db, const Key& begin_key, const Key& end_key, F function ) {
             const auto& idx = db.get_index<Index, Secondary>();
@@ -107,34 +117,60 @@ namespace fc {
    }
 
    inline
+   void float64_to_double (const float64_t& f, double& d) {
+      memcpy(&d, &f, sizeof(d));
+   }
+
+   inline
+   void double_to_float64 (const double& d, float64_t& f) {
+      memcpy(&f, &d, sizeof(f));
+   }
+
+   inline
+   void float128_to_uint128 (const float128_t& f, eosio::chain::uint128_t& u) {
+      memcpy(&u, &f, sizeof(u));
+   }
+
+   inline
+   void uint128_to_float128 (const eosio::chain::uint128_t& u,  float128_t& f) {
+      memcpy(&f, &u, sizeof(f));
+   }
+
+   inline
    void to_variant( const float64_t& f, variant& v ) {
-      v = variant(*reinterpret_cast<const double*>(&f));
+      double double_f;
+      float64_to_double(f, double_f);
+      v = variant(double_f);
    }
 
    inline
    void from_variant( const variant& v, float64_t& f ) {
-      from_variant(v, *reinterpret_cast<double*>(&f));
+      double double_f;
+      from_variant(v, double_f);
+      double_to_float64(double_f, f);
    }
 
    inline
    void to_variant( const float128_t& f, variant& v ) {
       // Assumes platform is little endian and hex representation of 128-bit integer is in little endian order.	
-      const eosio::chain::uint128_t as_bytes = *reinterpret_cast<const eosio::chain::uint128_t*>(&f);
+      char as_bytes[sizeof(eosio::chain::uint128_t)];
+      memcpy(as_bytes, &f, sizeof(as_bytes));
       std::string s = "0x";	
-      s.append( to_hex( reinterpret_cast<const char*>(&as_bytes), sizeof(as_bytes) ) );	
+      s.append( to_hex( as_bytes, sizeof(as_bytes) ) );
       v = s;
    }
 
    inline
    void from_variant( const variant& v, float128_t& f ) {
       // Temporarily hold the binary in uint128_t before casting it to float128_t
-      eosio::chain::uint128_t temp = 0;	      
+      char temp[sizeof(eosio::chain::uint128_t)];
+      memset(temp, 0, sizeof(temp));
       auto s = v.as_string();	
       FC_ASSERT( s.size() == 2 + 2 * sizeof(temp) && s.find("0x") == 0,	"Failure in converting hex data into a float128_t");	
-      auto sz = from_hex( s.substr(2), reinterpret_cast<char*>(&temp), sizeof(temp) );	
+      auto sz = from_hex( s.substr(2), temp, sizeof(temp) );
       // Assumes platform is little endian and hex representation of 128-bit integer is in little endian order.	
       FC_ASSERT( sz == sizeof(temp), "Failure in converting hex data into a float128_t" );	
-      f = *reinterpret_cast<const float128_t*>(&temp);
+      memcpy(&f, temp, sizeof(f));
    }
 
    inline
@@ -202,24 +238,32 @@ namespace chainbase {
 // overloads for softfloat packing
 template<typename DataStream>
 DataStream& operator << ( DataStream& ds, const float64_t& v ) {
-   fc::raw::pack(ds, *reinterpret_cast<const double *>(&v));
+   double double_v;
+   fc::float64_to_double(v, double_v);
+   fc::raw::pack(ds, double_v);
    return ds;
 }
 
 template<typename DataStream>
 DataStream& operator >> ( DataStream& ds, float64_t& v ) {
-   fc::raw::unpack(ds, *reinterpret_cast<double *>(&v));
+   double double_v;
+   fc::raw::unpack(ds, double_v);
+   fc::double_to_float64(double_v, v);
    return ds;
 }
 
 template<typename DataStream>
 DataStream& operator << ( DataStream& ds, const float128_t& v ) {
-   fc::raw::pack(ds, *reinterpret_cast<const eosio::chain::uint128_t*>(&v));
+   eosio::chain::uint128_t uint128_v;
+   fc::float128_to_uint128(v, uint128_v);
+   fc::raw::pack(ds, uint128_v);
    return ds;
 }
 
 template<typename DataStream>
 DataStream& operator >> ( DataStream& ds, float128_t& v ) {
-   fc::raw::unpack(ds, *reinterpret_cast<eosio::chain::uint128_t*>(&v));
+   eosio::chain::uint128_t uint128_v;
+   fc::raw::unpack(ds, uint128_v);
+   fc::uint128_to_float128(uint128_v, v);
    return ds;
 }

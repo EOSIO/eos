@@ -19,15 +19,21 @@ while read -r a b; do
 done < <(git submodule --quiet foreach --recursive 'echo $path `git log -1 --format=%ct`')
 
 echo "getting submodule info for $BASE_BRANCH"
-git checkout $BASE_BRANCH 1> /dev/null
-git submodule update --init 1> /dev/null
+GIT_CHECKOUT="git checkout '$BASE_BRANCH' 1> /dev/null"
+echo "$ $GIT_CHECKOUT"
+eval $GIT_CHECKOUT
+GIT_SUBMODULE="git submodule update --init 1> /dev/null"
+echo "$ $GIT_SUBMODULE"
+eval $GIT_SUBMODULE
+
 while read -r a b; do
     BASE_MAP[$a]=$b
 done < <(git submodule --quiet foreach --recursive 'echo $path `git log -1 --format=%ct`')
 
 echo "switching back to $CURRENT_BRANCH..."
-echo "git checkout -qf $CURRENT_BRANCH"
-git checkout -qf $CURRENT_BRANCH 1> /dev/null
+GIT_CHECKOUT="git checkout -qf '$CURRENT_BRANCH' 1> /dev/null"
+echo "$ $GIT_CHECKOUT"
+eval $GIT_CHECKOUT
 
 for k in "${!BASE_MAP[@]}"; do
     base_ts=${BASE_MAP[$k]}
@@ -37,7 +43,8 @@ for k in "${!BASE_MAP[@]}"; do
     echo "  timestamp on $BASE_BRANCH: $base_ts"
     if (( $pr_ts < $base_ts)); then
         echo "$k is older on $CURRENT_BRANCH than $BASE_BRANCH; investigating the difference between $CURRENT_BRANCH and $BASE_BRANCH to look for $k changing..."
-        if [[ ! -z $(for c in $(git --no-pager log $CURRENT_BRANCH ^$BASE_BRANCH --pretty=format:"%H"); do git show --pretty="" --name-only $c; done | grep "^$k$") ]]; then
+        GIT_LOG="git --no-pager log '$CURRENT_BRANCH' '^$BASE_BRANCH' --pretty=format:\"%H\""
+        if [[ ! -z $(for c in $(eval $GIT_LOG); do git show --pretty="" --name-only $c; done | grep "^$k$") ]]; then
             echo "ERROR: $k has regressed"
             exit 1
         else

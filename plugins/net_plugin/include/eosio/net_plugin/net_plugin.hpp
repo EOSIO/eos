@@ -27,10 +27,10 @@ namespace eosio {
         void plugin_startup();
         void plugin_shutdown();
 
-        string                       connect( const string& endpoint );
-        string                       disconnect( const string& endpoint );
-        optional<connection_status>  status( const string& endpoint )const;
-        vector<connection_status>    connections()const;
+        string                            connect( const string& endpoint );
+        string                            disconnect( const string& endpoint );
+        std::optional<connection_status>  status( const string& endpoint )const;
+        vector<connection_status>         connections()const;
 
       private:
         std::shared_ptr<class net_plugin_impl> my;

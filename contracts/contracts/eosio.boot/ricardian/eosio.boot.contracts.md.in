@@ -1,0 +1,120 @@
+<h1 class="contract">activate</h1>
+
+---
+spec_version: "0.2.0"
+title: Activate Protocol Feature
+summary: 'Activate protocol feature {{nowrap feature_digest}}'
+icon: @ICON_BASE_URL@/@ADMIN_ICON_URI@
+---
+
+{{$action.account}} activates the protocol feature with a digest of {{feature_digest}}.
+
+<h1 class="contract">canceldelay</h1>
+
+---
+spec_version: "0.2.0"
+title: Cancel Delayed Transaction
+summary: '{{nowrap canceling_auth.actor}} cancels a delayed transaction'
+icon: @ICON_BASE_URL@/@ACCOUNT_ICON_URI@
+---
+
+{{canceling_auth.actor}} cancels the delayed transaction with id {{trx_id}}.
+
+<h1 class="contract">deleteauth</h1>
+
+---
+spec_version: "0.2.0"
+title: Delete Account Permission
+summary: 'Delete the {{nowrap permission}} permission of {{nowrap account}}'
+icon: @ICON_BASE_URL@/@ACCOUNT_ICON_URI@
+---
+
+Delete the {{permission}} permission of {{account}}.
+
+<h1 class="contract">linkauth</h1>
+
+---
+spec_version: "0.2.0"
+title: Link Action to Permission
+summary: '{{nowrap account}} sets the minimum required permission for the {{#if type}}{{nowrap type}} action of the{{/if}} {{nowrap code}} contract to {{nowrap requirement}}'
+icon: @ICON_BASE_URL@/@ACCOUNT_ICON_URI@
+---
+
+{{account}} sets the minimum required permission for the {{#if type}}{{type}} action of the{{/if}} {{code}} contract to {{requirement}}.
+
+{{#if type}}{{else}}Any links explicitly associated to specific actions of {{code}} will take precedence.{{/if}}
+
+<h1 class="contract">newaccount</h1>
+
+---
+spec_version: "0.2.0"
+title: Create New Account
+summary: '{{nowrap creator}} creates a new account with the name {{nowrap name}}'
+icon: @ICON_BASE_URL@/@ACCOUNT_ICON_URI@
+---
+
+{{creator}} creates a new account with the name {{name}} and the following permissions:
+
+owner permission with authority:
+{{to_json owner}}
+
+active permission with authority:
+{{to_json active}}
+
+<h1 class="contract">reqactivated</h1>
+
+---
+spec_version: "0.2.0"
+title: Assert Protocol Feature Activation
+summary: 'Assert that protocol feature {{nowrap feature_digest}} has been activated'
+icon: @ICON_BASE_URL@/@ADMIN_ICON_URI@
+---
+
+Assert that the protocol feature with a digest of {{feature_digest}} has been activated.
+
+<h1 class="contract">setabi</h1>
+
+---
+spec_version: "0.2.0"
+title: Deploy Contract ABI
+summary: 'Deploy contract ABI on account {{nowrap account}}'
+icon: @ICON_BASE_URL@/@ACCOUNT_ICON_URI@
+---
+
+Deploy the ABI file associated with the contract on account {{account}}.
+
+<h1 class="contract">setcode</h1>
+
+---
+spec_version: "0.2.0"
+title: Deploy Contract Code
+summary: 'Deploy contract code on account {{nowrap account}}'
+icon: @ICON_BASE_URL@/@ACCOUNT_ICON_URI@
+---
+
+Deploy compiled contract code to the account {{account}}.
+
+<h1 class="contract">unlinkauth</h1>
+
+---
+spec_version: "0.2.0"
+title: Unlink Action from Permission
+summary: '{{nowrap account}} unsets the minimum required permission for the {{#if type}}{{nowrap type}} action of the{{/if}} {{nowrap code}} contract'
+icon: @ICON_BASE_URL@/@ACCOUNT_ICON_URI@
+---
+
+{{account}} removes the association between the {{#if type}}{{type}} action of the{{/if}} {{code}} contract and its minimum required permission.
+
+{{#if type}}{{else}}This will not remove any links explicitly associated to specific actions of {{code}}.{{/if}}
+
+<h1 class="contract">updateauth</h1>
+
+---
+spec_version: "0.2.0"
+title: Modify Account Permission
+summary: 'Add or update the {{nowrap permission}} permission of {{nowrap account}}'
+icon: @ICON_BASE_URL@/@ACCOUNT_ICON_URI@
+---
+
+Modify, and create if necessary, the {{permission}} permission of {{account}} to have a parent permission of {{parent}} and the following authority:
+{{to_json auth}}

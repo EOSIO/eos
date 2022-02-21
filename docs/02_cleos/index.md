@@ -43,6 +43,7 @@ Subcommands:
   version                     Retrieve version information
   create                      Create various items, on and off the blockchain
   convert                     Pack and unpack transactions
+  validate                    Validate transactions
   get                         Retrieve various items and information from the blockchain
   set                         Set or update blockchain state
   transfer                    Transfer tokens from account to account

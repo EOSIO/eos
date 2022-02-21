@@ -1,18 +1,11 @@
 #include <eosio/chain/name.hpp>
 #include <fc/variant.hpp>
 #include <boost/algorithm/string.hpp>
-#include <fc/exception/exception.hpp>
-#include <eosio/chain/exceptions.hpp>
 
 namespace eosio::chain {
 
    void name::set( std::string_view str ) {
-      const auto len = str.size();
-      EOS_ASSERT(len <= 13, name_type_exception, "Name is longer than 13 characters (${name}) ", ("name", std::string(str)));
       value = string_to_uint64_t(str);
-      EOS_ASSERT(to_string() == str, name_type_exception,
-                 "Name not properly normalized (name: ${name}, normalized: ${normalized}) ",
-                 ("name", std::string(str))("normalized", to_string()));
    }
 
    // keep in sync with name::to_string() in contract definition for name
@@ -30,6 +23,32 @@ namespace eosio::chain {
 
       boost::algorithm::trim_right_if( str, []( char c ){ return c == '.'; } );
       return str;
+   }
+
+   bool is_string_valid_name(std::string_view str)
+   {
+      size_t slen = str.size();
+      if( slen > 13)
+         return false;
+
+      size_t len = (slen <= 12) ? slen : 12;
+      for( size_t i = 0; i < len; ++i ) {
+         char c = str[i];
+         if ((c >= 'a' && c <= 'z') || (c >= '1' && c <= '5') || (c == '.'))
+            continue;
+         else
+            return false;
+      }
+
+      if( slen == 13) {
+         char c = str[12];
+         if ((c >= 'a' && c <= 'j') || (c >= '1' && c <= '5') || (c == '.'))
+            return true;
+         else
+            return false;
+      }
+
+      return true;
    }
 
 } // eosio::chain

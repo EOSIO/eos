@@ -1,5 +1,4 @@
 #include <eosio/test_control_plugin/test_control_plugin.hpp>
-#include <fc/optional.hpp>
 #include <atomic>
 
 namespace fc { class variant; }
@@ -21,8 +20,8 @@ private:
    void applied_irreversible_block(const chain::block_state_ptr& bsp);
    void process_next_block_state(const chain::block_state_ptr& bsp);
 
-   fc::optional<boost::signals2::scoped_connection> _accepted_block_connection;
-   fc::optional<boost::signals2::scoped_connection> _irreversible_block_connection;
+   std::optional<boost::signals2::scoped_connection> _accepted_block_connection;
+   std::optional<boost::signals2::scoped_connection> _irreversible_block_connection;
    chain::controller&  _chain;
    account_name        _producer;
    int32_t             _where_in_sequence;

@@ -6,7 +6,7 @@
 #include <eosio/trace_api/common.hpp>
 
 namespace eosio::trace_api {
-   using data_handler_function = std::function<fc::variant(const action_trace_v0&, const yield_function&)>;
+   using data_handler_function = std::function<std::tuple<fc::variant, std::optional<fc::variant>>( const std::variant<action_trace_v0, action_trace_v1> & action_trace_t, const yield_function&)>;
 
    namespace detail {
       class response_formatter {
@@ -43,8 +43,10 @@ namespace eosio::trace_api {
 
          yield();
 
-         auto data_handler = [this](const action_trace_v0& action, const yield_function& yield) -> fc::variant {
-            return data_handler_provider.process_data(action, yield);
+         auto data_handler = [this](const auto& action, const yield_function& yield) -> std::tuple<fc::variant, std::optional<fc::variant>> {
+            return std::visit([&](const auto& action_trace_t) {
+               return data_handler_provider.serialize_to_variant(action_trace_t, yield);
+            }, action);
          };
 
          return detail::response_formatter::process_block(std::get<0>(*data), std::get<1>(*data), data_handler, yield);

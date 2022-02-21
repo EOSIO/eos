@@ -115,7 +115,7 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(random_access_test, T, test_types, temp_file_fi
    BOOST_TEST(compressed_file::process(uncompressed_filename, compressed_filename, 512));
 
    // test that you can read all of the offsets from the compressed form by opening and seeking to them
-   for (int i = 0; i < data.size(); i++) {
+   for (std::size_t i = 0; i < data.size(); i++) {
       const auto& entry = data.at(i);
       auto compf = compressed_file(compressed_filename);
       compf.open();
@@ -165,7 +165,7 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(blob_access, T, test_types, temp_file_fixture) 
    BOOST_TEST(compressed_file::process(uncompressed_filename, compressed_filename, 512));
 
    // test that you can read all of the offsets from the compressed form through the end of the file
-   for (int i = 0; i < data.size(); i++) {
+   for (std::size_t i = 0; i < data.size(); i++) {
       auto actual_data = std::vector<T>(128);
       auto compf = compressed_file(compressed_filename);
       compf.open();
@@ -201,7 +201,7 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(blob_access_no_seek_points, T, test_types, temp
    BOOST_REQUIRE_EQUAL(expected_seek_point_count, actual_seek_point_count);
 
    // test that you can read all of the offsets from the compressed form through the end of the file
-   for (int i = 0; i < data.size(); i++) {
+   for (std::size_t i = 0; i < data.size(); i++) {
       auto actual_data = std::vector<T>(32);
       auto compf = compressed_file(compressed_filename);
       compf.open();

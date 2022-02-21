@@ -9,8 +9,8 @@ The table below sumarizes the actions you should take for each of the files enum
 Folder name             | File name          | Action
 ----------------------- | ------------------ | ------
 data/blocks             | blocks.index       | Remove
-data/blocks             | blocks.log         | Replace this file with the `block.log` you want to replay
-data/blocks/reversible  | forkdb.dat         | Remove
+data/blocks             | blocks.log         | Replace this file with the `blocks.log` you want to replay
+data/state              | fork_db.dat        | Remove
 data/blocks/reversible  | shared_memory.bin  | Remove
 data/blocks/reversible  | shared_memory.meta | Remove
 
@@ -18,7 +18,6 @@ You can use `blocks-dir = "blocks"` in the `config.ini` file, or use the `--bloc
 
 ```sh
 nodeos --replay-blockchain \
-  -e -p eosio \
   --plugin eosio::producer_plugin  \
   --plugin eosio::chain_api_plugin \
   --plugin eosio::http_plugin      \

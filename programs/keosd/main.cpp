@@ -66,8 +66,9 @@ bfs::path determine_home_directory()
    else {
       home = getenv("HOME");
    }
-   if(home.empty())
+   if(home.empty()) {
       home = "./";
+   }
    return home;
 }
 
@@ -84,8 +85,13 @@ int main(int argc, char** argv)
          .default_http_port = 0
       });
       app().register_plugin<wallet_api_plugin>();
-      if(!app().initialize<wallet_plugin, wallet_api_plugin, http_plugin>(argc, argv))
+      if(!app().initialize<wallet_plugin, wallet_api_plugin, http_plugin>(argc, argv)) {
+         const auto& opts = app().get_options();
+         if( opts.count("help") || opts.count("version") || opts.count("full-version") || opts.count("print-default-config") ) {
+            return 0;
+         }
          return -1;
+      }
       initialize_logging();
       auto& http = app().get_plugin<http_plugin>();
       http.add_handler("/v1/" + keosd::config::key_store_executable_name + "/stop", [&a=app()](string, string, url_response_callback cb) { cb(200, fc::variant(fc::variant_object())); a.quit(); } );

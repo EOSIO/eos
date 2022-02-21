@@ -97,7 +97,7 @@ struct txn_test_gen_plugin_impl {
    uint64_t _txcount = 0;
 
    uint16_t                                             thread_pool_size;
-   fc::optional<eosio::chain::named_thread_pool>        thread_pool;
+   std::optional<eosio::chain::named_thread_pool>       thread_pool;
    std::shared_ptr<boost::asio::high_resolution_timer>  timer;
    name                                                 newaccountA;
    name                                                 newaccountB;
@@ -107,12 +107,13 @@ struct txn_test_gen_plugin_impl {
       chain_plugin& cp = app().get_plugin<chain_plugin>();
 
       for (size_t i = 0; i < trxs->size(); ++i) {
-         cp.accept_transaction( std::make_shared<packed_transaction>(trxs->at(i)), [=](const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>& result){
-            if (result.contains<fc::exception_ptr>()) {
-               next(result.get<fc::exception_ptr>());
+         cp.accept_transaction( std::make_shared<packed_transaction>(signed_transaction(trxs->at(i)), true),
+               [=](const std::variant<fc::exception_ptr, transaction_trace_ptr>& result){
+            if (std::holds_alternative<fc::exception_ptr>(result)) {
+               next(std::get<fc::exception_ptr>(result));
             } else {
-               if (result.contains<transaction_trace_ptr>() && result.get<transaction_trace_ptr>()->receipt) {
-                  _total_us += result.get<transaction_trace_ptr>()->receipt->cpu_usage_us;
+               if (std::holds_alternative<transaction_trace_ptr>(result) && std::get<transaction_trace_ptr>(result)->receipt) {
+                  _total_us += std::get<transaction_trace_ptr>(result)->receipt->cpu_usage_us;
                   ++_txcount;
                }
             }
@@ -206,7 +207,7 @@ struct txn_test_gen_plugin_impl {
             {
                action act;
                act.account = newaccountT;
-               act.name = N(create);
+               act.name = "create"_n;
                act.authorization = vector<permission_level>{{newaccountT,config::active_name}};
                act.data = eosio_token_serializer.variant_to_binary("create",
                                                                    fc::json::from_string(fc::format_string("{\"issuer\":\"${issuer}\",\"maximum_supply\":\"1000000000.0000 CUR\"}}",
@@ -217,7 +218,7 @@ struct txn_test_gen_plugin_impl {
             {
                action act;
                act.account = newaccountT;
-               act.name = N(issue);
+               act.name = "issue"_n;
                act.authorization = vector<permission_level>{{newaccountT,config::active_name}};
                act.data = eosio_token_serializer.variant_to_binary("issue",
                                                                    fc::json::from_string(fc::format_string("{\"to\":\"${to}\",\"quantity\":\"60000.0000 CUR\",\"memo\":\"\"}",
@@ -228,7 +229,7 @@ struct txn_test_gen_plugin_impl {
             {
                action act;
                act.account = newaccountT;
-               act.name = N(transfer);
+               act.name = "transfer"_n;
                act.authorization = vector<permission_level>{{newaccountT,config::active_name}};
                act.data = eosio_token_serializer.variant_to_binary("transfer",
                                                                    fc::json::from_string(fc::format_string("{\"from\":\"${from}\",\"to\":\"${to}\",\"quantity\":\"20000.0000 CUR\",\"memo\":\"\"}",
@@ -239,7 +240,7 @@ struct txn_test_gen_plugin_impl {
             {
                action act;
                act.account = newaccountT;
-               act.name = N(transfer);
+               act.name = "transfer"_n;
                act.authorization = vector<permission_level>{{newaccountT,config::active_name}};
                act.data = eosio_token_serializer.variant_to_binary("transfer",
                                                                    fc::json::from_string(fc::format_string("{\"from\":\"${from}\",\"to\":\"${to}\",\"quantity\":\"20000.0000 CUR\",\"memo\":\"\"}",
@@ -254,8 +255,15 @@ struct txn_test_gen_plugin_impl {
             trx.sign(txn_test_receiver_C_priv_key, chainid);
             trxs.emplace_back(std::move(trx));
          }
+      } catch ( const std::bad_alloc& ) {
+        throw;
+      } catch ( const boost::interprocess::bad_alloc& ) {
+        throw;
       } catch (const fc::exception& e) {
          next(e.dynamic_copy_exception());
+         return;
+      } catch (const std::exception& e) {
+         next(fc::std_exception_wrapper::from_current_exception(e).dynamic_copy_exception());
          return;
       }
 
@@ -281,7 +289,7 @@ struct txn_test_gen_plugin_impl {
       abi_serializer eosio_token_serializer{fc::json::from_string(contracts::eosio_token_abi().data()).as<abi_def>(), abi_serializer::create_yield_function( abi_serializer_max_time )};
       //create the actions here
       act_a_to_b.account = newaccountT;
-      act_a_to_b.name = N(transfer);
+      act_a_to_b.name = "transfer"_n;
       act_a_to_b.authorization = vector<permission_level>{{newaccountA,config::active_name}};
       act_a_to_b.data = eosio_token_serializer.variant_to_binary("transfer",
                                                                   fc::json::from_string(fc::format_string("{\"from\":\"${from}\",\"to\":\"${to}\",\"quantity\":\"1.0000 CUR\",\"memo\":\"${l}\"}",
@@ -289,7 +297,7 @@ struct txn_test_gen_plugin_impl {
                                                                   abi_serializer::create_yield_function( abi_serializer_max_time ));
 
       act_b_to_a.account = newaccountT;
-      act_b_to_a.name = N(transfer);
+      act_b_to_a.name = "transfer"_n;
       act_b_to_a.authorization = vector<permission_level>{{newaccountB,config::active_name}};
       act_b_to_a.data = eosio_token_serializer.variant_to_binary("transfer",
                                                                   fc::json::from_string(fc::format_string("{\"from\":\"${from}\",\"to\":\"${to}\",\"quantity\":\"1.0000 CUR\",\"memo\":\"${l}\"}",
@@ -378,8 +386,14 @@ struct txn_test_gen_plugin_impl {
          trxs.emplace_back(std::move(trx));
          }
          }
+      } catch ( const std::bad_alloc& ) {
+        throw;
+      } catch ( const boost::interprocess::bad_alloc& ) {
+        throw;
       } catch ( const fc::exception& e ) {
          next(e.dynamic_copy_exception());
+      } catch (const std::exception& e) {
+         next(fc::std_exception_wrapper::from_current_exception(e).dynamic_copy_exception());
       }
 
       push_transactions(std::move(trxs), next);
@@ -450,7 +464,7 @@ void txn_test_gen_plugin::plugin_shutdown() {
    try {
       my->stop_generation();
    }
-   catch(fc::exception& e) {
+   catch(const std::exception& e) {
    }
 }
 

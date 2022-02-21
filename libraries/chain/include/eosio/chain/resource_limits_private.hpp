@@ -2,6 +2,7 @@
 #include <eosio/chain/types.hpp>
 #include <eosio/chain/config.hpp>
 #include <eosio/chain/exceptions.hpp>
+#include <eosio/chain/chain_snapshot.hpp>
 
 #include "multi_index_includes.hpp"
 
@@ -120,9 +121,111 @@ namespace eosio { namespace chain { namespace resource_limits {
          }
       };
 
+      /**
+       *  This class accumulates a value that decays over quantums based on inputs
+       *  The decay is linear between updates and exponential if the set of inputs has no gaps
+       *
+       *  The value stored is Precision times the sum of the inputs.
+       */
+      template<uint64_t Precision = config::rate_limiting_precision>
+      struct exponential_decay_accumulator
+      {
+         static_assert( Precision > 0, "Precision must be positive" );
+         static constexpr uint64_t max_raw_value = std::numeric_limits<uint64_t>::max() / Precision;
+
+         exponential_decay_accumulator()
+         : last_ordinal(0)
+         , value_ex(0)
+         {
+         }
+
+         uint32_t   last_ordinal;  ///< The ordinal of the last period which has contributed to the accumulator
+         uint64_t   value_ex;      ///< The current accumulated value pre-multiplied by Precision
+
+         /**
+          * return the extended value at a current or future ordinal
+          */
+         uint64_t value_ex_at( uint32_t ordinal, uint32_t window_size ) const {
+            if( last_ordinal < ordinal ) {
+               if( (uint64_t)last_ordinal + window_size > (uint64_t)ordinal ) {
+                  const auto delta = ordinal - last_ordinal; // clearly 0 < delta < window_size
+                  const auto decay = make_ratio(
+                          (uint128_t)window_size - delta,
+                          (uint128_t)window_size
+                  );
+
+                  return downgrade_cast<uint64_t>((uint128_t)value_ex * decay);
+               } else {
+                  return 0;
+               }
+            } else {
+               return value_ex;
+            }
+         }
+
+         /**
+          * return the value at a current or future ordinal
+          */
+         uint64_t value_at( uint32_t ordinal, uint32_t window_size ) const {
+            return integer_divide_ceil(value_ex_at(ordinal, window_size), Precision);
+         }
+
+         void add( uint64_t units, uint32_t ordinal, uint32_t window_size /* must be positive */ )
+         {
+            // check for some numerical limits before doing any state mutations
+            EOS_ASSERT(units <= max_raw_value, rate_limiting_state_inconsistent, "Usage exceeds maximum value representable after extending for precision");
+
+            uint128_t units_ex = (uint128_t)units * Precision;
+            if (last_ordinal < ordinal) {
+               value_ex = value_ex_at(ordinal, window_size);
+               last_ordinal = ordinal;
+            }
+
+            // saturate the value
+            uint128_t new_value_ex = std::min<uint128_t>(units_ex + (uint128_t)value_ex, std::numeric_limits<uint64_t>::max());
+            value_ex = downgrade_cast<uint64_t>(new_value_ex);
+         }
+      };
    }
 
    using usage_accumulator = impl::exponential_moving_average_accumulator<>;
+
+   namespace legacy {
+      struct snapshot_resource_limits_object_v3 {
+         static constexpr uint32_t minimum_version = 0;
+         static constexpr uint32_t maximum_version = 3;
+         static_assert(chain_snapshot_header::minimum_compatible_version <= maximum_version, "snapshot_resource_limits_object_v3 is no longer needed");
+         account_name owner;
+
+         int64_t net_weight;
+         int64_t cpu_weight;
+         int64_t ram_bytes;
+      };
+      struct snapshot_resource_usage_object_v3 {
+         static constexpr uint32_t minimum_version = 0;
+         static constexpr uint32_t maximum_version = 3;
+         static_assert(chain_snapshot_header::minimum_compatible_version <= maximum_version, "snapshot_resource_usage_object_v3 is no longer needed");
+         account_name owner;
+         usage_accumulator        net_usage;
+         usage_accumulator        cpu_usage;
+         uint64_t                 ram_usage;
+      };
+      struct snapshot_resource_limits_state_object_v3 {
+         static constexpr uint32_t minimum_version = 0;
+         static constexpr uint32_t maximum_version = 3;
+         static_assert(chain_snapshot_header::minimum_compatible_version <= maximum_version, "snapshot_resource_limits_state_object_v3 is no longer needed");
+
+         usage_accumulator average_block_net_usage;
+         usage_accumulator average_block_cpu_usage;
+         uint64_t pending_net_usage;
+         uint64_t pending_cpu_usage;
+         uint64_t total_net_weight;
+         uint64_t total_cpu_weight;
+         uint64_t total_ram_bytes;
+         uint64_t virtual_net_limit;
+         uint64_t virtual_cpu_limit;
+      };
+   }
 
    /**
     * Every account that authorizes a transaction is billed for the full size of that transaction. This object
@@ -139,6 +242,15 @@ namespace eosio { namespace chain { namespace resource_limits {
       int64_t net_weight = -1;
       int64_t cpu_weight = -1;
       int64_t ram_bytes = -1;
+
+      using v3 = legacy::snapshot_resource_limits_object_v3;
+      void initialize_from( const v3& legacy) {
+         owner = legacy.owner;
+         pending = false;
+         net_weight = legacy.net_weight;
+         cpu_weight = legacy.cpu_weight;
+         ram_bytes = legacy.ram_bytes;
+      }
 
    };
 
@@ -168,6 +280,13 @@ namespace eosio { namespace chain { namespace resource_limits {
       usage_accumulator        cpu_usage;
 
       uint64_t                 ram_usage = 0;
+      using v3 = legacy::snapshot_resource_usage_object_v3;
+      void initialize_from( const v3& legacy ) {
+         owner = legacy.owner;
+         net_usage = legacy.net_usage;
+         cpu_usage = legacy.cpu_usage;
+         ram_usage = legacy.ram_usage;
+      }
    };
 
    using resource_usage_index = chainbase::shared_multi_index_container<
@@ -194,6 +313,8 @@ namespace eosio { namespace chain { namespace resource_limits {
 
       uint32_t account_cpu_usage_average_window = config::account_cpu_usage_average_window_ms / config::block_interval_ms;
       uint32_t account_net_usage_average_window = config::account_net_usage_average_window_ms / config::block_interval_ms;
+
+      using v3 = resource_limits_config_object;
    };
 
    using resource_limits_config_index = chainbase::shared_multi_index_container<
@@ -249,6 +370,19 @@ namespace eosio { namespace chain { namespace resource_limits {
        */
       uint64_t virtual_cpu_limit = 0ULL;
 
+      using v3 = legacy::snapshot_resource_limits_state_object_v3;
+      void initialize_from( const v3& legacy ) {
+         average_block_net_usage = legacy.average_block_net_usage;
+         average_block_cpu_usage = legacy.average_block_cpu_usage;
+         pending_net_usage = legacy.pending_net_usage;
+         pending_cpu_usage = legacy.pending_cpu_usage;
+         total_net_weight = legacy.total_net_weight;
+         total_cpu_weight = legacy.total_cpu_weight;
+         total_ram_bytes = legacy.total_ram_bytes;
+         virtual_net_limit = legacy.virtual_net_limit;
+         virtual_cpu_limit = legacy.virtual_cpu_limit;
+      }
+
    };
 
    using resource_limits_state_index = chainbase::shared_multi_index_container<
@@ -272,3 +406,7 @@ FC_REFLECT(eosio::chain::resource_limits::resource_limits_object, (owner)(net_we
 FC_REFLECT(eosio::chain::resource_limits::resource_usage_object,  (owner)(net_usage)(cpu_usage)(ram_usage))
 FC_REFLECT(eosio::chain::resource_limits::resource_limits_config_object, (cpu_limit_parameters)(net_limit_parameters)(account_cpu_usage_average_window)(account_net_usage_average_window))
 FC_REFLECT(eosio::chain::resource_limits::resource_limits_state_object, (average_block_net_usage)(average_block_cpu_usage)(pending_net_usage)(pending_cpu_usage)(total_net_weight)(total_cpu_weight)(total_ram_bytes)(virtual_net_limit)(virtual_cpu_limit))
+
+FC_REFLECT(eosio::chain::resource_limits::legacy::snapshot_resource_limits_object_v3, (owner)(net_weight)(cpu_weight)(ram_bytes))
+FC_REFLECT(eosio::chain::resource_limits::legacy::snapshot_resource_usage_object_v3,  (owner)(net_usage)(cpu_usage)(ram_usage))
+FC_REFLECT(eosio::chain::resource_limits::legacy::snapshot_resource_limits_state_object_v3, (average_block_net_usage)(average_block_cpu_usage)(pending_net_usage)(pending_cpu_usage)(total_net_weight)(total_cpu_weight)(total_ram_bytes)(virtual_net_limit)(virtual_cpu_limit))

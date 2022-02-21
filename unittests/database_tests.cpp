@@ -55,9 +55,9 @@ BOOST_AUTO_TEST_SUITE(database_tests)
          // Produce 200 blocks and check their IDs should match the above
          test.produce_blocks(num_of_blocks_to_prod);
          for (uint32_t i = 0; i < num_of_blocks_to_prod; ++i) {
-            block_ids.emplace_back(test.control->fetch_block_by_number(i + 1)->id());
+            block_ids.emplace_back(test.control->fetch_block_by_number(i + 1)->calculate_id());
             BOOST_TEST(block_header::num_from_id(block_ids.back()) == i + 1);
-            BOOST_TEST(test.control->fetch_block_by_number(i + 1)->id() == block_ids.back());
+            BOOST_TEST(test.control->fetch_block_by_number(i + 1)->calculate_id() == block_ids.back());
          }
 
          // Check the last irreversible block number is set correctly, with one producer, irreversibility should only just 1 block before
@@ -76,7 +76,7 @@ BOOST_AUTO_TEST_SUITE(database_tests)
          // Previous nonexisting future block should exist by now
          BOOST_CHECK_NO_THROW(test.control->fetch_block_by_number(nonexisting_future_block_num));
          // Check the latest head block match
-         BOOST_TEST(test.control->fetch_block_by_number(test.control->head_block_num())->id() ==
+         BOOST_TEST(test.control->fetch_block_by_number(test.control->head_block_num())->calculate_id() ==
                     test.control->head_block_id());
       } FC_LOG_AND_RETHROW()
    }

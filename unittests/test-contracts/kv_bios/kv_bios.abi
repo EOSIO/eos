@@ -1,0 +1,55 @@
+{
+    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT ",
+    "version": "eosio::abi/1.2",
+    "types": [],
+    "structs": [
+        {
+            "name": "ramkvlimits",
+            "base": "",
+            "fields": [
+                {
+                    "name": "k",
+                    "type": "uint32"
+                },
+                {
+                    "name": "v",
+                    "type": "uint32"
+                },
+                {
+                    "name": "i",
+                    "type": "uint32"
+                }
+            ]
+        },
+        {
+            "name": "setramlimit",
+            "base": "",
+            "fields": [
+                {
+                    "name": "account",
+                    "type": "name"
+                },
+                {
+                    "name": "limit",
+                    "type": "int64"
+                }
+            ]
+        }
+    ],
+    "actions": [
+        {
+            "name": "ramkvlimits",
+            "type": "ramkvlimits",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "setramlimit",
+            "type": "setramlimit",
+            "ricardian_contract": ""
+        }
+    ],
+    "tables": [],
+    "ricardian_clauses": [],
+    "variants": [],
+    "action_results": []
+}

@@ -1,12 +1,9 @@
-#include <eosiolib/action.hpp>
-#include <eosiolib/chain.h>
-#include <eosiolib/crypto.h>
-#include <eosiolib/datastream.hpp>
-#include <eosiolib/db.h>
-#include <eosiolib/eosio.hpp>
-#include <eosiolib/print.hpp>
-#include <eosiolib/privileged.h>
-#include <eosiolib/transaction.hpp>
+#include <eosio/action.hpp>
+#include <eosio/crypto.hpp>
+#include <eosio/datastream.hpp>
+#include <eosio/eosio.hpp>
+#include <eosio/print.hpp>
+#include <eosio/transaction.hpp>
 
 #include "test_api.hpp"
 
@@ -56,7 +53,7 @@ void test_action::test_dummy_action() {
 
    if ( dum13.b == 200 ) {
       // attempt to access context free only api
-      get_context_free_data( 0, nullptr, 0 );
+      eosio::get_context_free_data( 0, nullptr, 0 );
       eosio_assert( false, "get_context_free_data() not allowed in non-context free action" );
    } else {
       eosio_assert( dum13.a == DUMMY_ACTION_DEFAULT_A, "dum13.a == DUMMY_ACTION_DEFAULT_A" );
@@ -79,19 +76,18 @@ void test_action::test_cf_action() {
    cf_action cfa = act.data_as<cf_action>();
    if ( cfa.payload == 100 ) {
       // verify read of get_context_free_data, also verifies system api access
-      int size = get_context_free_data( cfa.cfd_idx, nullptr, 0 );
+      int size = eosio::get_context_free_data( cfa.cfd_idx, nullptr, 0 );
       eosio_assert( size > 0, "size determination failed" );
       std::vector<char> cfd( static_cast<size_t>(size) );
-      size = get_context_free_data( cfa.cfd_idx, &cfd[0], static_cast<size_t>(size) );
+      size = eosio::get_context_free_data( cfa.cfd_idx, &cfd[0], static_cast<size_t>(size) );
       eosio_assert(static_cast<size_t>(size) == cfd.size(), "get_context_free_data failed" );
       uint32_t v = eosio::unpack<uint32_t>( &cfd[0], cfd.size() );
       eosio_assert( v == cfa.payload, "invalid value" );
 
       // verify crypto api access
-      capi_checksum256 hash;
       char test[] = "test";
-      sha256( test, sizeof(test), &hash );
-      assert_sha256( test, sizeof(test), &hash );
+      auto hash = sha256( test, sizeof(test) );
+      eosio::assert_sha256( test, sizeof(test), hash );
       // verify action api access
       action_data_size();
       // verify console api access
@@ -100,7 +96,7 @@ void test_action::test_cf_action() {
       uint32_t i = 42;
       memccpy( &v, &i, sizeof(i), sizeof(i) );
       // verify transaction api access
-      eosio_assert(transaction_size() > 0, "transaction_size failed");
+      eosio_assert(eosio::transaction_size() > 0, "transaction_size failed");
       // verify softfloat api access
       float f1 = 1.0f, f2 = 2.0f;
       float f3 = f1 + f2;
@@ -137,21 +133,22 @@ void test_action::test_cf_action() {
    } else if ( cfa.payload == 206 ) {
       eosio::require_auth("test"_n);
       eosio_assert( false, "authorization_api should not be allowed" );
-   } else if ( cfa.payload == 207 ) {
-      now();
-      eosio_assert( false, "system_api should not be allowed" );
-   } else if ( cfa.payload == 208 ) {
+   } else if ( cfa.payload == 207 || cfa.payload == 208 ) {
+      // 207 is obsolete as now() is removed from system.h
       current_time();
       eosio_assert( false, "system_api should not be allowed" );
    } else if ( cfa.payload == 209 ) {
       publication_time();
       eosio_assert( false, "system_api should not be allowed" );
    } else if ( cfa.payload == 210 ) {
-      send_inline( (char*)"hello", 6 );
+      eosio::internal_use_do_not_use::send_inline( (char*)"hello", 6 );
       eosio_assert( false, "transaction_api should not be allowed" );
    } else if ( cfa.payload == 211 ) {
-      send_deferred( "testapi"_n.value, "testapi"_n.value, "hello", 6, 0 );
+      eosio::send_deferred( "testapi"_n.value, "testapi"_n, "hello", 6, 0 );
       eosio_assert( false, "transaction_api should not be allowed" );
+   } else if ( cfa.payload == 212 ) {
+      set_action_return_value("hi", 2);
+      eosio_assert( false, "set_action_return_value should not be allowed" );
    }
 
 }
@@ -181,7 +178,7 @@ void test_action::require_notice_tests( uint64_t receiver, uint64_t code, uint64
 }
 
 void test_action::require_auth() {
-   prints("require_auth");
+   print("require_auth");
    eosio::require_auth("acc3"_n);
    eosio::require_auth("acc4"_n);
 }
@@ -207,7 +204,9 @@ void test_action::test_publication_time() {
    uint64_t pub_time = 0;
    uint32_t total = read_action_data( &pub_time, sizeof(uint64_t) );
    eosio_assert( total == sizeof(uint64_t), "total == sizeof(uint64_t)" );
-   eosio_assert( pub_time == publication_time(), "pub_time == publication_time()" );
+   time_point msec{ microseconds{static_cast<int64_t>(pub_time)}};
+   eosio_assert( msec == publication_time(), "pub_time == publication_time()" );
+
 }
 
 void test_action::test_current_receiver( uint64_t receiver, uint64_t code, uint64_t action ) {
@@ -234,7 +233,7 @@ void test_action::test_assert_code() {
 
 void test_action::test_ram_billing_in_notify( uint64_t receiver, uint64_t code, uint64_t action ) {
    uint128_t tmp = 0;
-   uint32_t total = read_action_data( &tmp, sizeof(uint128_t) );
+   uint32_t total = eosio::read_action_data( &tmp, sizeof(uint128_t) );
    eosio_assert( total == sizeof(uint128_t), "total == sizeof(uint128_t)" );
 
    uint64_t to_notify = tmp >> 64;
@@ -276,6 +275,7 @@ void test_action::test_action_ordinal1(uint64_t receiver, uint64_t code, uint64_
                          std::tuple<>());
       act2.send(); // -> exec 9
 
+      set_action_return_value( &eosio::pack(unsigned_int(1))[0], eosio::pack_size(unsigned_int(1)) );
       eosio::require_recipient( "charlie"_n ); // -> exec 3 which would then cause execution of 11
 
    } else if (receiver == "bob"_n.value) {
@@ -285,6 +285,7 @@ void test_action::test_action_ordinal1(uint64_t receiver, uint64_t code, uint64_
                          std::tuple<>());
       act1.send(); // -> exec 10
 
+      set_action_return_value( &eosio::pack(std::string("bob"))[0], eosio::pack_size(std::string("bob")) );
       eosio::require_recipient( "david"_n );  // -> exec 4
    } else if (receiver == "charlie"_n.value) {
       print("exec 3");
@@ -293,12 +294,14 @@ void test_action::test_action_ordinal1(uint64_t receiver, uint64_t code, uint64_
                          std::tuple<>()); // exec 11
       act1.send();
 
+      set_action_return_value( &eosio::pack(std::string("charlie"))[0], eosio::pack_size(std::string("charlie")) );
       if (is_account("fail3"_n)) {
          eosio_assert(false, "fail at point 3");
       }
 
    } else if (receiver == "david"_n.value) {
       print("exec 4");
+      set_action_return_value( &eosio::pack(std::string("david"))[0], eosio::pack_size(std::string("david")) );
    } else {
       eosio_assert(false, "assert failed at test_action::test_action_ordinal1");
    }
@@ -314,16 +317,20 @@ void test_action::test_action_ordinal2(uint64_t receiver, uint64_t code, uint64_
                          name(WASM_TEST_ACTION("test_action", "test_action_ordinal4")),
                          std::tuple<>());
       act1.send(); // -> exec 8
+      set_action_return_value( &eosio::pack("five"_n)[0], eosio::pack_size("five"_n) );
    } else if (receiver == "david"_n.value) {
       print("exec 6");
+      set_action_return_value( &eosio::pack(true)[0], eosio::pack_size(true) );
    } else if (receiver == "erin"_n.value) {
       print("exec 7");
+      set_action_return_value( &eosio::pack(signed_int(7))[0], eosio::pack_size(signed_int(7)) );
    } else {
       eosio_assert(false, "assert failed at test_action::test_action_ordinal2");
    }
 }
 void test_action::test_action_ordinal4(uint64_t receiver, uint64_t code, uint64_t action) {
    print("exec 8");
+   // no set_action_return_value
 }
 void test_action::test_action_ordinal3(uint64_t receiver, uint64_t code, uint64_t action) {
    print("exec 9");
@@ -331,10 +338,13 @@ void test_action::test_action_ordinal3(uint64_t receiver, uint64_t code, uint64_
    if (is_account("failnine"_n)) {
       eosio_assert(false, "fail at point 9");
    }
+   set_action_return_value( &eosio::pack(unsigned_int(9))[0], eosio::pack_size(unsigned_int(9)) );
 }
 void test_action::test_action_ordinal_foo(uint64_t receiver, uint64_t code, uint64_t action) {
    print("exec 10");
+   set_action_return_value( &eosio::pack(13.23)[0], eosio::pack_size(13.23) );
 }
 void test_action::test_action_ordinal_bar(uint64_t receiver, uint64_t code, uint64_t action) {
    print("exec 11");
+   set_action_return_value( &eosio::pack(11.42f)[0], eosio::pack_size(11.42f) );
 }

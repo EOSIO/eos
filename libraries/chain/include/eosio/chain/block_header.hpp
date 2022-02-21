@@ -10,7 +10,7 @@ namespace eosio { namespace chain {
    namespace detail {
       template<typename... Ts>
       struct block_header_extension_types {
-         using block_header_extension_t = fc::static_variant< Ts... >;
+         using block_header_extension_t = std::variant< Ts... >;
          using decompose_t = decompose< Ts... >;
       };
    }
@@ -53,7 +53,7 @@ namespace eosio { namespace chain {
        * irreversible and that it the new producer schedule takes effect this block.
        */
 
-      using new_producers_type = optional<legacy::producer_schedule_type>;
+      using new_producers_type = std::optional<legacy::producer_schedule_type>;
 
       uint32_t                          schedule_version = 0;
       new_producers_type                new_producers;
@@ -63,7 +63,7 @@ namespace eosio { namespace chain {
       block_header() = default;
 
       digest_type       digest()const;
-      block_id_type     id() const;
+      block_id_type     calculate_id() const;
       uint32_t          block_num() const { return num_from_id(previous) + 1; }
       static uint32_t   num_from_id(const block_id_type& id);
 
@@ -75,7 +75,7 @@ namespace eosio { namespace chain {
    {
       signature_type    producer_signature;
    };
-
+   
 } } /// namespace eosio::chain
 
 FC_REFLECT(eosio::chain::block_header,

@@ -6,7 +6,7 @@ If you have previously built EOSIO from source and now wish to install the prebu
 
 ```sh
 cd ~/eosio/eos
-sudo ./scripts/eosio_uninstall.sh
+./scripts/eosio_uninstall.sh
 ```
 
 [[info | Uninstall Dependencies]]

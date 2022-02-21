@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+from testUtils import Account
 from testUtils import Utils
 from Cluster import Cluster
 from WalletMgr import WalletMgr
@@ -9,6 +10,8 @@ from TestHelper import TestHelper
 
 import decimal
 import re
+import json
+import os
 
 ###############################################################
 # nodeos_run_test
@@ -22,13 +25,12 @@ errorExit=Utils.errorExit
 cmdError=Utils.cmdError
 from core_symbol import CORE_SYMBOL
 
-args = TestHelper.parse_args({"--host","--port","--prod-count","--defproducera_prvt_key","--defproducerb_prvt_key","--mongodb"
+args = TestHelper.parse_args({"--host","--port","--prod-count","--defproducera_prvt_key","--defproducerb_prvt_key"
                               ,"--dump-error-details","--dont-launch","--keep-logs","-v","--leave-running","--only-bios","--clean-run"
                               ,"--sanity-test","--wallet-port"})
 server=args.host
 port=args.port
 debug=args.v
-enableMongo=args.mongodb
 defproduceraPrvtKey=args.defproducera_prvt_key
 defproducerbPrvtKey=args.defproducerb_prvt_key
 dumpErrorDetails=args.dump_error_details
@@ -43,7 +45,7 @@ walletPort=args.wallet_port
 
 Utils.Debug=debug
 localTest=True if server == TestHelper.LOCAL_HOST else False
-cluster=Cluster(host=server, port=port, walletd=True, enableMongo=enableMongo, defproduceraPrvtKey=defproduceraPrvtKey, defproducerbPrvtKey=defproducerbPrvtKey)
+cluster=Cluster(host=server, port=port, walletd=True, defproduceraPrvtKey=defproduceraPrvtKey, defproducerbPrvtKey=defproducerbPrvtKey)
 walletMgr=WalletMgr(True, port=walletPort)
 testSuccessful=False
 killEosInstances=not dontKill
@@ -61,14 +63,13 @@ try:
     Print("SERVER: %s" % (server))
     Print("PORT: %d" % (port))
 
-    if enableMongo and not cluster.isMongodDbRunning():
-        errorExit("MongoDb doesn't seem to be running.")
-
     if localTest and not dontLaunch:
         cluster.killall(allInstances=killAll)
         cluster.cleanup()
         Print("Stand up cluster")
-        if cluster.launch(prodCount=prodCount, onlyBios=onlyBios, dontBootstrap=dontBootstrap) is False:
+        specificExtraNodeosArgs={ 0 : " --backing-store=chainbase",
+                                  1 : " --backing-store=rocksdb" }
+        if cluster.launch(totalNodes=3, prodCount=prodCount, onlyBios=onlyBios, dontBootstrap=dontBootstrap, specificExtraNodeosArgs=specificExtraNodeosArgs) is False:
             cmdError("launcher")
             errorExit("Failed to stand up eos cluster.")
     else:
@@ -90,7 +91,7 @@ try:
     Print("Validating system accounts after bootstrap")
     cluster.validateAccounts(None)
 
-    accounts=Cluster.createAccountKeys(3)
+    accounts=Cluster.createAccountKeys(4)
     if accounts is None:
         errorExit("FAILURE - create keys")
     testeraAccount=accounts[0]
@@ -99,6 +100,11 @@ try:
     currencyAccount.name="currency1111"
     exchangeAccount=accounts[2]
     exchangeAccount.name="exchange1111"
+    # account to test newaccount with authority
+    testerbAccount=accounts[3]
+    testerbAccount.name="testerb11111"
+    testerbOwner = testerbAccount.ownerPublicKey
+    testerbAccount.ownerPublicKey = '{"threshold":1, "accounts":[{"permission":{"actor": "' + testeraAccount.name + '", "permission":"owner"}, "weight": 1}],"keys":[{"key": "' +testerbOwner +  '", "weight": 1}],"waits":[]}'
 
     PRV_KEY1=testeraAccount.ownerPrivateKey
     PUB_KEY1=testeraAccount.ownerPublicKey
@@ -208,6 +214,9 @@ try:
     Print("Create new account %s via %s" % (testeraAccount.name, cluster.defproduceraAccount.name))
     transId=node.createInitializeAccount(testeraAccount, cluster.defproduceraAccount, stakedDeposit=0, waitForTransBlock=False, exitOnError=True)
 
+    Print("Create new account %s via %s" % (testerbAccount.name, cluster.defproduceraAccount.name))
+    transId=node.createInitializeAccount(testerbAccount, cluster.defproduceraAccount, stakedDeposit=0, waitForTransBlock=False, exitOnError=True)
+
     Print("Create new account %s via %s" % (currencyAccount.name, cluster.defproduceraAccount.name))
     transId=node.createInitializeAccount(currencyAccount, cluster.defproduceraAccount, buyRAM=200000, stakedDeposit=5000, exitOnError=True)
 
@@ -275,10 +284,7 @@ try:
     Print("Validate last action for account %s" % (testeraAccount.name))
     actions=node.getActions(testeraAccount, -1, -1, exitOnError=True)
     try:
-        if not enableMongo:
-            assert(actions["actions"][0]["action_trace"]["act"]["name"] == "transfer")
-        else:
-            assert(actions["act"]["name"] == "transfer")
+        assert (actions["actions"][0]["action_trace"]["act"]["name"] == "transfer")
     except (AssertionError, TypeError, KeyError) as _:
         Print("Action validation failed. Actions: %s" % (actions))
         raise
@@ -291,18 +297,11 @@ try:
     amountVal=None
     key=""
     try:
-        if not enableMongo:
-            key="[traces][0][act][name]"
-            typeVal=  transaction["traces"][0]["act"]["name"]
-            key="[traces][0][act][data][quantity]"
-            amountVal=transaction["traces"][0]["act"]["data"]["quantity"]
-            amountVal=int(decimal.Decimal(amountVal.split()[0])*10000)
-        else:
-            key="[actions][0][name]"
-            typeVal=  transaction["actions"][0]["name"]
-            key="[actions][0][data][quantity]"
-            amountVal=transaction["actions"][0]["data"]["quantity"]
-            amountVal=int(decimal.Decimal(amountVal.split()[0])*10000)
+        key = "[traces][0][act][name]"
+        typeVal = transaction["traces"][0]["act"]["name"]
+        key = "[traces][0][act][data][quantity]"
+        amountVal = transaction["traces"][0]["act"]["data"]["quantity"]
+        amountVal = int(decimal.Decimal(amountVal.split()[0]) * 10000)
     except (TypeError, KeyError) as e:
         Print("transaction%s not found. Transaction: %s" % (key, transaction))
         raise
@@ -325,28 +324,19 @@ try:
     wasmFile="eosio.token.wasm"
     abiFile="eosio.token.abi"
     Print("Publish contract")
-    trans=node.publishContract(currencyAccount.name, contractDir, wasmFile, abiFile, waitForTransBlock=True)
+    trans=node.publishContract(currencyAccount, contractDir, wasmFile, abiFile, waitForTransBlock=True)
     if trans is None:
         cmdError("%s set contract currency1111" % (ClientName))
         errorExit("Failed to publish contract.")
 
-    if not enableMongo:
-        Print("Get code hash for account %s" % (currencyAccount.name))
-        codeHash=node.getAccountCodeHash(currencyAccount.name)
-        if codeHash is None:
-            cmdError("%s get code currency1111" % (ClientName))
-            errorExit("Failed to get code hash for account %s" % (currencyAccount.name))
-        hashNum=int(codeHash, 16)
-        if hashNum == 0:
-            errorExit("FAILURE - get code currency1111 failed", raw=True)
-    else:
-        Print("verify abi is set")
-        account=node.getEosAccountFromDb(currencyAccount.name)
-        abiName=account["abi"]["structs"][0]["name"]
-        abiActionName=account["abi"]["actions"][0]["name"]
-        abiType=account["abi"]["actions"][0]["type"]
-        if abiName != "account" or abiActionName != "close" or abiType != "close":
-            errorExit("FAILURE - get EOS account failed", raw=True)
+    Print("Get code hash for account %s" % (currencyAccount.name))
+    codeHash = node.getAccountCodeHash(currencyAccount.name)
+    if codeHash is None:
+        cmdError("%s get code currency1111" % (ClientName))
+        errorExit("Failed to get code hash for account %s" % (currencyAccount.name))
+    hashNum = int(codeHash, 16)
+    if hashNum == 0:
+        errorExit("FAILURE - get code currency1111 failed", raw=True)
 
     Print("push create action to currency1111 contract")
     contract="currency1111"
@@ -476,10 +466,7 @@ try:
 
     transactions=None
     try:
-        if not enableMongo:
-            transactions=block["transactions"]
-        else:
-            transactions=block["block"]["transactions"]
+        transactions=block["transactions"]
         assert(transactions)
     except (AssertionError, TypeError, KeyError) as _:
         Print("FAILURE - Failed to parse block. %s" % (block))
@@ -521,7 +508,7 @@ try:
     contract="currency1111"
     action="transfer"
     data="{\"from\":\"defproducera\",\"to\":\"currency1111\",\"quantity\":"
-    data +="\"00.0051 CUR\",\"memo\":\"test\"}"
+    data +="\"00.0151 CUR\",\"memo\":\"test\"}"
     opts="--permission defproducera@active"
     trans=node.pushMessage(contract, action, data, opts, True)
     if trans is None or trans[0]:
@@ -598,18 +585,80 @@ try:
     if actual != expected:
         errorExit("FAILURE - Wrong currency1111 balance (expected=%s, actual=%s)" % (str(expected), str(actual)), raw=True)
 
+    Print("push transfer action to currency1111 contract with sign skipping option enabled")
+    data="{\"from\":\"currency1111\",\"to\":\"defproducera\",\"quantity\":"
+    data +="\"00.0001 CUR\",\"memo\":\"test\"}"
+    opts="-s -d --permission currency1111@active"
+    trans=node.pushMessage(contract, action, data, opts)
+
+    try:
+        assert(not trans[1]["signatures"])
+    except (AssertionError, KeyError) as _:
+        Print("ERROR: Expected signatures array to be empty due to skipping option enabled.")
+        raise
+
+    try:
+        assert(trans[1]["actions"][0]["data"]["from"] == "currency1111")
+        assert(trans[1]["actions"][0]["data"]["to"] == "defproducera")
+        assert(trans[1]["actions"][0]["data"]["quantity"] == "0.0001 CUR")
+        assert(trans[1]["actions"][0]["data"]["memo"] == "test")
+    except (AssertionError, KeyError) as _:
+        Print("ERROR: Expecting unpacked data fields on push transfer action json result.")
+        raise
+
+    result=node.pushTransaction(trans[1], None)
+
+    amountStr=node.getTableAccountBalance("currency1111", currencyAccount.name)
+
+    expected="99999.9999 CUR"
+    actual=amountStr
+    if actual != expected:
+        errorExit("FAILURE - Wrong currency1111 balance (expectedgma=%s, actual=%s)" % (str(expected), str(actual)), raw=True)
+
+    Print("---- Test for signing transaction ----")
+    testeraAccountAmountBeforeTrx=node.getAccountEosBalanceStr(testeraAccount.name)
+    currencyAccountAmountBeforeTrx=node.getAccountEosBalanceStr(currencyAccount.name)
+
+    xferAmount="1.2345 {0}".format(CORE_SYMBOL)
+    unsignedTrxRet = node.transferFunds(currencyAccount, testeraAccount, xferAmount, "unsigned trx", False, False, True, False, False, True, None, True)
+    unsignedTrxJsonFile = "unsigned_trx_file"
+    with open(unsignedTrxJsonFile, 'w') as outfile:
+        json.dump(unsignedTrxRet, outfile)
+    testeraAccountAmountAftrTrx=node.getAccountEosBalanceStr(testeraAccount.name)
+    currencyAccountAmountAftrTrx=node.getAccountEosBalanceStr(currencyAccount.name)
+    try:
+        assert(testeraAccountAmountBeforeTrx == testeraAccountAmountAftrTrx)
+        assert(currencyAccountAmountBeforeTrx == currencyAccountAmountAftrTrx)
+    except (AssertionError) as _:
+        Print("ERROR: Expecting transfer is not executed.")
+        raise
+
+    signCmd = "sign --public-key {0} {1} -p".format(currencyAccount.activePublicKey, unsignedTrxJsonFile)
+    node.processCleosCmd(signCmd, "Sign and push a transaction", False, True)
+    os.remove(unsignedTrxJsonFile)
+
+    testeraAccountAmountAfterSign=node.getAccountEosBalanceStr(testeraAccount.name)
+    currencyAccountAmountAfterSign=node.getAccountEosBalanceStr(currencyAccount.name)
+    try:
+        assert(Utils.addAmount(testeraAccountAmountAftrTrx, xferAmount) == testeraAccountAmountAfterSign)
+        assert(Utils.deduceAmount(currencyAccountAmountAftrTrx, xferAmount) == currencyAccountAmountAfterSign)
+    except (AssertionError) as _:
+        Print("ERROR: Expecting transfer has been executed with exact amount.")
+        raise
+
     Print("Locking wallet \"%s\"." % (defproduceraWallet.name))
     if not walletMgr.lockWallet(defproduceraWallet):
         cmdError("%s wallet lock" % (ClientName))
         errorExit("Failed to lock wallet %s" % (defproduceraWallet.name))
 
 
+    simpleDB = Account("simpledb")
     contractDir="contracts/simpledb"
     wasmFile="simpledb.wasm"
     abiFile="simpledb.abi"
     Print("Setting simpledb contract without simpledb account was causing core dump in %s." % (ClientName))
     Print("Verify %s generates an error, but does not core dump." % (ClientName))
-    retMap=node.publishContract("simpledb", contractDir, wasmFile, abiFile, shouldFail=True)
+    retMap=node.publishContract(simpleDB, contractDir, wasmFile, abiFile, shouldFail=True)
     if retMap is None:
         errorExit("Failed to publish, but should have returned a details map")
     if retMap["returncode"] == 0 or retMap["returncode"] == 139: # 139 SIGSEGV
@@ -618,14 +667,13 @@ try:
         Print("Test successful, %s returned error code: %d" % (ClientName, retMap["returncode"]))
 
     Print("set permission")
-    code="currency1111"
     pType="transfer"
     requirement="active"
-    trans=node.setPermission(testeraAccount.name, code, pType, requirement, waitForTransBlock=True, exitOnError=True)
+    trans=node.setPermission(testeraAccount, currencyAccount, pType, requirement, waitForTransBlock=True, exitOnError=True)
 
     Print("remove permission")
     requirement="null"
-    trans=node.setPermission(testeraAccount.name, code, pType, requirement, waitForTransBlock=True, exitOnError=True)
+    trans=node.setPermission(testeraAccount, currencyAccount, pType, requirement, waitForTransBlock=True, exitOnError=True)
 
     Print("Locking all wallets.")
     if not walletMgr.lockAllWallets():
@@ -645,28 +693,19 @@ try:
         cmdError("%s wallet unlock test" % (ClientName))
         errorExit("Failed to unlock wallet %s" % (testWallet.name))
 
-    if not enableMongo:
-        Print("Verify non-JSON call works")
-        rawAccount=node.getEosAccount(defproduceraAccount.name, exitOnError=True, returnType=ReturnType.raw)
-        coreLiquidBalance=account['core_liquid_balance']
-        match=re.search(r'\bliquid:\s*%s\s' % (coreLiquidBalance), rawAccount, re.MULTILINE | re.DOTALL)
-        assert match is not None, "did not find the core liquid balance (\"liquid:\") of {} in \"{}\"".format(coreLiquidBalance, rawAccount)
+    Print("Verify non-JSON call works")
+    rawAccount=node.getEosAccount(defproduceraAccount.name, exitOnError=True, returnType=ReturnType.raw)
+    coreLiquidBalance=account['core_liquid_balance']
+    match=re.search(r'\bliquid:\s*%s\s' % (coreLiquidBalance), rawAccount, re.MULTILINE | re.DOTALL)
+    assert match is not None, "did not find the core liquid balance (\"liquid:\") of {} in \"{}\"".format(coreLiquidBalance, rawAccount)
 
     Print("Get head block num.")
     currentBlockNum=node.getHeadBlockNum()
     Print("CurrentBlockNum: %d" % (currentBlockNum))
     Print("Request blocks 1-%d" % (currentBlockNum))
     start=1
-    if enableMongo:
-        start=2 # block 1 (genesis block) is not signaled to the plugins, so not available in DB
     for blockNum in range(start, currentBlockNum+1):
         block=node.getBlock(blockNum, silentErrors=False, exitOnError=True)
-
-        if enableMongo:
-            blockId=block["block_id"]
-            block2=node.getBlockByIdMdb(blockId)
-            if block2 is None:
-                errorExit("mongo get block by id %s" % blockId)
 
     Print("Request invalid block numbered %d. This will generate an expected error message." % (currentBlockNum+1000))
     currentBlockNum=node.getHeadBlockNum() # If the tests take too long, we could be far beyond currentBlockNum+1000 and that'll cause a block to be found.

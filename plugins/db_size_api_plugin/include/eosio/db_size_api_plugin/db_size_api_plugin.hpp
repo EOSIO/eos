@@ -38,8 +38,10 @@ public:
    void plugin_shutdown() {}
 
    db_size_stats get();
+   db_size_stats get_reversible();
 
 private:
+   db_size_stats get_db_stats(const chainbase::database& );
 };
 
 }

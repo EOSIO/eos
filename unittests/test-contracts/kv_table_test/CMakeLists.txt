@@ -1,0 +1,6 @@
+if( EOSIO_COMPILE_TEST_CONTRACTS )
+   add_contract( kv_table_test kv_table_test kv_table_test.cpp )
+else()
+   configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/kv_table_test.wasm ${CMAKE_CURRENT_BINARY_DIR}/kv_table_test.wasm COPYONLY )
+   configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/kv_table_test.abi  ${CMAKE_CURRENT_BINARY_DIR}/kv_table_test.abi  COPYONLY )
+endif()

@@ -1,0 +1,16 @@
+// clang-format off
+
+/**
+ * \warning This file is machine generated. DO NOT EDIT.  See config.hpp.in for changes.
+ */
+#pragma once
+
+#ifndef CONFIG_HPP_IN
+#   define CONFIG_HPP_IN
+
+namespace b1::rodeos::config {
+  constexpr uint64_t version                = 0x${rodeos_BUILD_VERSION};
+  const std::string  rodeos_executable_name = "${RODEOS_EXECUTABLE_NAME}";
+}
+
+#endif // CONFIG_HPP_IN

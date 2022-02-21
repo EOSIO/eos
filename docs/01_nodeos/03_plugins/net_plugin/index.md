@@ -31,9 +31,24 @@ Config Options for eosio::net_plugin:
                                         connect to. Use multiple 
                                         p2p-peer-address options as needed to 
                                         compose a network.
+                                          Syntax: host:port[:<trx>|<blk>]
+                                          The optional 'trx' and 'blk' 
+                                        indicates to node that only 
+                                        transactions 'trx' or blocks 'blk' 
+                                        should be sent.  Examples:
+                                            p2p.eos.io:9876
+                                            p2p.trx.eos.io:9876:trx
+                                            p2p.blk.eos.io:9876:blk
+                                        
   --p2p-max-nodes-per-host arg (=1)     Maximum number of client nodes from any
                                         single IP address
-  --agent-name arg (="EOS Test Agent")  The name supplied to identify this node
+  --p2p-accept-transactions arg (=1)    Allow transactions received over p2p 
+                                        network to be evaluated and relayed if 
+                                        valid.
+  --p2p-reject-incomplete-blocks arg (=1)
+                                        Reject pruned signed_blocks even in 
+                                        light validation
+  --agent-name arg (=EOS Test Agent)    The name supplied to identify this node
                                         amongst the peers.
   --allowed-connection arg (=any)       Can be 'any' or 'producers' or 
                                         'specified' or 'none'. If 'specified', 
@@ -52,14 +67,12 @@ Config Options for eosio::net_plugin:
                                         cleaning up dead connections
   --max-cleanup-time-msec arg (=10)     max connection cleanup time per cleanup
                                         call in millisec
-  --network-version-match arg (=0)      True to require exact match of peer 
-                                        network version.
-  --net-threads arg (=1)                Number of worker threads in net_plugin 
+  --net-threads arg (=2)                Number of worker threads in net_plugin 
                                         thread pool
   --sync-fetch-span arg (=100)          number of blocks to retrieve in a chunk
                                         from any individual peer during 
                                         synchronization
-  --use-socket-read-watermark arg (=0)  Enable expirimental socket read 
+  --use-socket-read-watermark arg (=0)  Enable experimental socket read 
                                         watermark optimization
   --peer-log-format arg (=["${_name}" ${_ip}:${_port}])
                                         The string used to format peers when 
@@ -82,7 +95,10 @@ Config Options for eosio::net_plugin:
                                                   peer
                                         
                                            _lport local port number connected 
-                                                  to peer
+                                                  to peer                                        
+  --p2p-keepalive-interval-ms arg (=32000)
+                                        peer heartbeat keepalive message 
+                                        interval in milliseconds
 ```
 
 ## Dependencies

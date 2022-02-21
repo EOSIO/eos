@@ -1,0 +1,322 @@
+{
+    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT ",
+    "version": "eosio::abi/1.2",
+    "types": [],
+    "structs": [
+        {
+            "name": "checkpidcntr",
+            "base": "",
+            "fields": [
+                {
+                    "name": "personal_id",
+                    "type": "string"
+                },
+                {
+                    "name": "country",
+                    "type": "string"
+                }
+            ]
+        },
+        {
+            "name": "del",
+            "base": "",
+            "fields": [
+                {
+                    "name": "account_name",
+                    "type": "name"
+                }
+            ]
+        },
+        {
+            "name": "get",
+            "base": "",
+            "fields": [
+                {
+                    "name": "account_name",
+                    "type": "name"
+                }
+            ]
+        },
+        {
+            "name": "getbyaddress",
+            "base": "",
+            "fields": [
+                {
+                    "name": "street",
+                    "type": "string"
+                },
+                {
+                    "name": "city",
+                    "type": "string"
+                },
+                {
+                    "name": "state",
+                    "type": "string"
+                },
+                {
+                    "name": "country",
+                    "type": "string"
+                }
+            ]
+        },
+        {
+            "name": "getbycntrpid",
+            "base": "",
+            "fields": [
+                {
+                    "name": "country",
+                    "type": "string"
+                },
+                {
+                    "name": "personal_id",
+                    "type": "string"
+                }
+            ]
+        },
+        {
+            "name": "getbylastname",
+            "base": "",
+            "fields": [
+                {
+                    "name": "last_name",
+                    "type": "string"
+                }
+            ]
+        },
+        {
+            "name": "iterate",
+            "base": "",
+            "fields": [
+                {
+                    "name": "iterations_count",
+                    "type": "int32"
+                }
+            ]
+        },
+        {
+            "name": "pair_string_string",
+            "base": "",
+            "fields": [
+                {
+                    "name": "first",
+                    "type": "string"
+                },
+                {
+                    "name": "second",
+                    "type": "string"
+                }
+            ]
+        },
+        {
+            "name": "person",
+            "base": "",
+            "fields": [
+                {
+                    "name": "account_name",
+                    "type": "name"
+                },
+                {
+                    "name": "first_name",
+                    "type": "tuple_name_string"
+                },
+                {
+                    "name": "last_name",
+                    "type": "tuple_name_string"
+                },
+                {
+                    "name": "street_city_state_cntry",
+                    "type": "tuple_name_string_string_string_string"
+                },
+                {
+                    "name": "personal_id",
+                    "type": "tuple_name_string"
+                },
+                {
+                    "name": "country_personal_id",
+                    "type": "pair_string_string"
+                }
+            ]
+        },
+        {
+            "name": "test",
+            "base": "",
+            "fields": []
+        },
+        {
+            "name": "tuple_name_string",
+            "base": "",
+            "fields": [
+                {
+                    "name": "field_0",
+                    "type": "name"
+                },
+                {
+                    "name": "field_1",
+                    "type": "string"
+                }
+            ]
+        },
+        {
+            "name": "tuple_name_string_string_string_string",
+            "base": "",
+            "fields": [
+                {
+                    "name": "field_0",
+                    "type": "name"
+                },
+                {
+                    "name": "field_1",
+                    "type": "string"
+                },
+                {
+                    "name": "field_2",
+                    "type": "string"
+                },
+                {
+                    "name": "field_3",
+                    "type": "string"
+                },
+                {
+                    "name": "field_4",
+                    "type": "string"
+                }
+            ]
+        },
+        {
+            "name": "upsert",
+            "base": "",
+            "fields": [
+                {
+                    "name": "account_name",
+                    "type": "name"
+                },
+                {
+                    "name": "first_name",
+                    "type": "string"
+                },
+                {
+                    "name": "last_name",
+                    "type": "string"
+                },
+                {
+                    "name": "street",
+                    "type": "string"
+                },
+                {
+                    "name": "city",
+                    "type": "string"
+                },
+                {
+                    "name": "state",
+                    "type": "string"
+                },
+                {
+                    "name": "country",
+                    "type": "string"
+                },
+                {
+                    "name": "personal_id",
+                    "type": "string"
+                }
+            ]
+        }
+    ],
+    "actions": [
+        {
+            "name": "checkpidcntr",
+            "type": "checkpidcntr",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "del",
+            "type": "del",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "get",
+            "type": "get",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "getbyaddress",
+            "type": "getbyaddress",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "getbycntrpid",
+            "type": "getbycntrpid",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "getbylastname",
+            "type": "getbylastname",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "iterate",
+            "type": "iterate",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "test",
+            "type": "test",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "upsert",
+            "type": "upsert",
+            "ricardian_contract": ""
+        }
+    ],
+    "tables": [],
+    "kv_tables": {
+        "kvaddrbook": {
+            "type": "person",
+            "primary_index": {
+                "name": "accname",
+                "type": "name"
+            },
+            "secondary_indices": {
+                "cntrypersid": {
+                    "type": "pair_string_string"
+                },
+                "firstname": {
+                    "type": "non_unique<eosio::name, std::string>"
+                },
+                "lastname": {
+                    "type": "non_unique<eosio::name, std::string>"
+                },
+                "persid": {
+                    "type": "non_unique<eosio::name, std::string>"
+                },
+                "address": {
+                    "type": "tuple_name_string_string_string_string"
+                }
+            }
+        }
+    },
+    "ricardian_clauses": [],
+    "variants": [],
+    "action_results": [
+        {
+            "name": "checkpidcntr",
+            "result_type": "bool"
+        },
+        {
+            "name": "get",
+            "result_type": "person"
+        },
+        {
+            "name": "getbyaddress",
+            "result_type": "person[]"
+        },
+        {
+            "name": "getbycntrpid",
+            "result_type": "person"
+        },
+        {
+            "name": "getbylastname",
+            "result_type": "person[]"
+        }
+    ]
+}

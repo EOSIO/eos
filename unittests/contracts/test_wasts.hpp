@@ -96,7 +96,7 @@ static const char misaligned_const_ref_wast[] = R"=====(
    (call $memmove
     (i32.const 17)
     (i32.const 16)
-    (i32.const 64) 
+    (i32.const 64)
    )
   )
   (call $assert_sha256
@@ -188,6 +188,22 @@ static const char entry_import_wast[] = R"=====(
 )
 )=====";
 
+static const char entry_db_wast[] = R"=====(
+(module
+  (func $exit (import "env" "eosio_exit") (param i32))
+  (func $db_store_i64 (import "env" "db_store_i64") (param i64 i64 i64 i64 i32 i32) (result i32))
+  (func $current_receiver (import "env" "current_receiver") (result i64))
+  (memory 1)
+  (func $start
+    (drop (call $db_store_i64 (i64.const 0) (i64.const 0) (call $current_receiver) (i64.const 0) (i32.const 0) (i32.const 0)))
+  )
+  (func (export "apply") (param i64 i64 i64)
+    (call $exit (i32.const 0))
+  )
+  (start $start)
+)
+)=====";
+
 static const char simple_no_memory_wast[] = R"=====(
 (module
  (import "env" "require_auth" (func $require_auth (param i64)))
@@ -252,6 +268,35 @@ static const char biggest_memory_wast[] = R"=====(
 )
 )=====";
 
+static const char biggest_memory_variable_wast[] = R"=====(
+(module
+ (import "env" "eosio_assert" (func $$eosio_assert (param i32 i32)))
+ (import "env" "require_auth" (func $$require_auth (param i64)))
+ (table 0 anyfunc)
+ (memory $$0 ${MAX_WASM_PAGES})
+ (export "memory" (memory $$0))
+ (export "apply" (func $$apply))
+ (func $$apply (param $$0 i64) (param $$1 i64) (param $$2 i64)
+  (call $$eosio_assert
+   (i32.eq
+     (grow_memory (i32.wrap/i64 (get_local 2)))
+     (i32.const ${MAX_WASM_PAGES})
+   )
+   (i32.const 0)
+  )
+  (call $$eosio_assert
+   (i32.eq
+     (grow_memory (i32.const 1))
+     (i32.const -1)
+   )
+   (i32.const 32)
+  )
+ )
+ (data (i32.const 0) "failed grow_memory")
+ (data (i32.const 32) "grow_memory unexpected success")
+)
+)=====";
+
 static const char too_big_memory_wast[] = R"=====(
 (module
  (table 0 anyfunc)
@@ -259,6 +304,35 @@ static const char too_big_memory_wast[] = R"=====(
  (export "memory" (memory $$0))
  (export "apply" (func $$apply))
  (func $$apply (param $$0 i64) (param $$1 i64) (param $$2 i64))
+)
+)=====";
+
+static const char max_memory_wast[] = R"=====(
+(module
+ (import "env" "eosio_assert" (func $$eosio_assert (param i32 i32)))
+ (import "env" "require_auth" (func $$require_auth (param i64)))
+ (table 0 anyfunc)
+ (memory $$0 ${INIT_WASM_PAGES} ${MAX_WASM_PAGES})
+ (export "memory" (memory $$0))
+ (export "apply" (func $$apply))
+ (func $$apply (param $$0 i64) (param $$1 i64) (param $$2 i64)
+  (call $$eosio_assert
+   (i32.eq
+     (grow_memory (i32.wrap/i64 (get_local 2)))
+     (i32.const ${INIT_WASM_PAGES})
+   )
+   (i32.const 0)
+  )
+  (call $$eosio_assert
+   (i32.eq
+     (grow_memory (i32.const 1))
+     (i32.const -1)
+   )
+   (i32.const 32)
+  )
+ )
+ (data (i32.const 0) "failed grow_memory")
+ (data (i32.const 32) "grow_memory unexpected success")
 )
 )=====";
 
@@ -279,6 +353,15 @@ static const char too_big_table[] = R"=====(
  (func $apply (param $0 i64) (param $1 i64) (param $2 i64))
  (elem (i32.const 0) $apply)
  (elem (i32.const 1022) $apply $apply)
+)
+)=====";
+
+static const char variable_table[] = R"=====(
+(module
+ (table ${TABLE_SIZE} anyfunc)
+ (func (export "apply") (param i64 i64 i64))
+ (elem (i32.const 0) 0)
+ (elem (i32.const ${TABLE_OFFSET}) 0 0)
 )
 )=====";
 
@@ -471,6 +554,17 @@ static const char table_init_oob_no_table_wast[] = R"=====(
 )
 )=====";
 
+static const char table_init_oob_empty_wast[] = R"=====(
+(module
+ (type $mahsig (func (param i64) (param i64) (param i64)))
+ (table 1024 anyfunc)
+ (export "apply" (func $apply))
+ (func $apply (param $0 i64) (param $1 i64) (param $2 i64)
+ )
+ (elem (i32.const 1025))
+)
+)=====";
+
 static const char global_protection_none_get_wast[] = R"=====(
 (module
  (export "apply" (func $apply))
@@ -637,6 +731,13 @@ static const char import_injected_wast[] =                                      
 " (import \"" EOSIO_INJECTED_MODULE_NAME "\" \"checktime\" (func $inj (param i32)))"  \
 " (func $apply (param $0 i64) (param $1 i64) (param $2 i64))"                         \
 ")";
+
+static const char import_wrong_signature_wast[] = R"=====(
+(module
+ (import "env" "eosio_assert" (func (param i32 i64)))
+ (func (export "apply") (param i64 i64 i64))
+)
+)=====";
 
 static const char memory_growth_memset_store[] = R"=====(
 (module

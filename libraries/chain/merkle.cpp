@@ -32,7 +32,7 @@ bool is_canonical_right(const digest_type& val) {
 }
 
 
-digest_type merkle(vector<digest_type> ids) {
+digest_type merkle(deque<digest_type> ids) {
    if( 0 == ids.size() ) { return digest_type(); }
 
    while( ids.size() > 1 ) {

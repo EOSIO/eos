@@ -9,6 +9,7 @@ Retrieves various items and information from the blockchain
 - [code](code.md) - Retrieve the code and ABI for an account
 - [abi](abi.md) - Retrieve the ABI for an account
 - [table](table.md) - Retrieve the contents of a database table
+- [kv_table](kv_table.md) - Retrieve the contents of a database kv_table
 - [scope](scope.md) - Retrieve a list of scopes and tables owned by a contract
 - [currency](currency.md) - Retrieve information related to standard currencies
 - [accounts](accounts.md) - Retrieve accounts associated with a public key

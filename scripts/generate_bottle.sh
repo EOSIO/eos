@@ -1,18 +1,16 @@
 #!/usr/bin/env bash
 set -eo pipefail
 
-VERS=`sw_vers -productVersion | awk '/10\.13\..*/{print $0}'`
-if [[ -z "$VERS" ]];
-then
-   VERS=`sw_vers -productVersion | awk '/10\.14.*/{print $0}'`
-   if [[ -z "$VERS" ]];
-   then
+VERS=`sw_vers -productVersion | awk '/10\.14\..*/{print $0}'`
+if [[ -z "$VERS" ]]; then
+   VERS=`sw_vers -productVersion | awk '/10\.15.*/{print $0}'`
+   if [[ -z $VERS ]]; then
       echo "Error, unsupported OS X version"
       exit -1
    fi
-   MAC_VERSION="mojave"
+   MAC_VERSION="catalina"
 else
-   MAC_VERSION="high_sierra"
+   MAC_VERSION="mojave"
 fi
 
 NAME="${PROJECT}-${VERSION}.${MAC_VERSION}.bottle"
@@ -43,9 +41,9 @@ echo "class Eosio < Formula
    option :universal
 
    depends_on \"gmp\"
-   depends_on \"gettext\"
    depends_on \"openssl@1.1\"
    depends_on \"libusb\"
+   depends_on \"libpqxx\"
    depends_on :macos => :mojave
    depends_on :arch =>  :intel
 

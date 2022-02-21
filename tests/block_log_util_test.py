@@ -156,7 +156,7 @@ try:
 
     # relaunch the node with the truncated block log and ensure it catches back up with the producers
     current_head_block_num = node1.getInfo()["head_block_num"]
-    cluster.getNode(2).relaunch(2, cachePopen=True)
+    cluster.getNode(2).relaunch(cachePopen=True)
     assert cluster.getNode(2).waitForBlock(current_head_block_num, timeout=60, reportInterval=15)
 
     # ensure it continues to advance
@@ -186,7 +186,7 @@ try:
     # relaunch the node with the truncated block log and ensure it catches back up with the producers
     current_head_block_num = node1.getInfo()["head_block_num"]
     assert current_head_block_num >= info["head_block_num"]
-    cluster.getNode(2).relaunch(2, cachePopen=True)
+    cluster.getNode(2).relaunch(cachePopen=True)
     assert cluster.getNode(2).waitForBlock(current_head_block_num, timeout=60, reportInterval=15)
 
     # ensure it continues to advance
@@ -202,6 +202,25 @@ try:
 
     # verify it shuts down cleanly
     cluster.getNode(2).interruptAndVerifyExitStatus()
+
+    # test for blocks.log
+    blockLogFileName=os.path.join(blockLogDir, "blocks.log")
+    blockIndexFileSize = os.path.getsize(blockIndexFileName)
+    blockLogFileSize = os.path.getsize(blockLogFileName)
+
+    blockLogFile = open(blockLogFileName, 'a')
+    # truncate blocks.log by 1 byte
+    blockLogFile.truncate(blockLogFileSize - 1)
+    blockLogFile.close()
+    truncatedBlockLogFileSize = os.path.getsize(blockLogFileName)
+    assert truncatedBlockLogFileSize == blockLogFileSize - 1, "blocks.log not truncated properly\n"
+
+    # fix_irreversible_blocks
+    output=cluster.getBlockLog(0, blockLogAction=BlockLogAction.fix_irreversible_blocks)
+
+    output=cluster.getBlockLog(0, blockLogAction=BlockLogAction.smoke_test)
+    expectedStr="no problems found"
+    assert output.find(expectedStr) != -1, "Couldn't find \"%s\" in:\n\"%s\"\n" % (expectedStr, output)
 
     testSuccessful=True
 

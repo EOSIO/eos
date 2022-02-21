@@ -8,10 +8,10 @@ Plugins extend the core functionality implemented in `nodeos`. Some plugins are 
 
 For information on specific plugins, just select from the list below:
 
+* [`blockvault_client_plugin`](blockvault_client_plugin/index.md)
 * [`chain_api_plugin`](chain_api_plugin/index.md)
 * [`chain_plugin`](chain_plugin/index.md)
 * [`db_size_api_plugin`](db_size_api_plugin/index.md)
-* [`faucet_testnet_plugin`](faucet_testnet_plugin/index.md)
 * [`history_api_plugin`](history_api_plugin/index.md)
 * [`history_plugin`](history_plugin/index.md)
 * [`http_client_plugin`](http_client_plugin/index.md)
@@ -21,8 +21,6 @@ For information on specific plugins, just select from the list below:
 * [`net_plugin`](net_plugin/index.md)
 * [`producer_plugin`](producer_plugin/index.md)
 * [`state_history_plugin`](state_history_plugin/index.md)
-* [`test_control_api_plugin`](test_control_api_plugin/index.md)
-* [`test_control_plugin`](test_control_plugin/index.md)
 * [`trace_api_plugin`](trace_api_plugin/index.md)
 * [`txn_test_gen_plugin`](txn_test_gen_plugin/index.md)
 

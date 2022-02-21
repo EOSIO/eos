@@ -1,0 +1,9 @@
+#pragma once
+
+namespace eosio {
+   namespace testing {
+      std::string state_history_data_base_path() {
+         return "${CMAKE_BINARY_DIR}/unittests/state-history-data";
+      }
+   }
+}
