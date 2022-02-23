@@ -706,7 +706,7 @@ EOF
     agents:
       queue: "$BUILDKITE_BUILD_AGENT_QUEUE"
     timeout: ${TIMEOUT:-10}
-    skip: ${SKIP_INSTALL}${SKIP_LINUX}${SKIP_DOCKER}${SKIP_PACKAGE_BUILDER}
+    skip: ${SKIP_INSTALL}${SKIP_LINUX}${SKIP_DOCKER}
 
   - wait
 
