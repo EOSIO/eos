@@ -351,6 +351,24 @@ namespace eosio { namespace chain {
 
 } } /// namespace eosio::chain
 
+#include <spdlog/fmt/fmt.h>
+#include <fc/reflect/formatter.hpp>
+namespace fmt {
+    template<>
+    struct formatter<eosio::chain::transaction> {
+        template<typename ParseContext>
+        constexpr auto parse( ParseContext& ctx ) { return ctx.begin(); }
+
+        template<typename FormatContext>
+        auto format( const eosio::chain::transaction& p, FormatContext& ctx ) {
+           fc::string fmt, arg;
+           fc::formatter::format_arg(p, fmt, arg);
+           return format_to( ctx.out(), "{}", arg );
+           //return format_to( ctx.out(), fmt, args ); //TODO
+        }
+    };
+}
+
 FC_REFLECT(eosio::chain::deferred_transaction_generation_context, (sender_trx_id)(sender_id)(sender) )
 FC_REFLECT( eosio::chain::transaction_header, (expiration)(ref_block_num)(ref_block_prefix)
                                               (max_net_usage_words)(max_cpu_usage_ms)(delay_sec) )
