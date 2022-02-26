@@ -43,5 +43,13 @@
                 "commit": "8fe13fffe4363dbc9028f3bdd549afc18802d511" // test backwards-compatibility forkdb v2 change.
             }
         ]
+    },
+    "eosio-contract-build":
+    {
+        "pipeline-branch": "master",
+        "dependencies": // dependencies to pull for a build of contracts, by branch, tag, or commit hash
+        {
+            "eosio.cdt": "release/1.8.x"
+        }
     }
 }
