@@ -1520,7 +1520,8 @@ struct controller_impl {
                      uint16_t confirm_block_count,
                      const vector<digest_type>& new_protocol_feature_activations,
                      controller::block_status s,
-                     const optional<block_id_type>& producer_block_id )
+                     const optional<block_id_type>& producer_block_id,
+                     const fc::time_point& deadline )
    {
       EOS_ASSERT( !pending, block_validate_exception, "pending block already exists" );
 
@@ -1665,7 +1666,7 @@ struct controller_impl {
             elog( "on block transaction failed due to unknown exception" );
          }
 
-         clear_expired_input_transactions();
+         clear_expired_input_transactions(deadline);
          update_producers_authority();
       }
 
@@ -1866,7 +1867,7 @@ struct controller_impl {
          const auto& new_protocol_feature_activations = bsp->get_new_protocol_feature_activations();
 
          auto producer_block_id = b->id();
-         start_block( b->timestamp, b->confirmed, new_protocol_feature_activations, s, producer_block_id);
+         start_block( b->timestamp, b->confirmed, new_protocol_feature_activations, s, producer_block_id, fc::time_point::maximum() );
 
          const bool existing_trxs_metas = !bsp->trxs_metas().empty();
          const bool pub_keys_recovered = bsp->is_pub_keys_recovered();
@@ -2232,14 +2233,21 @@ struct controller_impl {
    }
 
 
-   void clear_expired_input_transactions() {
+   void clear_expired_input_transactions(const fc::time_point& deadline) {
       //Look for expired transactions in the deduplication list, and remove them.
       auto& transaction_idx = db.get_mutable_index<transaction_multi_index>();
       const auto& dedupe_index = transaction_idx.indices().get<by_expiration>();
       auto now = self.pending_block_time();
+      const auto total = dedupe_index.size();
+      uint32_t num_removed = 0;
       while( (!dedupe_index.empty()) && ( now > fc::time_point(dedupe_index.begin()->expiration) ) ) {
          transaction_idx.remove(*dedupe_index.begin());
+         ++num_removed;
+         if( deadline <= fc::time_point::now() ) {
+            break;
+         }
       }
+      dlog("removed ${n} expired transactions of the ${t} input dedup list", ("n", num_removed)("t", total));
    }
 
    bool sender_avoids_whitelist_blacklist_enforcement( account_name sender )const {
@@ -2626,12 +2634,13 @@ void controller::start_block( block_timestamp_type when, uint16_t confirm_block_
    }
 
    my->start_block( when, confirm_block_count, new_protocol_feature_activations,
-                    block_status::incomplete, optional<block_id_type>() );
+                    block_status::incomplete, optional<block_id_type>(), fc::time_point::maximum() );
 }
 
 void controller::start_block( block_timestamp_type when,
                               uint16_t confirm_block_count,
-                              const vector<digest_type>& new_protocol_feature_activations )
+                              const vector<digest_type>& new_protocol_feature_activations,
+                              const fc::time_point& deadline )
 {
    validate_db_available_size();
 
@@ -2640,7 +2649,7 @@ void controller::start_block( block_timestamp_type when,
    }
 
    my->start_block( when, confirm_block_count, new_protocol_feature_activations,
-                    block_status::incomplete, optional<block_id_type>() );
+                    block_status::incomplete, optional<block_id_type>(), deadline );
 }
 
 block_state_ptr controller::finalize_block( const signer_callback_type& signer_callback ) {
