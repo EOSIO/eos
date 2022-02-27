@@ -53,7 +53,6 @@ namespace eosio::chain {
       return n;
    }
 
-   /// Immutable except for fc::from_variant.
    struct name {
    private:
       uint64_t value = 0;
@@ -78,6 +77,12 @@ namespace eosio::chain {
          return out << n.to_string();
       }
 
+      friend std::istream& operator >> ( std::istream& in, name& n ) {
+         std::string tmp;
+         in >> tmp;
+         n.set(tmp);
+         return in;
+      }
       friend constexpr bool operator < ( const name& a, const name& b ) { return a.value < b.value; }
       friend constexpr bool operator > ( const name& a, const name& b ) { return a.value > b.value; }
       friend constexpr bool operator <= ( const name& a, const name& b ) { return a.value <= b.value; }

@@ -754,7 +754,7 @@ void producer_plugin::set_program_options(
           "Limits the maximum time (in milliseconds) that is allowed a pushed transaction's code to execute before being considered invalid")
          ("max-irreversible-block-age", bpo::value<int32_t>()->default_value( -1 ),
           "Limits the maximum age (in seconds) of the DPOS Irreversible Block for a chain this node will produce blocks on (use negative value to indicate unlimited)")
-         ("producer-name,p", boost::program_options::value<vector<string>>()->composing()->multitoken(),
+         ("producer-name,p", boost::program_options::value<vector<eosio::name>>()->composing()->multitoken(),
           "ID of producer controlled by this node (e.g. inita; may specify multiple times)")
          ("private-key", boost::program_options::value<vector<string>>()->composing()->multitoken(),
           "(DEPRECATED - Use signature-provider instead) Tuple of [public key, WIF private key] (may specify multiple times)")
