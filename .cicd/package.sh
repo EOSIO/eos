@@ -13,7 +13,7 @@ else # Linux
     echo '--- :docker: Selecting Container'
     ARGS="${ARGS:-"--rm --init -v \"\$(pwd):$MOUNTED_DIR\""}"
     . "$HELPERS_DIR/file-hash.sh" "$CICD_DIR/platforms/$PLATFORM_TYPE/$IMAGE_TAG.dockerfile"
-    PRE_COMMANDS="cd \"$MOUNTED_DIR/build/packages\" && chmod 755 ./*.sh"
+    PRE_COMMANDS="cd \"$MOUNTED_DIR/build/packages\" && chmod 755 './*.sh'" # the single quotes around `chmod` parameter are required so shell expansion is performed within the Docker container
     if [[ "$IMAGE_TAG" =~ "ubuntu" ]]; then
         ARTIFACT='*.deb'
         PACKAGE_TYPE='deb'
