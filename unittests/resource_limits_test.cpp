@@ -420,6 +420,91 @@ BOOST_AUTO_TEST_SUITE(resource_limits_test)
 
    } FC_LOG_AND_RETHROW()
 
+   BOOST_FIXTURE_TEST_CASE(get_account_cpu_limit_ex2, resource_limits_fixture) try {
+       
+      tester main( setup_policy::full );
+
+      const auto& rlm = main.control->get_resource_limits_manager();
+      
+      const account_name test_account{"acc"};
+      
+      constexpr int64_t ram = 2724; // Minimum needed to set up an account.
+      constexpr int64_t net = 1;
+      constexpr int64_t cpu = 1;
+      
+      constexpr uint32_t greylist_limit_min = 1;
+      constexpr uint32_t greylist_limit_max = config::maximum_elastic_resource_multiplier;
+
+      main.push_action( config::system_account_name, "newaccount"_n, config::system_account_name, fc::mutable_variant_object()
+         ("creator", config::system_account_name)
+         ("name",  test_account)
+         ("owner", authority(main.get_public_key(test_account, "owner")))
+         ("active", authority(main.get_public_key(test_account, "active")))
+      );
+      
+      main.produce_block();
+      
+      // Check resources for test account.
+      {
+      int64_t ram_bytes, net_weight, cpu_weight;
+      rlm.get_account_limits(test_account, ram_bytes, net_weight, cpu_weight);
+      BOOST_REQUIRE_EQUAL( ram_bytes,  -1);
+      BOOST_REQUIRE_EQUAL( net_weight, -1);
+      BOOST_REQUIRE_EQUAL( cpu_weight, -1);
+      }
+      
+      // Check extended cpu resource for test account (`greylist_limit` set to the minimum).
+      {
+      const auto account_limits = rlm.get_account_cpu_limit_ex(test_account, greylist_limit_min, {});
+      BOOST_REQUIRE_EQUAL( account_limits.first.used,      -1);
+      BOOST_REQUIRE_EQUAL( account_limits.first.available, -1);
+      BOOST_REQUIRE_EQUAL( account_limits.first.max,       -1);
+      }
+
+      // Check extended cpu resource for test account (`greylist_limit` set to the maximum).
+      {
+      const auto account_limits = rlm.get_account_cpu_limit_ex(test_account, greylist_limit_max, {});
+      BOOST_REQUIRE_EQUAL( account_limits.first.used,      -1);
+      BOOST_REQUIRE_EQUAL( account_limits.first.available, -1);
+      BOOST_REQUIRE_EQUAL( account_limits.first.max,       -1);
+      }
+      
+      main.push_action( config::system_account_name, "setalimits"_n, config::system_account_name, fc::mutable_variant_object()
+         ("account",    test_account)
+         ("ram_bytes",  ram)
+         ("net_weight", net)
+         ("cpu_weight", cpu)
+      );
+      
+      main.produce_block();
+      
+      // Check resources for test account.
+      {
+      int64_t ram_bytes, net_weight, cpu_weight;
+      rlm.get_account_limits(test_account, ram_bytes, net_weight, cpu_weight);
+      BOOST_REQUIRE_EQUAL( ram_bytes,  2724);
+      BOOST_REQUIRE_EQUAL( net_weight,    1);
+      BOOST_REQUIRE_EQUAL( cpu_weight,    1);
+      }
+      
+      // Check extended cpu resource for test account (`greylist_limit` set to the minimum)."
+      {
+      const auto account_limits = rlm.get_account_cpu_limit_ex(test_account, greylist_limit_min, {});
+      BOOST_REQUIRE_EQUAL( account_limits.first.used,                0);
+      BOOST_REQUIRE_EQUAL( account_limits.first.available, 34560000000);
+      BOOST_REQUIRE_EQUAL( account_limits.first.max,       34560000000);
+      }
+
+      // Check extended cpu resource for test account (`greylist_limit` set to the maximum)."
+      {
+      const auto account_limits = rlm.get_account_cpu_limit_ex(test_account, greylist_limit_max, {});
+      BOOST_REQUIRE_EQUAL( account_limits.first.used,                0);
+      BOOST_REQUIRE_EQUAL( account_limits.first.available, 34698240000);
+      BOOST_REQUIRE_EQUAL( account_limits.first.max,       34698240000);
+      }
+      
+   } FC_LOG_AND_RETHROW()
+
    BOOST_AUTO_TEST_CASE(light_net_validation) try {
       tester main( setup_policy::preactivate_feature_and_new_bios );
       tester validator( setup_policy::none );
