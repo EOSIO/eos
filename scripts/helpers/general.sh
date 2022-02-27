@@ -322,6 +322,7 @@ function ensure-brew-packages() {
                     execute brew tap eosio/eosio
                     echo "${COLOR_CYAN}[Installing HomeBrew Dependencies]${COLOR_NC}"
                     execute eval $BREW install $DEPS
+                    echo $DEPS | tr " " "\n" > eosio_build_darwin_deps_installed_by_eosio_build
                     IFS="$OIFS"
                 break;;
                 1 | false | [Nn]* ) echo " ${COLOR_RED}- User aborted installation of required dependencies.${COLOR_NC}"; exit;;

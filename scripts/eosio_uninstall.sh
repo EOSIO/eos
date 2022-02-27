@@ -77,6 +77,10 @@ fi
 
 export EOSIO_INSTALL_DIR=${INSTALL_LOCATION:-$EOSIO_INSTALL_DIR}
 
+if [[ $ARCH == "Darwin" ]]; then
+    export BREW_PACKAGES_INSTALLED_BY_SCRIPT=$(cat $EOSIO_INSTALL_DIR/src/eosio_build_darwin_deps_installed_by_eosio_build | cut -d "." -f1)
+fi
+
 if [[ ! -d "${EOSIO_INSTALL_DIR}" ]]; then
    echo "[EOSIO installation ${COLOR_YELLOW}NOT${COLOR_NC} found in ${EOSIO_INSTALL_DIR}]"
 else
@@ -108,7 +112,9 @@ fi
 
 echo "[Removing EOSIO Dependencies]"
 if [[ $ARCH == "Darwin" ]]; then
-   for package in $(cat scripts/eosio_build_darwin_deps | cut -d, -f1 2>/dev/null); do
+    echo "The following packages were installed by the build script when installing to" $EOSIO_INSTALL_DIR:
+    echo $BREW_PACKAGES_INSTALLED_BY_SCRIPT
+    for package in $BREW_PACKAGES_INSTALLED_BY_SCRIPT; do
       while true; do
          [[ $NONINTERACTIVE == false ]] && read -p "Do you wish to uninstall and unlink all brew installed ${package} versions? (y/n) " DEP_PROCEED
          case $DEP_PROCEED in
