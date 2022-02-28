@@ -153,7 +153,8 @@ namespace eosio { namespace chain {
           */
          void start_block( block_timestamp_type time,
                            uint16_t confirm_block_count,
-                           const vector<digest_type>& new_protocol_feature_activations );
+                           const vector<digest_type>& new_protocol_feature_activations,
+                           const fc::time_point& deadline = fc::time_point::maximum() );
 
          /**
           * @return transactions applied in aborted block
