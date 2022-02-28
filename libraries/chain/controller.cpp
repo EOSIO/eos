@@ -1721,7 +1721,7 @@ struct controller_impl {
          const signed_block_ptr& b = bsp->block;
          const auto& new_protocol_feature_activations = bsp->get_new_protocol_feature_activations();
 
-         auto producer_block_id = b->id();
+         auto producer_block_id = bsp->id;
          start_block( b->timestamp, b->confirmed, new_protocol_feature_activations, s, producer_block_id, fc::time_point::maximum() );
 
          // validated in create_block_state_future()
