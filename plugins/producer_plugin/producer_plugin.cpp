@@ -1499,6 +1499,7 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
 
    const fc::time_point now = fc::time_point::now();
    const fc::time_point block_time = calculate_pending_block_time();
+   const fc::time_point preprocess_deadline = calculate_block_deadline(block_time);
 
    const pending_block_mode previous_pending_mode = _pending_block_mode;
    _pending_block_mode = pending_block_mode::producing;
@@ -1637,12 +1638,11 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
          }
       }
 
-      chain.start_block( block_time, blocks_to_confirm, features_to_activate );
+      chain.start_block( block_time, blocks_to_confirm, features_to_activate, preprocess_deadline );
    } LOG_AND_DROP();
 
    if( chain.is_building_block() ) {
       const auto& pending_block_signing_authority = chain.pending_block_signing_authority();
-      const fc::time_point preprocess_deadline = calculate_block_deadline(block_time);
 
       if (_pending_block_mode == pending_block_mode::producing && pending_block_signing_authority != scheduled_producer.authority) {
          elog("Unexpected block signing authority, reverting to speculative mode! [expected: \"${expected}\", actual: \"${actual\"", ("expected", scheduled_producer.authority)("actual", pending_block_signing_authority));
