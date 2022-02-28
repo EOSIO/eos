@@ -85,6 +85,8 @@ struct asset : fc::reflect_init
       EOS_ASSERT( sym.valid(), asset_type_exception, "invalid symbol" );
    }
 
+   friend struct fmt::formatter<eosio::chain::asset>;
+
 private:
    share_type amount;
    symbol     sym;

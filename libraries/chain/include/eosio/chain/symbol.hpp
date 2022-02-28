@@ -138,6 +138,8 @@ namespace eosio {
                EOS_ASSERT( valid_name(name()), symbol_type_exception, "invalid symbol: ${name}", ("name",name()));
             }
 
+            friend struct fmt::formatter<eosio::chain::symbol>;
+
          private:
             uint64_t m_value;
             friend struct fc::reflector<symbol>;

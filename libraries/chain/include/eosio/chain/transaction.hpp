@@ -1,6 +1,7 @@
 #pragma once
 
 #include <eosio/chain/action.hpp>
+#include <spdlog/fmt/fmt.h>
 #include <numeric>
 
 namespace eosio { namespace chain {
@@ -173,6 +174,7 @@ namespace eosio { namespace chain {
       const bytes&                  get_packed_context_free_data()const { return packed_context_free_data; }
       const bytes&                  get_packed_transaction()const { return packed_trx; }
 
+      friend struct fmt::formatter<eosio::chain::packed_transaction_v0>;
    private:
       void local_unpack_transaction(vector<bytes>&& context_free_data);
       void local_unpack_context_free_data();
@@ -326,6 +328,8 @@ namespace eosio { namespace chain {
       void prune_all();
 
       std::size_t maximum_pruned_pack_size( cf_compression_type segment_compression ) const;
+
+      friend struct fmt::formatter<eosio::chain::packed_transaction>;
 
    private:
       friend struct fc::reflector<packed_transaction>;

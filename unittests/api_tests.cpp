@@ -115,7 +115,7 @@ struct test_api_action {
 	}
 };
 
-FC_REFLECT_TEMPLATE((uint64_t T), test_api_action<T>, BOOST_PP_SEQ_NIL)
+FC_REFLECT_TEMPLATE((uint64_t T), test_api_action<T>, BOOST_PP_EMPTY())
 
 template<uint64_t NAME>
 struct test_chain_action {
@@ -128,7 +128,7 @@ struct test_chain_action {
 	}
 };
 
-FC_REFLECT_TEMPLATE((uint64_t T), test_chain_action<T>, BOOST_PP_SEQ_NIL)
+FC_REFLECT_TEMPLATE((uint64_t T), test_chain_action<T>, BOOST_PP_EMPTY())
 
 struct check_auth {
    account_name            account;
