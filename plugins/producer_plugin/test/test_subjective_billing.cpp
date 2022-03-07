@@ -41,7 +41,7 @@ BOOST_AUTO_TEST_CASE( subjective_bill_test ) {
       BOOST_CHECK_EQUAL( 13+11, sub_bill.get_subjective_bill(a, now) );
       BOOST_CHECK_EQUAL( 9, sub_bill.get_subjective_bill(b, now) );
 
-      sub_bill.on_block({}, now);
+      sub_bill.on_block(log, {}, now);
       sub_bill.abort_block(); // they all failed so nothing in aborted block
 
       BOOST_CHECK_EQUAL( 13+11, sub_bill.get_subjective_bill(a, now) );
@@ -69,13 +69,13 @@ BOOST_AUTO_TEST_CASE( subjective_bill_test ) {
       BOOST_CHECK_EQUAL( 23+19, sub_bill.get_subjective_bill(a, now) );
       BOOST_CHECK_EQUAL( 7, sub_bill.get_subjective_bill(b, now) );
 
-      sub_bill.on_block({}, now); // have not seen any of the transactions come back yet
+      sub_bill.on_block(log, {}, now); // have not seen any of the transactions come back yet
       sub_bill.abort_block();
 
       BOOST_CHECK_EQUAL( 23+19, sub_bill.get_subjective_bill(a, now) );
       BOOST_CHECK_EQUAL( 7, sub_bill.get_subjective_bill(b, now) );
 
-      sub_bill.on_block({}, now);
+      sub_bill.on_block(log, {}, now);
       sub_bill.remove_subjective_billing( id1, 0 ); // simulate seeing id1 come back in block (this is what on_block would do)
       sub_bill.abort_block();
 
@@ -96,13 +96,13 @@ BOOST_AUTO_TEST_CASE( subjective_bill_test ) {
       BOOST_CHECK_EQUAL( 0, sub_bill.get_subjective_bill(b, now) );     // should not include what is in the pending block
       BOOST_CHECK_EQUAL( 0, sub_bill.get_subjective_bill(c, now) );
 
-      sub_bill.on_block({}, now);  // have not seen any of the transactions come back yet
+      sub_bill.on_block(log, {}, now);  // have not seen any of the transactions come back yet
       sub_bill.abort_block(); // aborts the pending block, so subjective billing needs to include the reverted trxs
 
       BOOST_CHECK_EQUAL( 23+19+55+11, sub_bill.get_subjective_bill(a, now) );
       BOOST_CHECK_EQUAL( 3+7, sub_bill.get_subjective_bill(b, now) );
 
-      sub_bill.on_block({}, now);
+      sub_bill.on_block(log, {}, now);
       sub_bill.remove_subjective_billing( id3, 0 ); // simulate seeing id3 come back in block (this is what on_block would do)
       sub_bill.remove_subjective_billing( id4, 0 ); // simulate seeing id4 come back in block (this is what on_block would do)
       sub_bill.abort_block();

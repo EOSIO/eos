@@ -174,10 +174,12 @@ public:
       _block_subjective_bill_cache.clear();
    }
 
-   void on_block( const block_state_ptr& bsp, const fc::time_point& now ) {
-      if( bsp == nullptr ) return;
+   void on_block( fc::logger& log, const block_state_ptr& bsp, const fc::time_point& now ) {
+      if( bsp == nullptr || _disabled ) return;
       const auto time_ordinal = time_ordinal_for(now);
+      const auto orig_count = _account_subjective_bill_cache.size();
       remove_subjective_billing( bsp, time_ordinal );
+      fc_dlog( log, "Subjective billed accounts ${n} removed ${r}", ("n", orig_count)("r", orig_count - _account_subjective_bill_cache.size()) );
    }
 
    bool remove_expired( fc::logger& log, const fc::time_point& pending_block_time, const fc::time_point& now, const fc::time_point& deadline ) {
