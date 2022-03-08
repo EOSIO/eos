@@ -159,12 +159,11 @@ namespace eosio { namespace chain {
          p.auth         = auth;
 
          if (auto dm_logger = _control.get_deep_mind_logger()) {
-            //TODO: add formatter for custom type `permission_object`
-//            fc_dlog(*dm_logger, "PERM_OP INS ${action_id} ${permission_id} ${data}",
-//               ("action_id", action_id)
-//               ("permission_id", p.id)
-//               ("data", p)
-//            );
+            fc_dlog(*dm_logger, "PERM_OP INS ${action_id} ${permission_id} ${data}",
+               ("action_id", action_id)
+               ("permission_id", p.id)
+               ("data", p)
+            );
          }
       });
       return perm;

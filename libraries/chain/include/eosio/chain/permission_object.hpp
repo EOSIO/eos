@@ -117,6 +117,19 @@ namespace eosio { namespace chain {
    }
 } } // eosio::chain
 
+namespace fmt {
+    template<typename T>
+    struct formatter<chainbase::oid<T>> {
+        template<typename ParseContext>
+        constexpr auto parse( ParseContext& ctx ) { return ctx.begin(); }
+
+        template<typename FormatContext>
+        auto format( const chainbase::oid<T>& p, FormatContext& ctx ) {
+           return format_to( ctx.out(), "{}", std::string_view(boost::core::demangle(typeid(chainbase::oid<T>).name())) );
+        }
+    };
+}
+
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::permission_object, eosio::chain::permission_index)
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::permission_usage_object, eosio::chain::permission_usage_index)
 

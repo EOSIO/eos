@@ -323,6 +323,49 @@ namespace fc {
    void to_variant(const eosio::chain::shared_public_key& var, fc::variant& vo);
 } // namespace fc
 
+namespace fmt {
+   template<typename T>
+   struct formatter<eosio::chain::shared_vector<T>> {
+      template<typename ParseContext>
+      constexpr auto parse( ParseContext& ctx ) { return ctx.begin(); }
+
+      template<typename FormatContext>
+      auto format( const eosio::chain::shared_vector<T>& p, FormatContext& ctx ) {
+         auto f = fmt::formatter<T>();
+         for( const auto& i : p ) { f.format( i, ctx ); }
+         return format_to( ctx.out(), "");
+      }
+   };
+   template<>
+   struct formatter<eosio::chain::shared_public_key_data> {
+      template<typename ParseContext>
+      constexpr auto parse( ParseContext& ctx ) { return ctx.begin(); }
+
+      template<typename FormatContext>
+      auto format( const eosio::chain::shared_public_key_data& p, FormatContext& ctx ) {
+         std::visit([&](auto&& arg) {
+            using T = std::decay_t<decltype(arg)>;
+            if constexpr (std::is_same_v<T, fc::ecc::public_key_shim> || std::is_same_v<T, fc::crypto::r1::public_key_shim>)
+               fmt::formatter<T>().format(arg, ctx);
+            else if constexpr (std::is_same_v<T, eosio::chain::shared_string>)
+               format_to( ctx.out(), "{}", arg.data() );
+         }, p);
+         return format_to( ctx.out(), "");
+      }
+   };
+   template<typename T, size_t N>
+   struct formatter<fc::array<T, N>> {
+      template<typename ParseContext>
+      constexpr auto parse( ParseContext& ctx ) { return ctx.begin(); }
+
+      template<typename FormatContext>
+      auto format( const fc::array<T, N>& p, FormatContext& ctx ) {
+
+         return format_to( ctx.out(), "{}", std::string_view(p.begin(), N));
+      }
+   };
+}
+
 FC_REFLECT(eosio::chain::permission_level_weight, (permission)(weight) )
 FC_REFLECT(eosio::chain::key_weight, (key)(weight) )
 FC_REFLECT(eosio::chain::wait_weight, (wait_sec)(weight) )
