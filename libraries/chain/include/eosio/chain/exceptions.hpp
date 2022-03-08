@@ -386,6 +386,9 @@ namespace eosio { namespace chain {
       FC_DECLARE_DERIVED_EXCEPTION( leeway_deadline_exception, deadline_exception,
                                     3081001, "Transaction reached the deadline set due to leeway on account CPU limits" )
 
+      FC_DECLARE_DERIVED_EXCEPTION( subjective_cpu_bill_deadline_exception, deadline_exception,
+                                    3081002, "Transaction reached the deadline set due to subjective CPU billing" )
+
    FC_DECLARE_DERIVED_EXCEPTION( authorization_exception, chain_exception,
                                  3090000, "Authorization exception" )
       FC_DECLARE_DERIVED_EXCEPTION( tx_duplicate_sig,             authorization_exception,
