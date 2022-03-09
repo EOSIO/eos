@@ -199,12 +199,11 @@ namespace eosio { namespace chain {
          p.auth         = std::move(auth);
 
          if (auto dm_logger = _control.get_deep_mind_logger()) {
-            //TODO: add formatter for custom type `permission_object`
-//            fc_dlog(*dm_logger, "PERM_OP INS ${action_id} ${permission_id} ${data}",
-//               ("action_id", action_id)
-//               ("permission_id", p.id)
-//               ("data", p)
-//            );
+            fc_dlog(*dm_logger, "PERM_OP INS ${action_id} ${permission_id} ${data}",
+               ("action_id", action_id)
+               ("permission_id", p.id)
+               ("data", p)
+            );
          }
       });
       return perm;
@@ -218,24 +217,18 @@ namespace eosio { namespace chain {
       _db.modify( permission, [&](permission_object& po) {
          auto dm_logger = _control.get_deep_mind_logger();
 
-         fc::variant old_permission;
-         if (dm_logger) {
-            old_permission = po;
-         }
+         permission_object old_permission(po);
 
          po.auth = auth;
          po.last_updated = _control.pending_block_time();
 
          if (auto dm_logger = _control.get_deep_mind_logger()) {
-            //TODO: add formatter for custom type `permission_object`
-//            fc_dlog(*dm_logger, "PERM_OP UPD ${action_id} ${permission_id} ${data}",
-//               ("action_id", action_id)
-//               ("permission_id", po.id)
-//               ("data", fc::mutable_variant_object()
-//                  ("old", old_permission)
-//                  ("new", po)
-//               )
-//            );
+            fc_dlog(*dm_logger, "PERM_OP UPD ${action_id} ${permission_id} ${old} ${new}",
+               ("action_id", action_id)
+               ("permission_id", po.id)
+               ("old", old_permission)
+               ("new", po)
+            );
          }
       });
    }
@@ -249,12 +242,11 @@ namespace eosio { namespace chain {
       _db.get_mutable_index<permission_usage_index>().remove_object( permission.usage_id._id );
 
       if (auto dm_logger = _control.get_deep_mind_logger()) {
-         //TODO: add formatter for custom type `permission_object`
-//         fc_dlog(*dm_logger, "PERM_OP REM ${action_id} ${permission_id} ${data}",
-//              ("action_id", action_id)
-//              ("permission_id", permission.id)
-//              ("data", permission)
-//         );
+         fc_dlog(*dm_logger, "PERM_OP REM ${action_id} ${permission_id} ${data}",
+              ("action_id", action_id)
+              ("permission_id", permission.id)
+              ("data", permission)
+         );
       }
 
       _db.remove( permission );

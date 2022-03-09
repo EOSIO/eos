@@ -666,11 +666,10 @@ struct controller_impl {
          const auto& idx = db.get_index<account_index>();
          for (auto& row : idx.indices()) {
             if (row.abi.size() != 0) {
-               //TODO: add formatter for custom type `shared_blob`
-//               fc_dlog(*dm_logger, "ABIDUMP ABI ${contract} ${abi}",
-//                  ("contract", row.name.to_string())
-//                  ("abi", row.abi)
-//               );
+               fc_dlog(*dm_logger, "ABIDUMP ABI ${contract} ${abi}",
+                  ("contract", row.name.to_string())
+                  ("abi", std::string_view(row.abi.data()))
+               );
             }
          }
          fc_dlog(*dm_logger, "ABIDUMP END");
@@ -1438,11 +1437,10 @@ struct controller_impl {
          {
             // Promote proposed schedule to pending schedule.
             if( !replay_head_time ) {
-               //TODO: add formatter for custom type `shared_producer_authority_schedule`
-//               ilog( "promoting proposed schedule (set in block ${proposed_num}) to pending; current block: ${n} lib: ${lib} schedule: ${schedule} ",
-//                     ("proposed_num", *gpo.proposed_schedule_block_num)("n", pbhs.block_num)
-//                     ("lib", pbhs.dpos_irreversible_blocknum)
-//                     ("schedule", producer_authority_schedule::from_shared(gpo.proposed_schedule) ) );
+               ilog( "promoting proposed schedule (set in block ${proposed_num}) to pending; current block: ${n} lib: ${lib} schedule: ${schedule} ",
+                     ("proposed_num", *gpo.proposed_schedule_block_num)("n", pbhs.block_num)
+                     ("lib", pbhs.dpos_irreversible_blocknum)
+                     ("schedule", producer_authority_schedule::from_shared(gpo.proposed_schedule) ) );
             }
 
             EOS_ASSERT( gpo.proposed_schedule.version == pbhs.active_schedule_version + 1,

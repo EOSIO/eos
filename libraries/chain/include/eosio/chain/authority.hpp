@@ -360,7 +360,6 @@ namespace fmt {
 
       template<typename FormatContext>
       auto format( const fc::array<T, N>& p, FormatContext& ctx ) {
-
          return format_to( ctx.out(), "{}", std::string_view(p.begin(), N));
       }
    };

@@ -325,6 +325,40 @@ namespace eosio { namespace chain {
 
 } } /// eosio::chain
 
+namespace fmt {
+    template<>
+    struct formatter<eosio::chain::block_signing_authority> {
+        template<typename ParseContext>
+        constexpr auto parse( ParseContext& ctx ) { return ctx.begin(); }
+
+        template<typename FormatContext>
+        auto format( const eosio::chain::block_signing_authority& p, FormatContext& ctx ) {
+           std::visit([&]( auto&& arg ) {
+               using T = std::decay_t<decltype(arg)>;
+               if constexpr ( std::is_same_v<T, eosio::chain::block_signing_authority_v0> )
+                  fmt::formatter<T>().format(arg, ctx);
+           }, p);
+           return format_to( ctx.out(), "");
+        }
+    };
+
+   template<>
+   struct formatter<eosio::chain::shared_block_signing_authority> {
+      template<typename ParseContext>
+      constexpr auto parse( ParseContext& ctx ) { return ctx.begin(); }
+
+      template<typename FormatContext>
+      auto format( const eosio::chain::shared_block_signing_authority& p, FormatContext& ctx ) {
+         std::visit([&]( auto&& arg ) {
+            using T = std::decay_t<decltype(arg)>;
+            if constexpr ( std::is_same_v<T, eosio::chain::shared_block_signing_authority_v0> )
+               fmt::formatter<T>().format(arg, ctx);
+         }, p);
+         return format_to( ctx.out(), "");
+      }
+   };
+}
+
 FC_REFLECT( eosio::chain::legacy::producer_key, (producer_name)(block_signing_key) )
 FC_REFLECT( eosio::chain::legacy::producer_schedule_type, (version)(producers) )
 FC_REFLECT( eosio::chain::block_signing_authority_v0, (threshold)(keys))
