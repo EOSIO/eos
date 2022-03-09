@@ -1734,8 +1734,7 @@ struct controller_impl {
             bool transaction_failed =  trace && trace->except;
             bool transaction_can_fail = receipt.status == transaction_receipt_header::hard_fail && std::holds_alternative<transaction_id_type>(receipt.trx);
             if( transaction_failed && !transaction_can_fail) {
-               //TODO: add formatter for custom type `transaction_trace`
-//               edump((*trace));
+               edump((*trace));
                throw *trace->except;
             }
 

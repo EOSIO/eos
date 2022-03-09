@@ -31,5 +31,22 @@ namespace eosio { namespace chain {
 
 } }  /// namespace eosio::chain
 
+namespace fmt {
+    template<typename K, typename V>
+    struct formatter<boost::container::flat_map<K, V>> {
+        template<typename ParseContext>
+        constexpr auto parse( ParseContext& ctx ) { return ctx.begin(); }
+
+        template<typename FormatContext>
+        auto format( const boost::container::flat_map<K, V>& p, FormatContext& ctx ) {
+           for (const auto& i : p) {
+              fmt::formatter<K>().format(i.first, ctx);
+              fmt::formatter<V>().format(i.second, ctx);
+           }
+           return format_to( ctx.out(), "");
+        }
+    };
+}
+
 FC_REFLECT( eosio::chain::action_receipt,
             (receiver)(act_digest)(global_sequence)(recv_sequence)(auth_sequence)(code_sequence)(abi_sequence) )

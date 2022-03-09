@@ -113,6 +113,52 @@ namespace eosio { namespace chain {
    }
 } }  /// namespace eosio::chain
 
+namespace fmt {
+   template<typename T>
+   struct formatter<std::optional<T>> {
+      template<typename ParseContext>
+      constexpr auto parse( ParseContext& ctx ) { return ctx.begin(); }
+
+      template<typename FormatContext>
+      auto format( const std::optional<T>& p, FormatContext& ctx ) {
+         return fmt::formatter<T>().format(*p, ctx);
+      }
+   };
+   template<typename T>
+   struct formatter<boost::container::flat_set<T>> {
+      template<typename ParseContext>
+      constexpr auto parse( ParseContext& ctx ) { return ctx.begin(); }
+
+      template<typename FormatContext>
+      auto format( const boost::container::flat_set<T>& p, FormatContext& ctx ) {
+         for (const auto& i : p) {
+            fmt::formatter<T>().format(i, ctx);
+         }
+         return format_to( ctx.out(), "");
+      }
+   };
+   template<typename T>
+   struct formatter<std::shared_ptr<T>> {
+      template<typename ParseContext>
+      constexpr auto parse( ParseContext& ctx ) { return ctx.begin(); }
+
+      template<typename FormatContext>
+      auto format( const std::shared_ptr<T>& p, FormatContext& ctx ) {
+         return fmt::formatter<T>().format(*p, ctx);
+      }
+   };
+   template<>
+   struct formatter<fc::exception> {
+      template<typename ParseContext>
+      constexpr auto parse( ParseContext& ctx ) { return ctx.begin(); }
+
+      template<typename FormatContext>
+      auto format( const fc::exception& p, FormatContext& ctx ) {
+         return format_to( ctx.out(), "{}", p.to_detail_string());
+      }
+   };
+}
+
 FC_REFLECT( eosio::chain::account_delta,
             (account)(delta) )
 
