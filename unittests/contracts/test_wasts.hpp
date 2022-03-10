@@ -876,3 +876,118 @@ static const std::vector<uint8_t> varuint_memory_flags{
   0x07, 0x09, 0x01, 0x05, 'a', 'p', 'p', 'l', 'y', 0x00, 0x00, // exports
   0x0a, 0x04, 0x01, 0x02, 0x00, 0x0b // code
 };
+
+static const char zero_memory_do_nothing[] = R"=====(
+(module
+ (export "apply" (func $apply))
+ (memory $0 0)
+ (func $apply (param i64) (param i64) (param i64)
+ )
+)
+)=====";
+
+static const char zero_memory_load[] = R"=====(
+(module
+ (export "apply" (func $apply))
+ (memory $0 0)
+ (func $apply (param i64) (param i64) (param i64)
+   (drop (i64.load (i32.const 0)))
+ )
+)
+)=====";
+
+static const char zero_memory_intrinsic[] = R"=====(
+(module
+ (export "apply" (func $apply))
+ (import "env" "read_transaction" (func $read_transaction (param i32 i32) (result i32)))
+ (memory $0 0)
+ (func $apply (param i64) (param i64) (param i64)
+   (drop (call $read_transaction (i32.const 16) (i32.const 0)))
+ )
+)
+)=====";
+
+static const char zero_memory_grow[] = R"=====(
+(module
+ (export "apply" (func $apply))
+ (memory $0 0)
+ (func $apply (param i64) (param i64) (param i64)
+   (drop (grow_memory (i32.const 1)))
+   (drop (i64.load (i32.const 0)))
+ )
+)
+)=====";
+
+static const char zero_memory_grow_hi[] = R"=====(
+(module
+ (export "apply" (func $apply))
+ (memory $0 0)
+ (func $apply (param i64) (param i64) (param i64)
+   (drop (grow_memory (i32.const 1)))
+   (drop (i64.load (i32.const 70000)))
+ )
+)
+)=====";
+
+static const char exit_in_start_wast[] = R"=====(
+(module
+ (import "env" "abort" (func $abort))
+ (import "env" "eosio_exit" (func $eosio_exit (param i32)))
+ (export "apply" (func $apply))
+ (start $dothedew)
+ (func $dothedew
+   (call $eosio_exit (i32.const 0))
+ )
+ (func $apply (param $0 i64) (param $1 i64) (param $2 i64)
+   (call $abort)
+ )
+)
+)=====";
+
+static const char negative_memory_grow_wast[] = R"=====(
+(module
+ (memory 1)
+ (func (export "apply") (param i64 i64 i64)
+  (block
+   (drop (grow_memory (i32.const 1)))
+   (i32.eq (grow_memory (i32.const -1)) (i32.const 2))
+   (br_if 0)
+   (unreachable)
+  )
+  (block
+   (drop (grow_memory (i32.const 2)))
+   (i32.eq (grow_memory (i32.const -3)) (i32.const 3))
+   (br_if 0)
+   (unreachable)
+  )
+  (block
+   (drop (grow_memory (i32.const 1)))
+   (i32.store (i32.const 0) (i32.const -1))
+   (i32.store (i32.const 65532) (i32.const -1))
+   (grow_memory (i32.const -1))
+   (grow_memory (i32.const 1))
+   (i32.and (i32.eq (i32.load (i32.const 0)) (i32.const 0))
+            (i32.eq (i32.load (i32.const 65532)) (i32.const 0)))
+   (br_if 0)
+   (unreachable)
+  )
+  (block
+   (i32.eq (grow_memory (i32.const -2)) (i32.const -1))
+   (br_if 0)
+   (unreachable)
+  )
+ )
+)
+)=====";
+
+static const char negative_memory_grow_trap_wast[] = R"=====(
+(module
+ (memory 1)
+ (func (export "apply") (param i64 i64 i64)
+  (block
+   (drop (grow_memory (i32.const -1)))
+   (drop (i32.load (i32.const 0)))
+  )
+ )
+)
+)=====";
