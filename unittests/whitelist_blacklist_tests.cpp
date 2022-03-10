@@ -36,8 +36,7 @@ class whitelist_blacklist_tester {
             cfg.contract_blacklist = contract_blacklist;
             cfg.action_blacklist = action_blacklist;
          }, !shutdown_called);
-         //TODO: add formatter for type `map<account_name, block_id_type>`
-//         wdump((last_produced_block));
+         wdump((last_produced_block));
          chain->set_last_produced_block_map( last_produced_block );
 
          if( !bootstrap ) return;
@@ -60,8 +59,7 @@ class whitelist_blacklist_tester {
       void shutdown() {
          FC_ASSERT( chain, "chain is not up" );
          last_produced_block = chain->get_last_produced_block_map();
-         //TODO: add formatter for type `map<account_name, block_id_type>`
-//         wdump((last_produced_block));
+         wdump((last_produced_block));
          chain.reset();
          shutdown_called = true;
       }
@@ -804,8 +802,7 @@ BOOST_AUTO_TEST_CASE( greylist_limit_tests ) { try {
 
    BOOST_REQUIRE( rm.get_virtual_block_net_limit() > (3*cfg.max_block_net_usage) );
    BOOST_REQUIRE( rm.get_virtual_block_net_limit() < (4*cfg.max_block_net_usage) );
-   //TODO: add formatter for custom type `std::pair<account_resource_limit, bool>` defined in resource_limits.hpp
-//   wdump((rm.get_account_net_limit_ex(user_account)));
+   wdump((rm.get_account_net_limit_ex(user_account)));
    BOOST_REQUIRE( rm.get_account_net_limit_ex(user_account).first.max > 3*reqauth_net_charge );
    BOOST_REQUIRE( rm.get_account_net_limit_ex(user_account).first.max < 4*reqauth_net_charge );
 

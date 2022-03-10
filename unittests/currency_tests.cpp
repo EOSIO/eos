@@ -83,16 +83,14 @@ class currency_tester : public TESTER {
                  ("can_recall", 0)
                  ("can_whitelist", 0)
          );
-         //TODO: add formatter for custom type `transaction_trace` defined in trace.hpp
-//         wdump((result));
+         wdump((result));
 
          result = push_action("eosio.token"_n, "issue"_n, mutable_variant_object()
                  ("to",       eosio_token)
                  ("quantity", "1000000.0000 CUR")
                  ("memo", "gggggggggggg")
          );
-         //TODO: add formatter for custom type `transaction_trace` defined in trace.hpp
-//         wdump((result));
+         wdump((result));
          produce_block();
       }
 

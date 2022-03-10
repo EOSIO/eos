@@ -33,6 +33,8 @@
 #include <contracts.hpp>
 #include "test_cfd_transaction.hpp"
 
+#include <eosio/chain/permission_object.hpp>
+
 #define DUMMY_ACTION_DEFAULT_A 0x45
 #define DUMMY_ACTION_DEFAULT_B 0xab11cd1244556677
 #define DUMMY_ACTION_DEFAULT_C 0x7451ae12
@@ -1672,8 +1674,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(more_deferred_transaction_tests, TYPE_T, backing_s
 
    auto print_deferred = [&index]() {
       for( const auto& gto : index ) {
-         //TODO: add formatter for custom type `oid` defined in chainbase.hpp
-//         wlog("id = ${id}, trx_id = ${trx_id}", ("id", gto.id)("trx_id", gto.trx_id));
+         wlog("id = ${id}, trx_id = ${trx_id}", ("id", gto.id)("trx_id", gto.trx_id));
       }
    };
 

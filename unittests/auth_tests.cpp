@@ -68,22 +68,19 @@ BOOST_FIXTURE_TEST_CASE( delegate_auth, TESTER ) { try {
                           });
 
    auto original_auth = static_cast<authority>(control->get_authorization_manager().get_permission({"alice"_n, config::active_name}).auth);
-   //TODO: add formatter for custom type `authority` defined in authority.hpp
-//   wdump((original_auth));
+   wdump((original_auth));
 
    set_authority( "alice"_n, config::active_name,  delegated_auth );
 
    auto new_auth = static_cast<authority>(control->get_authorization_manager().get_permission({"alice"_n, config::active_name}).auth);
-   //TODO: add formatter for custom type `authority` defined in authority.hpp
-//   wdump((new_auth));
+   wdump((new_auth));
    BOOST_CHECK_EQUAL((new_auth == delegated_auth), true);
 
    produce_block();
    produce_block();
 
    auto auth = static_cast<authority>(control->get_authorization_manager().get_permission({"alice"_n, config::active_name}).auth);
-   //TODO: add formatter for custom type `authority` defined in authority.hpp
-//   wdump((auth));
+   wdump((auth));
    BOOST_CHECK_EQUAL((new_auth == auth), true);
 
    /// execute nonce from alice signed by bob

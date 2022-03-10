@@ -767,3 +767,21 @@ namespace eosio { namespace testing {
   };
 
 } } /// eosio::testing
+
+#include <spdlog/fmt/fmt.h>
+namespace fmt {
+    template<typename K, typename V>
+    struct formatter<std::map<K, V>> {
+        template<typename ParseContext>
+        constexpr auto parse( ParseContext& ctx ) { return ctx.begin(); }
+
+        template<typename FormatContext>
+        auto format( const std::map<K, V>& p, FormatContext& ctx ) {
+           for (const auto& i : p) {
+              fmt::formatter<K>().format(i.first, ctx);
+              fmt::formatter<V>().format(i.second, ctx);
+           }
+           return format_to( ctx.out(), "");
+        }
+    };
+}

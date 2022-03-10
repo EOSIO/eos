@@ -68,8 +68,7 @@ BOOST_FIXTURE_TEST_CASE( delay_error_create_account, validating_tester) { try {
 
    ilog( fc::json::to_pretty_string(trx) );
    auto trace = push_transaction( trx );
-   //TODO: add formatter for custom type `transaction_trace` defined in trace.hpp
-//   edump((*trace));
+   edump((*trace));
 
    produce_blocks(6);
 

@@ -136,8 +136,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       template <typename T>
       std::enable_if_t<std::is_base_of_v<get_blocks_request_v0,T>>
       operator()(T&& req) {
-         //TODO: add formatter for custom type `get_blocks_request_v0`
-         //fc_ilog(_log, "received get_blocks_request = {req}", ("req",req) );
+         fc_ilog(_log, "received get_blocks_request = {req}", ("req",req) );
          auto request_span = fc_create_trace("get_blocks_request");
          to_send_block_num = req.start_block_num;
          for (auto& cp : req.have_positions) {
@@ -164,8 +163,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       }
 
       void operator()(get_blocks_ack_request_v0&& ack_req) {
-         //TODO: add formatter for custom type `get_blocks_ack_request_v0`
-         //fc_ilog(_log, "received get_blocks_ack_request_v0 = ${req}", ("req",ack_req));
+         fc_ilog(_log, "received get_blocks_ack_request_v0 = ${req}", ("req",ack_req));
          if (!current_request.has_value()) {
             fc_dlog(_log, " no current get_blocks_request_v0, discarding the get_blocks_ack_request_v0");
             return;
