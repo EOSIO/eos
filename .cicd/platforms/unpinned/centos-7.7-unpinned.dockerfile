@@ -1,6 +1,7 @@
 FROM centos:7.7.1908
 ENV VERSION 1
 # install dependencies.
+# iproute configures traffic control for p2p_high_latency_test.py test
 RUN yum update -y && \
     yum install -y epel-release && \
     yum --enablerepo=extras install -y centos-release-scl && \
@@ -8,7 +9,7 @@ RUN yum update -y && \
     yum --enablerepo=extras install -y which git autoconf automake libtool make bzip2 doxygen \
     graphviz bzip2-devel openssl-devel gmp-devel ocaml \
     python python-devel rh-python36 file libusbx-devel \
-    libcurl-devel patch vim-common jq llvm-toolset-7.0-llvm-devel llvm-toolset-7.0-llvm-static && \
+    libcurl-devel patch vim-common jq llvm-toolset-7.0-llvm-devel llvm-toolset-7.0-llvm-static iproute && \
     yum clean all && rm -rf /var/cache/yum
 # install erlang and rabbitmq
 RUN curl -fsSLO https://packagecloud.io/install/repositories/rabbitmq/erlang/script.rpm.sh && \
@@ -55,5 +56,5 @@ RUN cp ~/.bashrc ~/.bashrc.bak && \
 # install node 10
 RUN bash -c '. ~/.bashrc; nvm install --lts=dubnium' && \
     ln -s "/root/.nvm/versions/node/$(ls -p /root/.nvm/versions/node | sort -Vr | head -1)bin/node" /usr/local/bin/node
-RUN yum install -y nodejs && \
+RUN yum install -y nodejs npm && \
     yum clean all && rm -rf /var/cache/yum

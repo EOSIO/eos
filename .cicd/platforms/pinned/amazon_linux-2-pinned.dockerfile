@@ -1,12 +1,13 @@
 FROM amazonlinux:2.0.20190508
 ENV VERSION 1
 # install dependencies.
+# iproute-tc configures traffic control for p2p_high_latency_test.py test
 RUN yum update -y && \
     yum install -y which git sudo procps-ng util-linux autoconf automake \
     libtool make bzip2 bzip2-devel openssl-devel gmp-devel libstdc++ libcurl-devel \
     libusbx-devel python3 python3-devel python-devel libedit-devel doxygen \
     graphviz patch gcc gcc-c++ vim-common jq net-tools \
-    libuuid-devel libtasn1-devel expect socat libseccomp-devel && \
+    libuuid-devel libtasn1-devel expect socat libseccomp-devel iproute-tc && \
     yum clean all && rm -rf /var/cache/yum
 # install erlang and rabbitmq
 RUN curl -fsSLO https://packagecloud.io/install/repositories/rabbitmq/erlang/script.rpm.sh && \

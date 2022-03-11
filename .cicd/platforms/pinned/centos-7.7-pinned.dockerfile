@@ -1,6 +1,7 @@
 FROM centos:7.7.1908
 ENV VERSION 1
 # install dependencies.
+# iproute configures traffic control for p2p_high_latency_test.py test
 RUN yum update -y && \
     yum install -y epel-release && \
     yum --enablerepo=extras install -y centos-release-scl && \
@@ -130,5 +131,5 @@ RUN cp ~/.bashrc ~/.bashrc.bak && \
 # install node 10
 RUN bash -c '. ~/.bashrc; nvm install --lts=dubnium' && \
     ln -s "/root/.nvm/versions/node/$(ls -p /root/.nvm/versions/node | sort -Vr | head -1)bin/node" /usr/local/bin/node
-RUN yum install -y nodejs && \
+RUN yum install -y nodejs npm && \
     yum clean all && rm -rf /var/cache/yum

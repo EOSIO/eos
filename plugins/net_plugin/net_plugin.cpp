@@ -49,6 +49,7 @@ namespace eosio {
 
    using connection_ptr = std::shared_ptr<connection>;
    using connection_wptr = std::weak_ptr<connection>;
+   namespace sc = std::chrono;
 
    template <typename Strand>
    void verify_strand_in_this_thread(const Strand& strand, const char* func, int line) {
@@ -138,6 +139,7 @@ namespace eosio {
       uint32_t       sync_req_span{0};
       connection_ptr sync_source;
       std::atomic<stages> sync_state{in_sync};
+      static const uint32_t block_interval_ns = sc::duration_cast<sc::nanoseconds>(sc::milliseconds(config::block_interval_ms)).count();
 
    private:
       constexpr static auto stage_str( stages s );
@@ -241,9 +243,6 @@ namespace eosio {
       uint32_t                              max_nodes_per_host = 1;
       bool                                  p2p_accept_transactions = true;
       bool                                  p2p_reject_incomplete_blocks = true;
-
-      /// Peer clock may be no more than 1 second skewed from our clock, including network latency.
-      const std::chrono::system_clock::duration peer_authentication_interval{std::chrono::seconds{1}};
 
       chain_id_type                         chain_id;
       fc::sha256                            node_id;
@@ -1806,6 +1805,7 @@ namespace eosio {
       }
       sync_next_expected_num = std::max( lib_num + 1, sync_next_expected_num );
 
+      // p2p_high_latency_test.py test depends on this exact log statement.
       peer_ilog( c, "Catching up with chain, our last req is ${cc}, theirs is ${t}",
                  ("cc", sync_last_requested_num)("t", target) );
 
@@ -1839,15 +1839,24 @@ namespace eosio {
 
       sync_reset_lib_num(c, false);
 
+      long long current_time_ns = sc::duration_cast<sc::nanoseconds>(sc::system_clock::now().time_since_epoch()).count();
+      auto network_latency_ns = current_time_ns - msg.time; // net latency in nanoseconds
+      // number of blocks syncing node is behind from a peer node
+      uint32_t nblk_behind_by_net_latency = static_cast<uint32_t>(network_latency_ns / block_interval_ns);
+      // Multiplied by 2 to compensate the time it takes for message to reach peer node, and plus 1 to compensate for integer division truncation
+      uint32_t nblk_combined_latency = 2 * nblk_behind_by_net_latency + 1;
+      // message in the log below is used in p2p_high_latency_test.py test
+      peer_dlog(c, "Network latency is ${lat}ms, ${num} blocks discrepancy by network latency, ${tot_num} blocks discrepancy expected once message received", 
+               ("lat", network_latency_ns/1000000)("num", nblk_behind_by_net_latency)("tot_num", nblk_combined_latency));
       //--------------------------------
       // sync need checks; (lib == last irreversible block)
       //
       // 0. my head block id == peer head id means we are all caught up block wise
       // 1. my head block num < peer lib - send handshake (if not sent in handle_message) and wait for receipt of notice message to start syncing
-      // 2. my lib > peer head num - send an last_irr_catch_up notice if not the first generation
+      // 2. my lib > peer head num + nblk_combined_latency - send last_irr_catch_up notice if not the first generation
       //
-      // 3  my head block num < peer head block num - update sync state and send a catchup request
-      // 4  my head block num >= peer block num send a notice catchup if this is not the first generation
+      // 3  my head block num + nblk_combined_latency < peer head block num - update sync state and send a catchup request
+      // 4  my head block num >= peer block num + nblk_combined_latency send a notice catchup if this is not the first generation
       //    4.1 if peer appears to be on a different fork ( our_id_for( msg.head_num ) != msg.head_id )
       //        then request peer's blocks
       //
@@ -1873,7 +1882,7 @@ namespace eosio {
          }
          return;
       }
-      if (lib_num > msg.head_num ) {
+      if (lib_num > msg.head_num + nblk_combined_latency ) {
          peer_ilog( c, "handshake lib ${lib}, head ${head}, head id ${id}.. sync 2",
                     ("lib", msg.last_irreversible_block_num)("head", msg.head_num)("id", msg.head_id.str().substr(8,16)) );
          if (msg.generation > 1 || c->protocol_version > proto_base) {
@@ -1888,13 +1897,13 @@ namespace eosio {
          return;
       }
 
-      if (head < msg.head_num ) {
+      if (head + nblk_combined_latency < msg.head_num ) {
          peer_ilog( c, "handshake lib ${lib}, head ${head}, head id ${id}.. sync 3",
                     ("lib", msg.last_irreversible_block_num)("head", msg.head_num)("id", msg.head_id.str().substr(8,16)) );
          c->syncing = false;
          verify_catchup(c, msg.head_num, msg.head_id);
          return;
-      } else {
+      } else if(head >= msg.head_num + nblk_combined_latency) {
          peer_ilog( c, "handshake lib ${lib}, head ${head}, head id ${id}.. sync 4",
                   ("lib", msg.last_irreversible_block_num)("head", msg.head_num)("id", msg.head_id.str().substr(8,16)) );
          if (msg.generation > 1 ||  c->protocol_version > proto_base) {
@@ -1923,6 +1932,8 @@ namespace eosio {
             }
          } );
          return;
+      } else {
+         peer_dlog( c, "Block discrepancy is within network latency range.");
       }
    }
 
@@ -2729,7 +2740,8 @@ namespace eosio {
             if( blk_num < last_sent_lib ) {
                peer_ilog( this, "received block ${n} less than sent lib ${lib}", ("n", blk_num)("lib", last_sent_lib) );
                close();
-            } else {
+            } 
+            else {
                peer_ilog( this, "received block ${n} less than lib ${lib}", ("n", blk_num)("lib", lib) );
                my_impl->sync_master->reset_last_requested_num(my_impl->sync_master->locked_sync_mutex());
                enqueue( (sync_request_message) {0, 0} );
@@ -3590,15 +3602,6 @@ namespace eosio {
          }
       }
 
-      namespace sc = std::chrono;
-      sc::system_clock::duration msg_time(msg.time);
-      auto time = sc::system_clock::now().time_since_epoch();
-      if(time - msg_time > peer_authentication_interval) {
-         fc_elog( logger, "Peer ${peer} sent a handshake with a timestamp skewed by more than ${time}.",
-                  ("peer", msg.p2p_address)("time", "1 second")); // TODO Add to_variant for std::chrono::system_clock::duration
-         return false;
-      }
-
       if(msg.sig != chain::signature_type() && msg.token != sha256()) {
          sha256 hash = fc::sha256::hash(msg.time);
          if(hash != msg.token) {
@@ -3646,7 +3649,6 @@ namespace eosio {
 
    // call from connection strand
    bool connection::populate_handshake( handshake_message& hello ) {
-      namespace sc = std::chrono;
       hello.network_version = net_version_base + net_version;
       uint32_t lib, head;
       std::tie( lib, std::ignore, head,
