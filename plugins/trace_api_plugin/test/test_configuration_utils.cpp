@@ -2,6 +2,7 @@
 #include <boost/test/included/unit_test.hpp>
 #include <list>
 #include <boost/filesystem.hpp>
+#include <boost/filesystem/fstream.hpp>
 
 #include <eosio/trace_api/configuration_utils.hpp>
 #include <eosio/trace_api/test_common.hpp>
