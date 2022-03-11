@@ -69,6 +69,7 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/rodeos_multi_ship_test.py ${CMAKE_CUR
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/rodeos_multi_ship_kill_restart.py ${CMAKE_CURRENT_BINARY_DIR}/rodeos_multi_ship_kill_restart.py COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/rodeos_wasmQL_http_timeout.py ${CMAKE_CURRENT_BINARY_DIR}/rodeos_wasmQL_http_timeout.py COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/read_only_query_tests.py ${CMAKE_CURRENT_BINARY_DIR}/read_only_query_tests.py COPYONLY)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/p2p_high_latency_test.py ${CMAKE_CURRENT_BINARY_DIR}/p2p_high_latency_test.py COPYONLY)
 
 #To run plugin_test with all log from blockchain displayed, put --verbose after --, i.e. plugin_test -- --verbose
 add_test(NAME plugin_test COMMAND plugin_test --report_level=detailed --color_output)
@@ -220,6 +221,9 @@ add_test(NAME nodeos_run_check_lr_test COMMAND tests/nodeos_run_test.py -v --cle
 set_property(TEST nodeos_run_check_lr_test PROPERTY LABELS long_running_tests)
 add_test(NAME nodeos_remote_lr_test COMMAND tests/nodeos_run_remote_test.py -v --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 set_property(TEST nodeos_remote_lr_test PROPERTY LABELS long_running_tests)
+
+add_test(NAME p2p_high_latency_test COMMAND tests/p2p_high_latency_test.py -v --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_property(TEST p2p_high_latency_test PROPERTY LABELS nonparallelizable_tests)
 
 #add_test(NAME distributed_transactions_lr_test COMMAND tests/distributed-transactions-test.py -d 2 -p 21 -n 21 -v --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 #set_property(TEST distributed_transactions_lr_test PROPERTY LABELS long_running_tests)

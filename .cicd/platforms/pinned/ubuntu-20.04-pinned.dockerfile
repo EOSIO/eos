@@ -1,6 +1,7 @@
 FROM ubuntu:20.04
 ENV VERSION 1
 # install dependencies.
+# iproute2 configures traffic control for p2p_high_latency_test.py test
 RUN apt-get update && \
     apt-get upgrade -y && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y git make \
@@ -8,7 +9,7 @@ RUN apt-get update && \
     autotools-dev python2.7 python2.7-dev python3 \
     python3-dev python-configparser python3-pip \
     autoconf libtool g++ gcc curl zlib1g-dev sudo ruby libusb-1.0-0-dev \
-    libcurl4-gnutls-dev pkg-config patch vim-common jq gnupg rabbitmq-server && \
+    libcurl4-gnutls-dev pkg-config patch vim-common jq gnupg rabbitmq-server iproute2 && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 # install request and requests_unixsocket module

@@ -1,6 +1,7 @@
 FROM centos:7.7.1908
 ENV VERSION 1
 # install dependencies.
+# iproute configures traffic control for p2p_high_latency_test.py test
 RUN yum update -y && \
     yum install -y epel-release && \
     yum --enablerepo=extras install -y centos-release-scl && \

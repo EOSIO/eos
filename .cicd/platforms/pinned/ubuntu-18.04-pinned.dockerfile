@@ -1,6 +1,7 @@
 FROM ubuntu:18.04
 ENV VERSION 1
 # install dependencies.
+# iproute2 configures traffic control for p2p_high_latency_test.py test
 RUN apt-get update && \
     apt-get upgrade -y && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y git make \
@@ -9,7 +10,7 @@ RUN apt-get update && \
     python3-dev python-configparser python-requests python-pip \
     autoconf libtool g++ gcc curl zlib1g-dev sudo ruby libusb-1.0-0-dev \
     libcurl4-gnutls-dev pkg-config patch vim-common jq rabbitmq-server \
-    libtasn1-dev libnss3-dev iproute2 expect gawk socat python3-pip libseccomp-dev uuid-dev && \
+    libtasn1-dev libnss3-dev iproute2 expect gawk socat python3-pip libseccomp-dev uuid-dev iproute2 && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 # install request and requests_unixsocket module
