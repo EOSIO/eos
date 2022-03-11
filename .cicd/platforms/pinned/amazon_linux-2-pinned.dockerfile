@@ -7,7 +7,7 @@ RUN yum update -y && \
     libtool make bzip2 bzip2-devel openssl-devel gmp-devel libstdc++ libcurl-devel \
     libusbx-devel python3 python3-devel python-devel libedit-devel doxygen \
     graphviz patch gcc gcc-c++ vim-common jq net-tools \
-    libuuid-devel libtasn1-devel expect socat libseccomp-devel iproute-tc&& \
+    libuuid-devel libtasn1-devel expect socat libseccomp-devel iproute-tc && \
     yum clean all && rm -rf /var/cache/yum
 # install erlang and rabbitmq
 RUN curl -s https://packagecloud.io/install/repositories/rabbitmq/erlang/script.rpm.sh | bash && \

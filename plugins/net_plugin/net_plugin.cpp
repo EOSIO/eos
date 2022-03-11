@@ -2727,11 +2727,9 @@ namespace eosio {
          pending_message_buffer.advance_read_ptr( message_length );
          return true;
       }
-
       peer_dlog( this, "received block ${num}, id ${id}..., latency: ${latency}",
                  ("num", bh.block_num())("id", blk_id.str().substr(8,16))
                  ("latency", (fc::time_point::now() - bh.timestamp).count()/1000) );
-      
       if( !my_impl->sync_master->syncing_with_peer() ) { // guard against peer thinking it needs to send us old blocks
          uint32_t lib = 0;
          std::tie( lib, std::ignore, std::ignore, std::ignore, std::ignore, std::ignore ) = my_impl->get_chain_info();
@@ -2743,9 +2741,6 @@ namespace eosio {
                peer_ilog( this, "received block ${n} less than sent lib ${lib}", ("n", blk_num)("lib", last_sent_lib) );
                close();
             } 
-            /*else if(blk_num + num_block_behind_by_latency >= lib){
-                  peer_ilog( this, "received block ${n} less than lib ${lib} which is beacuse net latency ${net}", ("n", blk_num)("lib", lib)("net", network_latency) );
-            } */
             else {
                peer_ilog( this, "received block ${n} less than lib ${lib}", ("n", blk_num)("lib", lib) );
                my_impl->sync_master->reset_last_requested_num(my_impl->sync_master->locked_sync_mutex());
