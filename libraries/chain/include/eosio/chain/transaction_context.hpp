@@ -1,5 +1,5 @@
 #pragma once
-#include <eosio/chain/combined_database.hpp>
+#include <eosio/chain/db_util.hpp>
 #include <eosio/chain/controller.hpp>
 #include <eosio/chain/trace.hpp>
 #include <eosio/chain/platform_timer.hpp>
@@ -157,7 +157,7 @@ namespace eosio { namespace chain {
 
          controller&                   control;
          const packed_transaction&     packed_trx;
-         combined_session              undo_session;
+         db_util::maybe_session        undo_session;
          transaction_trace_ptr         trace;
          fc::time_point                start;
 

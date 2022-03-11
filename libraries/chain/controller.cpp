@@ -12,6 +12,7 @@
 #include <eosio/chain/resource_limits.hpp>
 #include <eosio/chain/thread_utils.hpp>
 #include <eosio/chain/platform_timer.hpp>
+#include <eosio/chain/genesis_intrinsics.hpp>
 
 #include <chainbase/chainbase.hpp>
 #include <fc/io/json.hpp>
@@ -30,6 +31,8 @@
 namespace eosio { namespace chain {
 
 using resource_limits::resource_limits_manager;
+
+using namespace db_util;
 
 struct building_block {
    building_block( const block_header_state& prev,
@@ -68,7 +71,7 @@ struct completed_block {
 using block_stage_type = std::variant<building_block, assembled_block, completed_block>;
 
 struct pending_state {
-   pending_state( combined_session&& s, const block_header_state& prev,
+   pending_state( maybe_session&& s, const block_header_state& prev,
                   block_timestamp_type when,
                   uint16_t num_prev_blocks_to_confirm,
                   const vector<digest_type>& new_protocol_feature_activations )
@@ -76,7 +79,7 @@ struct pending_state {
    ,_block_stage( building_block( prev, when, num_prev_blocks_to_confirm, new_protocol_feature_activations ) )
    {}
 
-   combined_session                   _db_session;
+   maybe_session                   _db_session;
    block_stage_type                   _block_stage;
    controller::block_status           _block_status = controller::block_status::incomplete;
    std::optional<block_id_type>       _producer_block_id;
@@ -162,7 +165,6 @@ struct controller_impl {
    controller&                         self;
    std::function<void()>               shutdown;
    chainbase::database                 db;
-   combined_database                   kv_db;
    block_log                           blog;
    std::optional<pending_state>        pending;
    block_state_ptr                     head;
@@ -207,7 +209,7 @@ struct controller_impl {
       auto result = head;
       head = prev;
 
-      kv_db.undo();
+      db.undo();
 
       protocol_features.popped_blocks_to( prev->block_num );
       return result;
@@ -238,9 +240,6 @@ struct controller_impl {
     db( cfg.state_dir,
         cfg.read_only ? database::read_only : database::read_write,
         cfg.state_size, false, cfg.db_map_mode ),
-    kv_db(cfg.backing_store == backing_store_type::CHAINBASE
-          ? combined_database(db, cfg.persistent_storage_mbytes_batch)
-          : combined_database(db, cfg)), 
     blog( cfg.blog ),
     fork_db( cfg.blog.log_dir / config::reversible_blocks_dir_name ),
     wasmif( cfg.wasm_runtime, cfg.eosvmoc_tierup, db, cfg.state_dir, cfg.eosvmoc_config, !cfg.profile_accounts.empty() ),
@@ -375,7 +374,7 @@ struct controller_impl {
             blog.append( std::move( *it ) );
             ++it;
 
-            kv_db.commit( (*bitr)->block_num );
+            db.commit( (*bitr)->block_num );
             root_id = (*bitr)->id;
          }
       } catch( std::exception& ) {
@@ -416,7 +415,7 @@ struct controller_impl {
       static_cast<block_header_state&>(*head) = genheader;
       head->activated_protocol_features = std::make_shared<protocol_feature_activation_set>();
       head->block = std::make_shared<signed_block>(genheader.header);
-      kv_db.set_revision( head->block_num );
+      db.set_revision( head->block_num );
       initialize_database(genesis);
    }
 
@@ -471,7 +470,7 @@ struct controller_impl {
          // if the irreverible log is played without undo sessions enabled, we need to sync the
          // revision ordinal to the appropriate expected value here.
          if( self.skip_db_sessions( controller::block_status::irreversible ) )
-            kv_db.set_revision( head->block_num );
+            db.set_revision( head->block_num );
       } else {
          ilog( "no irreversible blocks need to be replayed" );
       }
@@ -506,18 +505,16 @@ struct controller_impl {
 
    void startup(std::function<void()> shutdown, std::function<bool()> check_shutdown, const snapshot_reader_ptr& snapshot) {
       EOS_ASSERT( snapshot, snapshot_exception, "No snapshot reader provided" );
-      EOS_ASSERT( db.revision() == kv_db.revision(), database_revision_mismatch_exception,
-                  "chainbase is at revision ${a}, but chain-kv is at revision ${b}", ("a", db.revision())("b", kv_db.revision()) );
       this->shutdown = shutdown;
       ilog( "Starting initialization from snapshot, this may take a significant amount of time" );
       try {
          snapshot->validate();
          if( blog.head() ) {
-            kv_db.read_from_snapshot( snapshot, blog.first_block_num(), blog.head()->block_num(),
+            read_from_snapshot( db, snapshot, blog.first_block_num(), blog.head()->block_num(),
                                       authorization, resource_limits,
                                       head, snapshot_head_block, chain_id );
          } else {
-            kv_db.read_from_snapshot( snapshot, 0, std::numeric_limits<uint32_t>::max(),
+            read_from_snapshot( db, snapshot, 0, std::numeric_limits<uint32_t>::max(),
                                       authorization, resource_limits,
                                       head, snapshot_head_block, chain_id );
             const uint32_t lib_num = head->block_num;
@@ -540,8 +537,6 @@ struct controller_impl {
 
    void startup(std::function<void()> shutdown, std::function<bool()> check_shutdown, const genesis_state& genesis) {
       EOS_ASSERT( db.revision() < 1, database_exception, "This version of controller::startup only works with a fresh state database." );
-      EOS_ASSERT( db.revision() == kv_db.revision(), database_revision_mismatch_exception,
-                  "chainbase is at revision ${a}, but chain-kv is at revision ${b}", ("a", db.revision())("b", kv_db.revision()) );
       const auto& genesis_chain_id = genesis.compute_chain_id();
       EOS_ASSERT( genesis_chain_id == chain_id, chain_id_type_exception,
                   "genesis state provided to startup corresponds to a chain ID (${genesis_chain_id}) that does not match the chain ID that controller was constructed with (${controller_chain_id})",
@@ -575,8 +570,6 @@ struct controller_impl {
 
    void startup(std::function<void()> shutdown, std::function<bool()> check_shutdown) {
       EOS_ASSERT( db.revision() >= 1, database_exception, "This version of controller::startup does not work with a fresh state database." );
-      EOS_ASSERT( db.revision() == kv_db.revision(), database_revision_mismatch_exception,
-                  "chainbase is at revision ${a}, but chain-kv is at revision ${b}", ("a", db.revision())("b", kv_db.revision()) );
       EOS_ASSERT( fork_db.head(), fork_database_exception, "No existing fork database despite existing chain state. Replay required." );
 
       this->shutdown = shutdown;
@@ -642,7 +635,7 @@ struct controller_impl {
          });
       }
 
-      kv_db.check_backing_store_setting( clean_startup );
+      check_backing_store_setting( db, clean_startup );
 
       // At this point head != nullptr
       EOS_ASSERT( db.revision() >= head->block_num, fork_database_exception,
@@ -655,7 +648,7 @@ struct controller_impl {
                ("db",db.revision())("head",head->block_num) );
       }
       while( db.revision() > head->block_num ) {
-         kv_db.undo();
+         db.undo();
       }
 
       protocol_features.init( db );
@@ -722,7 +715,7 @@ struct controller_impl {
    sha256 calculate_integrity_hash() const {
       sha256::encoder enc;
       auto hash_writer = std::make_shared<integrity_hash_snapshot_writer>(enc);
-      kv_db.add_to_snapshot(hash_writer, *head, authorization, resource_limits);
+      add_to_snapshot(db, hash_writer, *head, authorization, resource_limits);
       hash_writer->finalize();
 
       return enc.result();
@@ -982,7 +975,7 @@ struct controller_impl {
       const bool validating = !self.is_producing_block();
       EOS_ASSERT( !validating || explicit_billed_cpu_time, transaction_exception, "validating requires explicit billing" );
 
-      combined_session undo_session = !self.skip_db_sessions() ? kv_db.make_session() : kv_db.make_no_op_session();
+      maybe_session undo_session = !self.skip_db_sessions() ? maybe_session(db) : maybe_session();
 
       auto gtrx = generated_transaction(gto);
 
@@ -1355,9 +1348,9 @@ struct controller_impl {
          EOS_ASSERT( db.revision() == head->block_num, database_exception, "db revision is not on par with head block",
                      ("db.revision()", db.revision())("controller_head_block", head->block_num)("fork_db_head_block", fork_db.head()->block_num) );
 
-         pending.emplace( kv_db.make_session(), *head, when, confirm_block_count, new_protocol_feature_activations );
+         pending.emplace( maybe_session(db), *head, when, confirm_block_count, new_protocol_feature_activations );
       } else {
-         pending.emplace( kv_db.make_no_op_session(), *head, when, confirm_block_count, new_protocol_feature_activations );
+         pending.emplace( maybe_session(), *head, when, confirm_block_count, new_protocol_feature_activations );
       }
 
       pending->_block_status = s;
@@ -1903,7 +1896,7 @@ struct controller_impl {
             emit( self.irreversible_block, bsp );
 
             if (!self.skip_db_sessions(s)) {
-               kv_db.commit(bsp->block_num);
+               db.commit(bsp->block_num);
             }
 
          } else {
@@ -2343,8 +2336,6 @@ controller::~controller() {
    //for that we need 'my' to be valid pointer pointing to valid controller_impl.
    my->fork_db.close();
    */
-
-   my->kv_db.flush();
 }
 
 void controller::add_indices() {
@@ -2368,7 +2359,6 @@ const chainbase::database& controller::db()const { return my->db; }
 chainbase::database& controller::mutable_db()const { return my->db; }
 
 const fork_database& controller::fork_db()const { return my->fork_db; }
-eosio::chain::combined_database& controller::kv_db() const { return my->kv_db; }
 
 void controller::preactivate_feature( uint32_t action_id, const digest_type& feature_digest ) {
    const auto& pfs = my->protocol_features.get_protocol_feature_set();
@@ -2830,7 +2820,7 @@ sha256 controller::calculate_integrity_hash()const { try {
 
 void controller::write_snapshot( const snapshot_writer_ptr& snapshot ) const {
    EOS_ASSERT( !my->pending, block_validate_exception, "cannot take a consistent snapshot with a pending block" );
-   return my->kv_db.add_to_snapshot(snapshot, *my->fork_db.head(), my->authorization, my->resource_limits);
+   return add_to_snapshot(my->db, snapshot, *my->fork_db.head(), my->authorization, my->resource_limits);
 }
 
 int64_t controller::set_proposed_producers( vector<producer_authority> producers ) {

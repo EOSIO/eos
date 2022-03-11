@@ -550,7 +550,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
          }
          if (chain_state_log) {
             auto delta_log_span = fc_create_span(ship_accept_span, "store_delta_log");
-            chain_state_log->store(chain_plug->chain().kv_db(), block_state);
+            chain_state_log->store(chain_plug->chain().db(), block_state);
          }
          return;
       }

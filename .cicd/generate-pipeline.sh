@@ -2,11 +2,13 @@
 set -eo pipefail
 # environment
 . ./.cicd/helpers/general.sh
+[[ -z "$ANKA_REMOTE" ]] && export ANKA_REMOTE="${BUILDKITE_PULL_REQUEST_REPO:-$BUILDKITE_REPO}"
+[[ -z "$BUILDKITE_BASIC_AGENT_QUEUE" ]] && BUILDKITE_BASIC_AGENT_QUEUE='automation-basic-builder-fleet'
+[[ -z "$BUILDKITE_BUILD_AGENT_QUEUE" ]] && BUILDKITE_BUILD_AGENT_QUEUE='automation-eks-eos-builder-fleet'
+[[ -z "$BUILDKITE_TEST_AGENT_QUEUE" ]] && BUILDKITE_TEST_AGENT_QUEUE='automation-eks-eos-tester-fleet'
 export PLATFORMS_JSON_ARRAY='[]'
 [[ -z "$ROUNDS" ]] && export ROUNDS='1'
 [[ -z "$ROUND_SIZE" ]] && export ROUND_SIZE='1'
-BUILDKITE_BUILD_AGENT_QUEUE='automation-eks-eos-builder-fleet'
-BUILDKITE_TEST_AGENT_QUEUE='automation-eks-eos-tester-fleet'
 # attach pipeline documentation
 export DOCS_URL="https://github.com/EOSIO/eos/blob/$(git rev-parse HEAD)/.cicd"
 export RETRY="$([[ "$BUILDKITE" == 'true' ]] && buildkite-agent meta-data get pipeline-upload-retries --default '0' || echo "${RETRY:-0}")"
@@ -93,7 +95,6 @@ for FILE in $(ls "$CICD_DIR/platforms/$PLATFORM_TYPE"); do
         "VERSION_MINOR": env.VERSION_MINOR,
         "VERSION_FULL": env.VERSION_FULL,
         "PLATFORM_NAME_FULL": env.PLATFORM_NAME_FULL,
-        "DOCKERHUB_FULL_TAG": env.FULL_TAG,
         "HASHED_IMAGE_TAG": env.HASHED_IMAGE_TAG,
         "ICON": env.ICON,
         "ANKA_TAG_BASE": env.ANKA_TAG_BASE,
@@ -152,7 +153,7 @@ EOF
         cat <<EOF
   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build"
     command:
-      - "git clone \$BUILDKITE_REPO eos && cd eos && $GIT_FETCH git checkout -f \$BUILDKITE_COMMIT && git submodule update --init --recursive"
+      - "git clone \$ANKA_REMOTE eos && cd eos && $GIT_FETCH git checkout -f \$BUILDKITE_COMMIT && git submodule update --init --recursive"
       - "cd eos && ./.cicd/build.sh"
     plugins:
       - EOSIO/anka#v0.6.1:
@@ -176,13 +177,13 @@ EOF
           cd: ~
     env:
       DCMAKE_BUILD_TYPE: $DCMAKE_BUILD_TYPE
-      REPO: ${BUILDKITE_PULL_REQUEST_REPO:-$BUILDKITE_REPO}
+      REPO: $ANKA_REMOTE
       REPO_COMMIT: $BUILDKITE_COMMIT
       TEMPLATE: $(echo "$PLATFORM_JSON" | jq -r .ANKA_TEMPLATE_NAME)
       TEMPLATE_TAG: $(echo "$PLATFORM_JSON" | jq -r .ANKA_TAG_BASE)
       IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
       PLATFORM_TYPE: $PLATFORM_TYPE
-      TAG_COMMANDS: "git clone ${BUILDKITE_PULL_REQUEST_REPO:-$BUILDKITE_REPO} eos && cd eos && $GIT_FETCH git checkout -f \$BUILDKITE_COMMIT && git submodule update --init --recursive && export IMAGE_TAG=$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME) && export PLATFORM_TYPE=$PLATFORM_TYPE && . ./.cicd/platforms/$PLATFORM_TYPE/$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME).sh && cd ~/eos && cd .. && rm -rf eos"
+      TAG_COMMANDS: "git clone $ANKA_REMOTE eos && cd eos && $GIT_FETCH git checkout -f \$BUILDKITE_COMMIT && git submodule update --init --recursive && export IMAGE_TAG=$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME) && export PLATFORM_TYPE=$PLATFORM_TYPE && . ./.cicd/platforms/$PLATFORM_TYPE/$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME).sh && cd ~/eos && cd .. && rm -rf eos"
       PROJECT_TAG: $(echo "$PLATFORM_JSON" | jq -r .HASHED_IMAGE_TAG)
     timeout: ${TIMEOUT:-180}
     agents: "queue=mac-anka-large-node-fleet"
@@ -238,7 +239,7 @@ EOF
                 cat <<EOF
   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Unit Tests"
     command:
-      - "git clone \$BUILDKITE_REPO eos && cd eos && $GIT_FETCH git checkout -f \$BUILDKITE_COMMIT && git submodule update --init --recursive"
+      - "git clone \$ANKA_REMOTE eos && cd eos && $GIT_FETCH git checkout -f \$BUILDKITE_COMMIT && git submodule update --init --recursive"
       - "cd eos && buildkite-agent artifact download build.tar.gz . --step '$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build' && tar -xzf build.tar.gz"
       - "cd eos && ./.cicd/test.sh scripts/parallel-test.sh"
     plugins:
@@ -295,7 +296,7 @@ EOF
                 cat <<EOF
   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - WASM Spec Tests"
     command:
-      - "git clone \$BUILDKITE_REPO eos && cd eos && $GIT_FETCH git checkout -f \$BUILDKITE_COMMIT && git submodule update --init --recursive"
+      - "git clone \$ANKA_REMOTE eos && cd eos && $GIT_FETCH git checkout -f \$BUILDKITE_COMMIT && git submodule update --init --recursive"
       - "cd eos && buildkite-agent artifact download build.tar.gz . --step '$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build' && tar -xzf build.tar.gz"
       - "cd eos && ./.cicd/test.sh scripts/wasm-spec-test.sh"
     plugins:
@@ -334,6 +335,7 @@ EOF
                 SERIAL_TESTS="$(cat tests/CMakeLists.txt | grep -v "^#" | awk -F ' ' '{ print $2 }' | sort | uniq | grep -P "^$TEST$" | awk "{while(i++<$ROUND_SIZE)print;i=0}")"
             fi
             for TEST_NAME in $SERIAL_TESTS; do
+                [[ "$(echo "$TEST_NAME" | grep -cP '^ship')" == '1' ]] && export NPM_INSTALL='true' || export NPM_INSTALL='false'
                 if [[ ! "$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)" =~ 'macos' ]]; then
                     cat <<EOF
   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - $TEST_NAME"
@@ -342,6 +344,7 @@ EOF
       ./.cicd/test.sh scripts/serial-test.sh $TEST_NAME
     env:
       IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
+      NPM_INSTALL: ${NPM_INSTALL:-false}
       PLATFORM_TYPE: $PLATFORM_TYPE
     agents:
       queue: "$BUILDKITE_TEST_AGENT_QUEUE"
@@ -375,7 +378,7 @@ EOF
                 cat <<EOF
   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - $TEST_NAME"
     command:
-      - "git clone \$BUILDKITE_REPO eos && cd eos && $GIT_FETCH git checkout -f \$BUILDKITE_COMMIT && git submodule update --init --recursive"
+      - "git clone \$ANKA_REMOTE eos && cd eos && $GIT_FETCH git checkout -f \$BUILDKITE_COMMIT && git submodule update --init --recursive"
       - "cd eos && buildkite-agent artifact download build.tar.gz . --step '$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build' && tar -xzf build.tar.gz"
       - "cd eos && ./.cicd/test.sh scripts/serial-test.sh $TEST_NAME"
     plugins:
@@ -394,6 +397,8 @@ EOF
             - 'registry_2'
       - EOSIO/skip-checkout#v0.1.1:
           cd: ~
+    env:
+      NPM_INSTALL: ${NPM_INSTALL:-false}
     agents: "queue=mac-anka-node-fleet"
     retry:
       manual:
@@ -434,7 +439,7 @@ EOF
                     cat <<EOF
   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - $TEST_NAME"
     command:
-      - "git clone \$BUILDKITE_REPO eos && cd eos && $GIT_FETCH git checkout -f \$BUILDKITE_COMMIT && git submodule update --init --recursive"
+      - "git clone \$ANKA_REMOTE eos && cd eos && $GIT_FETCH git checkout -f \$BUILDKITE_COMMIT && git submodule update --init --recursive"
       - "cd eos && buildkite-agent artifact download build.tar.gz . --step '$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build' ${BUILD_SOURCE} && tar -xzf build.tar.gz"
       - "cd eos && ./.cicd/test.sh scripts/long-running-test.sh $TEST_NAME"
     plugins:
@@ -621,7 +626,7 @@ EOF
 
   - label: ":darwin: macOS 10.15 - Package Builder"
     command:
-      - "git clone \$BUILDKITE_REPO eos && cd eos && $GIT_FETCH git checkout -f \$BUILDKITE_COMMIT"
+      - "git clone \$ANKA_REMOTE eos && cd eos && $GIT_FETCH git checkout -f \$BUILDKITE_COMMIT"
       - "cd eos && buildkite-agent artifact download build.tar.gz . --step ':darwin: macOS 10.15 - Build' && tar -xzf build.tar.gz"
       - "cd eos && ./.cicd/package.sh"
     plugins:
@@ -693,7 +698,7 @@ EOF
 
   - label: ":darwin: macOS 10.15 - Install Package"
     command:
-      - "git clone \$BUILDKITE_REPO eos && cd eos && $GIT_FETCH git checkout -f \$BUILDKITE_COMMIT"
+      - "git clone \$ANKA_REMOTE eos && cd eos && $GIT_FETCH git checkout -f \$BUILDKITE_COMMIT"
       - "cd eos && buildkite-agent artifact download '*' . --step ':darwin: macOS 10.15 - Package Builder' --agent-access-token \$\$BUILDKITE_AGENT_ACCESS_TOKEN"
       - "cd eos && ./.cicd/test-package.anka.sh"
     plugins:
@@ -732,7 +737,7 @@ EOF
   - label: ":git: Git Submodule Regression Check"
     command: "./.cicd/submodule-regression-check.sh"
     agents:
-      queue: "automation-basic-builder-fleet"
+      queue: "$BUILDKITE_BASIC_AGENT_QUEUE"
     timeout: ${TIMEOUT:-5}
 
   - label: ":beer: Brew Updater"
@@ -740,7 +745,7 @@ EOF
       buildkite-agent artifact download eosio.rb . --step ':darwin: macOS 10.15 - Package Builder'
       buildkite-agent artifact upload eosio.rb
     agents:
-      queue: "automation-basic-builder-fleet"
+      queue: "$BUILDKITE_BASIC_AGENT_QUEUE"
     timeout: ${TIMEOUT:-5}
     skip: "See BLU-30502"
 

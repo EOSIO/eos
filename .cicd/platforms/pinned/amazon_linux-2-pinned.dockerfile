@@ -10,15 +10,19 @@ RUN yum update -y && \
     libuuid-devel libtasn1-devel expect socat libseccomp-devel iproute-tc && \
     yum clean all && rm -rf /var/cache/yum
 # install erlang and rabbitmq
-RUN curl -s https://packagecloud.io/install/repositories/rabbitmq/erlang/script.rpm.sh | bash && \
+RUN curl -fsSLO https://packagecloud.io/install/repositories/rabbitmq/erlang/script.rpm.sh && \
+    bash script.rpm.sh && \
+    rm script.rpm.sh && \
     yum install -y erlang
-RUN curl -s https://packagecloud.io/install/repositories/rabbitmq/rabbitmq-server/script.rpm.sh | bash && \
+RUN curl -fsSLO https://packagecloud.io/install/repositories/rabbitmq/rabbitmq-server/script.rpm.sh && \
+    bash script.rpm.sh && \
+    rm script.rpm.sh && \
     yum install -y rabbitmq-server
 # upgrade pip installation. request and requests_unixsocket module
 RUN pip3 install --upgrade pip && \
     pip3 install requests requests_unixsocket
 # build cmake
-RUN curl -LO https://github.com/Kitware/CMake/releases/download/v3.16.2/cmake-3.16.2.tar.gz && \
+RUN curl -fsSLO https://github.com/Kitware/CMake/releases/download/v3.16.2/cmake-3.16.2.tar.gz && \
     tar -xzf cmake-3.16.2.tar.gz && \
     cd cmake-3.16.2 && \
     ./bootstrap --prefix=/usr/local && \
@@ -57,7 +61,7 @@ RUN curl -fsSLO https://boostorg.jfrog.io/artifactory/main/release/1.72.0/source
     rm -rf boost_1_72_0.tar.bz2 /boost_1_72_0
 # TPM support; this is a little tricky because we'd like nodeos static linked with it, but the tpm2-tools needed
 # for unit testing will need to be dynamic linked
-RUN curl -LO https://github.com/tpm2-software/tpm2-tss/releases/download/3.0.1/tpm2-tss-3.0.1.tar.gz
+RUN curl -fsSLO https://github.com/tpm2-software/tpm2-tss/releases/download/3.0.1/tpm2-tss-3.0.1.tar.gz
 # build static tpm2-tss; this needs some "patching" by way of removing some duplicate symbols at end of tcti impls
 RUN tar xf tpm2-tss-3.0.1.tar.gz && \
     cd tpm2-tss-3.0.1 && \
@@ -79,12 +83,13 @@ RUN tar xf tpm2-tss-3.0.1.tar.gz && \
     cd .. && \
     rm -rf tpm2-tss-3.0.1*
 # build TPM components used in unitests; tpm2-tools first
-RUN curl -L https://github.com/tpm2-software/tpm2-tools/releases/download/4.3.0/tpm2-tools-4.3.0.tar.gz | tar zx && \
+RUN curl -fsSLO https://github.com/tpm2-software/tpm2-tools/releases/download/4.3.0/tpm2-tools-4.3.0.tar.gz && \
+    tar zxf tpm2-tools-4.3.0.tar.gz && \
     cd tpm2-tools-4.3.0 && \
     PKG_CONFIG_PATH=/usr/local/lib/pkgconfig ./configure && \
     make -j$(nproc) install && \
     cd .. && \
-    rm -rf tpm2-tools-4.3.0
+    rm -rf tpm2-tools-4.3.0*
 # build libtpms
 RUN git clone -b v0.7.3 https://github.com/stefanberger/libtpms && \
     cd libtpms && \
@@ -105,7 +110,9 @@ RUN git clone -b v0.5.0 https://github.com/stefanberger/swtpm && \
 RUN ldconfig
 # install nvm
 RUN touch ~/.bashrc
-RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.0/install.sh | bash
+RUN curl -fsSLO https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.0/install.sh && \
+    bash install.sh && \
+    rm install.sh
 # load nvm in non-interactive shells
 RUN echo 'export NVM_DIR="$HOME/.nvm"' > ~/.bashrc && \
     echo '[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"' >> ~/.bashrc

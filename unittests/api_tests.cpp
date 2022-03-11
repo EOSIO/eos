@@ -90,17 +90,14 @@ using namespace eosio::testing;
 using namespace chain;
 using namespace fc;
 
-using backing_store_ts = boost::mpl::list<TESTER, ROCKSDB_TESTER>;
+using backing_store_ts = boost::mpl::list<TESTER>;
 
 namespace test_detail {
     struct chainbase_backing_store_type {
         operator eosio::chain::backing_store_type() const { return eosio::chain::backing_store_type::CHAINBASE; }
     };
-    struct rocksdb_backing_store_type {
-        operator eosio::chain::backing_store_type() const { return eosio::chain::backing_store_type::ROCKSDB; }
-    };
 }
-using backing_store_type_suite = boost::mpl::list<test_detail::chainbase_backing_store_type, test_detail::rocksdb_backing_store_type>;
+using backing_store_type_suite = boost::mpl::list<test_detail::chainbase_backing_store_type>;
 
 namespace bio = boost::iostreams;
 

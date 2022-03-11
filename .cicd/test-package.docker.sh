@@ -6,4 +6,7 @@ set -euo pipefail
 echo '--- :docker: Pretest Setup'
 
 perform "docker pull $IMAGE"
-perform "docker run --rm -v \"\$(pwd):/eos\" -w '/eos' -it $IMAGE ./.cicd/test-package.run.sh"
+DOCKER_RUN_ARGS="--rm -v \"\$(pwd):/eos\" -w '/eos' -it $IMAGE ./.cicd/test-package.run.sh"
+echo "$ docker run $DOCKER_RUN_ARGS"
+[[ -z "${PROXY_DOCKER_RUN_ARGS:-}" ]] || echo "Appending proxy args: '${PROXY_DOCKER_RUN_ARGS}'"
+eval "docker run ${PROXY_DOCKER_RUN_ARGS:-}${DOCKER_RUN_ARGS}"

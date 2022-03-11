@@ -6,7 +6,7 @@
 
 #include <cstddef>
 #include <eosio/chain/block_header.hpp>
-#include <eosio/chain/combined_database.hpp>
+#include <eosio/chain/db_util.hpp>
 #include <eosio/chain/exceptions.hpp>
 #include <eosio/chain/log_catalog.hpp>
 #include <eosio/chain/log_data_base.hpp>
@@ -243,7 +243,7 @@ class state_history_chain_state_log : public state_history_log {
 
    std::shared_ptr<std::vector<char>> get_log_entry(block_num_type block_num);
 
-   void store(const chain::combined_database& db, const chain::block_state_ptr& block_state);
+   void store(const chainbase::database& db, const chain::block_state_ptr& block_state);
  private:
    void write_payload(cfile_stream& stream, const std::vector<char>& data) override;
 };
