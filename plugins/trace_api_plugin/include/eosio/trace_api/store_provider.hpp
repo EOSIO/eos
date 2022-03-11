@@ -11,7 +11,7 @@
 #include <eosio/trace_api/metadata_log.hpp>
 #include <eosio/trace_api/data_log.hpp>
 #include <eosio/trace_api/compressed_file.hpp>
-#include <eosio/chain/combined_database.hpp>
+#include <eosio/chain/db_util.hpp>
 #include <b1/session/session.hpp>
 
 namespace eosio::trace_api {

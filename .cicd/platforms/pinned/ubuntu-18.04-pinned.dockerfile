@@ -16,7 +16,7 @@ RUN apt-get update && \
 # install request and requests_unixsocket module
 RUN pip3 install requests requests_unixsocket
 # build cmake
-RUN curl -LO https://github.com/Kitware/CMake/releases/download/v3.16.2/cmake-3.16.2.tar.gz && \
+RUN curl -fsSLO https://github.com/Kitware/CMake/releases/download/v3.16.2/cmake-3.16.2.tar.gz && \
     tar -xzf cmake-3.16.2.tar.gz && \
     cd cmake-3.16.2 && \
     ./bootstrap --prefix=/usr/local && \
@@ -57,7 +57,7 @@ RUN curl -fsSLO https://boostorg.jfrog.io/artifactory/main/release/1.72.0/source
 # TPM support; this is a little tricky because we'd like nodeos static linked with it, but the tpm2-tools needed
 # for unit testing will need to be dynamic linked
 
-RUN curl -LO https://github.com/tpm2-software/tpm2-tss/releases/download/3.0.1/tpm2-tss-3.0.1.tar.gz
+RUN curl -fsSLO https://github.com/tpm2-software/tpm2-tss/releases/download/3.0.1/tpm2-tss-3.0.1.tar.gz
 
 # build static tpm2-tss; this needs some "patching" by way of removing some duplicate symbols at end of tcti impls
 RUN tar xf tpm2-tss-3.0.1.tar.gz && \
@@ -81,12 +81,13 @@ RUN tar xf tpm2-tss-3.0.1.tar.gz && \
     rm -rf tpm2-tss-3.0.1*
 
 # build TPM components used in unitests; tpm2-tools first
-RUN curl -L https://github.com/tpm2-software/tpm2-tools/releases/download/4.3.0/tpm2-tools-4.3.0.tar.gz | tar zx && \
+RUN curl -fsSLO https://github.com/tpm2-software/tpm2-tools/releases/download/4.3.0/tpm2-tools-4.3.0.tar.gz && \
+    tar zxf tpm2-tools-4.3.0.tar.gz && \
     cd tpm2-tools-4.3.0 && \
     ./configure && \
     make -j$(nproc) install && \
     cd .. && \
-    rm -rf tpm2-tools-4.3.0
+    rm -rf tpm2-tools-4.3.0*
 # build libtpms
 RUN git clone -b v0.7.3 https://github.com/stefanberger/libtpms && \
     cd libtpms && \
@@ -105,7 +106,9 @@ RUN git clone -b v0.5.0 https://github.com/stefanberger/swtpm && \
     rm -rf swtpm
 RUN ldconfig
 # install nvm
-RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.0/install.sh | bash
+RUN curl -fsSLO https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.0/install.sh && \
+    bash install.sh && \
+    rm install.sh
 # load nvm in non-interactive shells
 RUN cp ~/.bashrc ~/.bashrc.bak && \
     cat ~/.bashrc.bak | tail -3 > ~/.bashrc && \
@@ -114,7 +117,10 @@ RUN cp ~/.bashrc ~/.bashrc.bak && \
 # install node 10
 RUN bash -c '. ~/.bashrc; nvm install --lts=dubnium' && \
     ln -s "/root/.nvm/versions/node/$(ls -p /root/.nvm/versions/node | sort -Vr | head -1)bin/node" /usr/local/bin/node
-RUN curl -sL https://deb.nodesource.com/setup_13.x | sudo -E bash -
-RUN apt-get update && apt-get install -y nodejs && \
+RUN curl -fsSLO https://deb.nodesource.com/setup_13.x && \
+    bash setup_13.x && \
+    rm setup_13.x
+RUN apt-get update && \
+    apt-get install -y nodejs && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*

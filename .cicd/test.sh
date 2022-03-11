@@ -18,8 +18,8 @@ else # Linux
     # --cap-add=NET_ADMIN needed to run tc (traffic control in linux kernel) inside docker for p2p_high_latency_test.py test.
     DOCKER_RUN_COMMAND="--cap-add=NET_ADMIN --rm --init -v \"\$(pwd):$MOUNTED_DIR\" $(buildkite-intrinsics) -e JOBS -e BUILDKITE_API_KEY '$FULL_TAG' bash -c '$COMMANDS'"
     set +e # defer error handling to end
-    echo "$ $DOCKER_RUN_COMMAND"
-    eval $DOCKER_RUN_COMMAND
+    echo "$ docker run $DOCKER_RUN_COMMAND"
+    eval "docker run ${DOCKER_RUN_COMMAND}"
     EXIT_STATUS=$?
 fi
 # buildkite

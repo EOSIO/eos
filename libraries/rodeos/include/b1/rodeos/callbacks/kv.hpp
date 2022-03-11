@@ -30,8 +30,7 @@ struct kv_iterator_rocksdb {
    }
 
    ~kv_iterator_rocksdb() { --num_iterators; }
-
-   bool is_kv_chainbase_context_iterator() const { return false; }
+   
    bool is_kv_rocksdb_context_iterator() const { return true; }
 
    kv_it_stat kv_it_status() {
