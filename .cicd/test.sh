@@ -15,7 +15,8 @@ else # Linux
     TEST_COMMAND="'\"'$MOUNTED_DIR/$1'\"' ${@: 2}"
     COMMANDS="echo \"$ $TEST_COMMAND\" && eval $TEST_COMMAND"
     . "$HELPERS_DIR/file-hash.sh" "$CICD_DIR/platforms/$PLATFORM_TYPE/$IMAGE_TAG.dockerfile"
-    DOCKER_RUN_COMMAND="docker run --rm --init -v \"\$(pwd):$MOUNTED_DIR\" $(buildkite-intrinsics) -e JOBS -e BUILDKITE_API_KEY '$FULL_TAG' bash -c '$COMMANDS'"
+    # --cap-add=NET_ADMIN needed to run tc (traffic control in linux kernel) inside docker for p2p_high_latency_test.py test.
+    DOCKER_RUN_COMMAND="--cap-add=NET_ADMIN --rm --init -v \"\$(pwd):$MOUNTED_DIR\" $(buildkite-intrinsics) -e JOBS -e BUILDKITE_API_KEY '$FULL_TAG' bash -c '$COMMANDS'"
     set +e # defer error handling to end
     echo "$ $DOCKER_RUN_COMMAND"
     eval $DOCKER_RUN_COMMAND
