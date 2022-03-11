@@ -17,6 +17,7 @@
 
 #include <boost/asio.hpp>
 #include <boost/filesystem.hpp>
+#include <boost/filesystem/fstream.hpp>
 
 namespace eosio {
 
