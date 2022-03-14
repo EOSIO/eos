@@ -3,6 +3,7 @@
 #include <eosio/chain/action.hpp>
 #include <eosio/chain/action_receipt.hpp>
 #include <eosio/chain/block.hpp>
+#include <eosio/chain/contract_types.hpp>
 
 namespace eosio { namespace chain {
 
@@ -155,6 +156,34 @@ namespace fmt {
       template<typename FormatContext>
       auto format( const fc::exception& p, FormatContext& ctx ) {
          return format_to( ctx.out(), "{}", p.to_detail_string());
+      }
+   };
+   template<typename T>
+   struct formatter<std::vector<T>> {
+      template<typename ParseContext>
+      constexpr auto parse( ParseContext& ctx ) { return ctx.begin(); }
+
+      template<typename FormatContext>
+      auto format( const std::vector<T>& p, FormatContext& ctx ) {
+         auto f = fmt::formatter<T>();
+         for( auto& i : p ) {
+            if constexpr (std::is_same_v<T, eosio::chain::action>){
+               if( i.account == eosio::chain::config::system_account_name && i.name.to_string() == "setcode" ) {
+                  auto setcode_act = i.template data_as<eosio::chain::setcode>();
+                  if( setcode_act.code.size() > 0 ) {
+                     fc::sha256 code_hash = fc::sha256::hash(setcode_act.code.data(), (uint32_t) setcode_act.code.size());
+                     std::memcpy(i.code_hash.data(), code_hash.data(), code_hash.data_size());
+                  }
+               }
+
+               if (i.data.size() > 64){
+                  i.size = i.data.size();
+                  std::memcpy(i.trimmed_hex.data(), i.data.data(),  64);
+               }
+            }
+            f.format( i, ctx );
+         }
+         return format_to( ctx.out(), "");
       }
    };
 }

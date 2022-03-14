@@ -384,9 +384,9 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
                      next(ex);
 
 //                     fc_dlog(_trx_trace_failure_log, "[TRX_TRACE] Speculative execution is REJECTING tx: ${entire_trx}",
-//                             ("entire_trx", self->chain_plug->get_log_trx(trx->get_transaction()).as_string()));
+//                             ("entire_trx", self->chain_plug->get_log_trx(trx->get_transaction())));
 //                     fc_dlog(_trx_log, "[TRX_TRACE] Speculative execution is REJECTING tx: ${trx}",
-//                             ("trx", self->chain_plug->get_log_trx(trx->get_transaction()).as_string()));
+//                             ("trx", self->chain_plug->get_log_trx(trx->get_transaction())));
                   };
                   try {
                      auto result = future.get();
@@ -436,11 +436,16 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
 
                   fc_dlog(_trx_log, "[TRX_TRACE] Block ${block_num} for producer ${prod} is REJECTING tx: ${trx}",
                           ("block_num", chain.head_block_num() + 1)("prod", get_pending_block_producer().to_string())
-                          //("trx", chain_plug->get_log_trx(trx->packed_trx()->get_transaction()).as_string()));
                           ("trx", trx->packed_trx()->get_transaction()));
-//                  fc_dlog(_trx_trace_failure_log, "[TRX_TRACE] Block ${block_num} for producer ${prod} is REJECTING tx: ${entire_trace}",
-//                          ("block_num", chain.head_block_num() + 1)("prod", get_pending_block_producer().to_string())
-//                          ("entire_trace", get_trace(response).as_string()));
+                  if (std::holds_alternative<fc::exception_ptr>(response)){
+                     fc_dlog(_trx_trace_failure_log, "[TRX_TRACE] Block ${block_num} for producer ${prod} is REJECTING tx: ${entire_trace}",
+                             ("block_num", chain.head_block_num() + 1)("prod", get_pending_block_producer().to_string())
+                             ("entire_trace", *std::get<fc::exception_ptr>(response)));
+                  } else {
+                     fc_dlog(_trx_trace_failure_log, "[TRX_TRACE] Block ${block_num} for producer ${prod} is REJECTING tx: ${entire_trace}",
+                             ("block_num", chain.head_block_num() + 1)("prod", get_pending_block_producer().to_string())
+                             ("entire_trace", *std::get<transaction_trace_ptr>(response)));
+                  }
                } else {
                   fc_dlog(_trx_failed_trace_log, "[TRX_TRACE] Speculative execution is REJECTING tx: ${txid}, auth: ${a} : ${why} ",
                           ("txid", trx->id())
@@ -1478,8 +1483,7 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
    } else if( _producers.find(scheduled_producer.producer_name) == _producers.end()) {
       _pending_block_mode = pending_block_mode::speculating;
    } else if (num_relevant_signatures == 0) {
-      //TODO: add formatter for custom type block_signing_authority_v0
-//      elog("Not producing block because I don't have any private keys relevant to authority: ${authority}", ("authority", scheduled_producer.authority));
+      elog("Not producing block because I don't have any private keys relevant to authority: ${authority}", ("authority", scheduled_producer.authority));
       _pending_block_mode = pending_block_mode::speculating;
    } else if ( _pause_production ) {
       elog("Not producing block because production is explicitly paused");
@@ -1595,9 +1599,8 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
             }
             std::swap( features_to_activate, protocol_features_to_activate );
             _protocol_features_signaled = true;
-            //TODO: add formatter for custom type `vector<digest_type>`
-//            ilog( "signaling activation of the following protocol features in block ${num}: ${features_to_activate}",
-//                  ("num", hbs->block_num + 1)("features_to_activate", features_to_activate) );
+            ilog( "signaling activation of the following protocol features in block ${num}: ${features_to_activate}",
+                  ("num", hbs->block_num + 1)("features_to_activate", features_to_activate) );
          }
       }
 
@@ -1609,8 +1612,7 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
       const fc::time_point preprocess_deadline = calculate_block_deadline(block_time);
 
       if (_pending_block_mode == pending_block_mode::producing && pending_block_signing_authority != scheduled_producer.authority) {
-         //TODO: add formatter for custom type block_signing_authority_v0
-//         elog("Unexpected block signing authority, reverting to speculative mode! [expected: \"${expected}\", actual: \"${actual\"", ("expected", scheduled_producer.authority)("actual", pending_block_signing_authority));
+         elog("Unexpected block signing authority, reverting to speculative mode! [expected: \"${expected}\", actual: \"${actual\"", ("expected", scheduled_producer.authority)("actual", pending_block_signing_authority));
          _pending_block_mode = pending_block_mode::speculating;
       }
 
