@@ -356,17 +356,30 @@ namespace eosio { namespace chain {
 } } /// namespace eosio::chain
 
 namespace fmt {
-   template<typename K, typename V>
-   struct formatter<std::pair<K, V>> {
-      template<typename ParseContext>
-      constexpr auto parse( ParseContext& ctx ) { return ctx.begin(); }
+    template<typename T>
+    struct formatter<std::vector<T>> {
+        template<typename ParseContext>
+        constexpr auto parse( ParseContext& ctx ) { return ctx.begin(); }
 
-      template<typename FormatContext>
-      auto format( const std::pair<K, V>& p, FormatContext& ctx ) {
-         fmt::formatter<V>().format(p.second, ctx);
-         return format_to( ctx.out(), "");
-      }
-   };
+        template<typename FormatContext>
+        auto format( const std::vector<T>& p, FormatContext& ctx ) {
+           auto f = fmt::formatter<T>();
+           for( const auto& i : p ) { f.format( i, ctx ); }
+           return format_to( ctx.out(), "");
+        }
+    };
+
+    template<typename K, typename V>
+    struct formatter<std::pair<K, V>>{
+        template<typename ParseContext>
+        constexpr auto parse( ParseContext& ctx ) { return ctx.begin(); }
+
+        template<typename FormatContext>
+        auto format( const std::pair<K, V>& p, FormatContext& ctx ) {
+           fmt::formatter<V>().format(p.second, ctx);
+           return format_to( ctx.out(), "");
+        }
+    };
 }
 
 FC_REFLECT(eosio::chain::deferred_transaction_generation_context, (sender_trx_id)(sender_id)(sender) )

@@ -68,9 +68,6 @@ namespace eosio { namespace chain {
 
    struct action : public action_base {
       bytes                      data;
-      size_t                     size;
-      fc::sha256                 code_hash;
-      bytes                      trimmed_hex;
 
       action() = default;
 
@@ -138,4 +135,4 @@ namespace eosio { namespace chain {
 
 FC_REFLECT( eosio::chain::permission_level, (actor)(permission) )
 FC_REFLECT( eosio::chain::action_base, (account)(name)(authorization) )
-FC_REFLECT_DERIVED( eosio::chain::action, (eosio::chain::action_base), (data)/*(size)(code_hash)(trimmed_hex)*/ )
+FC_REFLECT_DERIVED( eosio::chain::action, (eosio::chain::action_base), (data) )
