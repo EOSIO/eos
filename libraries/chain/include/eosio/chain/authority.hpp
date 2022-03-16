@@ -331,6 +331,9 @@ namespace fmt {
 
       template<typename FormatContext>
       auto format( const eosio::chain::shared_vector<T>& p, FormatContext& ctx ) {
+         if ( p.size() == 0)
+            return format_to( ctx.out(), "{}", "null");
+
          auto f = fmt::formatter<T>();
          for( const auto& i : p ) { f.format( i, ctx ); }
          return format_to( ctx.out(), "");

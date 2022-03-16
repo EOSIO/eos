@@ -121,7 +121,10 @@ namespace fmt {
 
       template<typename FormatContext>
       auto format( const std::optional<T>& p, FormatContext& ctx ) {
-         return fmt::formatter<T>().format(*p, ctx);
+         if (p.has_value())
+            return fmt::formatter<T>().format(*p, ctx);
+         else
+            return format_to( ctx.out(), "");
       }
    };
    template<typename T>
@@ -144,7 +147,10 @@ namespace fmt {
 
       template<typename FormatContext>
       auto format( const std::shared_ptr<T>& p, FormatContext& ctx ) {
-         return fmt::formatter<T>().format(*p, ctx);
+         if (p)
+            return fmt::formatter<T>().format(*p, ctx);
+         else
+            return format_to( ctx.out(), "{}", "null");
       }
    };
    template<>
