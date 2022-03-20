@@ -35,6 +35,8 @@
 #include <signal.h>
 #include <cstdlib>
 
+#include <eosio/chain/abi_serializer.hpp>
+
 // reflect chainbase::environment for --print-build-info option
 FC_REFLECT_ENUM( chainbase::environment::os_t,
                  (OS_LINUX)(OS_MACOS)(OS_WINDOWS)(OS_OTHER) )
@@ -3396,6 +3398,84 @@ fc::variant chain_plugin::get_log_trx(const transaction& trx) const {
    }
    return pretty_output;
 }
+
+void chain_plugin::to_trimmed_string(string& result, const action& a) const {
+   result += "\"account\":\"" + a.account.to_string() + "\","
+           + "\"name\":\"" + a.name.to_string() + "\",";
+   to_trimmed_vector_string(result, "authorization", a.authorization);
+   result += ",";
+
+   if( a.account == config::system_account_name && a.name == "setcode"_n ) {
+      auto setcode_act = a.data_as<eosio::chain::setcode>();
+      if( setcode_act.code.size() > 0 ) {
+         result += "\"code_hash\":";
+         fc::sha256 code_hash = fc::sha256::hash(setcode_act.code.data(), (uint32_t) setcode_act.code.size());
+         result += "\"" + code_hash.str() + "\",";
+      }
+   }
+
+   result += "\"data\":";
+   abi_serializer::yield_function_t yield = abi_serializer::create_yield_function(my->chain->get_abi_serializer_max_time());
+   auto abi = my->chain->get_abi_serializer(a.account, yield);
+   fc::variant output;
+   if (abi) {
+      auto type = abi->get_action_type(a.name);
+      if (!type.empty()) {
+         try {
+            output = abi->binary_to_log_variant(type, a.data, yield);
+         } catch (...) {
+            // any failure to serialize data, then leave as not serialized
+         }
+         result += fc::json::to_string(output, fc::time_point::maximum());
+      }
+   }
+}
+
+void chain_plugin::to_trimmed_string(string& result, const permission_level& perm) const {
+   result += "\"actor\":\"" + perm.actor.to_string() + "\","
+           + "\"permission\":\"" + perm.permission.to_string() + "\"";
+}
+
+void chain_plugin::to_trimmed_string(string& result, const std::pair<uint16_t,vector<char>>& p) const {
+   result += "\"key\":" + std::to_string(p.first) + ","
+           + "\"value\":" + std::string(p.second.begin(), p.second.end());
+}
+
+template<typename T>
+void chain_plugin::to_trimmed_vector_string(string& result, const char* name, const vector<T>& vec) const {
+   result = result +  "\"" + name + "\":[";
+   for (const auto& v : vec) {
+      result += "{";
+      to_trimmed_string(result, v);
+
+      result += "},";
+   }
+   if (!vec.empty())
+      result.pop_back(); //remove the last `,`
+   result += "]";
+}
+
+std::string chain_plugin::to_trimmed_trx_string(const transaction& t) {
+   static_assert(fc::reflector<transaction>::total_member_count == 9);
+
+   string result = "{";
+   result += "\"expiration\":\"" + (std::string)t.expiration +  "\","
+           + "\"ref_block_num\":" + std::to_string(t.ref_block_num) + ","
+           + "\"ref_block_prefix\":" + std::to_string(t.ref_block_prefix) + ","
+           + "\"max_net_usage_words\":" + std::to_string(t.max_net_usage_words.value) + ","
+           + "\"max_cpu_usage_ms\":" + std::to_string(t.max_cpu_usage_ms) + ","
+           + "\"delay_sec\":" + std::to_string(t.delay_sec.value) + ",";
+
+   to_trimmed_vector_string(result, "context_free_actions", t.context_free_actions);
+   result += ",";
+   to_trimmed_vector_string(result, "actions", t.actions);
+   result += ",";
+   to_trimmed_vector_string(result, "transaction_extensions", t.transaction_extensions);
+
+   result += "}";
+   return result;
+}
+
 
 } // namespace eosio
 

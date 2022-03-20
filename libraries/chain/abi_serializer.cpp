@@ -469,6 +469,14 @@ namespace eosio { namespace chain {
       return _binary_to_variant(type, binary, ctx);
    }
 
+   fc::variant abi_serializer::binary_to_log_variant( const std::string_view& type, const bytes& binary, const yield_function_t& yield, bool short_path )const {
+      impl::binary_to_variant_context ctx(*this, yield, type);
+      ctx.logging();
+      ctx.short_path = short_path;
+      return _binary_to_variant(type, binary, ctx);
+   }
+
+
    void abi_serializer::_variant_to_binary( const std::string_view& type, const fc::variant& var, fc::datastream<char *>& ds, impl::variant_to_binary_context& ctx )const
    { try {
       auto h = ctx.enter_scope();

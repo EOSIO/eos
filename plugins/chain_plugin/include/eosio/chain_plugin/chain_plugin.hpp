@@ -1092,6 +1092,12 @@ public:
    // return variant of trx for logging, trace is modified to minimize log output
    fc::variant get_log_trx(const transaction& trx) const;
 
+   void to_trimmed_string(string& result, const eosio::chain::action& a)const;
+   void to_trimmed_string(string& result, const eosio::chain::permission_level& perm)const;
+   void to_trimmed_string(string& result, const std::pair<uint16_t,vector<char>>& p)const;
+   template<typename T> void to_trimmed_vector_string(string& result, const char* name, const vector<T>& vec)const;
+   std::string to_trimmed_trx_string(const transaction& t);
+
 private:
    static void log_guard_exception(const chain::guard_exception& e);
 

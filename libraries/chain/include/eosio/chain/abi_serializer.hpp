@@ -64,6 +64,8 @@ struct abi_serializer {
    fc::variant binary_to_variant( const std::string_view& type, const bytes& binary, const yield_function_t& yield, bool short_path = false )const;
    fc::variant binary_to_variant( const std::string_view& type, fc::datastream<const char*>& binary, const yield_function_t& yield, bool short_path = false )const;
 
+   fc::variant binary_to_log_variant( const std::string_view& type, const bytes& binary, const yield_function_t& yield, bool short_path = false )const;
+
    bytes       variant_to_binary( const std::string_view& type, const fc::variant& var, const yield_function_t& yield, bool short_path = false )const;
    void        variant_to_binary( const std::string_view& type, const fc::variant& var, fc::datastream<char*>& ds, const yield_function_t& yield, bool short_path = false )const;
 
