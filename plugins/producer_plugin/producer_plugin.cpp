@@ -468,7 +468,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
 
                   _trx_log.get_agent_logger()->set_level(spdlog::level::debug);
                   fc_dlog(_trx_log, "[TRX_TRACE] tx: ${trx}",
-                          ("trx", chain_plug->to_trimmed_trx_string(trx->packed_trx()->get_transaction())));
+                          ("trx", chain_plug->to_trimmed_trx_string(trx->packed_trx()->get_transaction(), chain)));
                } else {
                   fc_dlog(_trx_successful_trace_log, "[TRX_TRACE] Speculative execution is ACCEPTING tx: ${txid}, auth: ${a}",
                           ("txid", trx->id())

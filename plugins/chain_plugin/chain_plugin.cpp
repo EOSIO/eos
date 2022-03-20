@@ -3399,63 +3399,81 @@ fc::variant chain_plugin::get_log_trx(const transaction& trx) const {
    return pretty_output;
 }
 
-void chain_plugin::to_trimmed_string(string& result, const action& a) const {
-   result += "\"account\":\"" + a.account.to_string() + "\","
-           + "\"name\":\"" + a.name.to_string() + "\",";
-   to_trimmed_vector_string(result, "authorization", a.authorization);
-   result += ",";
+namespace {
+   template<typename T> void to_trimmed_vector_string(string& result, const char* name, const vector<T>& vec, const controller& chain);
 
-   if( a.account == config::system_account_name && a.name == "setcode"_n ) {
-      auto setcode_act = a.data_as<eosio::chain::setcode>();
-      if( setcode_act.code.size() > 0 ) {
-         result += "\"code_hash\":";
-         fc::sha256 code_hash = fc::sha256::hash(setcode_act.code.data(), (uint32_t) setcode_act.code.size());
-         result += "\"" + code_hash.str() + "\",";
-      }
-   }
+   void to_trimmed_string(string& result, const action& a, const controller& chain)  {
+      result += "\"account\":\"" + a.account.to_string() + "\","
+                 + "\"name\":\"" + a.name.to_string() + "\",";
+      to_trimmed_vector_string(result, "authorization", a.authorization, chain);
+      result += ",";
 
-   result += "\"data\":";
-   abi_serializer::yield_function_t yield = abi_serializer::create_yield_function(my->chain->get_abi_serializer_max_time());
-   auto abi = my->chain->get_abi_serializer(a.account, yield);
-   fc::variant output;
-   if (abi) {
-      auto type = abi->get_action_type(a.name);
-      if (!type.empty()) {
-         try {
-            output = abi->binary_to_log_variant(type, a.data, yield);
-         } catch (...) {
-            // any failure to serialize data, then leave as not serialized
+      if( a.account == config::system_account_name && a.name == "setcode"_n ) {
+         auto setcode_act = a.data_as<eosio::chain::setcode>();
+         if( setcode_act.code.size() > 0 ) {
+            result += "\"code_hash\":";
+            fc::sha256 code_hash = fc::sha256::hash(setcode_act.code.data(), (uint32_t) setcode_act.code.size());
+            result += "\"" + code_hash.str() + "\",";
          }
-         result += fc::json::to_string(output, fc::time_point::maximum());
       }
+
+      result += "\"data\":";
+      abi_serializer::yield_function_t yield = abi_serializer::create_yield_function(chain.get_abi_serializer_max_time());
+      auto abi = chain.get_abi_serializer(a.account, yield);
+      fc::variant output;
+      if (abi) {
+         auto type = abi->get_action_type(a.name);
+         if (!type.empty()) {
+            try {
+               output = abi->binary_to_log_variant(type, a.data, yield);
+               result += fc::json::to_string(output, fc::time_point::maximum());
+               result += ",";
+               result += "\"hex_data\":{";
+            } catch (...) {
+               // any failure to serialize data, then leave as not serialized
+               result += "{";
+            }
+         } else {
+            result += "{";
+         }
+      } else {
+         result += "{";
+      }
+
+      result += "\"size\":" + std::to_string(a.data.size()) + ",";
+      if( a.data.size() > impl::hex_log_max_size ) {
+         result += "\"trimmed_hex\":\"" + fc::to_hex(std::vector(a.data.begin(), a.data.begin() + impl::hex_log_max_size)) + "\"";
+      } else {
+         result += "\"hex\":\"" + fc::to_hex(a.data) + "\"";
+      }
+      result += "}";
    }
-}
 
-void chain_plugin::to_trimmed_string(string& result, const permission_level& perm) const {
-   result += "\"actor\":\"" + perm.actor.to_string() + "\","
-           + "\"permission\":\"" + perm.permission.to_string() + "\"";
-}
-
-void chain_plugin::to_trimmed_string(string& result, const std::pair<uint16_t,vector<char>>& p) const {
-   result += "\"key\":" + std::to_string(p.first) + ","
-           + "\"value\":" + std::string(p.second.begin(), p.second.end());
-}
-
-template<typename T>
-void chain_plugin::to_trimmed_vector_string(string& result, const char* name, const vector<T>& vec) const {
-   result = result +  "\"" + name + "\":[";
-   for (const auto& v : vec) {
-      result += "{";
-      to_trimmed_string(result, v);
-
-      result += "},";
+   void to_trimmed_string(string& result, const permission_level& perm, const controller& chain) {
+      result += "\"actor\":\"" + perm.actor.to_string() + "\","
+                + "\"permission\":\"" + perm.permission.to_string() + "\"";
    }
-   if (!vec.empty())
-      result.pop_back(); //remove the last `,`
-   result += "]";
-}
 
-std::string chain_plugin::to_trimmed_trx_string(const transaction& t) {
+   void to_trimmed_string(string& result, const std::pair<uint16_t,vector<char>>& p, const controller& chain) {
+      result += "\"key\":" + std::to_string(p.first) + ","
+                + "\"value\":" + std::string(p.second.begin(), p.second.end());
+   }
+
+   template<typename T>
+   void to_trimmed_vector_string(string& result, const char* name, const vector<T>& vec, const controller& chain) {
+      result = result +  "\"" + name + "\":[";
+      for (const auto& v : vec) {
+         result += "{";
+         to_trimmed_string(result, v, chain);
+         result += "},";
+      }
+      if (!vec.empty())
+         result.pop_back(); //remove the last `,`
+      result += "]";
+   }
+} // namespace
+
+std::string chain_plugin::to_trimmed_trx_string(const transaction& t, const controller& chain) const {
    static_assert(fc::reflector<transaction>::total_member_count == 9);
 
    string result = "{";
@@ -3466,11 +3484,11 @@ std::string chain_plugin::to_trimmed_trx_string(const transaction& t) {
            + "\"max_cpu_usage_ms\":" + std::to_string(t.max_cpu_usage_ms) + ","
            + "\"delay_sec\":" + std::to_string(t.delay_sec.value) + ",";
 
-   to_trimmed_vector_string(result, "context_free_actions", t.context_free_actions);
+   to_trimmed_vector_string(result, "context_free_actions", t.context_free_actions, chain);
    result += ",";
-   to_trimmed_vector_string(result, "actions", t.actions);
+   to_trimmed_vector_string(result, "actions", t.actions, chain);
    result += ",";
-   to_trimmed_vector_string(result, "transaction_extensions", t.transaction_extensions);
+   to_trimmed_vector_string(result, "transaction_extensions", t.transaction_extensions, chain);
 
    result += "}";
    return result;
