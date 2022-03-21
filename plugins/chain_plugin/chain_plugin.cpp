@@ -3494,6 +3494,13 @@ std::string chain_plugin::to_trimmed_trx_string(const transaction& t, const cont
    return result;
 }
 
+std::string chain_plugin::get_log_trx_trace(const transaction_trace_ptr& t, const controller& chain) const {
+   static_assert( fc::reflector<eosio::chain::transaction_trace>::total_member_count == 13);
+   string result;
+   eosio::chain::trace::to_trimmed_trace_string(result, *t, chain);
+   return result;
+}
+
 
 } // namespace eosio
 

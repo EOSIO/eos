@@ -418,11 +418,15 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
             }
             _transaction_ack_channel.publish(priority::low, std::pair<fc::exception_ptr, transaction_metadata_ptr>(except_ptr, trx));
 
-            auto get_trace = [&](const std::variant<fc::exception_ptr, transaction_trace_ptr>& response) -> fc::variant {
+//            auto get_trace = [&](const std::variant<fc::exception_ptr, transaction_trace_ptr>& response) -> fc::variant {
+            auto get_trace = [&](const std::variant<fc::exception_ptr, transaction_trace_ptr>& response) -> string {
                if (std::holds_alternative<fc::exception_ptr>(response)) {
-                  return fc::variant{std::get<fc::exception_ptr>(response)};
+//                  return fc::variant{std::get<fc::exception_ptr>(response)};
+                  //return std::get<fc::exception_ptr>(response);
+                  return ""; // TODO...
                } else {
-                  return chain_plug->get_log_trx_trace( std::get<transaction_trace_ptr>(response) );
+                  //return chain_plug->get_log_trx_trace( std::get<transaction_trace_ptr>(response) );
+                  return chain_plug->get_log_trx_trace(std::get<transaction_trace_ptr>(response), chain);
                }
             };
 
@@ -466,9 +470,13 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
 //                          ("block_num", chain.head_block_num() + 1)("prod", get_pending_block_producer().to_string())
 //                          ("entire_trace", get_trace(response).as_string()));
 
-                  _trx_log.get_agent_logger()->set_level(spdlog::level::debug);
-                  fc_dlog(_trx_log, "[TRX_TRACE] tx: ${trx}",
-                          ("trx", chain_plug->to_trimmed_trx_string(trx->packed_trx()->get_transaction(), chain)));
+//                  _trx_log.get_agent_logger()->set_level(spdlog::level::debug);
+//                  fc_dlog(_trx_log, "[TRX_TRACE] tx: ${trx}",
+//                          ("trx", chain_plug->to_trimmed_trx_string(trx->packed_trx()->get_transaction(), chain)));
+                    _trx_trace_success_log.get_agent_logger()->set_level(spdlog::level::debug);
+                    fc_dlog(_trx_trace_success_log, "[TRX_TRACE] tx: ${entire_trace}",
+                           ("entire_trace", get_trace(response)));
+
                } else {
                   fc_dlog(_trx_successful_trace_log, "[TRX_TRACE] Speculative execution is ACCEPTING tx: ${txid}, auth: ${a}",
                           ("txid", trx->id())
