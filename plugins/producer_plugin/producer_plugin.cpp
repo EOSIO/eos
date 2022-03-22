@@ -14,6 +14,7 @@
 #include <fc/io/json.hpp>
 #include <fc/log/logger_config.hpp>
 #include <fc/scoped_exit.hpp>
+#include <fc/log/trace.hpp>
 
 #include <boost/asio.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
@@ -28,7 +29,6 @@
 #include <boost/multi_index/ordered_index.hpp>
 #include <boost/signals2/connection.hpp>
 
-#include <fc/reflect/to_string.hpp>
 
 namespace bmi = boost::multi_index;
 using bmi::indexed_by;
@@ -468,12 +468,20 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
 //                          ("block_num", chain.head_block_num() + 1)("prod", get_pending_block_producer().to_string())
 //                          ("entire_trace", get_trace(response).as_string()));
 
-//                  _trx_log.get_agent_logger()->set_level(spdlog::level::debug);
+                  _trx_log.get_agent_logger()->set_level(spdlog::level::debug);
 //                  fc_dlog(_trx_log, "[TRX_TRACE] tx: ${trx}",
 //                          ("trx", chain_plug->to_trimmed_trx_string(trx->packed_trx()->get_transaction(), chain)));
-                    _trx_trace_success_log.get_agent_logger()->set_level(spdlog::level::debug);
-                    fc_dlog(_trx_trace_success_log, "[TRX_TRACE] tx: {entire_trace}",
-                           ("entire_trace", get_trace(response)));
+
+                  string s;
+                  to_string_visitor<eosio::chain::transaction> v(const_cast<eosio::chain::transaction&>(trx->packed_trx()->get_transaction()), s);
+                  fc::reflector<eosio::chain::transaction>::visit(v);
+                  fc_dlog(_trx_log, "[TRX_TRACE - new tool] tx: {trx}",
+                          ("trx", s));
+
+//                    _trx_trace_success_log.get_agent_logger()->set_level(spdlog::level::debug);
+//                    fc_dlog(_trx_trace_success_log, "[TRX_TRACE] tx: {entire_trace}",
+//                           ("entire_trace", get_trace(response)));
+
 
                } else {
                   fc_dlog(_trx_successful_trace_log, "[TRX_TRACE] Speculative execution is ACCEPTING tx: {txid}, auth: {a}",
