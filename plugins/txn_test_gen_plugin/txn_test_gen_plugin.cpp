@@ -313,7 +313,7 @@ struct txn_test_gen_plugin_impl {
       thread_pool.emplace( "txntest", thread_pool_size );
       timer = std::make_shared<boost::asio::high_resolution_timer>(thread_pool->get_executor());
 
-      ilog("Started transaction test plugin; generating ${p} transactions every ${m} ms by ${t} load generation threads",
+      ilog("Started transaction test plugin; generating {p} transactions every {m} ms by {t} load generation threads",
          ("p", batch_size) ("m", period) ("t", thread_pool_size));
 
       boost::asio::post( thread_pool->get_executor(), [this]() {
@@ -327,7 +327,7 @@ struct txn_test_gen_plugin_impl {
       boost::asio::post( thread_pool->get_executor(), [this]() {
          send_transaction([this](const fc::exception_ptr& e){
             if (e) {
-               elog("pushing transaction failed: ${e}", ("e", e->to_detail_string()));
+               elog("pushing transaction failed: {e}", ("e", e->to_detail_string()));
                if(running && stop_on_trx_failed)
                   stop_generation();
             }
@@ -412,7 +412,7 @@ struct txn_test_gen_plugin_impl {
       ilog("Stopping transaction generation test");
 
       if (_txcount) {
-         ilog("${d} transactions executed, ${t}us / transaction", ("d", _txcount)("t", _total_us / (double)_txcount));
+         ilog("{d} transactions executed, {t}us / transaction", ("d", _txcount)("t", _total_us / (double)_txcount));
          _txcount = _total_us = 0;
       }
    }

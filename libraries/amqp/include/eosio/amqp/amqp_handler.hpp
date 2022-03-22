@@ -42,7 +42,7 @@ public:
                               [this](AMQP::Channel* c){channel_ready(c);}, [this](){channel_failed();} )
          , on_error_( std::move( on_err ) )
    {
-      ilog( "Connecting to AMQP address ${a} ...", ("a", amqp_connection_.address()) );
+      ilog( "Connecting to AMQP address {a} ...", ("a", amqp_connection_.address()) );
 
       wait();
    }
@@ -65,19 +65,19 @@ public:
       boost::asio::post( thread_pool_.get_executor(),[this, &cond, en=exchange_name, type]() {
          try {
             if( !channel_ ) {
-               elog( "AMQP not connected to channel ${a}", ("a", amqp_connection_.address()) );
+               elog( "AMQP not connected to channel {a}", ("a", amqp_connection_.address()) );
                on_error( "AMQP not connected to channel" );
                return;
             }
 
             auto& exchange = channel_->declareExchange( en, type, AMQP::durable);
             exchange.onSuccess( [this, &cond, en]() {
-               dlog( "AMQP declare exchange successful, exchange ${e}, for ${a}",
+               dlog( "AMQP declare exchange successful, exchange {e}, for {a}",
                      ("e", en)("a", amqp_connection_.address()) );
                cond.set();
             } );
             exchange.onError([this, &cond, en](const char* error_message) {
-               elog( "AMQP unable to declare exchange ${e}, for ${a}", ("e", en)("a", amqp_connection_.address()) );
+               elog( "AMQP unable to declare exchange {e}, for {a}", ("e", en)("a", amqp_connection_.address()) );
                on_error( std::string("AMQP Queue error: ") + error_message );
                cond.set();
             });
@@ -87,7 +87,7 @@ public:
       } );
 
       if( !cond.wait() ) {
-         elog( "AMQP timeout declaring exchange: ${q} for ${a}", ("q", exchange_name)("a", amqp_connection_.address()) );
+         elog( "AMQP timeout declaring exchange: {q} for {a}", ("q", exchange_name)("a", amqp_connection_.address()) );
          on_error( "AMQP timeout declaring exchange: " + exchange_name );
       }
    }
@@ -99,7 +99,7 @@ public:
       boost::asio::post( thread_pool_.get_executor(), [this, &cond, qn=queue_name]() mutable {
           try {
              if( !channel_ ) {
-                elog( "AMQP not connected to channel ${a}", ("a", amqp_connection_.address()) );
+                elog( "AMQP not connected to channel {a}", ("a", amqp_connection_.address()) );
                 on_error( "AMQP not connected to channel" );
                 return;
              }
@@ -107,12 +107,12 @@ public:
              auto& queue = channel_->declareQueue( qn, AMQP::durable );
              queue.onSuccess(
                    [this, &cond]( const std::string& name, uint32_t message_count, uint32_t consumer_count ) {
-                      dlog( "AMQP queue ${q}, messages: ${mc}, consumers: ${cc}, for ${a}",
+                      dlog( "AMQP queue {q}, messages: {mc}, consumers: {cc}, for {a}",
                             ("q", name)("mc", message_count)("cc", consumer_count)("a", amqp_connection_.address()) );
                       cond.set();
                    } );
              queue.onError( [this, &cond, qn]( const char* error_message ) {
-                elog( "AMQP error declaring queue ${q} for ${a}", ("q", qn)("a", amqp_connection_.address()) );
+                elog( "AMQP error declaring queue {q} for {a}", ("q", qn)("a", amqp_connection_.address()) );
                 on_error( error_message );
                 cond.set();
              } );
@@ -122,7 +122,7 @@ public:
        } );
 
       if( !cond.wait() ) {
-         elog( "AMQP timeout declaring queue: ${q} for ${a}", ("q", queue_name)("a", amqp_connection_.address()) );
+         elog( "AMQP timeout declaring queue: {q} for {a}", ("q", queue_name)("a", amqp_connection_.address()) );
          on_error( "AMQP timeout declaring queue: " + queue_name );
       }
    }
@@ -140,7 +140,7 @@ public:
                           cid=std::move(correlation_id), rt=std::move(reply_to), buf=std::move(buf)]() mutable {
             try {
                if( !my->channel_ ) {
-                  elog( "AMQP not connected to channel ${a}", ("a", my->amqp_connection_.address()) );
+                  elog( "AMQP not connected to channel {a}", ("a", my->amqp_connection_.address()) );
                   my->on_error( "AMQP not connected to channel" );
                   return;
                }
@@ -162,7 +162,7 @@ public:
                           cid=std::move(correlation_id), rt=std::move(reply_to), f=std::move(f)]() mutable {
             try {
                if( !my->channel_ ) {
-                  elog( "AMQP not connected to channel ${a}", ("a", my->amqp_connection_.address()) );
+                  elog( "AMQP not connected to channel {a}", ("a", my->amqp_connection_.address()) );
                   my->on_error( "AMQP not connected to channel" );
                   return;
                }
@@ -281,14 +281,14 @@ private:
    // called from non-amqp thread
    void wait() {
       if( !first_connect_.wait() ) {
-         elog( "AMQP timeout connecting to: ${a}", ("a", amqp_connection_.address()) );
+         elog( "AMQP timeout connecting to: {a}", ("a", amqp_connection_.address()) );
          on_error( "AMQP timeout connecting" );
       }
    }
 
    // called from amqp thread
    void channel_ready(AMQP::Channel* c) {
-      ilog( "AMQP Channel ready: ${id}, for ${a}", ("id", c ? c->id() : 0)("a", amqp_connection_.address()) );
+      ilog( "AMQP Channel ready: {id}, for {a}", ("id", c ? c->id() : 0)("a", amqp_connection_.address()) );
       channel_ = c;
       boost::system::error_code ec;
       timer_.cancel(ec);
@@ -305,7 +305,7 @@ private:
 
    // called from amqp thread
    void channel_failed() {
-      wlog( "AMQP connection failed to: ${a}", ("a", amqp_connection_.address()) );
+      wlog( "AMQP connection failed to: {a}", ("a", amqp_connection_.address()) );
       channel_ = nullptr;
       // connection will automatically be retried by single_channel_retrying_amqp_connection
 
@@ -329,19 +329,19 @@ private:
             channel_->recover(AMQP::requeue)
               .onSuccess( [&]() { dlog( "successfully started channel recovery" ); } )
               .onError( [&]( const char* message ) {
-                 elog( "channel recovery failed ${e}", ("e", message) );
+                 elog( "channel recovery failed {e}", ("e", message) );
                  on_error( "AMQP channel recovery failed" );
               } );
          }
 
          auto& consumer = channel_->consume(queue_name_);
          consumer.onSuccess([&](const std::string& consumer_tag) {
-            ilog("consume started, queue: ${q}, tag: ${tag}, for ${a}",
+            ilog("consume started, queue: {q}, tag: {tag}, for {a}",
                  ("q", queue_name_)("tag", consumer_tag)("a", amqp_connection_.address()));
             consumer_tag_ = consumer_tag;
          });
          consumer.onError([&](const char* message) {
-            elog("consume failed, queue ${q}, tag: ${t} error: ${e}, for ${a}",
+            elog("consume failed, queue {q}, tag: {t} error: {e}, for {a}",
                  ("q", queue_name_)("t", consumer_tag_)("e", message)("a", amqp_connection_.address()));
             consumer_tag_.clear();
          });
@@ -355,21 +355,21 @@ private:
       if( channel_ && on_consume_ && !consumer_tag_.empty() ) {
          auto& consumer = channel_->cancel(consumer_tag_);
          consumer.onSuccess([&, cb{std::move(on_cancel)}](const std::string& consumer_tag) {
-            ilog("consume stopped, queue: ${q}, tag: ${tag}, for ${a}",
+            ilog("consume stopped, queue: {q}, tag: {tag}, for {a}",
                  ("q", queue_name_)("tag", consumer_tag)("a", amqp_connection_.address()));
             consumer_tag_.clear();
             on_consume_ = nullptr;
             if( cb ) cb(consumer_tag);
          });
          consumer.onError([&](const char* message) {
-            elog("cancel consume failed, queue ${q}, tag: ${t} error: ${e}, for ${a}",
+            elog("cancel consume failed, queue {q}, tag: {t} error: {e}, for {a}",
                  ("q", queue_name_)("t", consumer_tag_)("e", message)("a", amqp_connection_.address()));
             consumer_tag_.clear();
             on_consume_ = nullptr;
             on_error(message);
          });
       } else {
-         wlog("Unable to stop consuming from queue: ${q}, tag: ${t}", ("q", queue_name_)("t", consumer_tag_));
+         wlog("Unable to stop consuming from queue: {q}, tag: {t}", ("q", queue_name_)("t", consumer_tag_));
       }
    }
 

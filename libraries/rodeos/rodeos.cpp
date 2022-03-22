@@ -89,10 +89,10 @@ void rodeos_db_snapshot::start_block(const get_blocks_result_base& result) {
 
    if (result.this_block->block_num <= head) {
       if (!undo_stack_enabled) {
-           wlog("can't switch forks at ${b} since undo stack is disabled. head: ${h}", ("b", result.this_block->block_num) ("h", head));
+           wlog("can't switch forks at {b} since undo stack is disabled. head: {h}", ("b", result.this_block->block_num) ("h", head));
            EOS_ASSERT(false, eosio::chain::unsupported_feature, "can't switch forks at ${b} since undo stack is disabled. head: ${h}", ("b", result.this_block->block_num) ("h", head));
       } else {
-        ilog("switch forks at block ${b}; database contains revisions ${f} - ${h}",
+        ilog("switch forks at block {b}; database contains revisions {f} - {h}",
              ("b", result.this_block->block_num)("f", undo_stack->first_revision())("h", undo_stack->revision()));
         if (undo_stack->first_revision() >= result.this_block->block_num)
            throw std::runtime_error("can't switch forks since database doesn't contain revision " +
@@ -230,7 +230,7 @@ void rodeos_db_snapshot::write_deltas(uint32_t block_num, eosio::opaque<std::vec
             if (delta_any_v.rows.size() > 10000 && !(num_processed % 10000)) {
                if (shutdown())
                   throw std::runtime_error("shutting down");
-               ilog("block ${b} ${t} ${n} of ${r}",
+               ilog("block {b} {t} {n} of {r}",
                     ("b", block_num)("t", delta_any_v.name)("n", num_processed)("r", delta_any_v.rows.size()));
                if (head == 0) {
                   end_write(false);
@@ -293,7 +293,7 @@ rodeos_filter::rodeos_filter(eosio::name name, const std::string& wasm_filename,
    std::ifstream wasm_file(wasm_filename, std::ios::binary);
    if (!wasm_file.is_open())
       throw std::runtime_error("can not open " + wasm_filename);
-   ilog("compiling ${f}", ("f", wasm_filename));
+   ilog("compiling {f}", ("f", wasm_filename));
    wasm_file.seekg(0, std::ios::end);
    int len = wasm_file.tellg();
    if (len < 0)
@@ -317,7 +317,7 @@ rodeos_filter::rodeos_filter(eosio::name name, const std::string& wasm_filename,
                   cache_path, eosvmoc_config, code,
                   eosio::chain::digest_type::hash(reinterpret_cast<const char*>(code.data()), code.size()));
          } catch( const eosio::chain::database_exception& e ) {
-            wlog( "eosvmoc cache exception ${e} removing cache ${c}", ("e", e.to_string())("c", cache_path.generic_string()) );
+            wlog( "eosvmoc cache exception {e} removing cache {c}", ("e", e.to_string())("c", cache_path.generic_string()) );
             // destroy cache and try again
             boost::filesystem::remove_all( cache_path );
             filter_state->eosvmoc_tierup.emplace(
@@ -364,7 +364,7 @@ void rodeos_filter::process(rodeos_db_snapshot& snapshot, const ship_protocol::g
       (*backend)(cb, "env", "apply", uint64_t(0), uint64_t(0), uint64_t(0));
 
       if (!filter_state->console.empty())
-         ilog("filter ${n} console output: <<<\n${c}>>>", ("n", name.to_string())("c", filter_state->console));
+         ilog("filter {n} console output: <<<\n{c}>>>", ("n", name.to_string())("c", filter_state->console));
    } catch (...) {
       try {
          throw;
@@ -373,14 +373,14 @@ void rodeos_filter::process(rodeos_db_snapshot& snapshot, const ship_protocol::g
       } catch ( const boost::interprocess::bad_alloc& ) {
         throw;
       } catch( const fc::exception& e ) {
-         elog( "fc::exception processing filter wasm: ${e}", ("e", e.to_detail_string()) );
+         elog( "fc::exception processing filter wasm: {e}", ("e", e.to_detail_string()) );
       } catch( const std::exception& e ) {
-         elog( "std::exception processing filter wasm: ${e}", ("e", e.what()) );
+         elog( "std::exception processing filter wasm: {e}", ("e", e.what()) );
       } catch( ... ) {
          elog( "unknown exception processing filter wasm" );
       }
       if (!filter_state->console.empty())
-         ilog("filter ${n} console output before exception: <<<\n${c}>>>",
+         ilog("filter {n} console output before exception: <<<\n{c}>>>",
               ("n", name.to_string())("c", filter_state->console));
       throw;
    }

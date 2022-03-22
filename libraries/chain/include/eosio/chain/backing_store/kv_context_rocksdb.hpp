@@ -363,7 +363,7 @@ namespace eosio { namespace chain {
          const int64_t resource_delta = erase_table_usage(resource_manager, pp->payer, key, key_size, pp->value_size);
 
          if (auto dm_logger = resource_manager._context->control.get_deep_mind_logger()) {
-            fc_dlog(*dm_logger, "KV_OP REM ${action_id} ${db} ${payer} ${key} ${odata}",
+            fc_dlog(*dm_logger, "KV_OP REM {action_id} {db} {payer} {key} {odata}",
                     ("action_id", resource_manager._context->get_action_id())
                     ("contract", contract_name.to_string())
                     ("payer", pp->payer.to_string())
@@ -406,7 +406,7 @@ namespace eosio { namespace chain {
                   update_table_usage(resource_manager, old_pp->payer, payer, key, key_size, old_pp->value_size, value_size);
 
             if (auto dm_logger = resource_manager._context->control.get_deep_mind_logger()) {
-               fc_dlog(*dm_logger, "KV_OP UPD ${action_id} ${db} ${payer} ${key} ${odata}:${ndata}",
+               fc_dlog(*dm_logger, "KV_OP UPD {action_id} {db} {payer} {key} {odata}:{ndata}",
                        ("action_id", resource_manager._context->get_action_id())
                        ("contract", contract_name.to_string())
                        ("payer", payer.to_string())
@@ -419,7 +419,7 @@ namespace eosio { namespace chain {
             resource_delta = create_table_usage(resource_manager, payer, key, key_size, value_size);
 
             if (auto dm_logger = resource_manager._context->control.get_deep_mind_logger()) {
-               fc_dlog(*dm_logger, "KV_OP INS ${action_id} ${db} ${payer} ${key} ${ndata}",
+               fc_dlog(*dm_logger, "KV_OP INS {action_id} {db} {payer} {key} {ndata}",
                        ("action_id", resource_manager._context->get_action_id())
                        ("contract", contract_name.to_string())
                        ("payer", payer.to_string())

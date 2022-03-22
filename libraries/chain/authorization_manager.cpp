@@ -159,7 +159,7 @@ namespace eosio { namespace chain {
          p.auth         = auth;
 
          if (auto dm_logger = _control.get_deep_mind_logger()) {
-            fc_dlog(*dm_logger, "PERM_OP INS ${action_id} ${permission_id} ${data}",
+            fc_dlog(*dm_logger, "PERM_OP INS {action_id} {permission_id} {data}",
                ("action_id", action_id)
                ("permission_id", p.id)
                ("data", p)
@@ -199,7 +199,7 @@ namespace eosio { namespace chain {
          p.auth         = std::move(auth);
 
          if (auto dm_logger = _control.get_deep_mind_logger()) {
-            fc_dlog(*dm_logger, "PERM_OP INS ${action_id} ${permission_id} ${data}",
+            fc_dlog(*dm_logger, "PERM_OP INS {action_id} {permission_id} {data}",
                ("action_id", action_id)
                ("permission_id", p.id)
                ("data", p)
@@ -223,7 +223,7 @@ namespace eosio { namespace chain {
          po.last_updated = _control.pending_block_time();
 
          if (auto dm_logger = _control.get_deep_mind_logger()) {
-            fc_dlog(*dm_logger, "PERM_OP UPD ${action_id} ${permission_id} ${old} ${new}",
+            fc_dlog(*dm_logger, "PERM_OP UPD {action_id} {permission_id} {old} {new}",
                ("action_id", action_id)
                ("permission_id", po.id)
                ("old", old_permission)
@@ -242,7 +242,7 @@ namespace eosio { namespace chain {
       _db.get_mutable_index<permission_usage_index>().remove_object( permission.usage_id._id );
 
       if (auto dm_logger = _control.get_deep_mind_logger()) {
-         fc_dlog(*dm_logger, "PERM_OP REM ${action_id} ${permission_id} ${data}",
+         fc_dlog(*dm_logger, "PERM_OP REM {action_id} {permission_id} {data}",
               ("action_id", action_id)
               ("permission_id", permission.id)
               ("data", permission)

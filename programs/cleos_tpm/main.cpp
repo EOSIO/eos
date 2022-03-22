@@ -2716,7 +2716,7 @@ int main( int argc, char** argv ) {
       std::optional<chain_id_type> chain_id;
 
       if( str_chain_id.size() == 0 ) {
-         ilog( "grabbing chain_id from ${n}", ("n", node_executable_name) );
+         ilog( "grabbing chain_id from {n}", ("n", node_executable_name) );
          auto info = get_info();
          chain_id = info.chain_id;
       } else {
@@ -3119,9 +3119,9 @@ int main( int argc, char** argv ) {
               out << args ;//<< "\n";
 
               if( trace["block_num"].as_uint64() <= lib ) {
-                 dlog( "\r${m}", ("m",out.str()) );
+                 dlog( "\r{m}", ("m",out.str()) );
               } else {
-                 wlog( "\r${m}", ("m",out.str()) );
+                 wlog( "\r{m}", ("m",out.str()) );
               }
               if( printconsole ) {
                  auto console = at["console"].as_string();
@@ -3134,7 +3134,7 @@ int main( int argc, char** argv ) {
                        if( !fullact ) break;
                        line.clear();
                     }
-                    cerr << sout.str(); //ilog( "\r${m}                                   ", ("m",out.str()) );
+                    cerr << sout.str(); //ilog( "\r{m}                                   ", ("m",out.str()) );
                  }
               }
           }
@@ -3785,13 +3785,13 @@ int main( int argc, char** argv ) {
       signed_transaction trx;
       try {
         abi_serializer::from_variant( trx_var, trx, abi_serializer_resolver_empty, abi_serializer::create_yield_function( abi_serializer_max_time ) );
-      } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Invalid transaction format: '${data}'",
+      } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Invalid transaction format: '{data}'",
                                ("data", fc::json::to_string(trx_var, fc::time_point::maximum())))
 
       std::optional<chain_id_type> chain_id;
 
       if( str_chain_id.size() == 0 ) {
-         ilog( "grabbing chain_id from ${n}", ("n", node_executable_name) );
+         ilog( "grabbing chain_id from {n}", ("n", node_executable_name) );
          auto info = get_info();
          chain_id = info.chain_id;
       } else {
@@ -4408,7 +4408,7 @@ int main( int argc, char** argv ) {
       if (!print_recognized_errors(e, verbose)) {
          // Error is not recognized
          if (!print_help_text(e) || verbose) {
-            elog("Failed with error: ${e}", ("e", verbose ? e.to_detail_string() : e.to_string()));
+            elog("Failed with error: {e}", ("e", verbose ? e.to_detail_string() : e.to_string()));
          }
       }
       return 1;
@@ -4422,7 +4422,7 @@ int main( int argc, char** argv ) {
       return 1;
    } catch (connection_exception& e) {
       if (verbose) {
-         elog("connect error: ${e}", ("e", e.to_detail_string()));
+         elog("connect error: {e}", ("e", e.to_detail_string()));
       }
       return 1;
    } catch ( const std::bad_alloc& ) {

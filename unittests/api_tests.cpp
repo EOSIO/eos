@@ -1674,7 +1674,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(more_deferred_transaction_tests, TYPE_T, backing_s
 
    auto print_deferred = [&index]() {
       for( const auto& gto : index ) {
-         wlog("id = ${id}, trx_id = ${trx_id}", ("id", gto.id)("trx_id", gto.trx_id));
+         wlog("id = {id}, trx_id = {trx_id}", ("id", gto.id)("trx_id", gto.trx_id));
       }
    };
 

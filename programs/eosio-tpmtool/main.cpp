@@ -42,7 +42,7 @@ int main(int argc, char** argv) {
       bpo::notify(varmap);
    }
    catch(fc::exception& e) {
-      elog("${e}", ("e", e.to_detail_string()));
+      elog("{e}", ("e", e.to_detail_string()));
       return 1;
    }
 

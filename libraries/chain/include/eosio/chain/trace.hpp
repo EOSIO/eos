@@ -111,6 +111,10 @@ namespace eosio { namespace chain {
    inline storage_usage_trace generic_storage_usage_trace(uint32_t action_id) {
       return {action_id};
    }
+   namespace trace {
+      void to_trimmed_trace_string(string& result, const transaction_trace& t, const controller& chain);
+   }
+
 } }  /// namespace eosio::chain
 
 namespace fmt {

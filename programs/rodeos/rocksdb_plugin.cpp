@@ -59,7 +59,7 @@ void rocksdb_plugin::plugin_shutdown() {}
 std::shared_ptr<chain_kv::database> rocksdb_plugin::get_db() {
    std::lock_guard<std::mutex> lock(my->mutex);
    if (!my->database) {
-      ilog("rodeos database is ${d}", ("d", my->db_path.string()));
+      ilog("rodeos database is {d}", ("d", my->db_path.string()));
       if (!bfs::exists(my->db_path.parent_path()))
          bfs::create_directories(my->db_path.parent_path());
 

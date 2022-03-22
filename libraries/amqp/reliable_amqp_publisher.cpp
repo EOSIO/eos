@@ -84,7 +84,7 @@ reliable_amqp_publisher_impl::reliable_amqp_publisher_impl(const std::string& ur
          fc::raw::unpack(file, message_deque);
          if( !message_deque.empty() )
             batch_num = message_deque.back().num;
-         ilog("AMQP existing persistent file ${f} loaded with ${c} unconfirmed messages for ${a} publishing to \"${e}\".",
+         ilog("AMQP existing persistent file {f} loaded with {c} unconfirmed messages for {a} publishing to \"{e}\".",
               ("f", data_file_path.generic_string())("c",message_deque.size())("a", retrying_connection.address())("e", exchange));
       } FC_RETHROW_EXCEPTIONS(error, "Failed to load previously unconfirmed AMQP messages from ${f}", ("f", (fc::path)data_file_path));
    }
@@ -191,7 +191,7 @@ void reliable_amqp_publisher_impl::verify_max_queue_size() {
    constexpr unsigned max_queued_messages = 1u << 20u;
 
    if(message_deque.size() > max_queued_messages) {
-      elog("AMQP connection ${a} publishing to \"${e}\" has reached ${max} unconfirmed messages",
+      elog("AMQP connection {a} publishing to \"{e}\" has reached {max} unconfirmed messages",
            ("a", retrying_connection.address())("e", exchange)("max", max_queued_messages));
       std::string err = "AMQP publishing to " + exchange + " has reached " + std::to_string(message_deque.size()) + " unconfirmed messages";
       if( on_fatal_error) on_fatal_error(err);

@@ -230,7 +230,7 @@ std::map<fc::crypto::public_key, TPM2_HANDLE> usable_persistent_keys_and_handles
       ESYS_TR object;
       rc = Esys_TR_FromTPMPublic(esys_ctx.ctx(), handle, ESYS_TR_NONE, ESYS_TR_NONE, ESYS_TR_NONE, &object);
       if(rc) {
-         wlog("Failed to load TPM persistent handle: ${m}", ("m", Tss2_RC_Decode(rc)));
+         wlog("Failed to load TPM persistent handle: {m}", ("m", Tss2_RC_Decode(rc)));
          continue;
       }
       auto cleanup_tr_object = fc::make_scoped_exit([&]() {Esys_TR_Close(esys_ctx.ctx(), &object);});

@@ -48,7 +48,7 @@ void amqp_trace_plugin_impl::publish_error( std::string routing_key, std::string
          } else {
             amqp_trace.publish_message_direct( rk, cid, std::move( buf ),
                                                [mode]( const std::string& err ) {
-                                                  elog( "AMQP direct message error: ${e}", ("e", err) );
+                                                  elog( "AMQP direct message error: {e}", ("e", err) );
                                                   if( mode == reliable_mode::exit )
                                                      appbase::app().quit();
                                                } );
@@ -71,9 +71,9 @@ void amqp_trace_plugin_impl::publish_result( std::string routing_key,
              rk=std::move(routing_key), cid=std::move(correlation_id), uuid=std::move(block_uuid),
              mode=pub_reliable_mode]() mutable {
          if( !trace->except ) {
-            dlog( "chain accepted transaction, bcast ${id}", ("id", trace->id) );
+            dlog( "chain accepted transaction, bcast {id}", ("id", trace->id) );
          } else {
-            dlog( "trace except : ${m}", ("m", trace->except->to_string()) );
+            dlog( "trace except : {m}", ("m", trace->except->to_string()) );
          }
          transaction_trace_msg msg{ transaction_trace_message{ std::move(uuid), eosio::state_history::convert( *trace ) } };
          std::vector<char> buf = convert_to_bin( msg );
@@ -82,7 +82,7 @@ void amqp_trace_plugin_impl::publish_result( std::string routing_key,
          } else {
             amqp_trace.publish_message_direct( rk, cid, std::move( buf ),
                                                [mode]( const std::string& err ) {
-                                                  elog( "AMQP direct message error: ${e}", ("e", err) );
+                                                  elog( "AMQP direct message error: {e}", ("e", err) );
                                                   if( mode == reliable_mode::exit )
                                                      appbase::app().quit();
                                                } );
@@ -107,7 +107,7 @@ void amqp_trace_plugin_impl::publish_block_uuid( std::string routing_key,
                } else {
                   amqp_trace.publish_message_direct( rk, {}, std::move( buf ),
                                                      [mode]( const std::string& err ) {
-                                                        elog( "AMQP direct message error: ${e}", ("e", err) );
+                                                        elog( "AMQP direct message error: {e}", ("e", err) );
                                                         if( mode == reliable_mode::exit )
                                                            appbase::app().quit();
                                                      } );

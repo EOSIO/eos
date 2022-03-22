@@ -167,7 +167,7 @@ namespace eosio { namespace chain {
 
       if( !my->root ) {
          if( my->index.size() > 0 ) {
-            elog( "fork_database is in a bad state when closing; not writing out '${filename}'",
+            elog( "fork_database is in a bad state when closing; not writing out '{filename}'",
                   ("filename", fork_db_dat.generic_string()) );
          }
          return;
@@ -218,7 +218,7 @@ namespace eosio { namespace chain {
       if( my->head ) {
          fc::raw::pack( out, my->head->id );
       } else {
-         elog( "head not set in fork database; '${filename}' will be corrupted",
+         elog( "head not set in fork database; '{filename}' will be corrupted",
                ("filename", fork_db_dat.generic_string()) );
       }
 

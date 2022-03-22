@@ -46,11 +46,11 @@ int main(int argc, char** argv) {
      return BAD_ALLOC;
    } 
    catch(const fc::exception& e) {
-      elog("${e}", ("e", e.to_detail_string()));
+      elog("{e}", ("e", e.to_detail_string()));
       return 1;
    }
    catch(const std::exception& e) {
-      elog("${e}", ("e", fc::std_exception_wrapper::from_current_exception(e).to_detail_string()));
+      elog("{e}", ("e", fc::std_exception_wrapper::from_current_exception(e).to_detail_string()));
       return 1;
    }
 

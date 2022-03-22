@@ -482,10 +482,10 @@ BOOST_AUTO_TEST_CASE( actor_blacklist_inline_deferred ) { try {
       if( act.account == "eosio"_n && act.name == "onblock"_n ) return;
 
       if( t->receipt && t->receipt->status == transaction_receipt::executed ) {
-         wlog( "${trx_type} ${id} executed (first action is ${code}::${action})",
+         wlog( "{trx_type} {id} executed (first action is {code}::{action})",
               ("trx_type", t->scheduled ? "scheduled trx" : "trx")("id", t->id)("code", act.account.to_string())("action", act.name.to_string()) );
       } else {
-         wlog( "${trx_type} ${id} failed (first action is ${code}::${action})",
+         wlog( "{trx_type} {id} failed (first action is {code}::{action})",
                ("trx_type", t->scheduled ? "scheduled trx" : "trx")("id", t->id)("code", act.account.to_string())("action", act.name.to_string()) );
       }
    };

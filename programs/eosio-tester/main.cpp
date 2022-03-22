@@ -285,7 +285,7 @@ struct test_chain {
 
    void finish_block() {
       start_if_needed();
-      ilog("finish block ${n}", ("n", control->head_block_num()));
+      ilog("finish block {n}", ("n", control->head_block_num()));
       control->finalize_block([&](eosio::chain::digest_type d) { return std::vector{ producer_key.sign(d) }; });
       control->commit_block();
    }
@@ -705,8 +705,8 @@ struct callbacks {
       auto start_time = std::chrono::steady_clock::now();
       auto result     = chain.control->push_transaction(fut.get(), fc::time_point::maximum(), 2000, true, 0);
       auto us = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - start_time);
-      ilog("chainlib transaction took ${u} us", ("u", us.count()));
-      // ilog("${r}", ("r", fc::json::to_pretty_string(result)));
+      ilog("chainlib transaction took {u} us", ("u", us.count()));
+      // ilog("{r}", ("r", fc::json::to_pretty_string(result)));
       set_data(cb_alloc_data, cb_alloc,
                convert_to_bin(chain_types::transaction_trace{ eosio::state_history::convert(*result) }));
    }
@@ -833,14 +833,14 @@ struct callbacks {
       auto                             start_time = std::chrono::steady_clock::now();
       auto result = r.query_handler->query_transaction(*r.write_snapshot, data.data(), data.size());
       auto us = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - start_time);
-      ilog("rodeos transaction took ${u} us", ("u", us.count()));
+      ilog("rodeos transaction took {u} us", ("u", us.count()));
       auto tt = eosio::convert_from_bin<eosio::ship_protocol::transaction_trace>(
                                    { result.data, result.data + result.size });
       auto& tt0 = std::get<eosio::ship_protocol::transaction_trace_v0>(tt);
       for (auto& at : tt0.action_traces) {
          auto& at1 = std::get<eosio::ship_protocol::action_trace_v1>(at);
          if (!at1.console.empty())
-            ilog("rodeos query console: <<<\n${c}>>>", ("c", at1.console));
+            ilog("rodeos query console: <<<\n{c}>>>", ("c", at1.console));
       }
       set_data(cb_alloc_data, cb_alloc, result);
    }

@@ -109,7 +109,7 @@ std::tuple<size_t, size_t> code_cache_async::consume_compile_thread_queue() {
                _cache_index.push_front(cd);
             },
             [&](const compilation_result_unknownfailure&) {
-               wlog("code ${c} failed to tier-up with EOS VM OC", ("c", result.code.code_id));
+               wlog("code {c} failed to tier-up with EOS VM OC", ("c", result.code.code_id));
                _blacklist.emplace(result.code);
             },
             [&](const compilation_result_toofull&) {
@@ -375,7 +375,7 @@ code_cache_base::code_cache_base(const boost::filesystem::path data_dir, const e
       }
       allocator->deallocate((char*)load_region.get_address() + cache_header.serialized_descriptor_index);
 
-      ilog("EOS VM Optimized Compiler code cache loaded with ${c} entries; ${f} of ${t} bytes free", ("c", number_entries)("f", allocator->get_free_memory())("t", allocator->get_size()));
+      ilog("EOS VM Optimized Compiler code cache loaded with {c} entries; {f} of {t} bytes free", ("c", number_entries)("f", allocator->get_free_memory())("t", allocator->get_size()));
    }
 
    _free_bytes_eviction_threshold = on_disk_size * .1;

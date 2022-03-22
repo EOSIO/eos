@@ -87,7 +87,7 @@ public:
          ++suffix;
          dest_path = destination_filename + "-" + std::to_string( suffix ) + _wallet_filename_extension;
       }
-      wlog( "backing up wallet ${src} to ${dest}",
+      wlog( "backing up wallet {src} to {dest}",
             ("src", src_path.string())
             ("dest", dest_path.string()) );
 
@@ -215,7 +215,7 @@ public:
       if( wallet_filename == "" )
          wallet_filename = _wallet_filename;
 
-      wlog( "saving wallet to file ${fn}", ("fn", wallet_filename) );
+      wlog( "saving wallet to file {fn}", ("fn", wallet_filename) );
 
       string data = fc::json::to_pretty_string( _wallet );
       try
@@ -229,7 +229,7 @@ public:
          //
          ofstream outfile{ wallet_filename };
          if (!outfile) {
-            elog("Unable to open file: ${fn}", ("fn", wallet_filename));
+            elog("Unable to open file: {fn}", ("fn", wallet_filename));
             EOS_THROW(wallet_exception, "Unable to open file: ${fn}", ("fn", wallet_filename));
          }
          outfile.write( data.c_str(), data.length() );

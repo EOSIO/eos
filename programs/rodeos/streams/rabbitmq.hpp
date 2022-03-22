@@ -29,7 +29,7 @@ private:
                                                                    fc::seconds( 60 ),
                                                                    true,
                                                                    []( const std::string& err ) {
-                                                                      elog( "AMQP fatal error: ${e}", ("e", err) );
+                                                                      elog( "AMQP fatal error: {e}", ("e", err) );
                                                                       appbase::app().quit();
                                                                    } );
    }
@@ -41,7 +41,7 @@ public:
        , publish_immediately_(publish_immediately)
        , queue_name_( std::move( queue_name))
    {
-      ilog("Connecting to RabbitMQ address ${a} - Queue: ${q}...", ("a", address)( "q", queue_name_));
+      ilog("Connecting to RabbitMQ address {a} - Queue: {q}...", ("a", address)( "q", queue_name_));
       init();
    }
 
@@ -52,7 +52,7 @@ public:
        , publish_immediately_(publish_immediately)
        , exchange_name_( std::move( exchange_name))
    {
-      ilog("Connecting to RabbitMQ address ${a} - Exchange: ${e}...", ("a", address)( "e", exchange_name_));
+      ilog("Connecting to RabbitMQ address {a} - Exchange: {e}...", ("a", address)( "e", exchange_name_));
       init();
    }
 
@@ -71,7 +71,7 @@ public:
       if( publish_immediately_ ) {
          amqp_publisher_->publish_message_direct( exchange_name_.empty() ? queue_name_ : routing_key, data,
                                                   []( const std::string& err ) {
-                                                     elog( "AMQP direct message error: ${e}", ("e", err) );
+                                                     elog( "AMQP direct message error: {e}", ("e", err) );
                                                   } );
       } else {
          queue_.emplace_back( std::make_pair( exchange_name_.empty() ? queue_name_ : routing_key, data ) );

@@ -25,11 +25,11 @@ void configure_logging(const bfs::path& config_path) {
          throw;
       }
    } catch (const fc::exception& e) { //
-      elog("${e}", ("e", e.to_detail_string()));
+      elog("{e}", ("e", e.to_detail_string()));
    } catch (const boost::exception& e) {
-      elog("${e}", ("e", boost::diagnostic_information(e)));
+      elog("{e}", ("e", boost::diagnostic_information(e)));
    } catch (const std::exception& e) { //
-      elog("${e}", ("e", e.what()));
+      elog("{e}", ("e", e.what()));
    } catch (...) {
       // empty
    }
@@ -38,9 +38,9 @@ void configure_logging(const bfs::path& config_path) {
 void logging_conf_handler() {
    auto config_path = app().get_logging_conf();
    if (fc::exists(config_path)) {
-      ilog("Received HUP.  Reloading logging configuration from ${p}.", ("p", config_path.string()));
+      ilog("Received HUP.  Reloading logging configuration from {p}.", ("p", config_path.string()));
    } else {
-      ilog("Received HUP.  No log config found at ${p}, setting to default.", ("p", config_path.string()));
+      ilog("Received HUP.  No log config found at {p}, setting to default.", ("p", config_path.string()));
    }
    configure_logging(config_path);
    fc::log_config::initialize_appenders(app().get_io_service());
@@ -98,11 +98,11 @@ int main(int argc, char** argv)
       app().startup();
       app().exec();
    } catch (const fc::exception& e) {
-      elog("${e}", ("e",e.to_detail_string()));
+      elog("{e}", ("e",e.to_detail_string()));
    } catch (const boost::exception& e) {
-      elog("${e}", ("e",boost::diagnostic_information(e)));
+      elog("{e}", ("e",boost::diagnostic_information(e)));
    } catch (const std::exception& e) {
-      elog("${e}", ("e",e.what()));
+      elog("{e}", ("e",e.what()));
    } catch (...) {
       elog("unknown exception");
    }

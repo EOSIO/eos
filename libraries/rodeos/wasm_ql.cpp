@@ -174,7 +174,7 @@ std::optional<std::vector<uint8_t>> read_code(wasm_ql::thread_state& thread_stat
       auto          filename = thread_state.shared->contract_dir + "/" + (std::string)account + ".wasm";
       std::ifstream wasm_file(filename, std::ios::binary);
       if (wasm_file.is_open()) {
-         ilog("compiling ${f}", ("f", filename));
+         ilog("compiling {f}", ("f", filename));
          wasm_file.seekg(0, std::ios::end);
          int len = wasm_file.tellg();
          if (len < 0)
@@ -213,7 +213,7 @@ std::optional<std::vector<uint8_t>> read_contract(db_view_state& db_view_state, 
 
    // todo: avoid copy
    result.emplace(code0.code.pos, code0.code.end);
-   ilog("compiling ${h}: ${a}", ("h", eosio::convert_to_json(hash))("a", (std::string)account));
+   ilog("compiling {h}: {a}", ("h", eosio::convert_to_json(hash))("a", (std::string)account));
    return result;
 }
 
@@ -737,7 +737,7 @@ const std::vector<char>& query_create_checkpoint(wasm_ql::thread_state&         
       char        buf[30] = "temp";
       strftime(buf, 30, "%FT%H-%M-%S", localtime(&t));
       auto tmp_path = dir / buf;
-      ilog("creating checkpoint ${p}", ("p", tmp_path.string()));
+      ilog("creating checkpoint {p}", ("p", tmp_path.string()));
 
       rocksdb::Checkpoint* p;
       b1::chain_kv::check(rocksdb::Checkpoint::Create(thread_state.shared->db->rdb.get(), &p),
@@ -748,7 +748,7 @@ const std::vector<char>& query_create_checkpoint(wasm_ql::thread_state&         
 
       create_checkpoint_result result;
       {
-         ilog("examining checkpoint ${p}", ("p", tmp_path.string()));
+         ilog("examining checkpoint {p}", ("p", tmp_path.string()));
          auto                       db        = std::make_shared<chain_kv::database>(tmp_path.c_str(), false);
          auto                       partition = std::make_shared<rodeos::rodeos_db_partition>(db, std::vector<char>{});
          rodeos::rodeos_db_snapshot snap{ partition, true };
@@ -763,15 +763,15 @@ const std::vector<char>& query_create_checkpoint(wasm_ql::thread_state&         
                        ("-head-" + std::to_string(result.head) + "-" + head_id_json.substr(1, head_id_json.size() - 2));
 
          ilog("checkpoint contains:");
-         ilog("    revisions:    ${f} - ${r}",
+         ilog("    revisions:    {f} - {r}",
               ("f", snap.undo_stack->first_revision())("r", snap.undo_stack->revision()));
-         ilog("    chain:        ${a}", ("a", eosio::convert_to_json(snap.chain_id)));
-         ilog("    head:         ${a} ${b}", ("a", snap.head)("b", eosio::convert_to_json(snap.head_id)));
-         ilog("    irreversible: ${a} ${b}",
+         ilog("    chain:        {a}", ("a", eosio::convert_to_json(snap.chain_id)));
+         ilog("    head:         {a} {b}", ("a", snap.head)("b", eosio::convert_to_json(snap.head_id)));
+         ilog("    irreversible: {a} {b}",
               ("a", snap.irreversible)("b", eosio::convert_to_json(snap.irreversible_id)));
       }
 
-      ilog("rename ${a} to ${b}", ("a", tmp_path.string())("b", result.path));
+      ilog("rename {a} to {b}", ("a", tmp_path.string())("b", result.path));
       boost::filesystem::rename(tmp_path, result.path);
 
       auto json = eosio::convert_to_json(result);
@@ -780,10 +780,10 @@ const std::vector<char>& query_create_checkpoint(wasm_ql::thread_state&         
       ilog("checkpoint finished");
       return thread_state.action_return_value;
    } catch (const fc::exception& e) {
-      elog("fc::exception creating snapshot: ${e}", ("e", e.to_detail_string()));
+      elog("fc::exception creating snapshot: {e}", ("e", e.to_detail_string()));
       throw;
    } catch (const std::exception& e) {
-      elog("std::exception creating snapshot: ${e}", ("e", e.what()));
+      elog("std::exception creating snapshot: {e}", ("e", e.what()));
       throw;
    }
    catch (...) {

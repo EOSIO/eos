@@ -367,14 +367,14 @@ namespace eosio { namespace chain {
          auto                block_num = block_header::num_from_id(id);
 
          if (block_num != previous_block_num + 1) {
-            elog( "Block ${num} (${id}) skips blocks. Previous block in block log is block ${prev_num} (${previous})",
+            elog( "Block {num} ({id}) skips blocks. Previous block in block log is block {prev_num} ({previous})",
                   ("num", block_num)("id", id)
                   ("prev_num", previous_block_num)("previous", previous_block_id) );
          }
 
          if (previous_block_id != block_id_type() && previous_block_id != header.previous) {
-            elog("Block ${num} (${id}) does not link back to previous block. "
-               "Expected previous: ${expected}. Actual previous: ${actual}.",
+            elog("Block {num} ({id}) does not link back to previous block. "
+               "Expected previous: {expected}. Actual previous: {actual}.",
                ("num", block_num)("id", id)("expected", previous_block_id)("actual", header.previous));
          }
 
@@ -460,17 +460,17 @@ namespace eosio { namespace chain {
 
    void block_log_data::construct_index(const fc::path& index_file_path) {
       std::string index_file_name = index_file_path.generic_string();
-      ilog("Will write new blocks.index file ${file}", ("file", index_file_name));
+      ilog("Will write new blocks.index file {file}", ("file", index_file_name));
 
       const uint32_t num_blocks = this->num_blocks();
 
-      ilog("block log version= ${version}", ("version", this->version()));
+      ilog("block log version= {version}", ("version", this->version()));
 
       if (num_blocks == 0) {
          return;
       }
 
-      ilog("first block= ${first}         last block= ${last}",
+      ilog("first block= {first}         last block= {last}",
            ("first", this->first_block_num())("last", (this->last_block_num())));
 
       index_writer index(index_file_path, num_blocks);
@@ -615,7 +615,7 @@ namespace eosio { namespace chain {
          future_version = preamble.version;
 
          EOS_ASSERT(catalog.verifier.chain_id.empty() || catalog.verifier.chain_id == preamble.chain_id(), block_log_exception,
-                    "block log file ${path} has a different chain id", ("path", block_file.get_file_path()));
+                    "block log file {path} has a different chain id", ("path", block_file.get_file_path()));
 
          genesis_written_to_block_log = true; // Assume it was constructed properly.
 
@@ -799,7 +799,7 @@ namespace eosio { namespace chain {
 
    void block_log::reset(const chain_id_type& chain_id, uint32_t first_block_num) {
       EOS_ASSERT(first_block_num > 1, block_log_exception,
-                 "Block log version ${ver} needs to be created with a genesis state if starting from block number 1.");
+                 "Block log version {ver} needs to be created with a genesis state if starting from block number 1.");
 
       EOS_ASSERT(my->catalog.verifier.chain_id.empty() || chain_id == my->catalog.verifier.chain_id, block_log_exception,
                  "Trying to reset to the chain to a different chain id");
@@ -874,8 +874,8 @@ namespace eosio { namespace chain {
 
    void block_log::construct_index(const fc::path& block_file_name, const fc::path& index_file_name) {
 
-      ilog("Will read existing blocks.log file ${file}", ("file", block_file_name.generic_string()));
-      ilog("Will write new blocks.index file ${file}", ("file", index_file_name.generic_string()));
+      ilog("Will read existing blocks.log file {file}", ("file", block_file_name.generic_string()));
+      ilog("Will write new blocks.index file {file}", ("file", index_file_name.generic_string()));
 
       block_log_data log_data(block_file_name);
       log_data.construct_index(index_file_name);
@@ -888,8 +888,8 @@ namespace eosio { namespace chain {
       tail.open(fc::cfile::create_or_update_rw_mode);
       tail.write(start, size);
 
-      ilog("Data at tail end of block log which should contain the (incomplete) serialization of block ${num} "
-            "has been written out to '${tail_path}'.",
+      ilog("Data at tail end of block log which should contain the (incomplete) serialization of block {num} "
+            "has been written out to '{tail_path}'.",
             ("num", block_num + 1)("tail_path", tail_path.string()));
       
    }
@@ -956,12 +956,12 @@ namespace eosio { namespace chain {
       if (strlen(reversible_block_dir_name) && fc::is_directory(blocks_dir/reversible_block_dir_name)) {
          fc::rename(blocks_dir/ reversible_block_dir_name, backup_dir/ reversible_block_dir_name);
       }
-      ilog("Moved existing blocks directory to backup location: '${new_blocks_dir}'", ("new_blocks_dir", backup_dir.string()));
+      ilog("Moved existing blocks directory to backup location: '{new_blocks_dir}'", ("new_blocks_dir", backup_dir.string()));
 
       const auto block_log_path  = blocks_dir / "blocks.log";
       const auto block_file_name = block_log_path.generic_string();
 
-      ilog("Reconstructing '${new_block_log}' from backed up block log", ("new_block_log", block_file_name));
+      ilog("Reconstructing '{new_block_log}' from backed up block log", ("new_block_log", block_file_name));
 
       block_log_data log_data;
       auto           ds  = log_data.open(backup_dir / "blocks.log");
@@ -980,7 +980,7 @@ namespace eosio { namespace chain {
             while (ds.remaining() > 0 && block_num < truncate_at_block) {
                std::tie(block_num, block_id) = block_log_data::full_validate_block_entry(ds, block_num, block_id, entry);
                if (block_num % 1000 == 0)
-                  ilog("Verified block ${num}", ("num", block_num));
+                  ilog("Verified block {num}", ("num", block_num));
                pos  = ds.tellp();
             }
          }
@@ -1002,13 +1002,13 @@ namespace eosio { namespace chain {
       new_block_file.write(log_data.data(), pos);
 
       if (error_msg.size()) {
-         ilog("Recovered only up to block number ${num}. "
-              "The block ${next_num} could not be deserialized from the block log due to error:\n${error_msg}",
+         ilog("Recovered only up to block number {num}. "
+              "The block {next_num} could not be deserialized from the block log due to error:\n{error_msg}",
               ("num", block_num)("next_num", block_num + 1)("error_msg", error_msg));
       } else if (block_num == truncate_at_block && pos < log_data.size()) {
-         ilog("Stopped recovery of block log early at specified block number: ${stop}.", ("stop", truncate_at_block));
+         ilog("Stopped recovery of block log early at specified block number: {stop}.", ("stop", truncate_at_block));
       } else {
-         ilog("Existing block log was undamaged. Recovered all irreversible blocks up to block number ${num}.",
+         ilog("Existing block log was undamaged. Recovered all irreversible blocks up to block number {num}.",
               ("num", block_num));
       }
       return backup_dir;
@@ -1092,17 +1092,17 @@ namespace eosio { namespace chain {
    bool block_log::trim_blocklog_front(const fc::path& block_dir, const fc::path& temp_dir, uint32_t truncate_at_block) {
       EOS_ASSERT( block_dir != temp_dir, block_log_exception, "block_dir and temp_dir need to be different directories" );
       
-      ilog("In directory ${dir} will trim all blocks before block ${n} from blocks.log and blocks.index.",
+      ilog("In directory {dir} will trim all blocks before block {n} from blocks.log and blocks.index.",
            ("dir", block_dir.generic_string())("n", truncate_at_block));
 
       block_log_bundle log_bundle(block_dir);
 
       if (truncate_at_block <= log_bundle.log_data.first_block_num()) {
-         dlog("There are no blocks before block ${n} so do nothing.", ("n", truncate_at_block));
+         dlog("There are no blocks before block {n} so do nothing.", ("n", truncate_at_block));
          return false;
       }
       if (truncate_at_block > log_bundle.log_data.last_block_num()) {
-         dlog("All blocks are before block ${n} so do nothing (trim front would delete entire blocks.log).", ("n", truncate_at_block));
+         dlog("All blocks are before block {n} so do nothing (trim front would delete entire blocks.log).", ("n", truncate_at_block));
          return false;
       }
 
@@ -1160,15 +1160,15 @@ namespace eosio { namespace chain {
       
       block_log_bundle log_bundle(block_dir);
 
-      ilog("In directory ${block_dir} will trim all blocks after block ${n} from ${block_file} and ${index_file}",
+      ilog("In directory {block_dir} will trim all blocks after block {n} from {block_file} and {index_file}",
          ("block_dir", block_dir.generic_string())("n", n)("block_file",log_bundle.block_file_name.generic_string())("index_file", log_bundle.index_file_name.generic_string()));
 
       if (n < log_bundle.log_data.first_block_num()) {
-         dlog("All blocks are after block ${n} so do nothing (trim_end would delete entire blocks.log)",("n", n));
+         dlog("All blocks are after block {n} so do nothing (trim_end would delete entire blocks.log)",("n", n));
          return 1;
       }
       if (n > log_bundle.log_data.last_block_num()) {
-         dlog("There are no blocks after block ${n} so do nothing",("n", n));
+         dlog("There are no blocks after block {n} so do nothing",("n", n));
          return 2;
       }
 
@@ -1178,7 +1178,7 @@ namespace eosio { namespace chain {
 
       boost::filesystem::resize_file(log_bundle.block_file_name, to_trim_block_position);
       boost::filesystem::resize_file(log_bundle.index_file_name, index_file_size);
-      ilog("blocks.index has been trimmed to ${index_file_size} bytes", ("index_file_size", index_file_size));
+      ilog("blocks.index has been trimmed to {index_file_size} bytes", ("index_file_size", index_file_size));
       return 0;
    }
 

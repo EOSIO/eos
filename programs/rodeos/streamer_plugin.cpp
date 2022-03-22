@@ -139,7 +139,7 @@ void streamer_plugin::plugin_initialize(const variables_map& options) {
          initialize_rabbits_exchange(my->streams, rabbits_exchanges, my->publish_immediately, stream_data_path);
       }
 
-      ilog("initialized streams: ${streams}", ("streams", my->streams.size()));
+      ilog("initialized streams: {streams}", ("streams", my->streams.size()));
    } FC_LOG_AND_RETHROW()
 }
 

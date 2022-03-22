@@ -289,7 +289,7 @@ void apply_context::require_recipient( account_name recipient ) {
       );
 
       if (auto dm_logger = control.get_deep_mind_logger()) {
-         fc_dlog(*dm_logger, "CREATION_OP NOTIFY ${action_id}",
+         fc_dlog(*dm_logger, "CREATION_OP NOTIFY {action_id}",
             ("action_id", get_action_id())
          );
       }
@@ -395,7 +395,7 @@ void apply_context::execute_inline( action&& a ) {
    );
 
    if (auto dm_logger = control.get_deep_mind_logger()) {
-      fc_dlog(*dm_logger, "CREATION_OP INLINE ${action_id}",
+      fc_dlog(*dm_logger, "CREATION_OP INLINE {action_id}",
          ("action_id", get_action_id())
       );
    }
@@ -422,7 +422,7 @@ void apply_context::execute_context_free_inline( action&& a ) {
    );
 
    if (auto dm_logger = control.get_deep_mind_logger()) {
-      fc_dlog(*dm_logger, "CREATION_OP CFA_INLINE ${action_id}",
+      fc_dlog(*dm_logger, "CREATION_OP CFA_INLINE {action_id}",
          ("action_id", get_action_id())
       );
    }
@@ -583,7 +583,7 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
       }
 
       if (auto dm_logger = control.get_deep_mind_logger()) {
-         fc_dlog(*dm_logger, "DTRX_OP MODIFY_CANCEL ${action_id} ${sender} ${sender_id} ${payer} ${published} ${delay} ${expiration} ${trx_id} ${trx}",
+         fc_dlog(*dm_logger, "DTRX_OP MODIFY_CANCEL {action_id} {sender} {sender_id} {payer} {published} {delay} {expiration} {trx_id} {trx}",
             ("action_id", get_action_id())
             ("sender", receiver.to_string())
             ("sender_id", sender_id)
@@ -612,9 +612,9 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
 
          if (auto dm_logger = control.get_deep_mind_logger()) {
             operation = "update";
-            event_id = STORAGE_EVENT_ID("${id}", ("id", gtx.id));
+            event_id = STORAGE_EVENT_ID("{id}", ("id", gtx.id));
 
-            fc_dlog(*dm_logger, "DTRX_OP MODIFY_CREATE ${action_id} ${sender} ${sender_id} ${payer} ${published} ${delay} ${expiration} ${trx_id} ${trx}",
+            fc_dlog(*dm_logger, "DTRX_OP MODIFY_CREATE {action_id} {sender} {sender_id} {payer} {published} {delay} {expiration} {trx_id} {trx}",
                ("action_id", get_action_id())
                ("sender", receiver.to_string())
                ("sender_id", sender_id)
@@ -641,9 +641,9 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
 
          if (auto dm_logger = control.get_deep_mind_logger()) {
             operation = "add";
-            event_id = STORAGE_EVENT_ID("${id}", ("id", gtx.id));
+            event_id = STORAGE_EVENT_ID("{id}", ("id", gtx.id));
 
-            fc_dlog(*dm_logger, "DTRX_OP CREATE ${action_id} ${sender} ${sender_id} ${payer} ${published} ${delay} ${expiration} ${trx_id} ${trx}",
+            fc_dlog(*dm_logger, "DTRX_OP CREATE {action_id} {sender} {sender_id} {payer} {published} {delay} {expiration} {trx_id} {trx}",
                ("action_id", get_action_id())
                ("sender", receiver.to_string())
                ("sender_id", sender_id)
@@ -677,7 +677,7 @@ bool apply_context::cancel_deferred_transaction( const uint128_t& sender_id, acc
       if (auto dm_logger = control.get_deep_mind_logger()) {
          event_id = STORAGE_EVENT_ID("${id}", ("id", gto->id));
 
-         fc_dlog(*dm_logger, "DTRX_OP CANCEL ${action_id} ${sender} ${sender_id} ${payer} ${published} ${delay} ${expiration} ${trx_id} ${trx}",
+         fc_dlog(*dm_logger, "DTRX_OP CANCEL {action_id} {sender} {sender_id} {payer} {published} {delay} {expiration} {trx_id} {trx}",
             ("action_id", get_action_id())
             ("sender", receiver.to_string())
             ("sender_id", sender_id)

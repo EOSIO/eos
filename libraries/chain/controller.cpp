@@ -307,18 +307,18 @@ struct controller_impl {
       try {
          s( std::forward<Arg>( a ));
       } catch (std::bad_alloc& e) {
-         wlog( "std::bad_alloc: ${w}", ("w", e.what()) );
+         wlog( "std::bad_alloc: {w}", ("w", e.what()) );
          throw e;
       } catch (boost::interprocess::bad_alloc& e) {
-         wlog( "boost::interprocess::bad alloc: ${w}", ("w", e.what()) );
+         wlog( "boost::interprocess::bad alloc: {w}", ("w", e.what()) );
          throw e;
       } catch ( controller_emit_signal_exception& e ) {
-         wlog( "controller_emit_signal_exception: ${details}", ("details", e.to_detail_string()) );
+         wlog( "controller_emit_signal_exception: {details}", ("details", e.to_detail_string()) );
          throw e;
       } catch ( fc::exception& e ) {
-         wlog( "fc::exception: ${details}", ("details", e.to_detail_string()) );
+         wlog( "fc::exception: {details}", ("details", e.to_detail_string()) );
       } catch ( std::exception& e ) {
-         wlog( "std::exception: ${details}", ("details", e.what()) );
+         wlog( "std::exception: {details}", ("details", e.what()) );
       } catch ( ... ) {
          wlog( "signal handler threw exception" );
       }
@@ -430,7 +430,7 @@ struct controller_impl {
       std::exception_ptr except_ptr;
 
       if( blog_head && start_block_num <= blog_head->block_num() ) {
-         ilog( "existing block log, attempting to replay from ${s} to ${n} blocks",
+         ilog( "existing block log, attempting to replay from {s} to {n} blocks",
                ("s", start_block_num)("n", blog_head->block_num()) );
          try {
             while( std::unique_ptr<signed_block> next = blog.read_signed_block_by_num( head->block_num + 1 ) ) {
@@ -438,25 +438,25 @@ struct controller_impl {
                replay_push_block( std::move(next), controller::block_status::irreversible );
                if( check_shutdown() ) break;
                if( block_num % 500 == 0 ) {
-                  ilog( "${n} of ${head}", ("n", block_num)("head", blog_head->block_num()) );
+                  ilog( "{n} of {head}", ("n", block_num)("head", blog_head->block_num()) );
                }
             }
          } catch(  const database_guard_exception& e ) {
             except_ptr = std::current_exception();
          }
-         ilog( "${n} irreversible blocks replayed", ("n", 1 + head->block_num - start_block_num) );
+         ilog( "{n} irreversible blocks replayed", ("n", 1 + head->block_num - start_block_num) );
 
          auto pending_head = fork_db.pending_head();
          if( pending_head ) {
-            ilog( "fork database head ${h}, root ${r}", ("h", pending_head->block_num)( "r", fork_db.root()->block_num ) );
+            ilog( "fork database head {h}, root {r}", ("h", pending_head->block_num)( "r", fork_db.root()->block_num ) );
             if( pending_head->block_num < head->block_num || head->block_num < fork_db.root()->block_num ) {
-               ilog( "resetting fork database with new last irreversible block as the new root: ${id}", ("id", head->id) );
+               ilog( "resetting fork database with new last irreversible block as the new root: {id}", ("id", head->id) );
                fork_db.reset( *head );
             } else if( head->block_num != fork_db.root()->block_num ) {
                auto new_root = fork_db.search_on_branch( pending_head->id, head->block_num );
                EOS_ASSERT( new_root, fork_database_exception,
                            "unexpected error: could not find new LIB in fork database" );
-               ilog( "advancing fork database root to new last irreversible block within existing fork database: ${id}",
+               ilog( "advancing fork database root to new last irreversible block within existing fork database: {id}",
                      ("id", new_root->id) );
                fork_db.mark_valid( new_root );
                fork_db.advance_root( new_root->id );
@@ -481,7 +481,7 @@ struct controller_impl {
             ++rev;
             replay_push_block( (*i)->block, controller::block_status::validated );
          }
-         ilog( "${n} reversible blocks replayed", ("n",rev) );
+         ilog( "{n} reversible blocks replayed", ("n",rev) );
       }
 
       if( !fork_db.head() ) {
@@ -489,7 +489,7 @@ struct controller_impl {
       }
 
       auto end = fc::time_point::now();
-      ilog( "replayed ${n} blocks in ${duration} seconds, ${mspb} ms/block",
+      ilog( "replayed {n} blocks in {duration} seconds, {mspb} ms/block",
             ("n", head->block_num + 1 - start_block_num)("duration", (end-start).count()/1000000)
             ("mspb", ((end-start).count()/1000.0)/(head->block_num-start_block_num)) );
       replay_head_time.reset();
@@ -522,7 +522,7 @@ struct controller_impl {
             blog.reset( chain_id, lib_num + 1 );
          }
          const auto hash = calculate_integrity_hash();
-         ilog( "database initialized with hash: ${hash}", ("hash", hash) );
+         ilog( "database initialized with hash: {hash}", ("hash", hash) );
 
          init(check_shutdown, true);
       } catch (boost::interprocess::bad_alloc& e) {
@@ -645,7 +645,7 @@ struct controller_impl {
                   ("db",db.revision())("head",head->block_num) );
 
       if( db.revision() > head->block_num ) {
-         wlog( "database revision (${db}) is greater than head block number (${head}), "
+         wlog( "database revision ({db}) is greater than head block number ({head}), "
                "attempting to undo pending changes",
                ("db",db.revision())("head",head->block_num) );
       }
@@ -659,14 +659,14 @@ struct controller_impl {
          // FIXME: We should probably feed that from CMake directly somehow ...
          fc_dlog(*dm_logger, "DEEP_MIND_VERSION 13 0");
 
-         fc_dlog(*dm_logger, "ABIDUMP START ${block_num} ${global_sequence_num}",
+         fc_dlog(*dm_logger, "ABIDUMP START {block_num} {global_sequence_num}",
             ("block_num", head->block_num)
             ("global_sequence_num", db.get<dynamic_global_property_object>().global_action_sequence)
          );
          const auto& idx = db.get_index<account_index>();
          for (auto& row : idx.indices()) {
             if (row.abi.size() != 0) {
-               fc_dlog(*dm_logger, "ABIDUMP ABI ${contract} ${abi}",
+               fc_dlog(*dm_logger, "ABIDUMP ABI {contract} {abi}",
                   ("contract", row.name.to_string())
                   ("abi", std::string_view(row.abi.data()))
                );
@@ -693,7 +693,7 @@ struct controller_impl {
               pending_head->id != fork_db.head()->id;
               pending_head = fork_db.pending_head()
          ) {
-            wlog( "applying branch from fork database ending with block: ${id}", ("id", pending_head->id) );
+            wlog( "applying branch from fork database ending with block: {id}", ("id", pending_head->id) );
             maybe_switch_forks( pending_head, controller::block_status::complete, forked_branch_callback{}, trx_meta_cache_lookup{} );
          }
       }
@@ -871,7 +871,7 @@ struct controller_impl {
       if (auto dm_logger = get_deep_mind_logger()) {
          auto packed_trx = fc::raw::pack(etrx);
 
-         fc_dlog(*dm_logger, "TRX_OP CREATE onerror ${id} ${trx}",
+         fc_dlog(*dm_logger, "TRX_OP CREATE onerror {id} {trx}",
             ("id", etrx.id())
             ("trx", fc::to_hex(packed_trx))
          );
@@ -927,7 +927,7 @@ struct controller_impl {
    int64_t remove_scheduled_transaction( const generated_transaction_object& gto ) {
       std::string event_id;
       if (get_deep_mind_logger() != nullptr) {
-         event_id = STORAGE_EVENT_ID("${id}", ("id", gto.id));
+         event_id = STORAGE_EVENT_ID("{id}", ("id", gto.id));
       }
 
       int64_t ram_delta = -(config::billable_size_v<generated_transaction_object> + gto.packed_trx.size());
@@ -1041,7 +1041,7 @@ struct controller_impl {
          trace->elapsed = fc::time_point::now() - trx_context.start;
 
          if (auto dm_logger = get_deep_mind_logger()) {
-            fc_dlog(*dm_logger, "DTRX_OP FAILED ${action_id}",
+            fc_dlog(*dm_logger, "DTRX_OP FAILED {action_id}",
                ("action_id", trx_context.get_action_id())
             );
          }
@@ -1334,7 +1334,7 @@ struct controller_impl {
 
       if (auto dm_logger = get_deep_mind_logger()) {
          // The head block represents the block just before this one that is about to start, so add 1 to get this block num
-         fc_dlog(*dm_logger, "START_BLOCK ${block_num}", ("block_num", head->block_num + 1));
+         fc_dlog(*dm_logger, "START_BLOCK {block_num}", ("block_num", head->block_num + 1));
       }
 
       emit( self.block_start, head->block_num + 1 );
@@ -1437,7 +1437,7 @@ struct controller_impl {
          {
             // Promote proposed schedule to pending schedule.
             if( !replay_head_time ) {
-               ilog( "promoting proposed schedule (set in block ${proposed_num}) to pending; current block: ${n} lib: ${lib} schedule: ${schedule} ",
+               ilog( "promoting proposed schedule (set in block {proposed_num}) to pending; current block: {n} lib: {lib} schedule: {schedule} ",
                      ("proposed_num", *gpo.proposed_schedule_block_num)("n", pbhs.block_num)
                      ("lib", pbhs.dpos_irreversible_blocknum)
                      ("schedule", producer_authority_schedule::from_shared(gpo.proposed_schedule) ) );
@@ -1537,7 +1537,7 @@ struct controller_impl {
       create_block_summary( id );
 
       /*
-      ilog( "finalized block ${n} (${id}) at ${t} by ${p} (${signing_key}); schedule_version: ${v} lib: ${lib} #dtrxs: ${ndtrxs} ${np}",
+      ilog( "finalized block {n} ({id}) at {t} by {p} ({signing_key}); schedule_version: {v} lib: {lib} #dtrxs: {ndtrxs} {np}",
             ("n",pbhs.block_num)
             ("id",id)
             ("t",pbhs.timestamp)
@@ -1832,7 +1832,7 @@ struct controller_impl {
          const auto& b = bsp->block;
 
          if( conf.terminate_at_block > 0 && conf.terminate_at_block < self.head_block_num()) {
-            ilog("Reached configured maximum block ${num}; terminating", ("num", conf.terminate_at_block) );
+            ilog("Reached configured maximum block {num}; terminating", ("num", conf.terminate_at_block) );
             shutdown();
             return bsp;
          }
@@ -1868,7 +1868,7 @@ struct controller_impl {
                      block_validate_exception, "invalid block status for replay" );
 
          if( conf.terminate_at_block > 0 && conf.terminate_at_block < self.head_block_num() ) {
-            ilog("Reached configured maximum block ${num}; terminating", ("num", conf.terminate_at_block) );
+            ilog("Reached configured maximum block {num}; terminating", ("num", conf.terminate_at_block) );
             shutdown();
             return;
          }
@@ -1929,11 +1929,11 @@ struct controller_impl {
          }
       } else if( new_head->id != head->id ) {
          auto old_head = head;
-         ilog("switching forks from ${current_head_id} (block number ${current_head_num}) to ${new_head_id} (block number ${new_head_num})",
+         ilog("switching forks from {current_head_id} (block number {current_head_num}) to {new_head_id} (block number {new_head_num})",
               ("current_head_id", head->id)("current_head_num", head->block_num)("new_head_id", new_head->id)("new_head_num", new_head->block_num) );
 
          if (auto dm_logger = get_deep_mind_logger()) {
-            fc_dlog(*dm_logger, "SWITCH_FORK ${from_id} ${to_id}",
+            fc_dlog(*dm_logger, "SWITCH_FORK {from_id} {to_id}",
                ("from_id", head->id)
                ("to_id", new_head->id)
             );
@@ -1963,10 +1963,10 @@ struct controller_impl {
             } catch ( const boost::interprocess::bad_alloc& ) {
               throw;
             } catch (const fc::exception& e) {
-               elog("exception thrown while switching forks ${e}", ("e", e.to_detail_string()));
+               elog("exception thrown while switching forks {e}", ("e", e.to_detail_string()));
                except = std::current_exception();
             } catch (const std::exception& e) {
-               elog("exception thrown while switching forks ${e}", ("e", e.what()));
+               elog("exception thrown while switching forks {e}", ("e", e.what()));
                except = std::current_exception();
             }
 
@@ -1993,7 +1993,7 @@ struct controller_impl {
             } // end if exception
          } /// end for each block in branch
 
-         ilog("successfully switched fork to new head ${new_head_id}", ("new_head_id", new_head->id));
+         ilog("successfully switched fork to new head {new_head_id}", ("new_head_id", new_head->id));
       } else {
          head_changed = false;
       }
@@ -2248,7 +2248,7 @@ struct controller_impl {
       if (auto dm_logger = get_deep_mind_logger()) {
          auto packed_trx = fc::raw::pack(trx);
 
-         fc_dlog(*dm_logger, "TRX_OP CREATE onblock ${id} ${trx}",
+         fc_dlog(*dm_logger, "TRX_OP CREATE onblock {id} {trx}",
             ("id", trx.id())
             ("trx", fc::to_hex(packed_trx))
          );
@@ -2448,7 +2448,7 @@ void controller::preactivate_feature( uint32_t action_id, const digest_type& fea
    if (auto dm_logger = get_deep_mind_logger()) {
       const auto feature = pfs.get_protocol_feature(feature_digest);
 
-      fc_dlog(*dm_logger, "FEATURE_OP PRE_ACTIVATE ${action_id} ${feature_digest} ${feature}",
+      fc_dlog(*dm_logger, "FEATURE_OP PRE_ACTIVATE {action_id} {feature_digest} {feature}",
          ("action_id", action_id)
          ("feature_digest", feature_digest)
          ("feature", feature.to_variant().as_string())
@@ -2839,7 +2839,7 @@ int64_t controller::set_proposed_producers( vector<producer_authority> producers
 
    int64_t version = sch.version;
 
-   ilog( "proposed producer schedule with version ${v}", ("v", version) );
+   ilog( "proposed producer schedule with version {v}", ("v", version) );
 
    my->db.modify( gpo, [&]( auto& gp ) {
       gp.proposed_schedule_block_num = cur_block_num;
@@ -3128,7 +3128,7 @@ void controller::add_to_ram_correction( account_name account, uint64_t ram_bytes
    }
 
    if (auto dm_logger = get_deep_mind_logger()) {
-      fc_dlog(*dm_logger, "RAM_CORRECTION_OP ${action_id} ${correction_id} ${event_id} ${payer} ${delta}",
+      fc_dlog(*dm_logger, "RAM_CORRECTION_OP {action_id} {correction_id} {event_id} {payer} {delta}",
          ("action_id", action_id)
          ("correction_id", correction_object_id)
          ("event_id", event_id)
@@ -3225,7 +3225,7 @@ std::optional<chain_id_type> controller::extract_chain_id_from_db( const path& s
 }
 
 void controller::replace_producer_keys( const public_key_type& key ) {
-   ilog("Replace producer keys with ${k}", ("k", key.to_string()));
+   ilog("Replace producer keys with {k}", ("k", key.to_string()));
    mutable_db().modify( db().get<global_property_object>(), [&]( auto& gp ) {
       gp.proposed_schedule_block_num = {};
       gp.proposed_schedule.version = 0;
@@ -3235,7 +3235,7 @@ void controller::replace_producer_keys( const public_key_type& key ) {
    my->head->pending_schedule = {};
    my->head->pending_schedule.schedule.version = version;
    for (auto& prod: my->head->active_schedule.producers ) {
-      ilog("${n}", ("n", prod.producer_name.to_string()));
+      ilog("{n}", ("n", prod.producer_name.to_string()));
       std::visit([&](auto &auth) {
          auth.threshold = 1;
          auth.keys = {key_weight{key, 1}};
@@ -3282,7 +3282,7 @@ void controller_impl::on_activation<builtin_protocol_feature_t::replace_deferred
       int64_t ram_delta = -static_cast<int64_t>(itr->ram_correction);
       if( itr->ram_correction > static_cast<uint64_t>(current_ram_usage) ) {
          ram_delta = -current_ram_usage;
-         elog( "account ${name} was to be reduced by ${adjust} bytes of RAM despite only using ${current} bytes of RAM",
+         elog( "account {name} was to be reduced by {adjust} bytes of RAM despite only using {current} bytes of RAM",
                ("name", itr->name.to_string())("adjust", itr->ram_correction)("current", current_ram_usage) );
       }
 

@@ -128,7 +128,7 @@ struct amqp_trx_plugin_impl : std::enable_shared_from_this<amqp_trx_plugin_impl>
          if( prod_plugin->paused() && started_consuming ) {
             ilog("Stopping consuming amqp messages during on_block_start");
             amqp_trx->stop_consume([](const std::string& consumer_tag){
-               dlog("Stopped consuming from amqp tag: ${t}", ("t", consumer_tag));
+               dlog("Stopped consuming from amqp tag: {t}", ("t", consumer_tag));
             });
             started_consuming = false;
             const bool clear = true;
@@ -176,7 +176,7 @@ private:
                         chain::packed_transaction_ptr trx ) {
       static_assert(std::is_same_v<amqp_handler::delivery_tag_t, uint64_t>, "fifo_trx_processing_queue assumes delivery_tag is an uint64_t");
       const auto& tid = trx->id();
-      dlog( "received packed_transaction ${id}", ("id", tid) );
+      dlog( "received packed_transaction {id}", ("id", tid) );
 
       auto trx_trace = fc_create_trace_with_id("Transaction", tid);
       auto trx_span = fc_create_span(trx_trace, "AMQP Received");
@@ -193,7 +193,7 @@ private:
             if( std::holds_alternative<chain::exception_ptr>(result) ) {
                auto& eptr = std::get<chain::exception_ptr>(result);
                fc_add_tag(trx_span, "error", eptr->to_string());
-               dlog( "accept_transaction ${id} exception: ${e}", ("id", trx->id())("e", eptr->to_string()) );
+               dlog( "accept_transaction {id} exception: {e}", ("id", trx->id())("e", eptr->to_string()) );
                if( my->acked == ack_mode::executed || my->acked == ack_mode::in_block ) { // ack immediately on failure
                   my->amqp_trx->ack( delivery_tag );
                }
@@ -210,12 +210,12 @@ private:
                }
                if( trace->except ) {
                   fc_add_tag(trx_span, "error", trace->except->to_string());
-                  dlog( "accept_transaction ${id} exception: ${e}", ("id", trx->id())("e", trace->except->to_string()) );
+                  dlog( "accept_transaction {id} exception: {e}", ("id", trx->id())("e", trace->except->to_string()) );
                   if( my->acked == ack_mode::executed || my->acked == ack_mode::in_block ) { // ack immediately on failure
                      my->amqp_trx->ack( delivery_tag );
                   }
                } else {
-                  dlog( "accept_transaction ${id}", ("id", trx->id()) );
+                  dlog( "accept_transaction {id}", ("id", trx->id()) );
                   if( my->acked == ack_mode::executed ) {
                      my->amqp_trx->ack( delivery_tag );
                   } else if( my->acked == ack_mode::in_block ) {
@@ -333,7 +333,7 @@ void amqp_trx_plugin::plugin_startup() {
    my->trace_plug.amqp_trace.emplace( my->trace_plug.amqp_trace_address, my->trace_plug.amqp_trace_exchange,
                                       my->trace_plug.amqp_trace_queue_name, trace_data_file_path,
                                       []( const std::string& err ) {
-                                         elog( "AMQP fatal error: ${e}", ("e", err) );
+                                         elog( "AMQP fatal error: {e}", ("e", err) );
                                          appbase::app().quit();
                                       } );
 
@@ -350,7 +350,7 @@ void amqp_trx_plugin::plugin_startup() {
                          fc::microseconds(my->trx_retry_timeout_us),
                          fc::microseconds(my->trx_retry_interval_us),
                          []( const std::string& err ) {
-                            elog( "amqp error: ${e}", ("e", err) );
+                            elog( "amqp error: {e}", ("e", err) );
                             app().quit();
                          }
    );

@@ -305,7 +305,7 @@ void undo_stack<Session>::close() {
             out << *value;
          } else {
             fc::remove( undo_stack_dat ); // May not be used by next startup
-            elog( "Did not find value for ${k}", ("k", key.data() ) );
+            elog( "Did not find value for {k}", ("k", key.data() ) );
             return; // Do not assert as we are during shutdown
          }
       }

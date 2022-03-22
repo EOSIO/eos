@@ -39,9 +39,9 @@ auto catch_and_log(F f) {
    try {
       return f();
    } catch (const fc::exception& e) {
-      fc_elog(_log, "${e}", ("e", e.to_detail_string()));
+      fc_elog(_log, "{e}", ("e", e.to_detail_string()));
    } catch (const std::exception& e) {
-      fc_elog(_log, "${e}", ("e", e.what()));
+      fc_elog(_log, "{e}", ("e", e.what()));
    } catch (...) {
       fc_elog(_log, "unknown exception");
    }
@@ -145,14 +145,14 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
             auto id = plugin->get_block_id(cp.block_num);
             if (!id) {
                to_send_block_num = std::min(to_send_block_num, cp.block_num);
-               fc_dlog(_log, "block ${block_num} is not available", ("block_num", cp.block_num));
+               fc_dlog(_log, "block {block_num} is not available", ("block_num", cp.block_num));
             } else if (*id != cp.block_id) {
                to_send_block_num = std::min(to_send_block_num, cp.block_num);
-               fc_dlog(_log, "the id for block ${block_num} in block request have_positions does not match the existing", ("block_num", cp.block_num));
+               fc_dlog(_log, "the id for block {block_num} in block request have_positions does not match the existing", ("block_num", cp.block_num));
             }
          }
          
-         fc_dlog(_log, "  get_blocks_request start_block_num set to ${num}", ("num", to_send_block_num));
+         fc_dlog(_log, "  get_blocks_request start_block_num set to {num}", ("num", to_send_block_num));
 
          if (req.have_positions.size()) {
             position_it = req.have_positions.begin();
@@ -163,7 +163,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       }
 
       void operator()(get_blocks_ack_request_v0&& ack_req) {
-         fc_ilog(_log, "received get_blocks_ack_request_v0 = ${req}", ("req",ack_req));
+         fc_ilog(_log, "received get_blocks_ack_request_v0 = {req}", ("req",ack_req));
          if (!current_request.has_value()) {
             fc_dlog(_log, " no current get_blocks_request_v0, discarding the get_blocks_ack_request_v0");
             return;
@@ -203,7 +203,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
                block_req.irreversible_only ? result.last_irreversible.block_num : result.head.block_num;
 
          if (to_send_block_num > current || to_send_block_num >= block_req.end_block_num) {
-            fc_dlog( _log, "Not sending, to_send_block_num: ${s}, current: ${c} block_req.end_block_num: ${b}",
+            fc_dlog( _log, "Not sending, to_send_block_num: {s}, current: {c} block_req.end_block_num: {b}",
                      ("s", to_send_block_num)("c", current)("b", block_req.end_block_num) );
             return;
          }
@@ -263,7 +263,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
          
          bool fresh_block = block && fc::time_point::now() - block->timestamp < fc::minutes(5);
          if( fresh_block || (result.this_block && result.this_block->block_num % 1000 == 0) ) {
-            fc_ilog(_log, "pushing result {\"head\":{\"block_num\":${head}},\"last_irreversible\":{\"block_num\":${last_irr}},\"this_block\":{\"block_num\":${this_block}, \"id\": ${id}}} to send queue", 
+            fc_ilog(_log, "pushing result {\"head\":{\"block_num\":{head}},\"last_irreversible\":{\"block_num\":{last_irr}},\"this_block\":{\"block_num\":{this_block}, \"id\": {id}}} to send queue",
                   ("head", result.head.block_num)("last_irr", result.last_irreversible.block_num)
                   ("this_block", result.this_block ? result.this_block->block_num : fc::variant().as_uint64())
                   ("id", block_id ? block_id->_hash[3] : 0 ));
@@ -393,10 +393,10 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
          try {
             f();
          } catch (const fc::exception& e) {
-            fc_elog(_log, "${e}", ("e", e.to_detail_string()));
+            fc_elog(_log, "{e}", ("e", e.to_detail_string()));
             close_i();
          } catch (const std::exception& e) {
-            fc_elog(_log, "${e}", ("e", e.what()));
+            fc_elog(_log, "{e}", ("e", e.what()));
             close_i();
          } catch (...) {
             fc_elog(_log, "unknown exception");
@@ -409,7 +409,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
          if (this->plugin->stopping)
             return;
          if (ec) {
-            fc_elog(_log, "${w}: ${m}", ("w", what)("m", ec.message()));
+            fc_elog(_log, "{w}: {m}", ("w", what)("m", ec.message()));
             close_i();
             return;
          }
@@ -419,7 +419,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       void close_i() {
          boost::system::error_code ec;
          socket_stream.next_layer().close(ec);
-         if (ec) fc_elog(_log, "close: ${m}", ("m", ec.message()));
+         if (ec) fc_elog(_log, "close: {m}", ("m", ec.message()));
          this->plugin->sessions.remove(this->shared_from_this());
       }
 
@@ -466,7 +466,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       auto check_ec = [&](const char* what) {
          if (!ec)
             return;
-         fc_elog(_log,"${w}: ${m}", ("w", what)("m", ec.message()));
+         fc_elog(_log,"{w}: {m}", ("w", what)("m", ec.message()));
          EOS_ASSERT(false, plugin_exception, "unable to open listen socket");
       };
 
@@ -486,7 +486,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       auto check_ec = [&](const char* what) {
          if (!ec)
             return;
-         fc_elog(_log,"${w}: ${m}", ("w", what)("m", ec.message()));
+         fc_elog(_log,"{w}: {m}", ("w", what)("m", ec.message()));
          EOS_ASSERT(false, plugin_exception, "unable to open unix socket");
       };
 

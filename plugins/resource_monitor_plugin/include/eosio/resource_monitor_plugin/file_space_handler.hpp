@@ -49,7 +49,7 @@ namespace eosio::resource_monitor {
                // As the system is running and this plugin is not a critical
                // part of the system, we should not exit.
                // Just report the failure and continue;
-               wlog( "Unable to get space info for ${path_name}: [code: ${ec}] ${message}. Ignore this failure.",
+               wlog( "Unable to get space info for {path_name}: [code: {ec}] {message}. Ignore this failure.",
                   ("path_name", fs.path_name.string())
                   ("ec", ec.value())
                   ("message", ec.message()));
@@ -59,13 +59,13 @@ namespace eosio::resource_monitor {
 
             if ( info.available < fs.shutdown_available ) {
                if (output_threshold_warning) {
-                  wlog("Space usage warning: ${path}'s file system exceeded threshold ${threshold}%, available: ${available}, Capacity: ${capacity}, shutdown_available: ${shutdown_available}", ("path", fs.path_name.string()) ("threshold", shutdown_threshold) ("available", info.available) ("capacity", info.capacity) ("shutdown_available", fs.shutdown_available));
+                  wlog("Space usage warning: {path}'s file system exceeded threshold {threshold}%, available: {available}, Capacity: {capacity}, shutdown_available: {shutdown_available}", ("path", fs.path_name.string()) ("threshold", shutdown_threshold) ("available", info.available) ("capacity", info.capacity) ("shutdown_available", fs.shutdown_available));
                }
                return true;
             } else if ( info.available < fs.warning_available && output_threshold_warning ) {
-               wlog("Space usage warning: ${path}'s file system approaching threshold. available: ${available}, warning_available: ${warning_available}", ("path", fs.path_name.string()) ("available", info.available) ("warning_available", fs.warning_available));
+               wlog("Space usage warning: {path}'s file system approaching threshold. available: {available}, warning_available: {warning_available}", ("path", fs.path_name.string()) ("available", info.available) ("warning_available", fs.warning_available));
                if ( shutdown_on_exceeded) {
-                  wlog("nodeos will shutdown when space usage exceeds threshold ${threshold}%", ("threshold", shutdown_threshold));
+                  wlog("nodeos will shutdown when space usage exceeds threshold {threshold}%", ("threshold", shutdown_threshold));
                }
             }
          }
@@ -80,13 +80,13 @@ namespace eosio::resource_monitor {
          EOS_ASSERT(status == 0, chain::plugin_config_exception,
                     "Failed to run stat on ${path} with status ${status}", ("path", path_name.string())("status", status));
 
-         dlog("${path_name}'s file system to be monitored", ("path_name", path_name.string()));
+         dlog("{path_name}'s file system to be monitored", ("path_name", path_name.string()));
 
          // If the file system containing the path is already
          // in the filesystem list, do not add it again
          for (auto& fs: filesystems) {
             if (statbuf.st_dev == fs.st_dev) { // Two files belong to the same file system if their device IDs are the same.
-               dlog("${path_name}'s file system already monitored", ("path_name", path_name.string()));
+               dlog("{path_name}'s file system already monitored", ("path_name", path_name.string()));
 
                return;
             }
@@ -109,7 +109,7 @@ namespace eosio::resource_monitor {
          // Add to the list
          filesystems.emplace_back(statbuf.st_dev, shutdown_available, path_name, warning_available);
          
-         ilog("${path_name}'s file system monitored. shutdown_available: ${shutdown_available}, capacity: ${capacity}, threshold: ${threshold}", ("path_name", path_name.string()) ("shutdown_available", shutdown_available) ("capacity", info.capacity) ("threshold", shutdown_threshold) );
+         ilog("{path_name}'s file system monitored. shutdown_available: {shutdown_available}, capacity: {capacity}, threshold: {threshold}", ("path_name", path_name.string()) ("shutdown_available", shutdown_available) ("capacity", info.capacity) ("threshold", shutdown_threshold) );
       }
    
    void space_monitor_loop() {
@@ -124,7 +124,7 @@ namespace eosio::resource_monitor {
 
       timer.async_wait([this](auto& ec) {
          if ( ec ) {
-            wlog("Exit due to error: ${ec}, message: ${message}",
+            wlog("Exit due to error: {ec}, message: {message}",
                  ("ec", ec.value())
                  ("message", ec.message()));
             return;

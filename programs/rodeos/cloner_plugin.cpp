@@ -107,12 +107,12 @@ struct cloner_session : ship_client::connection_callbacks, std::enable_shared_fr
       rodeos_snapshot->force_write_stride = config->force_write_stride;
 
       ilog("cloner database status:");
-      ilog("    revisions:    ${f} - ${r}",
+      ilog("    revisions:    {f} - {r}",
            ("f", rodeos_snapshot->undo_stack->first_revision())("r", rodeos_snapshot->undo_stack->revision()));
-      ilog("    chain:        ${a}", ("a", eosio::convert_to_json(rodeos_snapshot->chain_id)));
-      ilog("    head:         ${a} ${b}",
+      ilog("    chain:        {a}", ("a", eosio::convert_to_json(rodeos_snapshot->chain_id)));
+      ilog("    head:         {a} {b}",
            ("a", rodeos_snapshot->head)("b", eosio::convert_to_json(rodeos_snapshot->head_id)));
-      ilog("    irreversible: ${a} ${b}",
+      ilog("    irreversible: {a} {b}",
            ("a", rodeos_snapshot->irreversible)("b", eosio::convert_to_json(rodeos_snapshot->irreversible_id)));
 
       rodeos_snapshot->end_write(true);
@@ -128,7 +128,7 @@ struct cloner_session : ship_client::connection_callbacks, std::enable_shared_fr
    }
 
    bool received(get_status_result_v0& status, eosio::input_stream bin) override {
-      ilog("nodeos has chain ${c}", ("c", eosio::convert_to_json(status.chain_id)));
+      ilog("nodeos has chain {c}", ("c", eosio::convert_to_json(status.chain_id)));
       if (rodeos_snapshot->chain_id == eosio::checksum256{})
          rodeos_snapshot->chain_id = status.chain_id;
       if (rodeos_snapshot->chain_id != status.chain_id)
@@ -167,7 +167,7 @@ struct cloner_session : ship_client::connection_callbacks, std::enable_shared_fr
       if (!result.this_block)
          return true;
       if (config->stop_before && result.this_block->block_num >= config->stop_before) {
-         ilog("block ${b}: stop requested", ("b", result.this_block->block_num));
+         ilog("block {b}: stop requested", ("b", result.this_block->block_num));
          rodeos_snapshot->end_write(true);
          db->flush(false, false);
          return false;
@@ -189,7 +189,7 @@ struct cloner_session : ship_client::connection_callbacks, std::enable_shared_fr
       bool near      = result.this_block->block_num + 4 >= result.last_irreversible.block_num;
       bool write_now = !(result.this_block->block_num % 200) || near;
       if (write_now || !reported_block)
-         ilog("block ${b} ${i}",
+         ilog("block {b} {i}",
               ("b", result.this_block->block_num)(
                     "i", result.this_block->block_num <= result.last_irreversible.block_num ? "irreversible" : ""));
       reported_block = true;
