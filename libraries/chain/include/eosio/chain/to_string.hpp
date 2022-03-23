@@ -6,17 +6,13 @@
 #include <eosio/chain/contract_types.hpp>
 
 #include <fc/reflect/reflect.hpp>
+#include <fc/io/json.hpp>
+#include <fc/crypto/hex.hpp>
 #include <string>
 
-namespace eosio::chain {
+namespace fc {
 
-template<typename T, typename = void>
-struct has_fmt_to_string : std::false_type {
-};
-
-template<typename T>
-struct has_fmt_to_string<T, std::void_t<decltype( fmt::to_string( std::declval<T>() ) )>> : std::true_type {
-};
+static constexpr size_t hex_log_max_size = 32;
 
 template<typename T>
 struct member_pointer_value {
@@ -26,13 +22,6 @@ struct member_pointer_value {
 template<typename Class, typename Value>
 struct member_pointer_value<Value Class::*> {
    typedef Value type;
-};
-
-template <typename> struct is_template : std::false_type {};
-
-template <template <typename...> class Tmpl, typename ...Args>
-struct is_template<Tmpl<Args...>> : std::true_type {
-   typedef typename std::tuple_element<0, std::tuple<Args...>>::type first_arg;
 };
 
 template<class T, template<class...> class Primary>
@@ -71,12 +60,157 @@ struct is_container<
       >
 > : public std::true_type {};
 
+template<typename S, typename T>
+class is_streamable {
+   template<typename SS, typename TT>
+   static auto test(int) -> decltype( std::declval<SS&>() << std::declval<TT>(), std::true_type() );
+
+   template<typename, typename>
+   static auto test(...) -> std::false_type;
+public:
+   static const bool value = decltype(test<S,T>(0))::value;
+};
+
+template<typename T>
+class to_string_visitor;
+
+namespace to_str {
+
+template<typename X>
+void append_value( std::string& out, const X& t ) {
+   out += "\"";
+   if constexpr( std::is_same_v<X, eosio::chain::name> ) {
+      out += t.to_string();
+   } else if constexpr( std::is_same_v<X, fc::microseconds> ) {
+      out += std::to_string(t.count()) + "us";
+   } else if constexpr ( std::is_same_v<X, bool> ) {
+      out += t ? "true" : "false";
+   } else if constexpr ( std::is_integral_v<X> ) {
+      out += std::to_string( t );
+   } else if constexpr( std::is_same_v<X, std::string> ) {
+      const bool escape_control_chars = true;
+      out += fc::escape_string( t, nullptr, escape_control_chars );
+   } else if constexpr( std::is_convertible_v<X, std::string> ) {
+      out += (std::string) t;
+   } else {
+      static_assert(std::is_integral_v<X>, "Not FC_REFLECT or fc::to_str::append_value for type");
+      out += "~unknown~";
+   }
+   out += "\"";
+}
+
+template<typename X>
+void append_str(std::string& out, const char* name, const X& t) {
+   out += "\"";
+   out += name;
+   out += "\":";
+   append_value( out, t );
+}
+
+template<typename X>
+void process_type_str( std::string& out, const char* name, const X& t);
+
+template<typename X, int Depth = 0>
+void process_type( std::string& out, const X& t) {
+   using mem_type = std::decay_t<X>;
+   if constexpr ( std::is_integral_v<mem_type> ) {
+      append_value( out, t );
+   } else if constexpr( std::is_same_v<mem_type, std::string> ) {
+      append_value( out, t );
+   } else if constexpr( std::is_same_v<mem_type, eosio::chain::name> ) {
+      append_value( out, t );
+   } else if constexpr( std::is_same_v<mem_type, fc::unsigned_int> || std::is_same_v<mem_type, fc::signed_int> ) {
+      append_value( out, t.value );
+   } else if constexpr( std::is_convertible_v<mem_type, std::exception> ) {
+      append_value( out, t.to_string() );
+   } else if constexpr( std::is_convertible_v<mem_type, std::string> ) {
+      append_value( out, t );
+   } else if constexpr( std::is_same_v<mem_type, eosio::chain::action> && Depth == 0 ) {
+      const auto& act = t;
+      if( act.account == eosio::chain::config::system_account_name && act.name == eosio::chain::name( "setcode" ) ) {
+         fc::to_str::append_str( out, "account", act.account ); out += ",";
+         fc::to_str::append_str( out, "name", act.name ); out += ",";
+         fc::to_str::process_type_str( out, "authorization", act.authorization ); out += ",";
+         auto setcode_act = act.template data_as<eosio::chain::setcode>();
+         if( setcode_act.code.size() > 0 ) {
+            fc::sha256 code_hash = fc::sha256::hash( setcode_act.code.data(), (uint32_t) setcode_act.code.size() );
+            fc::to_str::append_str( out, "code_hash", code_hash );
+            out += ",";
+         }
+         fc::to_str::process_type_str( out, "data", act.data );
+      } else {
+         return process_type<mem_type, 1>( out, t );
+      }
+   } else if constexpr ( is_specialization_of_v<mem_type, std::optional> ) {
+      if( t.has_value() ) {
+         process_type( out, *t );
+      } else {
+         out += "null";
+      }
+   } else if constexpr ( is_specialization_of_v<mem_type, std::shared_ptr> ) {
+      if( !!t ) {
+         process_type( out, *t );
+      } else {
+         out += "null";
+      }
+   } else if constexpr ( is_specialization_of_v<mem_type, std::pair> ) {
+      out += "[";
+      process_type(out, t.first); out += ",";
+      process_type(out, t.second);
+      out += "]";
+   } else if constexpr ( is_specialization_of_v<mem_type, std::variant> ) {
+      out += "[";
+      process_type(out, t.index()); out += ",";
+      size_t n = 0;
+      std::visit([&](auto&& arg) {
+         if( ++n > 1 ) out += ",";
+         process_type(out, arg);
+      }, t);
+      out += "]";
+   } else if constexpr( std::is_same_v<mem_type, std::vector<char>> ) {
+      out += "{";
+      if( t.size() > hex_log_max_size ) {
+         fc::to_str::append_str( out, "size", t.size() ); out += ",";
+         fc::to_str::append_str( out, "trimmed_hex", fc::to_hex( &t[0], hex_log_max_size ) );
+      } else if( t.size() > 0 ) {
+         fc::to_str::append_str( out, "hex", fc::to_hex( &t[0], t.size() ) );
+      } else {
+         fc::to_str::append_str( out, "hex", "" );
+      }
+      out += "}";
+   } else if constexpr ( is_container<mem_type>::value ) {
+      out += "[";
+      size_t n = 0;
+      for( const auto& i: t ) {
+         if( ++n > 1 ) out += ",";
+         process_type( out, i );
+      }
+      out += "]";
+   } else if constexpr( std::is_same_v<typename fc::reflector<mem_type>::is_defined, fc::true_type> ) {
+      fc::to_string_visitor<mem_type> v( t, out );
+      fc::reflector<mem_type>::visit( v );
+   } else if constexpr( is_streamable<std::stringstream, mem_type>::value ) {
+      std::stringstream ss;
+      ss << t;
+      append_value( out, ss.str() );
+   } else {
+      append_value( out, t );
+   }
+}
+
+template<typename X>
+void process_type_str( std::string& out, const char* name, const X& t) {
+   out += "\"";
+   out += name;
+   out += "\":";
+   process_type( out, t );
+}
+
+} // namespace to_str
 
 template<typename T>
 class to_string_visitor {
 public:
-   static constexpr size_t hex_log_max_size = 32;
-
    to_string_visitor( const T& v, std::string& out )
          : obj( v ), out( out ) {
       out += "{";
@@ -84,136 +218,6 @@ public:
 
    ~to_string_visitor() {
       out += "}";
-   }
-
-   template<typename X>
-   void append_value( std::string& out, const X& t ) const {
-      out += "\"";
-      if constexpr ( std::is_integral_v<X> ) {
-         out += std::to_string( t );
-      } else if constexpr( std::is_same_v<X, std::string> ) {
-         const bool escape_control_chars = true;
-         out += fc::escape_string( t, nullptr, escape_control_chars );
-      } else if constexpr( std::is_convertible_v<X, std::string> ) {
-         out += (std::string) t;
-      } else if constexpr( std::is_same_v<X, eosio::chain::name> ) {
-         out += t.to_string();
-      } else {
-         out += "~unknown~";
-      }
-      out += "\"";
-   }
-
-   template<typename X>
-   void append_str(std::string& out, const char* name, const X& t)const {
-      out += "\"";
-      out += name;
-      out += "\":";
-      append_value( out, t );
-   }
-
-   template<typename X>
-   void process_type_str( std::string& out, const char* name, const X& t) const {
-      out += "\"";
-      out += name;
-      out += "\":";
-      process_type( out, t );
-   }
-
-   template<typename X, int Depth = 0>
-   void process_type( std::string& out, const X& t) const {
-      using mem_type = X;
-      if constexpr ( std::is_integral_v<mem_type> ) {
-         append_value( out, t );
-      } else if constexpr( std::is_same_v<mem_type, std::string> ) {
-         append_value( out, t );
-      } else if constexpr( std::is_same_v<mem_type, fc::unsigned_int> || std::is_same_v<mem_type, fc::signed_int> ) {
-         append_value( out, t.value );
-      } else if constexpr( std::is_same_v<mem_type, eosio::chain::name> ) {
-         append_value( out, t );
-      } else if constexpr( std::is_convertible_v<mem_type, std::string> ) {
-         append_value( out, t );
-      } else if constexpr( std::is_convertible_v<mem_type, chain::action> && Depth == 0) {
-         auto& act = t;
-         if( act.account == config::system_account_name && act.name == "setcode"_n ) {
-            append_str( out, "account", act.account ); out += ",";
-            append_str( out, "name", act.name ); out += ",";
-            process_type_str(out, "authorization", act.authorization ); out += ",";
-            auto setcode_act = act.template data_as<chain::setcode>();
-            if( setcode_act.code.size() > 0 ) {
-               fc::sha256 code_hash = fc::sha256::hash( setcode_act.code.data(), (uint32_t) setcode_act.code.size() );
-               append_str( out, "code_hash", code_hash ); out += ",";
-            }
-            out += "\"data\":{";
-            const auto& m = act.data;
-            append_str( out, "size", m.size() );
-            out += ",";
-            if( m.size() > hex_log_max_size ) {
-               out += "\"trimmed_hex\":\"" + fc::to_hex( &m[0], hex_log_max_size ) + "\"";
-            } else if( m.size() > 0 ) {
-               out += "\"hex\":\"" + fc::to_hex( &m[0], m.size() ) + "\"";
-            } else {
-               out += "\"hex\":\"\"";
-            }
-            out += "}";
-         } else {
-            process_type<X,1>(out, t);
-         }
-      } else if constexpr ( is_specialization_of_v<mem_type, std::optional> ) {
-         if( t.has_value() ) {
-            process_type( out, *t );
-         } else {
-            out += "null";
-         }
-      } else if constexpr ( is_specialization_of_v<mem_type, std::shared_ptr> ) {
-         if( !!t ) {
-            process_type( out, *t );
-         } else {
-            out += "null";
-         }
-      } else if constexpr ( is_specialization_of_v<mem_type, std::pair> ) {
-         out += "[";
-         process_type(out, t.first); out += ",";
-         process_type(out, t.second);
-         out += "]";
-      } else if constexpr ( is_specialization_of_v<mem_type, std::variant> ) {
-         out += "[";
-         process_type(out, t.index()); out += ",";
-         size_t n = 0;
-         std::visit([&](auto&& arg) {
-            if( ++n > 1 ) out += ",";
-            process_type(out, arg);
-         }, t);
-         out += "]";
-      } else if constexpr ( std::is_same_v<mem_type, std::vector<char>> ) {
-         out += "{";
-         const auto& m = t;
-         if( m.size() > hex_log_max_size ) {
-            out += "\"trimmed_hex\":\"" + fc::to_hex( &m[0], hex_log_max_size ) + "\"";
-         } else if( m.size() > 0 ) {
-            out += "\"hex\":\"" + fc::to_hex( &m[0], m.size() ) + "\"";
-         } else {
-            out += "\"hex\":\"\"";
-         }
-         out += "}";
-      } else if constexpr ( is_container<mem_type>::value ) {
-         out += "[";
-         size_t n = 0;
-         for( const auto& i : t ) {
-            if( ++n > 1 ) out += ",";
-            process_type( out, i );
-         }
-         out += "]";
-      } else if constexpr( std::is_same_v<typename fc::reflector<mem_type>::is_defined, fc::true_type> ) {
-         to_string_visitor<mem_type> v( t, out );
-         fc::reflector<mem_type>::visit( v );
-      } else if constexpr( has_fmt_to_string<mem_type>::value ) {
-         append_value( out, fmt::to_string( t ) );
-      } else {
-         static_assert(std::is_integral_v<mem_type>, "Not FC_REFLECT and no fmt::to_string");
-         append_value( out, "~~unknown~~" );
-      }
-
    }
 
    /**
@@ -232,7 +236,7 @@ public:
       }
 
       out += "\""; out += name; out += "\":";
-      process_type<mem_type>( out, this->obj.*member );
+      to_str::process_type<mem_type>( out, this->obj.*member );
    }
 
 private:
@@ -241,4 +245,27 @@ private:
    mutable uint32_t depth = 0;
 };
 
-} // namespace eosio::chain
+template <typename T, typename = std::enable_if_t<fc::reflector<std::decay_t<T>>::is_defined::value>>
+std::string to_json_string(const T& t) {
+   std::string out;
+   to_string_visitor<std::decay_t<T>> v( t, out );
+   fc::reflector<std::decay_t<T>>::visit( v );
+   return out;
+}
+
+} // namespace fc
+
+namespace fmt {
+
+template<typename T, typename Char>
+struct formatter<T, Char, typename std::enable_if_t<fc::reflector<std::decay_t<T>>::is_defined::value>> {
+   template<typename ParseContext>
+   constexpr auto parse( ParseContext& ctx ) { return ctx.begin(); }
+
+   template<typename FormatContext, typename = std::enable_if_t<fc::reflector<std::decay_t<T>>::is_defined::value>>
+   auto format( const T& p, FormatContext& ctx ) {
+      return format_to( ctx.out(), "{}", fc::to_json_string<std::decay_t<T>>(p) );
+   }
+};
+
+} // namespace fmt

@@ -10,6 +10,7 @@
 #include <eosio/chain/thread_utils.hpp>
 #include <eosio/chain/unapplied_transaction_queue.hpp>
 #include <eosio/resource_monitor_plugin/resource_monitor_plugin.hpp>
+#include <eosio/chain/to_string.hpp>
 
 #include <fc/io/json.hpp>
 #include <fc/log/logger_config.hpp>
@@ -473,10 +474,10 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
 //                          ("trx", chain_plug->to_trimmed_trx_string(trx->packed_trx()->get_transaction(), chain)));
 
                   string s;
-                  to_string_visitor<eosio::chain::transaction> v(const_cast<eosio::chain::transaction&>(trx->packed_trx()->get_transaction()), s);
-                  fc::reflector<eosio::chain::transaction>::visit(v);
-                  fc_dlog(_trx_log, "[TRX_TRACE - new tool] tx: {trx}",
-                          ("trx", s));
+//                  to_string_visitor<eosio::chain::transaction> v(const_cast<eosio::chain::transaction&>(trx->packed_trx()->get_transaction()), s);
+//                  fc::reflector<eosio::chain::transaction>::visit(v);
+//                  fc_dlog(_trx_log, "[TRX_TRACE - new tool] tx: {trx}",
+//                          ("trx", s));
 
 //                    _trx_trace_success_log.get_agent_logger()->set_level(spdlog::level::debug);
 //                    fc_dlog(_trx_trace_success_log, "[TRX_TRACE] tx: {entire_trace}",

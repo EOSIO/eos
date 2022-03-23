@@ -3,6 +3,7 @@
 #include <eosio/chain/abi_serializer.hpp>
 #include <eosio/chain/permission_object.hpp>
 #include <eosio/chain/authorization_manager.hpp>
+#include <eosio/chain/to_string.hpp>
 
 #include <eosio/chain/resource_limits.hpp>
 #include <eosio/chain/resource_limits_private.hpp>

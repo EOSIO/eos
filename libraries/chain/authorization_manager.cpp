@@ -10,6 +10,7 @@
 #include <boost/tuple/tuple_io.hpp>
 #include <eosio/chain/database_utils.hpp>
 #include <eosio/chain/protocol_state_object.hpp>
+#include <eosio/chain/to_string.hpp>
 
 
 namespace eosio { namespace chain {

@@ -5,6 +5,7 @@
 #include <eosio/chain/transaction.hpp>
 #include <boost/tuple/tuple_io.hpp>
 #include <eosio/chain/database_utils.hpp>
+#include <eosio/chain/to_string.hpp>
 #include <algorithm>
 
 namespace eosio { namespace chain { namespace resource_limits {

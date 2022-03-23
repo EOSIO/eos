@@ -12,6 +12,7 @@
 #include <eosio/chain/resource_limits.hpp>
 #include <eosio/chain/thread_utils.hpp>
 #include <eosio/chain/platform_timer.hpp>
+#include <eosio/chain/to_string.hpp>
 
 #include <chainbase/chainbase.hpp>
 #include <fc/io/json.hpp>

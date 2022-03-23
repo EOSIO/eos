@@ -3,6 +3,7 @@
 #include <eosio/state_history/log.hpp>
 #include <eosio/state_history/serialization.hpp>
 #include <eosio/state_history_plugin/state_history_plugin.hpp>
+#include <eosio/chain/to_string.hpp>
 
 #include <fc/log/trace.hpp>
 

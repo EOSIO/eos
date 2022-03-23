@@ -1,8 +1,8 @@
+#include <eosio/chain/to_string.hpp>
 #include <boost/test/unit_test.hpp>
 #include <eosio/testing/tester.hpp>
 #include <eosio/chain/unapplied_transaction_queue.hpp>
 #include <eosio/chain/contract_types.hpp>
-#include <eosio/chain/to_string.hpp>
 
 using namespace eosio;
 using namespace eosio::chain;
@@ -511,9 +511,9 @@ BOOST_AUTO_TEST_CASE(reflector_visit) {
 
    auto trx1 = unique_trx_meta_data();
 
-   std::string s;
-   eosio::chain::to_string_visitor<eosio::chain::transaction> v(trx1->packed_trx()->get_transaction(), s);
-   fc::reflector<eosio::chain::transaction>::visit(v);
+   std::string s = fc::to_json_string( trx1->packed_trx()->get_transaction() );
+//   eosio::chain::to_string_visitor<eosio::chain::transaction> v(trx1->packed_trx()->get_transaction(), s);
+//   fc::reflector<eosio::chain::transaction>::visit(v);
 
    BOOST_CHECK_EQUAL("", s);
 
@@ -525,9 +525,9 @@ BOOST_AUTO_TEST_CASE(reflector_visit) {
       t.act.data = vec;
       t.act.name = "hello"_n;
 
-      std::string s;
-      to_string_visitor<eosio::chain::action_trace> v( t, s );
-      fc::reflector<eosio::chain::action_trace>::visit( v );
+      std::string s = fc::to_json_string( t );
+//      to_string_visitor<eosio::chain::action_trace> v( t, s );
+//      fc::reflector<eosio::chain::action_trace>::visit( v );
 
       BOOST_CHECK_EQUAL("", s);
 
@@ -536,9 +536,9 @@ BOOST_AUTO_TEST_CASE(reflector_visit) {
       tt.action_traces.push_back( t );
       tt.account_ram_delta = account_delta{};
 
-      std::string ss;
-      to_string_visitor<eosio::chain::transaction_trace> vv( tt, ss );
-      fc::reflector<eosio::chain::transaction_trace>::visit( vv );
+      std::string ss = fc::to_json_string( tt );
+//      to_string_visitor<eosio::chain::transaction_trace> vv( tt, ss );
+//      fc::reflector<eosio::chain::transaction_trace>::visit( vv );
 
       BOOST_CHECK_EQUAL("", ss);
 

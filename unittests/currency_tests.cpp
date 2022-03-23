@@ -6,6 +6,7 @@
 #include <eosio/testing/tester.hpp>
 #include <eosio/chain/abi_serializer.hpp>
 #include <eosio/chain/generated_transaction_object.hpp>
+#include <eosio/chain/to_string.hpp>
 
 #include <Runtime/Runtime.h>
 
