@@ -148,7 +148,7 @@ BOOST_AUTO_TEST_CASE(producer) {
       const size_t num_pushes = 4242;
       for( size_t i = 1; i <= num_pushes; ++i ) {
          auto ptrx = make_unique_trx( chain_id );
-         dlog( "posting ${id}", ("id", ptrx->id()) );
+         dlog( "posting {id}", ("id", ptrx->id()) );
          app().post( priority::low, [ptrx, &next_calls, &num_posts, &trace_with_except, &trx_match, &trxs]() {
             ++num_posts;
             bool return_failure_traces = false; // not supported in version 2.1.x, in 2.2.x+ = num_posts % 2 == 0;
@@ -162,12 +162,12 @@ BOOST_AUTO_TEST_CASE(producer) {
                      if( std::get<chain::transaction_trace_ptr>( result )->id == ptrx->id() ) {
                         trxs.push_back( ptrx );
                      } else {
-                        elog( "trace not for trx ${id}: ${t}",
+                        elog( "trace not for trx {id}: {t}",
                               ("id", ptrx->id())("t", fc::json::to_pretty_string(*std::get<chain::transaction_trace_ptr>(result))) );
                         trx_match = false;
                      }
                   } else if( !return_failure_traces && !std::holds_alternative<fc::exception_ptr>( result ) && std::get<chain::transaction_trace_ptr>( result )->except ) {
-                     elog( "trace with except ${e}",
+                     elog( "trace with except {e}",
                            ("e", fc::json::to_pretty_string( *std::get<chain::transaction_trace_ptr>( result ) )) );
                      ++trace_with_except;
                   }

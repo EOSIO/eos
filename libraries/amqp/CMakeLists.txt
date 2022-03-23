@@ -4,5 +4,5 @@ add_library(amqp
         transactional_amqp_publisher.cpp
         util.cpp
         )
-target_include_directories(amqp PUBLIC include)
-target_link_libraries(amqp fc amqpcpp)
+target_include_directories(amqp PUBLIC include ../spdlog/include)
+target_link_libraries(amqp fc amqpcpp spdlog)

@@ -5,6 +5,8 @@
 
 #include <appbase/application.hpp>
 
+#include <spdlog/fmt/bundled/args.h>
+#include <spdlog/fmt/bundled/format.h>
 namespace eosio {
 
 using boost::signals2::signal;

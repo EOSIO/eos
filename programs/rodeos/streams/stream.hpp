@@ -47,7 +47,7 @@ inline std::vector<std::string> extract_routes(const std::string& routes_str) {
       size_t      pos          = routings.find(",");
       size_t      route_length = pos == std::string::npos ? routings.length() : pos;
       std::string route        = routings.substr(0, pos);
-      ilog("extracting route ${route}", ("route", route));
+      ilog("extracting route {route}", ("route", route));
       if (route != "*") {
          streaming_routes.emplace_back(std::move(route));
       } else {

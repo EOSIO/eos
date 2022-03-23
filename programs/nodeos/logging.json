@@ -46,6 +46,16 @@
         "host": "host_name"
       },
       "enabled": true
+    },{
+      "name": "stderr_color_st",
+      "type": "stderr_color_sink_st",
+      "args": {},
+      "enabled": true
+    },{
+      "name": "stdout_color_st",
+      "type": "stdout_color_sink_st",
+      "args": {},
+      "enabled": true
     }
   ],
   "loggers": [{
@@ -55,7 +65,8 @@
       "additivity": false,
       "appenders": [
         "stderr",
-        "net"
+        "net",
+        "stderr_color_st"
       ]
     },{
       "name": "net_plugin_impl",
@@ -64,7 +75,8 @@
       "additivity": false,
       "appenders": [
         "stderr",
-        "net"
+        "net",
+        "stderr_color_st"
       ]
     },{
       "name": "http_plugin",
@@ -73,7 +85,8 @@
       "additivity": false,
       "appenders": [
         "stderr",
-        "net"
+        "net",
+        "stderr_color_st"
       ]
     },{
       "name": "producer_plugin",
@@ -82,7 +95,8 @@
       "additivity": false,
       "appenders": [
         "stderr",
-        "net"
+        "net",
+        "stderr_color_st"
       ]
     },{
       "name": "transaction_success_tracing",
@@ -91,7 +105,8 @@
       "additivity": false,
       "appenders": [
         "stderr",
-        "net"
+        "net",
+        "stderr_color_st"
       ]
     },{
       "name": "transaction_failure_tracing",
@@ -100,7 +115,8 @@
       "additivity": false,
       "appenders": [
         "stderr",
-        "net"
+        "net",
+        "stderr_color_st"
       ]
     },{
       "name": "transaction_trace_success",
@@ -109,7 +125,8 @@
       "additivity": false,
       "appenders": [
         "stderr",
-        "net"
+        "net",
+        "stderr_color_st"
       ]
     },{
       "name": "transaction_trace_failure",
@@ -118,7 +135,8 @@
       "additivity": false,
       "appenders": [
         "stderr",
-        "net"
+        "net",
+        "stderr_color_st"
       ]
     },{
       "name": "transaction",
@@ -127,7 +145,8 @@
       "additivity": false,
       "appenders": [
         "stderr",
-        "net"
+        "net",
+        "stderr_color_st"
       ]
     },{
       "name": "state_history",
@@ -136,7 +155,8 @@
       "additivity": false,
       "appenders": [
         "stderr",
-        "net"
+        "net",
+        "stderr_color_st"
       ]
     },{
       "name": "trace_api",
@@ -145,7 +165,8 @@
       "additivity": false,
       "appenders": [
         "stderr",
-        "net"
+        "net",
+        "stderr_color_st"
       ]
     }
   ]

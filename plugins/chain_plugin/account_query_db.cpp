@@ -160,7 +160,7 @@ namespace eosio::chain_apis {
             add_to_bimaps(*pi, po);
          }
          auto duration = fc::time_point::now() - start;
-         ilog("Finished building account query DB in ${sec}", ("sec", (duration.count() / 1'000'000.0 )));
+         ilog("Finished building account query DB in {sec}", ("sec", (duration.count() / 1'000'000.0 )));
       }
 
       /**

@@ -97,13 +97,13 @@ struct log_catalog {
          auto existing_itr = collection.find(log.first_block_num());
          if (existing_itr != collection.end()) {
             if (log.last_block_num() <= existing_itr->second.last_block_num) {
-               wlog("${log_path} contains the overlapping range with ${existing_path}.log, dropping ${log_path} "
+               wlog("{log_path} contains the overlapping range with {existing_path}.log, dropping {log_path} "
                     "from catalog",
                     ("log_path", log_path.string())("existing_path", existing_itr->second.filename_base.string()));
                return;
             } else {
                wlog(
-                   "${log_path} contains the overlapping range with ${existing_path}.log, droping ${existing_path}.log "
+                   "{log_path} contains the overlapping range with {existing_path}.log, droping {existing_path}.log "
                    "from catelog",
                    ("log_path", log_path.string())("existing_path", existing_itr->second.filename_base.string()));
             }
@@ -188,7 +188,7 @@ struct log_catalog {
          bfs::rename(old_name, new_name);
       } else {
          bfs::remove(old_name);
-         wlog("${new_name} already exists, just removing ${old_name}",
+         wlog("{new_name} already exists, just removing {old_name}",
               ("old_name", old_name.string())("new_name", new_name.string()));
       }
    }

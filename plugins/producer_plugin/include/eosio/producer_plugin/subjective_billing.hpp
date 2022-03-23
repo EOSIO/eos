@@ -200,7 +200,7 @@ public:
             num_expired++;
          }
 
-         fc_dlog( log, "Processed ${n} subjective billed transactions, Expired ${expired}",
+         fc_dlog( log, "Processed {n} subjective billed transactions, Expired {expired}",
                   ("n", orig_count)( "expired", num_expired ) );
       }
       return !exhausted;

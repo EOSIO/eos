@@ -78,12 +78,12 @@ class thread_state_cache : public std::enable_shared_from_this<thread_state_cach
             ++num_created;
             return { shared_from_this(), std::move(result) };
          } catch (const eosio::vm::exception& e) {
-            elog("vm::exception creating thread_state: ${w}: ${d}", ("w", e.what())("d", e.detail()));
-            elog("number of thread_states created so far: ${n}", ("n", num_created));
+            elog("vm::exception creating thread_state: {w}: {d}", ("w", e.what())("d", e.detail()));
+            elog("number of thread_states created so far: {n}", ("n", num_created));
             throw std::runtime_error(std::string("creating thread_state: ") + e.what() + ": " + e.detail());
          } catch (const std::exception& e) {
-            elog("std::exception creating thread_state: ${w}", ("w", e.what()));
-            elog("number of thread_states created so far: ${n}", ("n", num_created));
+            elog("std::exception creating thread_state: {w}", ("w", e.what()));
+            elog("number of thread_states created so far: {n}", ("n", num_created));
             throw std::runtime_error(std::string("creating thread_state: ") + e.what());
          }
       }

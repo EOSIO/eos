@@ -645,7 +645,7 @@ namespace eosio { namespace chain {
 
       if (recurse_depth == 0) {
          if (auto dm_logger = control.get_deep_mind_logger()) {
-            fc_dlog(*dm_logger, "CREATION_OP ROOT ${action_id}",
+            fc_dlog(*dm_logger, "CREATION_OP ROOT {action_id}",
                ("action_id", get_action_id())
             );
          }
@@ -683,11 +683,11 @@ namespace eosio { namespace chain {
             event_id = STORAGE_EVENT_ID("${id}", ("id", gto.id));
 
             auto packed_signed_trx = fc::raw::pack(packed_trx.to_packed_transaction_v0()->get_signed_transaction());
-            fc_dlog(*dm_logger, "DTRX_OP PUSH_CREATE ${action_id} ${sender} ${sender_id} ${payer} ${published} ${delay} ${expiration} ${trx_id} ${trx}",
+            fc_dlog(*dm_logger, "DTRX_OP PUSH_CREATE {action_id} {sender} {sender_id} {payer} {published} {delay} {expiration} {trx_id} {trx}",
                ("action_id", get_action_id())
-               ("sender", gto.sender)
+               ("sender", gto.sender.to_string())
                ("sender_id", gto.sender_id)
-               ("payer", gto.payer)
+               ("payer", gto.payer.to_string())
                ("published", gto.published)
                ("delay", gto.delay_until)
                ("expiration", gto.expiration)

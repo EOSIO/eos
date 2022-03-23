@@ -1092,6 +1092,9 @@ public:
    // return variant of trx for logging, trace is modified to minimize log output
    fc::variant get_log_trx(const transaction& trx) const;
 
+   std::string to_trimmed_trx_string(const transaction& t, const controller& chain) const;
+   std::string get_log_trx_trace(const chain::transaction_trace_ptr& t, const controller& chain) const;
+
 private:
    static void log_guard_exception(const chain::guard_exception& e);
 

@@ -469,10 +469,10 @@ fc::time_point calculate_genesis_timestamp( string tstr ) {
    if (diff_us > 0) {
       auto delay_us = (config::block_interval_us - diff_us);
       genesis_timestamp += fc::microseconds(delay_us);
-      dlog("pausing ${us} microseconds to the next interval",("us",delay_us));
+      dlog("pausing {us} microseconds to the next interval",("us",delay_us));
    }
 
-   ilog( "Adjusting genesis timestamp to ${timestamp}", ("timestamp", genesis_timestamp) );
+   ilog( "Adjusting genesis timestamp to {timestamp}", ("timestamp", genesis_timestamp) );
    return genesis_timestamp;
 }
 
@@ -491,10 +491,10 @@ std::optional<builtin_protocol_feature> read_builtin_protocol_feature( const fc:
    try {
       return fc::json::from_file<builtin_protocol_feature>( p );
    } catch( const fc::exception& e ) {
-      wlog( "problem encountered while reading '${path}':\n${details}",
+      wlog( "problem encountered while reading '{path}':\n{details}",
             ("path", p.generic_string())("details",e.to_detail_string()) );
    } catch( ... ) {
-      dlog( "unknown problem encountered while reading '${path}'",
+      dlog( "unknown problem encountered while reading '{path}'",
             ("path", p.generic_string()) );
    }
    return {};
@@ -523,12 +523,12 @@ protocol_feature_set initialize_protocol_features( const fc::path& p, bool popul
       if( f.subjective_restrictions.enabled ) {
          if( f.subjective_restrictions.preactivation_required ) {
             if( f.subjective_restrictions.earliest_allowed_activation_time == time_point{} ) {
-               ilog( "Support for builtin protocol feature '${codename}' (with digest of '${digest}') is enabled with preactivation required",
+               ilog( "Support for builtin protocol feature '{codename}' (with digest of '{digest}') is enabled with preactivation required",
                      ("codename", builtin_protocol_feature_codename(f.get_codename()))
                      ("digest", feature_digest)
                );
             } else {
-               ilog( "Support for builtin protocol feature '${codename}' (with digest of '${digest}') is enabled with preactivation required and with an earliest allowed activation time of ${earliest_time}",
+               ilog( "Support for builtin protocol feature '{codename}' (with digest of '{digest}') is enabled with preactivation required and with an earliest allowed activation time of {earliest_time}",
                      ("codename", builtin_protocol_feature_codename(f.get_codename()))
                      ("digest", feature_digest)
                      ("earliest_time", f.subjective_restrictions.earliest_allowed_activation_time)
@@ -536,12 +536,12 @@ protocol_feature_set initialize_protocol_features( const fc::path& p, bool popul
             }
          } else {
             if( f.subjective_restrictions.earliest_allowed_activation_time == time_point{} ) {
-               ilog( "Support for builtin protocol feature '${codename}' (with digest of '${digest}') is enabled without activation restrictions",
+               ilog( "Support for builtin protocol feature '{codename}' (with digest of '{digest}') is enabled without activation restrictions",
                      ("codename", builtin_protocol_feature_codename(f.get_codename()))
                      ("digest", feature_digest)
                );
             } else {
-               ilog( "Support for builtin protocol feature '${codename}' (with digest of '${digest}') is enabled without preactivation required but with an earliest allowed activation time of ${earliest_time}",
+               ilog( "Support for builtin protocol feature '{codename}' (with digest of '{digest}') is enabled without preactivation required but with an earliest allowed activation time of {earliest_time}",
                      ("codename", builtin_protocol_feature_codename(f.get_codename()))
                      ("digest", feature_digest)
                      ("earliest_time", f.subjective_restrictions.earliest_allowed_activation_time)
@@ -549,7 +549,7 @@ protocol_feature_set initialize_protocol_features( const fc::path& p, bool popul
             }
          }
       } else {
-         ilog( "Recognized builtin protocol feature '${codename}' (with digest of '${digest}') but support for it is not enabled",
+         ilog( "Recognized builtin protocol feature '{codename}' (with digest of '{digest}') but support for it is not enabled",
                ("codename", builtin_protocol_feature_codename(f.get_codename()))
                ("digest", feature_digest)
          );
@@ -632,13 +632,13 @@ protocol_feature_set initialize_protocol_features( const fc::path& p, bool popul
       );
 
       if( fc::json::save_to_file( f, file_path ) ) {
-         ilog( "Saved default specification for builtin protocol feature '${codename}' (with digest of '${digest}') to: ${path}",
+         ilog( "Saved default specification for builtin protocol feature '{codename}' (with digest of '{digest}') to: {path}",
                ("codename", builtin_protocol_feature_codename(f.get_codename()))
                ("digest", feature_digest)
                ("path", file_path.generic_string())
          );
       } else {
-         elog( "Error occurred while writing default specification for builtin protocol feature '${codename}' (with digest of '${digest}') to: ${path}",
+         elog( "Error occurred while writing default specification for builtin protocol feature '{codename}' (with digest of '{digest}') to: {path}",
                ("codename", builtin_protocol_feature_codename(f.get_codename()))
                ("digest", feature_digest)
                ("path", file_path.generic_string())
@@ -732,7 +732,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
       try {
          genesis_state gs; // Check if EOSIO_ROOT_KEY is bad
       } catch ( const std::exception& ) {
-         elog( "EOSIO_ROOT_KEY ('${root_key}') is invalid. Recompile with a valid public key.",
+         elog( "EOSIO_ROOT_KEY ('{root_key}') is invalid. Recompile with a valid public key.",
                ("root_key", genesis_state::eosio_root_key));
          throw;
       }
@@ -741,7 +741,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 
       if( options.at( "print-build-info" ).as<bool>() || options.count( "extract-build-info") ) {
          if( options.at( "print-build-info" ).as<bool>() ) {
-            ilog( "Build environment JSON:\n${e}", ("e", json::to_pretty_string( chainbase::environment() )) );
+            ilog( "Build environment JSON:\n{e}", ("e", json::to_pretty_string( chainbase::environment() )) );
          }
          if( options.count( "extract-build-info") ) {
             auto p = options.at( "extract-build-info" ).as<bfs::path>();
@@ -755,7 +755,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
                         ("path", p.generic_string())
             );
 
-            ilog( "Saved build info JSON to '${path}'", ("path", p.generic_string()) );
+            ilog( "Saved build info JSON to '{path}'", ("path", p.generic_string()) );
          }
 
          EOS_THROW( node_management_success, "reported build environment information" );
@@ -935,13 +935,13 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
                         ("path", (my->blocks_dir / "blocks.log").generic_string())
             );
          } else {
-            wlog( "No blocks.log found at '${p}'. Using default genesis state.",
+            wlog( "No blocks.log found at '{p}'. Using default genesis state.",
                   ("p", (my->blocks_dir / "blocks.log").generic_string()));
             gs.emplace();
          }
 
          if( options.at( "print-genesis-json" ).as<bool>()) {
-            ilog( "Genesis JSON:\n${genesis}", ("genesis", json::to_pretty_string( *gs )));
+            ilog( "Genesis JSON:\n{genesis}", ("genesis", json::to_pretty_string( *gs )));
          }
 
          if( options.count( "extract-genesis-json" )) {
@@ -957,7 +957,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
                         ("path", p.generic_string())
             );
 
-            ilog( "Saved genesis JSON to '${path}'", ("path", p.generic_string()) );
+            ilog( "Saved genesis JSON to '{path}'", ("path", p.generic_string()) );
          }
 
          EOS_THROW( extract_genesis_state_exception, "extracted genesis state from blocks.log" );
@@ -1076,10 +1076,10 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
             if( options.count( "genesis-timestamp" ) ) {
                provided_genesis.initial_timestamp = calculate_genesis_timestamp( options.at( "genesis-timestamp" ).as<string>() );
 
-               ilog( "Using genesis state provided in '${genesis}' but with adjusted genesis timestamp",
+               ilog( "Using genesis state provided in '{genesis}' but with adjusted genesis timestamp",
                      ("genesis", genesis_file.generic_string()) );
             } else {
-               ilog( "Using genesis state provided in '${genesis}'", ("genesis", genesis_file.generic_string()));
+               ilog( "Using genesis state provided in '{genesis}'", ("genesis", genesis_file.generic_string()));
             }
 
             if( block_log_genesis ) {
@@ -1152,7 +1152,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          if( my->api_accept_transactions ) {
             my->api_accept_transactions = false;
             std::stringstream ss; ss << my->chain_config->read_mode;
-            wlog( "api-accept-transactions set to false due to read-mode: ${m}", ("m", ss.str()) );
+            wlog( "api-accept-transactions set to false due to read-mode: {m}", ("m", ss.str()) );
          }
       }
       if( my->api_accept_transactions ) {
@@ -1256,7 +1256,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          if (auto dm_logger = my->chain->get_deep_mind_logger()) {
             auto packed_blk = fc::raw::pack(*blk);
 
-            fc_dlog(*dm_logger, "ACCEPTED_BLOCK ${num} ${blk}",
+            fc_dlog(*dm_logger, "ACCEPTED_BLOCK {num} {blk}",
                ("num", blk->block_num)
                ("blk", fc::to_hex(packed_blk))
             );
@@ -1283,7 +1283,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
                if (auto dm_logger = my->chain->get_deep_mind_logger()) {
                   auto packed_trace = fc::raw::pack(*std::get<0>(t));
 
-                  fc_dlog(*dm_logger, "APPLIED_TRANSACTION ${block} ${traces}",
+                  fc_dlog(*dm_logger, "APPLIED_TRANSACTION {block} {traces}",
                      ("block", my->chain->head_block_num() + 1)
                      ("traces", fc::to_hex(packed_trace))
                   );
@@ -1332,11 +1332,11 @@ void chain_plugin::plugin_startup()
    }
 
    if (my->genesis) {
-      ilog("Blockchain started; head block is #${num}, genesis timestamp is ${ts}",
+      ilog("Blockchain started; head block is #{num}, genesis timestamp is {ts}",
            ("num", my->chain->head_block_num())("ts", (std::string)my->genesis->initial_timestamp));
    }
    else {
-      ilog("Blockchain started; head block is #${num}", ("num", my->chain->head_block_num()));
+      ilog("Blockchain started; head block is #{num}", ("num", my->chain->head_block_num()));
    }
 
    my->chain_config.reset();
@@ -1428,7 +1428,7 @@ void chain_plugin::log_guard_exception(const chain::guard_exception&e ) {
            "Please increase the value set for \"reversible-blocks-db-size-mb\" and restart the process!");
    }
 
-   dlog("Details: ${details}", ("details", e.to_detail_string()));
+   dlog("Details: {details}", ("details", e.to_detail_string()));
 }
 
 void chain_plugin::handle_guard_exception(const chain::guard_exception& e) {
@@ -3396,6 +3396,109 @@ fc::variant chain_plugin::get_log_trx(const transaction& trx) const {
    }
    return pretty_output;
 }
+
+namespace {
+   template<typename T> void to_trimmed_vector_string(string& result, const char* name, const vector<T>& vec, const controller& chain);
+
+   void to_trimmed_string(string& result, const action& a, const controller& chain)  {
+      result += "\"account\":\"" + a.account.to_string() + "\","
+                 + "\"name\":\"" + a.name.to_string() + "\",";
+      to_trimmed_vector_string(result, "authorization", a.authorization, chain);
+      result += ",";
+
+      if( a.account == config::system_account_name && a.name == "setcode"_n ) {
+         auto setcode_act = a.data_as<eosio::chain::setcode>();
+         if( setcode_act.code.size() > 0 ) {
+            result += "\"code_hash\":";
+            fc::sha256 code_hash = fc::sha256::hash(setcode_act.code.data(), (uint32_t) setcode_act.code.size());
+            result += "\"" + code_hash.str() + "\",";
+         }
+      }
+
+      result += "\"data\":";
+      abi_serializer::yield_function_t yield = abi_serializer::create_yield_function(chain.get_abi_serializer_max_time());
+      auto abi = chain.get_abi_serializer(a.account, yield);
+      fc::variant output;
+      if (abi) {
+         auto type = abi->get_action_type(a.name);
+         if (!type.empty()) {
+            try {
+               output = abi->binary_to_log_variant(type, a.data, yield);
+               result += fc::json::to_string(output, fc::time_point::maximum());
+               result += ",";
+               result += "\"hex_data\":{";
+            } catch (...) {
+               // any failure to serialize data, then leave as not serialized
+               result += "{";
+            }
+         } else {
+            result += "{";
+         }
+      } else {
+         result += "{";
+      }
+
+      result += "\"size\":" + std::to_string(a.data.size()) + ",";
+      if( a.data.size() > impl::hex_log_max_size ) {
+         result += "\"trimmed_hex\":\"" + fc::to_hex(std::vector(a.data.begin(), a.data.begin() + impl::hex_log_max_size)) + "\"";
+      } else {
+         result += "\"hex\":\"" + fc::to_hex(a.data) + "\"";
+      }
+      result += "}";
+   }
+
+   void to_trimmed_string(string& result, const permission_level& perm, const controller& chain) {
+      result += "\"actor\":\"" + perm.actor.to_string() + "\","
+                + "\"permission\":\"" + perm.permission.to_string() + "\"";
+   }
+
+   void to_trimmed_string(string& result, const std::pair<uint16_t,vector<char>>& p, const controller& chain) {
+      result += "\"key\":" + std::to_string(p.first) + ","
+                + "\"value\":" + std::string(p.second.begin(), p.second.end());
+   }
+
+   template<typename T>
+   void to_trimmed_vector_string(string& result, const char* name, const vector<T>& vec, const controller& chain) {
+      result = result +  "\"" + name + "\":[";
+      for (const auto& v : vec) {
+         result += "{";
+         to_trimmed_string(result, v, chain);
+         result += "},";
+      }
+      if (!vec.empty())
+         result.pop_back(); //remove the last `,`
+      result += "]";
+   }
+} // namespace
+
+std::string chain_plugin::to_trimmed_trx_string(const transaction& t, const controller& chain) const {
+   static_assert(fc::reflector<transaction>::total_member_count == 9);
+
+   string result = "{";
+   result += "\"expiration\":\"" + (std::string)t.expiration +  "\","
+           + "\"ref_block_num\":" + std::to_string(t.ref_block_num) + ","
+           + "\"ref_block_prefix\":" + std::to_string(t.ref_block_prefix) + ","
+           + "\"max_net_usage_words\":" + std::to_string(t.max_net_usage_words.value) + ","
+           + "\"max_cpu_usage_ms\":" + std::to_string(t.max_cpu_usage_ms) + ","
+           + "\"delay_sec\":" + std::to_string(t.delay_sec.value) + ",";
+
+   to_trimmed_vector_string(result, "context_free_actions", t.context_free_actions, chain);
+   result += ",";
+   to_trimmed_vector_string(result, "actions", t.actions, chain);
+   result += ",";
+   to_trimmed_vector_string(result, "transaction_extensions", t.transaction_extensions, chain);
+
+   result += "}";
+   return result;
+}
+
+std::string chain_plugin::get_log_trx_trace(const transaction_trace_ptr& t, const controller& chain) const {
+   static_assert( fc::reflector<eosio::chain::transaction_trace>::total_member_count == 13);
+   string result;
+   eosio::chain::trace::to_trimmed_trace_string(result, *t, chain);
+   return result;
+}
+
 
 } // namespace eosio
 

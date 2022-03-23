@@ -66,3 +66,18 @@ private:
 };
 
 }
+
+namespace fmt {
+    template<>
+    struct formatter<AMQP::Address> {
+        template<typename ParseContext>
+        constexpr auto parse( ParseContext& ctx ) { return ctx.begin(); }
+
+        template<typename FormatContext>
+        auto format( const AMQP::Address& p, FormatContext& ctx ) {
+           return format_to( ctx.out(), "{}", (std::string)p );
+        }
+    };
+}
+
+

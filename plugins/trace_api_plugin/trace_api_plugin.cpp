@@ -29,7 +29,7 @@ namespace {
          return er.to_detail_string();
       } catch (const std::exception& e) {
          fc::exception fce(
-               FC_LOG_MESSAGE(warn, "std::exception: ${what}: ", ("what", e.what())),
+               FC_LOG_MESSAGE(warn, "std::exception: {what}: ", ("what", e.what())),
                fc::std_exception_code,
                BOOST_CORE_TYPEID(e).name(),
                e.what());
@@ -215,7 +215,7 @@ struct trace_api_rpc_plugin_impl : public std::enable_shared_from_this<trace_api
                auto abi = abi_def_from_file(kv.second, app().data_dir());
                data_handler->add_abi(account, abi);
             } catch (...) {
-               elog("Malformed trace-rpc-abi provider: \"${val}\"", ("val", entry));
+               elog("Malformed trace-rpc-abi provider: \"{val}\"", ("val", entry));
                throw;
             }
          }

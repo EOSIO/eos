@@ -146,18 +146,18 @@ std::pair<int, unsigned int> compare_composite_keys(const CharCont& lhs_cont, co
    const auto rhs_size = rhs_cont.size();
    for (; j < lhs_size; ++j) {
       if (j >= rhs_size) {
-         if (print) ilog("${j}: lhs longer than rhs", ("j", j));
+         if (print) ilog("{j}: lhs longer than rhs", ("j", j));
          return { gt, j };
       }
       const auto left = uint64_t(static_cast<unsigned char>(lhs[j]));
       const auto right = uint64_t(static_cast<unsigned char>(rhs[j]));
-      if (print) ilog("${j}: ${l} ${sym} ${r}", ("j", j)("l", left)("sym",(left == right ? "==" : "!="))("r", right));
+      if (print) ilog("{j}: {l} {sym} {r}", ("j", j)("l", left)("sym",(left == right ? "==" : "!="))("r", right));
       if (left != right) {
          return { left < right ? lt : gt, j };
       }
    }
    if (rhs_size > lhs_size) {
-      if (print) ilog("rhs longer (${r}) than lhs (${l})", ("r", rhs_size)("l", lhs_size));
+      if (print) ilog("rhs longer ({r}) than lhs ({l})", ("r", rhs_size)("l", lhs_size));
       return { lt, j };
    }
 
@@ -166,7 +166,7 @@ std::pair<int, unsigned int> compare_composite_keys(const CharCont& lhs_cont, co
 
 template<typename CharKey>
 std::pair<int, unsigned int> compare_composite_keys(const CharKey& keys, uint64_t lhs_index, bool print = false) {
-   if (print) ilog("verifying [${i1}] and [${i2}]",("i1", lhs_index)("i2", lhs_index + 1));
+   if (print) ilog("verifying [{i1}] and [{i2}]",("i1", lhs_index)("i2", lhs_index + 1));
    return compare_composite_keys(keys[lhs_index], keys[lhs_index + 1], print);
 }
 

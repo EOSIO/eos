@@ -70,7 +70,7 @@ struct mock_producer_plugin {
 
    bool verify_equal( const std::deque<packed_transaction_ptr>& trxs) {
       if( trxs.size() != trxs_.size() ) {
-         elog( "${lhs} != ${rhs}", ("lhs", trxs.size())("rhs", trxs_.size()) );
+         elog( "{lhs} != {rhs}", ("lhs", trxs.size())("rhs", trxs_.size()) );
          return false;
       }
       for( size_t i = 0; i < trxs.size(); ++i ) {

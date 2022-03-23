@@ -32,6 +32,8 @@ namespace eosio { namespace chain {
 
       signed_block_ptr                                    block;
 
+      friend struct fmt::formatter<eosio::chain::block_state>;
+
    private: // internal use only, not thread safe
       friend struct fc::reflector<block_state>;
       friend bool block_state_is_valid( const block_state& ); // work-around for multi-index access

@@ -192,7 +192,7 @@ public:
                   } CATCH_AND_CALL(exception_handler);
 
                   if( trx_meta ) {
-                     dlog( "posting trx: ${id}", ("id", trx_meta->id()) );
+                     dlog( "posting trx: {id}", ("id", trx_meta->id()) );
                      app().post( priority::low, [self, trx{std::move( trx_meta )}, next{std::move( i.next )}]() {
                         self->prod_plugin_->execute_incoming_transaction( trx, next );
                         self->queue_.unpause();
@@ -259,7 +259,7 @@ public:
                                                                      configured_subjective_signature_length_limit_ );
       q_item i{ .delivery_tag = delivery_tag, .trx = trx, .fut = std::move(future), .next = std::move(next) };
       if( !queue_.push( std::move( i ) ) ) {
-         ilog( "Queue stopped, unable to process transaction ${id}, not ack'ed to AMQP", ("id", trx->id()) );
+         ilog( "Queue stopped, unable to process transaction {id}, not ack'ed to AMQP", ("id", trx->id()) );
       }
    }
 

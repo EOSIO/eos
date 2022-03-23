@@ -33,6 +33,8 @@
 #include <contracts.hpp>
 #include "test_cfd_transaction.hpp"
 
+#include <eosio/chain/permission_object.hpp>
+
 #define DUMMY_ACTION_DEFAULT_A 0x45
 #define DUMMY_ACTION_DEFAULT_B 0xab11cd1244556677
 #define DUMMY_ACTION_DEFAULT_C 0x7451ae12
@@ -115,7 +117,7 @@ struct test_api_action {
 	}
 };
 
-FC_REFLECT_TEMPLATE((uint64_t T), test_api_action<T>, BOOST_PP_SEQ_NIL)
+FC_REFLECT_TEMPLATE((uint64_t T), test_api_action<T>, BOOST_PP_EMPTY())
 
 template<uint64_t NAME>
 struct test_chain_action {
@@ -128,7 +130,7 @@ struct test_chain_action {
 	}
 };
 
-FC_REFLECT_TEMPLATE((uint64_t T), test_chain_action<T>, BOOST_PP_SEQ_NIL)
+FC_REFLECT_TEMPLATE((uint64_t T), test_chain_action<T>, BOOST_PP_EMPTY())
 
 struct check_auth {
    account_name            account;
@@ -1672,7 +1674,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(more_deferred_transaction_tests, TYPE_T, backing_s
 
    auto print_deferred = [&index]() {
       for( const auto& gto : index ) {
-         wlog("id = ${id}, trx_id = ${trx_id}", ("id", gto.id)("trx_id", gto.trx_id));
+         wlog("id = {id}, trx_id = {trx_id}", ("id", gto.id)("trx_id", gto.trx_id));
       }
    };
 

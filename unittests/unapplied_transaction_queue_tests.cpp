@@ -2,6 +2,7 @@
 #include <eosio/testing/tester.hpp>
 #include <eosio/chain/unapplied_transaction_queue.hpp>
 #include <eosio/chain/contract_types.hpp>
+#include <eosio/chain/to_string.hpp>
 
 using namespace eosio;
 using namespace eosio::chain;
@@ -16,8 +17,16 @@ auto unique_trx_meta_data( fc::time_point expire = fc::time_point::now() + fc::s
    signed_transaction trx;
    account_name creator = config::system_account_name;
    trx.expiration = expire;
+   std::vector<char> veca(512, 'a');
+   std::vector<char> vecb(512, 'b');
+   trx.context_free_data = {veca, vecb};
+   trx.context_free_actions.emplace_back( vector<permission_level>{{creator,config::active_name}},
+                             onerror{ nextid, "test", 4 });
    trx.actions.emplace_back( vector<permission_level>{{creator,config::active_name}},
                              onerror{ nextid, "test", 4 });
+
+   trx.actions.emplace_back( vector<permission_level>{{creator,config::active_name}},
+                             setcode{ creator, 3, 4, veca });
    return transaction_metadata::create_no_recover_keys( std::make_shared<packed_transaction>( std::move(trx), true ),
                                                         transaction_metadata::trx_type::input );
 }
@@ -495,5 +504,46 @@ BOOST_AUTO_TEST_CASE( unapplied_transaction_queue_incoming_count ) try {
    }
 
 } FC_LOG_AND_RETHROW() /// unapplied_transaction_queue_incoming_count
+
+
+
+BOOST_AUTO_TEST_CASE(reflector_visit) {
+
+   auto trx1 = unique_trx_meta_data();
+
+   std::string s;
+   eosio::chain::to_string_visitor<eosio::chain::transaction> v(trx1->packed_trx()->get_transaction(), s);
+   fc::reflector<eosio::chain::transaction>::visit(v);
+
+   BOOST_CHECK_EQUAL("", s);
+
+   {
+      std::vector<char> vec( 512, 'a' );
+
+      eosio::chain::action_trace t;
+      t.except = tx_duplicate( FC_LOG_MESSAGE( error, "duplicate transaction ${id}", ("id", "ID") ) );
+      t.act.data = vec;
+      t.act.name = "hello"_n;
+
+      std::string s;
+      to_string_visitor<eosio::chain::action_trace> v( t, s );
+      fc::reflector<eosio::chain::action_trace>::visit( v );
+
+      BOOST_CHECK_EQUAL("", s);
+
+      eosio::chain::transaction_trace tt;
+      tt.action_traces.push_back( t );
+      tt.action_traces.push_back( t );
+      tt.account_ram_delta = account_delta{};
+
+      std::string ss;
+      to_string_visitor<eosio::chain::transaction_trace> vv( tt, ss );
+      fc::reflector<eosio::chain::transaction_trace>::visit( vv );
+
+      BOOST_CHECK_EQUAL("", ss);
+
+   }
+}
+
 
 BOOST_AUTO_TEST_SUITE_END()

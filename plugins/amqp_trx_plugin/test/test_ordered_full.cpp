@@ -86,10 +86,10 @@ bool verify_equal( const std::deque<packed_transaction_ptr>& trxs, const std::de
       const auto& trx = next_trx();
 
       if( trxs[i]->id() != trx.id() ) {
-         elog( "[${i}],[${j},${k}]: ${lhs} != ${rhs}", ("i", i)("j", j)("k", k)
+         elog( "[{i}],[{j},{k}]: {lhs} != {rhs}", ("i", i)("j", j)("k", k)
                ("lhs", trxs[i]->get_transaction().actions.at(0).data_as<testit>().id)
                ("rhs", trx.actions.at(0).data_as<testit>().id) );
-         elog( "[${i}],[${j},${k}]: ${lhs} != ${rhs}", ("i", i)("j", j)("k", k)
+         elog( "[{i}],[{j},{k}]: {lhs} != {rhs}", ("i", i)("j", j)("k", k)
                ("lhs", trxs[i]->id())
                ("rhs", trx.id()) );
          return false;

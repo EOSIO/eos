@@ -111,7 +111,63 @@ namespace eosio { namespace chain {
    inline storage_usage_trace generic_storage_usage_trace(uint32_t action_id) {
       return {action_id};
    }
+   namespace trace {
+      void to_trimmed_trace_string(string& result, const transaction_trace& t, const controller& chain);
+   }
+
 } }  /// namespace eosio::chain
+
+namespace fmt {
+   template<typename T>
+   struct formatter<std::optional<T>> {
+      template<typename ParseContext>
+      constexpr auto parse( ParseContext& ctx ) { return ctx.begin(); }
+
+      template<typename FormatContext>
+      auto format( const std::optional<T>& p, FormatContext& ctx ) {
+         if (p.has_value())
+            return fmt::formatter<T>().format(*p, ctx);
+         else
+            return format_to( ctx.out(), "");
+      }
+   };
+   template<typename T>
+   struct formatter<boost::container::flat_set<T>> {
+      template<typename ParseContext>
+      constexpr auto parse( ParseContext& ctx ) { return ctx.begin(); }
+
+      template<typename FormatContext>
+      auto format( const boost::container::flat_set<T>& p, FormatContext& ctx ) {
+         for (const auto& i : p) {
+            fmt::formatter<T>().format(i, ctx);
+         }
+         return format_to( ctx.out(), "");
+      }
+   };
+   template<typename T>
+   struct formatter<std::shared_ptr<T>> {
+      template<typename ParseContext>
+      constexpr auto parse( ParseContext& ctx ) { return ctx.begin(); }
+
+      template<typename FormatContext>
+      auto format( const std::shared_ptr<T>& p, FormatContext& ctx ) {
+         if (p)
+            return fmt::formatter<T>().format(*p, ctx);
+         else
+            return format_to( ctx.out(), "{}", "null");
+      }
+   };
+   template<>
+   struct formatter<fc::exception> {
+      template<typename ParseContext>
+      constexpr auto parse( ParseContext& ctx ) { return ctx.begin(); }
+
+      template<typename FormatContext>
+      auto format( const fc::exception& p, FormatContext& ctx ) {
+         return format_to( ctx.out(), "{}", p.to_detail_string());
+      }
+   };
+}
 
 FC_REFLECT( eosio::chain::account_delta,
             (account)(delta) )

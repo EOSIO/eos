@@ -1,6 +1,7 @@
 #pragma once
 
 #include <eosio/chain/action.hpp>
+#include <spdlog/fmt/fmt.h>
 #include <numeric>
 
 namespace eosio { namespace chain {
@@ -173,6 +174,7 @@ namespace eosio { namespace chain {
       const bytes&                  get_packed_context_free_data()const { return packed_context_free_data; }
       const bytes&                  get_packed_transaction()const { return packed_trx; }
 
+      friend struct fmt::formatter<eosio::chain::packed_transaction_v0>;
    private:
       void local_unpack_transaction(vector<bytes>&& context_free_data);
       void local_unpack_context_free_data();
@@ -327,6 +329,8 @@ namespace eosio { namespace chain {
 
       std::size_t maximum_pruned_pack_size( cf_compression_type segment_compression ) const;
 
+      friend struct fmt::formatter<eosio::chain::packed_transaction>;
+
    private:
       friend struct fc::reflector<packed_transaction>;
       friend struct fc::reflector_init_visitor<packed_transaction>;
@@ -350,6 +354,31 @@ namespace eosio { namespace chain {
    uint128_t transaction_id_to_sender_id( const transaction_id_type& tid );
 
 } } /// namespace eosio::chain
+
+// TODO: Move this into fc
+namespace fmt {
+    template<typename T>
+    struct formatter<std::vector<T>> {
+        template<typename ParseContext>
+        constexpr auto parse( ParseContext& ctx ) { return ctx.begin(); }
+
+        template<typename FormatContext>
+        auto format( const std::vector<T>& p, FormatContext& ctx ) {
+           return format_to( ctx.out(), "[{}]", fmt::join(p, ","));
+        }
+    };
+
+    template<typename K, typename V>
+    struct formatter<std::pair<K, V>>{
+        template<typename ParseContext>
+        constexpr auto parse( ParseContext& ctx ) { return ctx.begin(); }
+
+        template<typename FormatContext>
+        auto format( const std::pair<K, V>& p, FormatContext& ctx ) {
+           return format_to( ctx.out(), "[{},{}]", p.first, p.second);
+        }
+    };
+}
 
 FC_REFLECT(eosio::chain::deferred_transaction_generation_context, (sender_trx_id)(sender_id)(sender) )
 FC_REFLECT( eosio::chain::transaction_header, (expiration)(ref_block_num)(ref_block_prefix)

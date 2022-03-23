@@ -56,7 +56,7 @@ void resource_limits_manager::initialize_database() {
       // see default settings in the declaration
 
       if (auto dm_logger = _get_deep_mind_logger()) {
-         fc_dlog(*dm_logger, "RLIMIT_OP CONFIG INS ${data}",
+         fc_dlog(*dm_logger, "RLIMIT_OP CONFIG INS {data}",
             ("data", config)
          );
       }
@@ -70,7 +70,7 @@ void resource_limits_manager::initialize_database() {
       state.virtual_net_limit = config.net_limit_parameters.max;
 
       if (auto dm_logger = _get_deep_mind_logger()) {
-         fc_dlog(*dm_logger, "RLIMIT_OP STATE INS ${data}",
+         fc_dlog(*dm_logger, "RLIMIT_OP STATE INS {data}",
             ("data", state)
          );
       }
@@ -122,7 +122,7 @@ void resource_limits_manager::initialize_account(const account_name& account) {
       bl.owner = account;
 
       if (auto dm_logger = _get_deep_mind_logger()) {
-         fc_dlog(*dm_logger, "RLIMIT_OP ACCOUNT_LIMITS INS ${data}",
+         fc_dlog(*dm_logger, "RLIMIT_OP ACCOUNT_LIMITS INS {data}",
             ("data", bl)
          );
       }
@@ -132,7 +132,7 @@ void resource_limits_manager::initialize_account(const account_name& account) {
       bu.owner = account;
 
       if (auto dm_logger = _get_deep_mind_logger()) {
-         fc_dlog(*dm_logger, "RLIMIT_OP ACCOUNT_USAGE INS ${data}",
+         fc_dlog(*dm_logger, "RLIMIT_OP ACCOUNT_USAGE INS {data}",
             ("data", bu)
          );
       }
@@ -151,7 +151,7 @@ void resource_limits_manager::set_block_parameters(const elastic_limit_parameter
       c.net_limit_parameters = net_limit_parameters;
 
       if (auto dm_logger = _get_deep_mind_logger()) {
-         fc_dlog(*dm_logger, "RLIMIT_OP CONFIG UPD ${data}",
+         fc_dlog(*dm_logger, "RLIMIT_OP CONFIG UPD {data}",
             ("data", c)
          );
       }
@@ -186,7 +186,7 @@ void resource_limits_manager::add_transaction_usage(const flat_set<account_name>
           bu.cpu_usage.add( cpu_usage, time_slot, config.account_cpu_usage_average_window );
 
          if (auto dm_logger = _get_deep_mind_logger()) {
-            fc_dlog(*dm_logger, "RLIMIT_OP ACCOUNT_USAGE UPD ${data}",
+            fc_dlog(*dm_logger, "RLIMIT_OP ACCOUNT_USAGE UPD {data}",
                ("data", bu)
             );
          }
@@ -257,13 +257,13 @@ void resource_limits_manager::add_pending_ram_usage( const account_name account,
       u.ram_usage += ram_delta;
 
       if (auto dm_logger = _get_deep_mind_logger()) {
-         fc_dlog(*dm_logger, "RAM_OP ${action_id} ${event_id} ${family} ${operation} ${legacy_tag} ${payer} ${new_usage} ${delta}",
+         fc_dlog(*dm_logger, "RAM_OP {action_id} {event_id} {family} {operation} {legacy_tag} {payer} {new_usage} {delta}",
             ("action_id", trace.action_id)
             ("event_id", trace.event_id)
             ("family", trace.family)
             ("operation", trace.operation)
             ("legacy_tag", trace.legacy_tag)
-            ("payer", account)
+            ("payer", account.to_string())
             ("new_usage", u.ram_usage)
             ("delta", ram_delta)
          );
@@ -324,7 +324,7 @@ bool resource_limits_manager::set_account_limits( const account_name& account, i
       pending_limits.cpu_weight = cpu_weight;
 
       if (auto dm_logger = _get_deep_mind_logger()) {
-         fc_dlog(*dm_logger, "RLIMIT_OP ACCOUNT_LIMITS UPD ${data}",
+         fc_dlog(*dm_logger, "RLIMIT_OP ACCOUNT_LIMITS UPD {data}",
             ("data", pending_limits)
          );
       }
@@ -396,7 +396,7 @@ void resource_limits_manager::process_account_limit_updates() {
       }
 
       if (auto dm_logger = _get_deep_mind_logger()) {
-         fc_dlog(*dm_logger, "RLIMIT_OP STATE UPD ${data}",
+         fc_dlog(*dm_logger, "RLIMIT_OP STATE UPD {data}",
             ("data", state)
          );
       }
@@ -418,7 +418,7 @@ void resource_limits_manager::process_block_usage(uint32_t block_num) {
       state.pending_net_usage = 0;
 
       if (auto dm_logger = _get_deep_mind_logger()) {
-         fc_dlog(*dm_logger, "RLIMIT_OP STATE UPD ${data}",
+         fc_dlog(*dm_logger, "RLIMIT_OP STATE UPD {data}",
             ("data", state)
          );
       }
