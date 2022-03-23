@@ -355,6 +355,7 @@ namespace eosio { namespace chain {
 
 } } /// namespace eosio::chain
 
+// TODO: Move this into fc
 namespace fmt {
     template<typename T>
     struct formatter<std::vector<T>> {
@@ -363,12 +364,7 @@ namespace fmt {
 
         template<typename FormatContext>
         auto format( const std::vector<T>& p, FormatContext& ctx ) {
-           if ( p.size() == 0)
-              return format_to( ctx.out(), "{}", "null");
-
-           auto f = fmt::formatter<T>();
-           for( const auto& i : p ) { f.format( i, ctx ); }
-           return format_to( ctx.out(), "");
+           return format_to( ctx.out(), "[{}]", fmt::join(p, ","));
         }
     };
 
@@ -379,8 +375,7 @@ namespace fmt {
 
         template<typename FormatContext>
         auto format( const std::pair<K, V>& p, FormatContext& ctx ) {
-           fmt::formatter<V>().format(p.second, ctx);
-           return format_to( ctx.out(), "");
+           return format_to( ctx.out(), "[{},{}]", p.first, p.second);
         }
     };
 }
