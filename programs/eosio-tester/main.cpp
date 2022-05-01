@@ -177,7 +177,7 @@ struct test_chain_ref {
 };
 
 struct test_chain {
-   eosio::chain::private_key_type producer_key{ "5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3"s };
+   eosio::chain::private_key_type producer_key{ "5JndU9CotXTwVLGenHxad9VHmL8JwekssUqo9ZsKJxupXxV6ipZ"s };
 
    fc::temp_directory                                dir;
    std::unique_ptr<eosio::chain::controller::config> cfg;

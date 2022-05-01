@@ -66,15 +66,15 @@ try:
     irrNode = cluster.getNode(irrNodeId)
 
     # Create delayed transaction to create "generated_transaction_object"
-    cmd = "create account -j eosio sample EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV\
-         EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV --delay-sec 600 -p eosio"
+    cmd = "create account -j eosio sample ZYT6cAXzwY1swM1KM4FMzeTvaTy7HPyGMeBnRLe9qfrw2kynFcXaz\
+         ZYT6cAXzwY1swM1KM4FMzeTvaTy7HPyGMeBnRLe9qfrw2kynFcXaz --delay-sec 600 -p eosio"
     trans = producerNode.processCleosCmd(cmd, cmd, silentErrors=False)
     assert trans
 
     # Schedule a new producer to trigger new producer schedule for "global_property_object"
     newProducerAcc = Account("newprod")
-    newProducerAcc.ownerPublicKey = "EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"
-    newProducerAcc.activePublicKey = "EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"
+    newProducerAcc.ownerPublicKey = "ZYT6cAXzwY1swM1KM4FMzeTvaTy7HPyGMeBnRLe9qfrw2kynFcXaz"
+    newProducerAcc.activePublicKey = "ZYT6cAXzwY1swM1KM4FMzeTvaTy7HPyGMeBnRLe9qfrw2kynFcXaz"
     producerNode.createAccount(newProducerAcc, cluster.eosioAccount)
 
     setProdsStr = '{"schedule": ['

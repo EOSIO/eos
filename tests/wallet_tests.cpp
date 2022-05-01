@@ -73,7 +73,7 @@ BOOST_AUTO_TEST_CASE(wallet_manager_test)
 
    constexpr auto key1 = "5JktVNHnRX48BUdtewU7N1CyL4Z886c42x7wYW7XhNWkDQRhdcS";
    constexpr auto key2 = "5Ju5RTcVDo35ndtzHioPMgebvBM6LkJ6tvuU6LTNQv8yaz3ggZr";
-   constexpr auto key3 = "5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3";
+   constexpr auto key3 = "5JndU9CotXTwVLGenHxad9VHmL8JwekssUqo9ZsKJxupXxV6ipZ";
 
    wallet_manager wm;
    BOOST_CHECK_EQUAL(0u, wm.list_wallets().size());
