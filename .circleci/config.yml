@@ -21,7 +21,8 @@ jobs:
       - run: sudo apt-get install -y libtool curl zlib1g-dev sudo ruby libusb-1.0-0-dev libcurl4-gnutls-dev pkg-config patch llvm-10 llvm-10-dev
       - run: sudo apt-get install -y lsb-release gnupg libboost-all-dev lzma zstd libnode-dev vim-common jq
       - run: sudo apt-get install -y libpq5 postgresql libpqxx-dev nodejs libusb-dev libcrypto++-dev librocksdb-dev
-      - run: sudo apt autoremove -y              
+      - run: sudo apt autoremove -y 
+      - run: git submodule update --init --recursive              
       - run:
           name: "Build System"
           command: ./scripts/eosio_build.sh -s ZYT -y   
