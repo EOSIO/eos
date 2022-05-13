@@ -5,7 +5,7 @@ version: 2.1
 # Define a job to be invoked later in a workflow.
 # See: https://circleci.com/docs/2.0/configuration-reference/#jobs
 jobs:
-  say-hello:
+  build:
     # Specify the execution environment. You can specify an image from Dockerhub or use one of our Convenience Images from CircleCI's Developer Hub.
     # See: https://circleci.com/docs/2.0/configuration-reference/#docker-machine-macos-windows-executor
     docker:
@@ -14,16 +14,20 @@ jobs:
     # See: https://circleci.com/docs/2.0/configuration-reference/#steps
     steps:
       - checkout
+      - run: sudo apt-get update
+      - run: sudo apt install -y git build-essential clang-10 libclang-10-dev g++ gcc make bzip2 ocaml automake libc++abi-dev libbz2-dev libssl-dev doxygen  \
+                      graphviz libstdc++-10-dev libgmp3-dev autotools-dev python2.7 python2.7-dev python3 python3-dev python-configparser autoconf  \
+                      libtool curl zlib1g-dev sudo ruby libusb-1.0-0-dev libcurl4-gnutls-dev pkg-config patch llvm-10 llvm-10-dev \
+                      lsb-release gnupg libboost-all-dev lzma zstd libnode-dev vim-common jq \
+                      libpq5 postgresql libpqxx-dev nodejs libusb-dev libcrypto++-dev librocksdb-dev
+      - run: sudo apt autoremove -y              
       - run:
-          name: "Say hello"
-          command: echo "Hello, World!"
-      - run:
-          name: "List Data"
-          command: ls -l    
+          name: "Build System"
+          command: ./scripts/eosio_build.sh -s ZYT -y   
         
 # Invoke jobs via workflows
 # See: https://circleci.com/docs/2.0/configuration-reference/#workflows
 workflows:
-  say-hello-workflow:
+  build-workflow:
     jobs:
-      - say-hello
+      - build
