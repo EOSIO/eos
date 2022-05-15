@@ -14,6 +14,8 @@ jobs:
     # See: https://circleci.com/docs/2.0/configuration-reference/#steps
     steps:
       - checkout
+      - run: git submodule sync
+      - run: git submodule update --init --recursive
       - run: sudo apt-get update
       - run: sudo apt-get upgrade -y
       - run: sudo apt-get install -y git build-essential clang-10 libclang-10-dev g++ gcc make bzip2 ocaml automake libc++abi-dev libbz2-dev libssl-dev doxygen
@@ -21,8 +23,7 @@ jobs:
       - run: sudo apt-get install -y libtool curl zlib1g-dev sudo ruby libusb-1.0-0-dev libcurl4-gnutls-dev pkg-config patch llvm-10 llvm-10-dev
       - run: sudo apt-get install -y lsb-release gnupg libboost-all-dev lzma zstd libnode-dev vim-common jq
       - run: sudo apt-get install -y libpq5 postgresql libpqxx-dev nodejs libusb-dev libcrypto++-dev librocksdb-dev
-      - run: sudo apt autoremove -y 
-      - run: git submodule update --init --recursive              
+      - run: sudo apt autoremove -y              
       - run:
           name: "Build System"
           command: ./scripts/eosio_build.sh -s ZYT -y   
