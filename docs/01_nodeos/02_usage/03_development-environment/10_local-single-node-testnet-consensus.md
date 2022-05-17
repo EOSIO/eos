@@ -34,7 +34,7 @@ Open one "terminal" window and perform the following steps:
 Execute the following at the command prompt:
 
 ```sh
-cleos wallet import --private-key 5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3
+cleos wallet import --private-key 5JndU9CotXTwVLGenHxad9VHmL8JwekssUqo9ZsKJxupXxV6ipZ
 ```
 
 ### 2. Start the Producer Node

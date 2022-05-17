@@ -71,7 +71,7 @@ Without password imported keys will not be retrievable.
 The private blockchain launched in the steps above is created with a default initial key which must be loaded into the wallet.
 
 ```sh
-cleos --wallet-url http://127.0.0.1:8899 wallet import --private-key 5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3
+cleos --wallet-url http://127.0.0.1:8899 wallet import --private-key 5JndU9CotXTwVLGenHxad9VHmL8JwekssUqo9ZsKJxupXxV6ipZ
 ```
 
 ```console

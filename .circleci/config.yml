@@ -1,0 +1,45 @@
+# Use the latest 2.1 version of CircleCI pipeline process engine.
+# See: https://circleci.com/docs/2.0/configuration-reference
+version: 2.1
+
+# Define a job to be invoked later in a workflow.
+# See: https://circleci.com/docs/2.0/configuration-reference/#jobs
+jobs:
+  build:
+    # Specify the execution environment. You can specify an image from Dockerhub or use one of our Convenience Images from CircleCI's Developer Hub.
+    # See: https://circleci.com/docs/2.0/configuration-reference/#docker-machine-macos-windows-executor
+    docker:
+      - image: cimg/base:stable
+    # Add steps to the job
+    # See: https://circleci.com/docs/2.0/configuration-reference/#steps
+    steps:
+      - checkout
+      - run:
+          name: Update submodules
+          command: |
+             git submodule sync
+             git submodule update --init --recursive --jobs 8
+      - run: 
+          name: system update
+          command: |
+             sudo apt-get update
+             sudo apt-get upgrade -y
+      - run:
+          name: install sofotware and clean up
+          command: |
+             sudo apt-get install -y git build-essential clang-10 libclang-10-dev g++ gcc make bzip2 ocaml automake libc++abi-dev libbz2-dev libssl-dev doxygen
+             sudo apt-get install -y graphviz libstdc++-10-dev libgmp3-dev autotools-dev python2.7 python2.7-dev python3 python3-dev python-configparser autoconf
+             sudo apt-get install -y libtool curl zlib1g-dev sudo ruby libusb-1.0-0-dev libcurl4-gnutls-dev pkg-config patch llvm-10 llvm-10-dev
+             sudo apt-get install -y lsb-release gnupg libboost-all-dev lzma zstd libnode-dev vim-common jq
+             sudo apt-get install -y libpq5 postgresql libpqxx-dev nodejs libusb-dev libcrypto++-dev librocksdb-dev
+             sudo apt autoremove -y              
+      - run:
+          name: "Build System"
+          command: ./scripts/eosio_build.sh -s ZYT -y   
+        
+# Invoke jobs via workflows
+# See: https://circleci.com/docs/2.0/configuration-reference/#workflows
+workflows:
+  build-workflow:
+    jobs:
+      - build

@@ -106,7 +106,7 @@ getTransactionId()
   TRANS_ID=${TRANS_ID%\",}
 }
 
-INITA_PRV_KEY="5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3"
+INITA_PRV_KEY="5JndU9CotXTwVLGenHxad9VHmL8JwekssUqo9ZsKJxupXxV6ipZ"
 
 # cleanup from last run
 cleanup

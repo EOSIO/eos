@@ -571,7 +571,7 @@ class PluginHttpTest(unittest.TestCase):
                      "\"authorizations\": []",
                      "\"EOS4toFS3YXEQCkuuw1aqDLrtHim86Gz9u3hBdcBw5KNPZcursVHq\"",
                      "\"EOS7d9A3uLe6As66jzN8j44TXJUqJSK3bFjjEEqR4oTvNAB3iM9SA\"",
-                     "\"EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV\"")
+                     "\"ZYT6cAXzwY1swM1KM4FMzeTvaTy7HPyGMeBnRLe9qfrw2kynFcXaz\"")
         ret_json = Utils.runCmdReturnJson(valid_cmd)
         self.assertEqual(ret_json["code"], 500)
 

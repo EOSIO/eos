@@ -21,7 +21,7 @@
 	url = https://github.com/CopernicaMarketingSoftware/AMQP-CPP
 [submodule "libraries/fc"]
 	path = libraries/fc
-	url = https://github.com/eosio/fc
+	url = https://github.com/rafatkatta/fc.git
 [submodule "libraries/chainbase"]
 	path = libraries/chainbase
 	url = https://github.com/eosio/chainbase
